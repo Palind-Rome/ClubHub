@@ -47,7 +47,11 @@ async function createClub() {
     await fetch("/api/clubs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: formName.value, category: formCategory.value, description: formDesc.value || null }),
+      body: JSON.stringify({
+        name: formName.value,
+        category: formCategory.value,
+        description: formDesc.value || null,
+      }),
     });
     dialogVisible.value = false;
     await loadClubs();
@@ -63,7 +67,9 @@ async function deleteClub(id: number, name: string) {
     await ElMessageBox.confirm(`确认删除「${name}」？`, "删除社团", { type: "warning" });
     await fetch(`/api/clubs/${id}`, { method: "DELETE" });
     await loadClubs();
-  } catch { /* 用户取消 */ }
+  } catch {
+    /* 用户取消 */
+  }
 }
 
 onMounted(loadClubs);
@@ -76,7 +82,7 @@ onMounted(loadClubs);
       <el-button type="primary" @click="openCreate">新增社团</el-button>
     </div>
 
-    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error=''" />
+    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
 
     <el-table v-loading="loading" :data="clubs" stripe empty-text="暂无社团数据">
       <el-table-column prop="id" label="ID" width="60" />
@@ -85,7 +91,9 @@ onMounted(loadClubs);
       <el-table-column prop="description" label="简介" show-overflow-tooltip />
       <el-table-column label="操作" width="80">
         <template #default="{ row }">
-          <el-button type="danger" size="small" text @click="deleteClub(row.id, row.name)">删除</el-button>
+          <el-button type="danger" size="small" text @click="deleteClub(row.id, row.name)"
+            >删除</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
@@ -112,7 +120,17 @@ onMounted(loadClubs);
 </template>
 
 <style scoped>
-.page { max-width: 860px; margin: 0 auto; }
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.toolbar h2 { margin: 0; }
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.toolbar h2 {
+  margin: 0;
+}
 </style>
