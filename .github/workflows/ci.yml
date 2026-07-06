@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  scaffold-check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show .NET info
+        run: dotnet --info
+
+      - name: Build backend if present
+        shell: pwsh
+        run: |
+          $solution = Get-ChildItem -Path . -Filter *.sln -Recurse | Select-Object -First 1
+          if ($solution) {
+            dotnet restore $solution.FullName
+            dotnet build $solution.FullName --configuration Release --no-restore
+          } else {
+            Write-Host "No .sln file yet. Backend scaffold check passed."
+          }
+
+      - name: Detect frontend
+        id: detect_frontend
+        shell: pwsh
+        run: |
+          if (Test-Path "frontend/package.json") {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "No frontend/package.json yet. Frontend scaffold check passed."
+          }
+
+      - name: Setup Node.js if frontend present
+        if: steps.detect_frontend.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend if present
+        if: steps.detect_frontend.outputs.exists == 'true'
+        shell: pwsh
+        run: |
+          Set-Location frontend
+          if (Test-Path "pnpm-lock.yaml") {
+            corepack enable
+            pnpm install --frozen-lockfile
+            pnpm run --if-present lint
+            pnpm run --if-present build
+          } elseif (Test-Path "package-lock.json") {
+            npm ci
+            npm run lint --if-present
+            npm run build --if-present
+          } else {
+            npm install
+            npm run lint --if-present
+            npm run build --if-present
+          }
+
+      - name: Check required repository files
+        shell: pwsh
+        run: |
+          $required = @(
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            "README.md",
+            ".gitignore",
+            ".github/workflows/ci.yml",
+            ".github/workflows/deploy.yml",
+            "api",
+            "backend",
+            "frontend",
+            "database/README.md",
+            "database/schema.sql",
+            "database/verify.sql",
+            "docs/01-系统需求分析文档",
+            "docs/02-数据库设计文档",
+            "docs/03-系统设计与实现文档",
+            "docs/04-答辩PPT"
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) {
+              throw "Missing required file or directory: $file"
+            }
+          }
+
+      - name: Check Oracle schema script
+        shell: pwsh
+        run: |
+          $tableCount = (Select-String -LiteralPath "database/schema.sql" -Pattern '^CREATE TABLE').Count
+          if ($tableCount -lt 12) {
+            throw "Expected at least 12 CREATE TABLE statements, found $tableCount"
+          }
+
+          $bareVarchar2 = Select-String -LiteralPath "database/schema.sql" -Pattern '\bvarchar2\b(?!\()'
+          if ($bareVarchar2) {
+            throw "Found varchar2 without length in database/schema.sql"
+          }

@@ -1,0 +1,115 @@
+name: Deploy
+
+# 当前是手动部署模板：只有在 GitHub Actions 页面点击 Run workflow 才会运行。
+# 等后端、前端、服务器、systemd 服务和 Secrets 都跑通后，再增加 push main 自动部署触发。
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 部署环境
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard project scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d backend ]; then
+            echo "backend/ does not exist yet. Create the ASP.NET Core backend before deploying."
+            exit 1
+          fi
+          if ! find backend -name "*.csproj" -print -quit | grep -q .; then
+            echo "No backend .csproj found yet. Create the backend project before deploying."
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$(find backend -name "*.Api.csproj" -print -quit)"
+          if [ -z "$project" ]; then
+            project="$(find backend -name "*.csproj" -print -quit)"
+          fi
+          dotnet restore "$project"
+          dotnet publish "$project" --configuration Release --output artifacts/backend --no-restore
+
+      - name: Setup Node.js if frontend present
+        if: hashFiles('frontend/package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend if present
+        if: hashFiles('frontend/package.json') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          if [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+            pnpm run --if-present lint
+            pnpm run --if-present build
+          elif [ -f package-lock.json ]; then
+            npm ci
+            npm run lint --if-present
+            npm run build --if-present
+          else
+            npm install
+            npm run lint --if-present
+            npm run build --if-present
+          fi
+          mkdir -p ../artifacts/frontend
+          if [ -d dist ]; then
+            cp -R dist/. ../artifacts/frontend/
+          fi
+
+      - name: Upload artifacts to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: artifacts
+          target: ${{ secrets.DEPLOY_PATH }}/incoming
+
+      - name: Restart application service
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.DEPLOY_PATH }}/current"
+            rsync -a --delete "${{ secrets.DEPLOY_PATH }}/incoming/artifacts/backend/" "${{ secrets.DEPLOY_PATH }}/current/"
+            if [ -d "${{ secrets.DEPLOY_PATH }}/incoming/artifacts/frontend" ]; then
+              mkdir -p "${{ secrets.DEPLOY_PATH }}/wwwroot"
+              rsync -a --delete "${{ secrets.DEPLOY_PATH }}/incoming/artifacts/frontend/" "${{ secrets.DEPLOY_PATH }}/wwwroot/"
+            fi
+            sudo systemctl restart "${{ secrets.APP_SERVICE_NAME }}"

@@ -1,0 +1,92 @@
+# Build outputs
+bin/
+obj/
+out/
+publish/
+artifacts/
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.DotSettings.user
+
+# .NET
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# Node / frontend tooling, if added later
+node_modules/
+dist/
+build/
+.vite/
+.next/
+.nuxt/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Production.json
+secrets.json
+*.pfx
+*.p12
+*.key
+*.pem
+*.cer
+
+# Logs and local runtime data
+logs/
+*.log
+*.tmp
+*.temp
+*.cache
+
+# Oracle / database local artifacts
+*.dmp
+*.dump
+*.trc
+*.trm
+*.ctl
+*.dbf
+*.ora.local
+wallet/
+Wallet_*/
+tnsnames.ora.local
+
+# Course scratch exports
+.codex-extracted/
+.scratch/
+tmp/
+temp/
+
+# Local downloaded tools
+sqldeveloper/
+oracle-xe-*/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
