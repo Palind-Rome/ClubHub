@@ -32,7 +32,7 @@ repos:
 
   # ---- 前端：Prettier 格式化 ----
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.4.2
+    rev: v3.9.4
     hooks:
       - id: prettier
         types_or: [javascript, jsx, typescript, tsx, vue, json, yaml, css, scss, markdown]
