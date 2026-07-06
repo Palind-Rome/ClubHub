@@ -38,6 +38,22 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Club"
+    post:
+      summary: 创建社团
+      operationId: createClub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubRequest"
+      responses:
+        "201":
+          description: 社团已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
 
   /api/clubs/{clubId}:
     get:
@@ -56,6 +72,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
+    put:
+      summary: 更新社团
+      operationId: updateClub
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubRequest"
+      responses:
+        "200":
+          description: 社团已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
+    delete:
+      summary: 删除社团
+      operationId: deleteClub
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: 社团已删除
 
   /api/activities:
     get:
@@ -129,6 +179,33 @@ components:
         - category
         - memberCount
         - presidentName
+
+    CreateClubRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+        - category
+
+    UpdateClubRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+        description:
+          type: string
+          nullable: true
 
     Activity:
       type: object
