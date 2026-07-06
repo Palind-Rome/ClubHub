@@ -9,11 +9,11 @@ info:
   version: 0.1.0
 
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:5000
     description: 本地开发服务器
 
 paths:
-  /health:
+  /api/health:
     get:
       summary: 健康检查
       description: 返回 API 服务运行状态。
