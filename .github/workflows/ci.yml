@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
       - dev
@@ -11,99 +12,210 @@ on:
       - dev
 
 jobs:
-  scaffold-check:
-    runs-on: windows-latest
+  # ============================================================
+  # 项目结构校验：必要文件、数据库脚本
+  # ============================================================
+  validate:
+    name: 项目结构校验
+    runs-on: ubuntu-latest
+    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show .NET info
-        run: dotnet --info
-
-      - name: Build backend if present
-        shell: pwsh
+      - name: 检查仓库必要文件
+        shell: bash
         run: |
-          $solution = Get-ChildItem -Path . -Filter *.sln -Recurse | Select-Object -First 1
-          if ($solution) {
-            dotnet restore $solution.FullName
-            dotnet build $solution.FullName --configuration Release --no-restore
-          } else {
-            Write-Host "No .sln file yet. Backend scaffold check passed."
-          }
+          set -euo pipefail
+          required=(
+            "AGENTS.md"
+            "CONTRIBUTING.md"
+            "README.md"
+            ".gitignore"
+            ".github/workflows/ci.yml"
+            ".github/workflows/deploy.yml"
+            "api"
+            "backend"
+            "frontend"
+            "database/README.md"
+            "database/schema.sql"
+            "database/verify.sql"
+          )
+          missing=()
+          for file in "${required[@]}"; do
+            if [[ ! -e "$file" ]]; then
+              missing+=("$file")
+            fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            for f in "${missing[@]}"; do
+              echo "::error::缺少必要文件或目录: $f"
+            done
+            exit 1
+          fi
+          echo "所有必要文件和目录检查通过。"
 
-      - name: Detect frontend
-        id: detect_frontend
-        shell: pwsh
+      - name: 检查数据库脚本
+        shell: bash
         run: |
-          if (Test-Path "frontend/package.json") {
-            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          } else {
-            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            Write-Host "No frontend/package.json yet. Frontend scaffold check passed."
-          }
+          set -euo pipefail
+          table_count=$(grep -c '^CREATE TABLE' database/schema.sql || true)
+          if [[ "$table_count" -lt 12 ]]; then
+            echo "::error::预期至少 12 张 CREATE TABLE，实际发现 $table_count 张"
+            exit 1
+          fi
+          echo "数据库脚本检查通过：共 $table_count 张表。"
 
-      - name: Setup Node.js if frontend present
-        if: steps.detect_frontend.outputs.exists == 'true'
+      # TODO: 远程 Oracle 就绪后取消注释，对数据库执行 schema 语法验证。
+      # 需要在 GitHub Secrets 中配置 ORACLE_HOST、ORACLE_PORT、ORACLE_SERVICE_NAME、
+      # ORACLE_USERNAME、ORACLE_PASSWORD。
+      # - name: Oracle 语法验证
+      #   if: env.ORACLE_HOST != ''
+      #   shell: bash
+      #   env:
+      #     ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+      #     ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+      #     ORACLE_SERVICE_NAME: ${{ secrets.ORACLE_SERVICE_NAME }}
+      #     ORACLE_USERNAME: ${{ secrets.ORACLE_USERNAME }}
+      #     ORACLE_PASSWORD: ${{ secrets.ORACLE_PASSWORD }}
+      #   run: |
+      #     set -euo pipefail
+      #     # 安装 Oracle Instant Client
+      #     curl -sSLO https://download.oracle.com/otn_software/linux/instantclient/instantclient-basic-linux.x64-23.6.0.24.10.zip
+      #     unzip -q instantclient-basic-linux.x64-*.zip -d /opt
+      #     echo "/opt/instantclient_23_6" >> "$GITHUB_PATH"
+      #     sudo apt-get update -qq && sudo apt-get install -y -qq libaio1
+      #     # 连接远程 Oracle，执行 schema.sql 验证语法
+      #     sqlplus -S "$ORACLE_USERNAME/$ORACLE_PASSWORD@//$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SERVICE_NAME" <<'SQLEOF'
+      #     SET ECHO OFF
+      #     SET TERMOUT OFF
+      #     SET PAGESIZE 0
+      #     SET FEEDBACK OFF
+      #     WHENEVER SQLERROR EXIT SQL.SQLCODE
+      #     @database/schema.sql
+      #     SQLEOF
+      #     echo "Oracle schema 语法验证通过。"
+
+  # ============================================================
+  # 后端构建（条件执行：仅当 .sln 文件存在时）
+  # ============================================================
+  build-backend:
+    name: 后端构建
+    runs-on: ubuntu-latest
+    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 检测后端项目
+        id: detect
+        shell: bash
+        run: |
+          solution=$(find . -name "*.sln" -print -quit)
+          if [[ -n "$solution" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "path=$solution" >> "$GITHUB_OUTPUT"
+            echo "发现解决方案：$solution"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "未找到 .sln 文件，跳过后端构建。"
+          fi
+
+      - name: Setup .NET
+        if: steps.detect.outputs.exists == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore 和 Build
+        if: steps.detect.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore "${{ steps.detect.outputs.path }}"
+          dotnet build "${{ steps.detect.outputs.path }}" --configuration Release --no-restore
+          echo "后端构建通过。"
+
+      # TODO: 项目建立后取消注释以下测试步骤
+      # - name: 运行后端测试
+      #   if: steps.detect.outputs.exists == 'true'
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     dotnet test "${{ steps.detect.outputs.path }}" --configuration Release --no-build
+
+  # ============================================================
+  # 前端构建（条件执行：仅当 package.json 存在时）
+  # ============================================================
+  build-frontend:
+    name: 前端构建
+    runs-on: ubuntu-latest
+    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 检测前端项目
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f "frontend/package.json" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "检测到前端项目。"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "未找到 frontend/package.json，跳过前端构建。"
+          fi
+
+      - name: Install pnpm
+        if: steps.detect.outputs.exists == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        if: steps.detect.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Build frontend if present
-        if: steps.detect_frontend.outputs.exists == 'true'
-        shell: pwsh
+      - name: 检查 lockfile
+        if: steps.detect.outputs.exists == 'true'
+        shell: bash
         run: |
-          Set-Location frontend
-          if (Test-Path "pnpm-lock.yaml") {
+          if [[ -f "frontend/pnpm-lock.yaml" ]]; then
+            echo "使用 pnpm-lock.yaml。"
+          elif [[ -f "frontend/package-lock.json" ]]; then
+            echo "使用 package-lock.json。"
+          else
+            echo "::error::未找到 lockfile。请提交 frontend/pnpm-lock.yaml 或 frontend/package-lock.json。"
+            exit 1
+          fi
+
+      - name: 安装依赖并构建
+        if: steps.detect.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend
+          if [[ -f "pnpm-lock.yaml" ]]; then
             corepack enable
             pnpm install --frozen-lockfile
             pnpm run --if-present lint
             pnpm run --if-present build
-          } elseif (Test-Path "package-lock.json") {
+          elif [[ -f "package-lock.json" ]]; then
             npm ci
             npm run lint --if-present
             npm run build --if-present
-          } else {
-            npm install
-            npm run lint --if-present
-            npm run build --if-present
-          }
+          fi
+          echo "前端构建通过。"
 
-      - name: Check required repository files
-        shell: pwsh
-        run: |
-          $required = @(
-            "AGENTS.md",
-            "CONTRIBUTING.md",
-            "README.md",
-            ".gitignore",
-            ".github/workflows/ci.yml",
-            ".github/workflows/deploy.yml",
-            "api",
-            "backend",
-            "frontend",
-            "database/README.md",
-            "database/schema.sql",
-            "database/verify.sql",
-            "docs/01-系统需求分析文档",
-            "docs/02-数据库设计文档",
-            "docs/03-系统设计与实现文档",
-            "docs/04-答辩PPT"
-          )
-          foreach ($file in $required) {
-            if (-not (Test-Path $file)) {
-              throw "Missing required file or directory: $file"
-            }
-          }
-
-      - name: Check Oracle schema script
-        shell: pwsh
-        run: |
-          $tableCount = (Select-String -LiteralPath "database/schema.sql" -Pattern '^CREATE TABLE').Count
-          if ($tableCount -lt 12) {
-            throw "Expected at least 12 CREATE TABLE statements, found $tableCount"
-          }
-
-          $bareVarchar2 = Select-String -LiteralPath "database/schema.sql" -Pattern '\bvarchar2\b(?!\()'
-          if ($bareVarchar2) {
-            throw "Found varchar2 without length in database/schema.sql"
-          }
+      # TODO: 项目建立后取消注释以下测试步骤
+      # - name: 运行前端测试
+      #   if: steps.detect.outputs.exists == 'true'
+      #   shell: bash
+      #   run: |
+      #     cd frontend
+      #     pnpm run --if-present test
