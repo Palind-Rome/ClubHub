@@ -1,0 +1,41 @@
+# 本地 pre-commit 配置
+# 安装：pip install pre-commit && pre-commit install
+# 每次 git commit 时自动运行，部分 hook 会修改文件（如 prettier、end-of-file-fixer）
+#
+# 注意：此文件供本地开发使用。CI 使用 .pre-commit-ci-config.yaml（仅检查，不修改文件）。
+
+exclude: "frontend/src/api/.*|backend/Models/.*|backend/Generated/.*"
+
+repos:
+  # ---- 通用检查 ----
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=2000]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ---- 后端：C# 代码风格（条件：需要 .NET SDK）----
+  # TODO: 后端项目建立后取消注释
+  # - repo: local
+  #   hooks:
+  #     - id: dotnet-format
+  #       name: dotnet format
+  #       entry: dotnet format backend/ --include
+  #       language: system
+  #       pass_filenames: false
+
+  # ---- 前端：Prettier 格式化（条件：需要 Node.js）----
+  # TODO: 前端项目建立后取消注释
+  # - repo: https://github.com/pre-commit/mirrors-prettier
+  #   rev: v4.0.0-alpha.8
+  #   hooks:
+  #     - id: prettier
+  #       types_or: [javascript, jsx, typescript, tsx, vue, json, yaml, css, scss, markdown]
+  #       exclude: "pnpm-lock.yaml|package-lock.json"

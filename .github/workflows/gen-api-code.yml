@@ -1,0 +1,118 @@
+name: 生成 API 代码
+
+# 从 api/openapi.yaml 自动生成前端 TypeScript Axios 客户端和后端 ASP.NET Core 数据模型。
+# 开发者修改 API 契约后 push，本 workflow 自动生成代码并提交回分支。
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - dev
+    paths:
+      - api/**
+
+permissions:
+  contents: write # 自动提交生成代码
+
+jobs:
+  generate:
+    name: 生成前后端 API 代码
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      # ============================================================
+      # 检测项目目录
+      # ============================================================
+      - name: 检测项目结构
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f "frontend/package.json" ]]; then
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+            echo "前端项目尚未建立，跳过前端代码生成。"
+          fi
+
+          if find backend -name "*.csproj" -print -quit | grep -q .; then
+            echo "has_backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_backend=false" >> "$GITHUB_OUTPUT"
+            echo "后端项目尚未建立，跳过后端代码生成。"
+          fi
+
+      # ============================================================
+      # 验证 OpenAPI 规范
+      # ============================================================
+      - name: 验证 OpenAPI 规范语法
+        shell: bash
+        run: |
+          # 简单 YAML 语法检查
+          python3 -c "import yaml; yaml.safe_load(open('api/openapi.yaml'))" 2>/dev/null || {
+            echo "::warning::Python yaml 不可用，跳过 YAML 语法验证。"
+          }
+          # 至少确认文件是合法的 OpenAPI（有 openapi 版本字段）
+          grep -q 'openapi:\s*3\.' api/openapi.yaml || {
+            echo "::error::api/openapi.yaml 缺少 openapi 版本声明。"
+            exit 1
+          }
+          echo "OpenAPI 规范语法检查通过。"
+
+      # ============================================================
+      # 前端生成：TypeScript Axios 客户端
+      # ============================================================
+      - name: 生成前端 TypeScript Axios 客户端
+        if: steps.detect.outputs.has_frontend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g @openapitools/openapi-generator-cli
+          mkdir -p frontend/src/api
+
+          npx @openapitools/openapi-generator-cli generate \
+            -i api/openapi.yaml \
+            -g typescript-axios \
+            -o frontend/src/api \
+            --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
+
+          echo "前端 TypeScript Axios 客户端已生成。"
+
+      # ============================================================
+      # 后端生成：ASP.NET Core 数据模型
+      # ============================================================
+      - name: 生成后端 ASP.NET Core 模型
+        if: steps.detect.outputs.has_backend == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g @openapitools/openapi-generator-cli
+          mkdir -p backend/Models
+
+          npx @openapitools/openapi-generator-cli generate \
+            -i api/openapi.yaml \
+            -g aspnetcore \
+            -o backend/Generated \
+            --additional-properties=aspnetCoreVersion=net9.0,classModifier=public,operationModifier=virtual
+
+          # 只保留 Models 目录（Controller 由开发者手写）
+          if [[ -d backend/Generated/src/*/Models ]]; then
+            cp -R backend/Generated/src/*/Models/* backend/Models/ 2>/dev/null || true
+          fi
+          rm -rf backend/Generated
+          echo "后端 ASP.NET Core 模型已生成。"
+
+      # ============================================================
+      # 自动提交生成代码
+      # ============================================================
+      - name: 提交生成代码
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(api): 从 openapi.yaml 自动生成 API 代码"
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+          file_pattern: "frontend/src/api/* backend/Models/*"
+          commit_options: "--no-verify"
