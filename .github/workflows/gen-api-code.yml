@@ -96,7 +96,7 @@ jobs:
             -i api/openapi.yaml \
             -g aspnetcore \
             -o backend/Generated \
-            --additional-properties=aspnetCoreVersion=net9.0,classModifier=public,operationModifier=virtual
+            --additional-properties=aspnetCoreVersion=net10.0,classModifier=public,operationModifier=virtual
 
           # 只保留 Models 目录（Controller 由开发者手写）
           if [[ -d backend/Generated/src/*/Models ]]; then

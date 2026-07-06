@@ -8,7 +8,7 @@
 - `main` 保存阶段性稳定版本，`dev` 用作日常集成，个人任务从 `dev` 拉功能分支。
 - 功能分支可以 `fetch + rebase`，但最好不要。
 - 密码、私钥、服务器 IP、Oracle 连接串不进仓库，只放本机环境变量或 GitHub Secrets。
-- 前后端分离：后端 C# / ASP.NET Core Web API，前端 Vue 3 / Vite + Element Plus，数据库 Oracle。
+- 前后端分离：后端 C# / ASP.NET Core 10 Web API，前端 Vue 3 / Vite + Element Plus，数据库 Oracle。
 
 ## 仓库目录
 
@@ -28,7 +28,7 @@
 
 - Visual Studio 2022 或更高版本。
 - `ASP.NET and web development` 工作负载。
-- .NET SDK。
+- .NET SDK 10.0（后端项目目标框架为 `net10.0`）。
 - 远程 Oracle 数据库（团队共用，不需本地安装）。后端通过 EF Core 托管驱动直连。
   - 首次配置：复制 `backend/appsettings.Development.example.json` 为 `appsettings.Development.json`（已 gitignore），填入连接信息。详见 `database/README.md`。
 - SQL Developer（可选，方便手动浏览数据库）。
