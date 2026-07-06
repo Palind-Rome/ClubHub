@@ -8,7 +8,7 @@
 - `main` 保存阶段性稳定版本，`dev` 用作日常集成，个人任务从 `dev` 拉功能分支。
 - 功能分支可以 `fetch + rebase`，但最好不要。
 - 密码、私钥、服务器 IP、Oracle 连接串不进仓库，只放本机环境变量或 GitHub Secrets。
-- 前后端分离：后端 C# / ASP.NET Core Web API，前端 Vue 3 / Vite，数据库 Oracle。
+- 前后端分离：后端 C# / ASP.NET Core Web API，前端 Vue 3 / Vite + Element Plus，数据库 Oracle。
 
 ## 仓库目录
 

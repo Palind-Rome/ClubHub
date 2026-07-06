@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-
 interface Activity {
   id: number;
   title: string;
@@ -10,7 +9,6 @@ interface Activity {
   location: string | null;
   status: string | null;
   maxParticipants: number | null;
-  createdAt: string;
 }
 
 const activities = ref<Activity[]>([]);
@@ -25,7 +23,16 @@ const statusLabel: Record<string, string> = {
   cancelled: "已取消",
 };
 
+const statusType: Record<string, string> = {
+  draft: "info",
+  published: "success",
+  ongoing: "",
+  finished: "info",
+  cancelled: "danger",
+};
+
 onMounted(async () => {
+  loading.value = true;
   try {
     const res = await fetch("/api/activities");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -41,34 +48,36 @@ onMounted(async () => {
 <template>
   <div class="page">
     <h2>活动列表</h2>
-    <div v-if="error" class="err">{{ error }}</div>
-    <div v-if="loading">加载中…</div>
-    <div v-else-if="activities.length === 0" class="empty">暂无活动数据</div>
-    <div v-else class="grid">
-      <div v-for="act in activities" :key="act.id" class="card">
-        <h3>{{ act.title }}</h3>
-        <div class="meta">{{ act.clubName }}</div>
-        <div v-if="act.startTime" class="meta">
-          {{ new Date(act.startTime).toLocaleString() }}
-          <template v-if="act.endTime"> — {{ new Date(act.endTime).toLocaleString() }}</template>
-        </div>
-        <div v-if="act.location" class="meta">地点：{{ act.location }}</div>
-        <div class="meta">
-          <span v-if="act.status" class="tag">{{ statusLabel[act.status] || act.status }}</span>
-          <span v-if="act.maxParticipants">上限 {{ act.maxParticipants }} 人</span>
-        </div>
-      </div>
-    </div>
+
+    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error=''" />
+
+    <el-table v-loading="loading" :data="activities" stripe empty-text="暂无活动数据">
+      <el-table-column prop="id" label="ID" width="60" />
+      <el-table-column prop="title" label="标题" />
+      <el-table-column prop="clubName" label="主办社团" width="120" />
+      <el-table-column label="时间" width="180">
+        <template #default="{ row }">
+          <span v-if="row.startTime">{{ new Date(row.startTime).toLocaleString() }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="location" label="地点" />
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.status" :type="statusType[row.status] || 'info'" size="small">
+            {{ statusLabel[row.status] || row.status }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="名额" width="80">
+        <template #default="{ row }">
+          {{ row.maxParticipants ?? "不限" }}
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <style scoped>
-.page { max-width: 720px; margin: 0 auto; }
-.grid { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
-.card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.card h3 { margin: 0 0 8px; }
-.meta { font-size: 14px; color: #666; margin-bottom: 4px; }
-.tag { background: #e3f2fd; color: #1976d2; padding: 1px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px; }
-.err { color: #c62828; margin: 16px 0; }
-.empty { color: #999; margin-top: 24px; text-align: center; }
+.page { max-width: 960px; margin: 0 auto; }
+h2 { margin-bottom: 12px; }
 </style>
