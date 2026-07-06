@@ -20,6 +20,7 @@ const newDesc = ref("");
 const creating = ref(false);
 
 async function loadClubs() {
+  loading.value = true;
   error.value = "";
   try {
     const res = await fetch("/api/clubs");
@@ -27,6 +28,8 @@ async function loadClubs() {
     clubs.value = await res.json();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载失败";
+  } finally {
+    loading.value = false;
   }
 }
 
