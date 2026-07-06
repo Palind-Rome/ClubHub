@@ -19,8 +19,10 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/clubhub-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/clubhub-frontend
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-deploy:
@@ -35,16 +37,15 @@ jobs:
         uses: actions/checkout@v4
 
       # ---- 确定镜像标签 ----
-      - name: 确定镜像标签
-        id: tags
+      - name: 确定镜像名称和标签
+        id: meta
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
-          fi
-          echo "sha_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "backend_image=ghcr.io/${owner}/clubhub-backend" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=ghcr.io/${owner}/clubhub-frontend" >> "$GITHUB_OUTPUT"
+          echo "tag=latest" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       # ---- 登录 GitHub Container Registry ----
       - name: 登录 ghcr.io
@@ -62,8 +63,8 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ steps.tags.outputs.tag }}
-            ${{ env.BACKEND_IMAGE }}:${{ steps.tags.outputs.sha_tag }}
+            ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.sha_tag }}
 
       # ---- 构建并推送前端镜像 ----
       - name: 构建前端镜像
@@ -73,8 +74,21 @@ jobs:
           file: frontend/Dockerfile
           push: true
           tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.tags.outputs.tag }}
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.tags.outputs.sha_tag }}
+            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.sha_tag }}
+
+      # ---- 准备服务器部署目录和网络 ----
+      - name: 准备服务器部署目录
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.DEPLOY_PATH }}"
+            docker network inspect clubhub-net >/dev/null 2>&1 || docker network create clubhub-net
 
       # ---- 上传 docker-compose.yml 到服务器 ----
       - name: 上传 docker-compose.yml
@@ -99,19 +113,31 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
 
+            echo "=== 登录 ghcr.io ==="
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
             echo "=== 拉取新镜像 ==="
             docker compose pull
 
             echo "=== 启动服务 ==="
             docker compose up -d
 
-            echo "=== 等待健康检查 ==="
-            sleep 5
-            if ! docker compose ps --status running | grep -q "Up"; then
-              echo "!!! 服务启动失败 !!!"
+            echo "=== 等待服务启动 ==="
+            sleep 10
+            docker compose ps
+            if ! docker compose ps --services --status running | grep -q "^backend$"; then
+              echo "!!! 后端服务未运行 !!!"
               docker compose logs --tail 50
               exit 1
             fi
+            if ! docker compose ps --services --status running | grep -q "^frontend$"; then
+              echo "!!! 前端服务未运行 !!!"
+              docker compose logs --tail 50
+              exit 1
+            fi
+
+            echo "=== 应用健康检查 ==="
+            curl -fsS http://127.0.0.1/api/health
 
             echo "=== 部署成功 ==="
             docker compose ps
