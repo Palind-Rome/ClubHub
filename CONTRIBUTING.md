@@ -1,6 +1,6 @@
 # ClubHub 组员协作说明
 
-本文档写给所有组员。目标是让大家知道：怎么开任务、怎么写代码、怎么提交、怎么留下贡献证据，以及哪些事情不要一开始做复杂。
+本文档写给所有组员（同时也给 Agent 阅读）。目标是让大家知道：怎么开任务、怎么写代码、怎么提交、怎么留下贡献证据，以及哪些事情不要一开始做复杂。
 
 ## TL;DR
 
@@ -32,6 +32,7 @@
 - Oracle Database 18c 或更高版本。建议 Oracle 21c XE。
 - SQL Developer 或其他 Oracle 客户端。
 - 如果开发前端，再安装 Node.js LTS，并启用 Corepack / pnpm。
+- `gh` CLI（GitHub 官方命令行工具）：用于创建 PR、查看 CI 状态。未安装时请提醒用户根据用户的系统 / 环境进行安装。
 
 ## 分支要求
 
@@ -68,34 +69,49 @@
 
 ## 日常开发流程
 
-开始任务：
+一个功能点的完整路径（11 步）：
 
-拉取最新的 `dev` 分支，在 `dev` 分支上的最新的 commit 上开新分支进行工作：
-
-```bash
-git fetch origin
-git checkout dev
-git pull origin dev
-git checkout -b feature/your-task
 ```
-
-提交修改：
-
-```bash
-git status
-git add 具体文件名
-git commit -m "feat(activity): 新增活动报名人数限制"
+ 1. git checkout dev && git pull origin dev
+    git checkout -b feature/your-task
+       │
+ 2. 立即创建 draft PR（feature/your-task → dev）：
+    gh pr create --draft --base dev --title "feat(scope): 功能名称"
+    （未安装 gh CLI 时：winget install GitHub.cli）
+    → CI 不会在 draft 阶段运行，等代码写好再 mark ready
+       │
+ 3. 本地编码（一次性完成）：
+    ├── api/openapi.yaml            ← 新增/修改端点
+    ├── backend/Controllers/*.cs    ← API 路由
+    ├── backend/Services/*.cs       ← 业务逻辑
+    └── frontend/src/...            ← Vue 页面和组件
+       │
+ 4. 本地验证（必须通过才能 push）：
+    dotnet restore && dotnet build --configuration Release
+    cd frontend && pnpm install --frozen-lockfile && pnpm run build
+       │
+ 5. git add 具体文件名（禁止 git add .）
+    git commit -m "feat(scope): 中文摘要"
+    git push -u origin feature/your-task
+       │
+ 6. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
+    → CI 生成 backend/Models/* 和 frontend/src/api/*
+    → CI 自动 commit 回你的 feature 分支
+       │
+ 7. git pull 拉取 CI 生成的代码
+       │
+ 8. 再次本地验证（确保生成的代码能编译通过）
+       │
+ 9. 代码准备好后，将 draft PR 标记为 Ready for Review：
+    gh pr ready
+    → CI 开始运行，CodeRabbit 自动 review
+       │
+10. 阅读 CodeRabbit 的 review 意见：
+    ├── 合理的 → 根据意见修改代码，commit + push
+    └── 不合理的 → 在 PR 评论区回复说明原因
+       │
+11. CI 全部通过 + CodeRabbit 无阻塞性问题 + CODEOWNERS approve → Merge
 ```
-
-**不要使用 `git add .`。**
-
-推送分支：
-
-```bash
-git push -u origin feature/your-task
-```
-
-然后发起 PR，目标分支选 `dev`。发起 PR 推荐 AGENT 使用 `gh` CLI 进行全自动工作流，也可以手动在 GitHub 网页端发起 PR。
 
 
 ## Pull Request 规则
@@ -240,6 +256,49 @@ CI 内部三个 Job：
 - **测试步骤**：`dotnet test`、`pnpm test`，待后端/前端项目建立后启用。
 - **Oracle 远程语法验证**：通过 `sqlplus` 连接远端 Oracle 实例，对 `schema.sql` 做 Oracle 语法校验（不是全量刷新），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
 
+### PR 门禁（feature → dev）
+
+```
+发起 PR 后自动触发：
+
+┌─ ci.yml ──────────────────────────────────────────┐
+│  validate        检查文件完整性 + schema ≥12 张表    │
+│  build-backend   如果有 .sln 则 dotnet build        │
+│  build-frontend  如果有 package.json 则 pnpm build  │
+└────────────────────────────────────────────────────┘
+┌─ code-check.yml ───────────────────────────────────┐
+│  pre-commit 通用检查（行尾空格、YAML 语法等）        │
+└────────────────────────────────────────────────────┘
+
+两项全部通过 + CODEOWNERS 一人 approve → 可以 Merge
+```
+
+### 阶段性上线（dev → main）
+
+```
+dev 积累到里程碑节点（课程答辩/演示版本）：
+
+ 1. 发起 PR：dev → main
+ 2. 同样跑 ci.yml + code-check.yml
+ 3. 全部通过 + CODEOWNERS 一人 approve → Merge
+ 4. Merge 后 main 收到新 commit
+       │
+       ▼
+    deploy.yml 自动触发
+       │
+    ├── docker build backend/Dockerfile  → ghcr.io/.../clubhub-backend:latest
+    ├── docker build frontend/Dockerfile → ghcr.io/.../clubhub-frontend:latest
+    ├── docker push 两个镜像
+    ├── SCP docker-compose.yml → 服务器
+    └── SSH 服务器执行：
+          docker compose pull
+          docker compose up -d
+          健康检查 ✅
+       │
+       ▼
+    🖥️ 服务器更新为最新版本，对外可访问
+```
+
 ## API-first 开发流程
 
 ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成代码，最后手写业务逻辑。**
@@ -294,6 +353,45 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
 > **注意**：生成的文件（`frontend/src/api/*`、`backend/Models/*`）禁止手动修改。
 > 如果改了它们，下次 `gen-api-code.yml` 运行会覆盖你的改动。
 > 需要修改 API 行为时，请改 `api/openapi.yaml`，然后让流水线重新生成。
+
+## 本地运行
+
+```bash
+# 方式一：直接跑（需安装 .NET SDK + Node.js）
+dotnet run --project backend          # 后端 → localhost:5000
+cd frontend && pnpm run dev           # 前端 → localhost:5173
+
+# 方式二：Docker（只需 Docker，不需要装 SDK/Node）
+docker compose -f docker-compose.dev.yml up   # 一键启动，源码热重载
+```
+
+## 常用命令速查
+
+```powershell
+# 后端
+dotnet restore
+dotnet build --configuration Release
+dotnet test --configuration Release
+
+# 前端
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run build
+
+# Docker
+docker compose -f docker-compose.dev.yml up    # 本地开发
+docker compose build                            # 构建生产镜像
+docker compose up -d                            # 生产启动
+
+# GitHub CLI（未安装时 winget install GitHub.cli）
+gh pr create --draft --base dev --title "feat(scope): 摘要"   # 创建 draft PR
+gh pr ready                                                     # 标记为 Ready for Review
+gh pr checks                                                    # 查看 CI 状态
+gh pr view --comments                                           # 查看 review 意见
+gh run list -b main                                             # 查看 main 的 CI 运行记录
+gh run view <id> --log-failed                                   # 查看失败日志
+```
 
 ## 文档规则
 
