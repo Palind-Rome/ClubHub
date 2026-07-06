@@ -11,6 +11,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 - 前端：Vue 3 / Vite
 - 数据库：Oracle Database 18c 或更高版本
 - 数据访问：Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider
+- 部署：Docker Compose / Caddy HTTPS / GitHub Actions
 - 协作：GitHub Issues / Pull Requests / GitHub Actions
 
 ## 目录结构

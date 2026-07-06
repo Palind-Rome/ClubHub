@@ -4,6 +4,7 @@
 
 - `schema.sql`：第一次数据库设计作业形成的建表脚本。
 - `verify.sql`：验证当前用户、表数量和表名。
+- `smoke_test.sql`：验证应用用户可以 SELECT、INSERT 并回滚。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
 - `migrations/`：后续放表结构演进说明或迁移脚本。
@@ -17,6 +18,8 @@
 ## 验证
 
 在 SQL Developer 中打开并执行 `verify.sql`。
+
+如果需要确认数据库账号具有基本读写能力，执行 `smoke_test.sql`。该脚本会插入一条临时数据并立即回滚，正常情况下不会留下测试数据。
 
 当前已验证 `CLUBHUB` 用户下共有 22 张表。
 

@@ -223,6 +223,7 @@ feat(club): 新增社团成员角色管理
 
 - 表结构基线是 `database/schema.sql`。
 - 验证脚本是 `database/verify.sql`。
+- 连通性冒烟测试脚本是 `database/smoke_test.sql`。
 - 新增演示数据放 `database/seeds/`。
 - 新增统计视图放 `database/views/`。
 - 新增结构变更放 `database/migrations/`。
@@ -269,8 +270,11 @@ CI 内部三个 Job：
 | `SERVER_USER` | 部署用户 `deploy`，不用 root。 |
 | `SERVER_SSH_KEY` | GitHub Actions 专用 SSH 私钥。 |
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
+| `APP_HOST` | HTTPS 访问域名，例如 `47-116-31-246.sslip.io`。 |
 
 服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle 容器和应用容器应连接到同一个网络。不把 Oracle 1521 端口直接暴露到公网。
+
+生产入口由 Caddy 容器负责：公网只开放 `80` 和 `443`，Caddy 自动申请 HTTPS 证书并反向代理到前端容器。前端和后端只在 Docker 网络内部通信，不直接暴露 `5000` 或 Oracle `1521` 到公网。
 
 ### PR 门禁（feature → dev）
 

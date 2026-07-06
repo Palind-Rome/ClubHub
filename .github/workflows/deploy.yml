@@ -90,15 +90,15 @@ jobs:
             mkdir -p "${{ secrets.DEPLOY_PATH }}"
             docker network inspect clubhub-net >/dev/null 2>&1 || docker network create clubhub-net
 
-      # ---- 上传 docker-compose.yml 到服务器 ----
-      - name: 上传 docker-compose.yml
+      # ---- 上传部署编排文件到服务器 ----
+      - name: 上传部署编排文件
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: docker-compose.yml
+          source: docker-compose.yml,Caddyfile
           target: ${{ secrets.DEPLOY_PATH }}
 
       # ---- 服务器上拉取镜像并重启 ----
@@ -113,6 +113,12 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
 
+            if [ -z "${{ secrets.APP_HOST }}" ]; then
+              echo "!!! APP_HOST Secret 未配置，无法申请 HTTPS 证书 !!!"
+              exit 1
+            fi
+            printf 'APP_HOST=%s\n' "${{ secrets.APP_HOST }}" > .env
+
             echo "=== 登录 ghcr.io ==="
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -120,11 +126,16 @@ jobs:
             docker compose pull
 
             echo "=== 启动服务 ==="
-            docker compose up -d
+            docker compose up -d --remove-orphans
 
             echo "=== 等待服务启动 ==="
             sleep 10
             docker compose ps
+            if ! docker compose ps --services --status running | grep -q "^caddy$"; then
+              echo "!!! HTTPS 入口服务未运行 !!!"
+              docker compose logs --tail 80 caddy
+              exit 1
+            fi
             if ! docker compose ps --services --status running | grep -q "^backend$"; then
               echo "!!! 后端服务未运行 !!!"
               docker compose logs --tail 50
@@ -136,8 +147,20 @@ jobs:
               exit 1
             fi
 
-            echo "=== 应用健康检查 ==="
-            curl -fsS http://127.0.0.1/api/health
+            echo "=== HTTPS 健康检查 ==="
+            health_ok=0
+            for i in $(seq 1 30); do
+              if curl -fsS --resolve "${{ secrets.APP_HOST }}:443:127.0.0.1" "https://${{ secrets.APP_HOST }}/api/health"; then
+                health_ok=1
+                break
+              fi
+              sleep 5
+            done
+            if [ "$health_ok" -ne 1 ]; then
+              echo "!!! HTTPS 健康检查失败 !!!"
+              docker compose logs --tail 100 caddy frontend backend
+              exit 1
+            fi
 
             echo "=== 部署成功 ==="
             docker compose ps
