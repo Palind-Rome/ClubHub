@@ -256,6 +256,22 @@ CI 内部三个 Job：
 - **测试步骤**：`dotnet test`、`pnpm test`，待后端/前端项目建立后启用。
 - **Oracle 远程语法验证**：通过 `sqlplus` 连接远端 Oracle 实例，对 `schema.sql` 做 Oracle 语法校验（不是全量刷新），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
 
+### 部署 Secrets
+
+部署 Secrets 已完成。这些 Secret 名称和服务器前置条件信息如下：
+
+部署工作流通过 GitHub Actions 连接应用服务器。仓库配置了以下 Repository Secrets：
+
+| Secret 名称 | 含义 |
+|-------------|------|
+| `SERVER_HOST` | 应用服务器公网 IP 或域名。 |
+| `SERVER_PORT` | SSH 端口，默认 `22`。 |
+| `SERVER_USER` | 部署用户 `deploy`，不用 root。 |
+| `SERVER_SSH_KEY` | GitHub Actions 专用 SSH 私钥。 |
+| `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
+
+服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle 容器和应用容器应连接到同一个网络。不把 Oracle 1521 端口直接暴露到公网。
+
 ### PR 门禁（feature → dev）
 
 ```

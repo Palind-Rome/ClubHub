@@ -5,15 +5,26 @@
 
 services:
   backend:
-    image: ghcr.io/wendaining/clubhub-backend:latest
-    ports:
-      - "5000:5000"
+    image: ghcr.io/palind-rome/clubhub-backend:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+    expose:
+      - "5000"
+    networks:
+      - clubhub-net
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/wendaining/clubhub-frontend:latest
+    image: ghcr.io/palind-rome/clubhub-frontend:latest
     ports:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - clubhub-net
     restart: unless-stopped
+
+networks:
+  clubhub-net:
+    external: true
