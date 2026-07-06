@@ -11,6 +11,10 @@ on:
       - main
       - dev
 
+permissions:
+  contents: read
+  pull-requests: read
+
 # 同一 PR 的新 push 自动取消旧的运行
 concurrency:
   group: ci-${{ github.ref }}
