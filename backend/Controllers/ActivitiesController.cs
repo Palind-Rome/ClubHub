@@ -1,4 +1,6 @@
+using ClubHub.Api.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClubHub.Api.Controllers;
 
@@ -6,20 +8,49 @@ namespace ClubHub.Api.Controllers;
 [Route("api/[controller]")]
 public class ActivitiesController : ControllerBase
 {
-    private static readonly List<ActivityDto> Activities =
-    [
-        new(1, "2025 秋季 Hackathon", "计算机协会", new DateTime(2025, 10, 15, 9, 0, 0), new DateTime(2025, 10, 15, 18, 0, 0), "大学生活动中心 301", "published", 60, 38),
-        new(2, "校园摄影大赛作品展", "摄影社", new DateTime(2025, 11, 1, 10, 0, 0), new DateTime(2025, 11, 3, 17, 0, 0), "图书馆一楼展厅", "published", null, 12),
-        new(3, "羽毛球新生杯", "羽毛球协会", new DateTime(2025, 10, 20, 14, 0, 0), new DateTime(2025, 10, 20, 17, 0, 0), "体育馆羽毛球场", "draft", 32, 0),
-    ];
+    private readonly ClubHubDbContext _db;
+
+    public ActivitiesController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public IActionResult GetAll() => Ok(Activities);
+    public async Task<IActionResult> GetAll()
+    {
+        var activities = await _db.Activities
+            .OrderBy(a => a.ActivityId)
+            .Select(a => new ActivityDto(
+                a.ActivityId,
+                a.Title,
+                a.Club != null ? a.Club.ClubName : "",
+                a.StartAt,
+                a.EndAt,
+                a.Location,
+                a.ActivityStatus,
+                a.Capacity,
+                a.CreatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(activities);
+    }
 
     [HttpGet("{activityId:int}")]
-    public IActionResult GetById(int activityId)
+    public async Task<IActionResult> GetById(int activityId)
     {
-        var activity = Activities.FirstOrDefault(a => a.Id == activityId);
+        var activity = await _db.Activities
+            .Where(a => a.ActivityId == activityId)
+            .Select(a => new ActivityDto(
+                a.ActivityId,
+                a.Title,
+                a.Club != null ? a.Club.ClubName : "",
+                a.StartAt,
+                a.EndAt,
+                a.Location,
+                a.ActivityStatus,
+                a.Capacity,
+                a.CreatedAt
+            ))
+            .FirstOrDefaultAsync();
+
         return activity is null ? NotFound() : Ok(activity);
     }
 }
@@ -28,10 +59,10 @@ public record ActivityDto(
     int Id,
     string Title,
     string ClubName,
-    DateTime StartTime,
-    DateTime EndTime,
+    DateTime? StartTime,
+    DateTime? EndTime,
     string? Location,
-    string Status,
+    string? Status,
     int? MaxParticipants,
-    int CurrentParticipants
+    DateTime CreatedAt
 );

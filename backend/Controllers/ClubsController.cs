@@ -1,4 +1,6 @@
+using ClubHub.Api.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClubHub.Api.Controllers;
 
@@ -6,20 +8,45 @@ namespace ClubHub.Api.Controllers;
 [Route("api/[controller]")]
 public class ClubsController : ControllerBase
 {
-    private static readonly List<ClubDto> Clubs =
-    [
-        new(1, "计算机协会", "编程竞赛、技术分享、黑客松组织", "学术科技", 42, "张三", new DateTime(2024, 9, 1)),
-        new(2, "摄影社", "校园摄影采风、人像摄影教学、作品展览", "文化艺术", 28, "李四", new DateTime(2024, 9, 15)),
-        new(3, "羽毛球协会", "每周训练、校内联赛、校际交流赛", "体育竞技", 35, "王五", new DateTime(2024, 3, 10)),
-    ];
+    private readonly ClubHubDbContext _db;
+
+    public ClubsController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public IActionResult GetAll() => Ok(Clubs);
+    public async Task<IActionResult> GetAll()
+    {
+        var clubs = await _db.Clubs
+            .OrderBy(c => c.ClubId)
+            .Select(c => new ClubDto(
+                c.ClubId,
+                c.ClubName,
+                c.Description,
+                c.Category,
+                c.ClubStatus,
+                c.FoundedAt,
+                c.CreatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(clubs);
+    }
 
     [HttpGet("{clubId:int}")]
-    public IActionResult GetById(int clubId)
+    public async Task<IActionResult> GetById(int clubId)
     {
-        var club = Clubs.FirstOrDefault(c => c.Id == clubId);
+        var club = await _db.Clubs
+            .Where(c => c.ClubId == clubId)
+            .Select(c => new ClubDto(
+                c.ClubId,
+                c.ClubName,
+                c.Description,
+                c.Category,
+                c.ClubStatus,
+                c.FoundedAt,
+                c.CreatedAt
+            ))
+            .FirstOrDefaultAsync();
+
         return club is null ? NotFound() : Ok(club);
     }
 }
@@ -28,8 +55,8 @@ public record ClubDto(
     int Id,
     string Name,
     string? Description,
-    string Category,
-    int MemberCount,
-    string PresidentName,
-    DateTime? EstablishedAt
+    string? Category,
+    string? Status,
+    DateTime? FoundedAt,
+    DateTime CreatedAt
 );
