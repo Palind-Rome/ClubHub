@@ -5,46 +5,45 @@ namespace ClubHub.Api.Data.Entities;
 [Table("ACTIVITIES")]
 public class Activity
 {
-    [Column("activity_id")]
+    [Column("ACTIVITY_ID")]
     public int ActivityId { get; set; }
 
-    [Column("club_id")]
+    [Column("CLUB_ID")]
     public int ClubId { get; set; }
 
-    [Column("title")]
+    [Column("TITLE")]
     public string Title { get; set; } = string.Empty;
 
-    [Column("activity_type")]
+    [Column("ACTIVITY_TYPE")]
     public string? ActivityType { get; set; }
 
-    [Column("description")]
+    [Column("DESCRIPTION")]
     public string? Description { get; set; }
 
-    [Column("location")]
+    [Column("LOCATION")]
     public string? Location { get; set; }
 
-    [Column("start_at")]
+    [Column("START_AT")]
     public DateTime? StartAt { get; set; }
 
-    [Column("end_at")]
+    [Column("END_AT")]
     public DateTime? EndAt { get; set; }
 
-    [Column("capacity")]
+    [Column("CAPACITY")]
     public int? Capacity { get; set; }
 
-    [Column("registration_deadline")]
+    [Column("REGISTRATION_DEADLINE")]
     public DateTime? RegistrationDeadline { get; set; }
 
-    [Column("activity_status")]
+    [Column("ACTIVITY_STATUS")]
     public string? ActivityStatus { get; set; }
 
-    [Column("published_at")]
+    [Column("PUBLISHED_AT")]
     public DateTime? PublishedAt { get; set; }
 
-    [Column("created_at")]
+    [Column("CREATED_AT")]
     public DateTime CreatedAt { get; set; }
 
-    // 导航属性：所属社团
     [ForeignKey("ClubId")]
     public Club? Club { get; set; }
 }

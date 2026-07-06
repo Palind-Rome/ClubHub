@@ -5,36 +5,35 @@ namespace ClubHub.Api.Data.Entities;
 [Table("CLUBS")]
 public class Club
 {
-    [Column("club_id")]
+    [Column("CLUB_ID")]
     public int ClubId { get; set; }
 
-    [Column("club_name")]
+    [Column("CLUB_NAME")]
     public string ClubName { get; set; } = string.Empty;
 
-    [Column("category")]
+    [Column("CATEGORY")]
     public string? Category { get; set; }
 
-    [Column("description")]
+    [Column("DESCRIPTION")]
     public string? Description { get; set; }
 
-    [Column("logo_url")]
+    [Column("LOGO_URL")]
     public string? LogoUrl { get; set; }
 
-    [Column("president_user_id")]
+    [Column("PRESIDENT_USER_ID")]
     public int? PresidentUserId { get; set; }
 
-    [Column("club_status")]
+    [Column("CLUB_STATUS")]
     public string? ClubStatus { get; set; }
 
-    [Column("founded_at")]
+    [Column("FOUNDED_AT")]
     public DateTime? FoundedAt { get; set; }
 
-    [Column("created_at")]
+    [Column("CREATED_AT")]
     public DateTime CreatedAt { get; set; }
 
-    [Column("updated_at")]
+    [Column("UPDATED_AT")]
     public DateTime? UpdatedAt { get; set; }
 
-    // 导航属性：关联的活动
     public ICollection<Activity> Activities { get; set; } = new List<Activity>();
 }
