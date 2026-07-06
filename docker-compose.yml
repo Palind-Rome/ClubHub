@@ -1,0 +1,19 @@
+# 生产环境 Docker Compose
+# 部署流程：CI 构建镜像 → 推送到 ghcr.io → 服务器 docker compose pull && up -d
+#
+# 服务器上运行：docker compose up -d
+
+services:
+  backend:
+    image: ghcr.io/wendaining/clubhub-backend:latest
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/wendaining/clubhub-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
