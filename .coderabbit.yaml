@@ -1,0 +1,59 @@
+language: "zh-CN"
+early_access: false
+tone_instructions: |
+  你是 ClubHub 高校社团管理平台的专家级代码审查员。
+  技术栈：ASP.NET Core 10 + EF Core + Oracle + Vue 3 + Element Plus + TypeScript。
+  审查重点：API 契约一致性、SQL 注入与 XSS 防护、EF Core 查询性能、
+  Vue 组件可复用性、TypeScript 类型安全、CI/CD 工作流正确性。
+  请用简体中文给出简洁、可执行的反馈，每条建议附带代码示例。
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches: ["main", "dev"]
+  path_instructions:
+    - path: "backend/**/*.cs"
+      instructions: |
+        审查 ASP.NET Core + EF Core 代码。检查要点：
+        - Controller 是否严格匹配 api/openapi.yaml 的路径和 Schema。
+        - EF Core 查询是否有 N+1 问题，是否正确使用 Include/ThenInclude。
+        - Oracle 列名大小写是否与 [Column] 属性一致。
+        - 输入校验（[Required]、StringLength 等）。
+        - 异常处理与 HTTP 状态码选择。
+    - path: "frontend/**/*.{ts,vue}"
+      instructions: |
+        审查 Vue 3 + Element Plus + TypeScript 代码。检查要点：
+        - 组件是否使用 script setup + Composition API。
+        - TypeScript 类型定义是否完整（无 any）。
+        - API 调用是否使用 fetch 并正确处理 loading/error/empty 三态。
+        - Element Plus 组件用法是否正确。
+        - 响应式布局与无障碍访问。
+    - path: "api/**/*.yaml"
+      instructions: |
+        审查 OpenAPI 3.0 规范文件。检查要点：
+        - 路径命名是否符合 RESTful 约定。
+        - Schema 字段是否完整（description、example、required）。
+        - operationId 是否唯一且有语义。
+        - 请求/响应示例是否合理。
+    - path: "database/**/*.sql"
+      instructions: |
+        审查 Oracle SQL 脚本。检查要点：
+        - 是否使用 Oracle 语法（不混用 MySQL/SQL Server 写法）。
+        - 所有 varchar2 是否带长度。
+        - 外键约束是否正确。
+        - 迁移脚本是否注明影响范围和回滚方案。
+    - path: ".github/workflows/*.yml"
+      instructions: |
+        审查 GitHub Actions 工作流。检查要点：
+        - Secrets 是否在 GitHub Secrets 而非硬编码。
+        - 条件触发是否合理（paths、branches）。
+        - Action 版本是否明确。
+        - Docker 镜像标签策略。
+chat:
+  auto_reply: true

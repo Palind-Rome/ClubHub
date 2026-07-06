@@ -28,7 +28,7 @@
 前后端分离，实现轻量：
 
 - `backend/`：ASP.NET Core Web API，负责 C# 业务逻辑、权限、Oracle 数据访问。
-- `frontend/`：Vue 3 + Vite 或同等轻量前端，负责页面和交互。
+- `frontend/`：Vue 3 + Vite + Element Plus，负责页面和交互。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图和迁移脚本。
 - `docs/`：各类文档。
 - `docker-compose.yml`：生产环境 Docker 编排。
