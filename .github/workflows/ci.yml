@@ -201,7 +201,6 @@ jobs:
           set -euo pipefail
           cd frontend
           if [[ -f "pnpm-lock.yaml" ]]; then
-            corepack enable
             pnpm install --frozen-lockfile
             pnpm run --if-present lint
             pnpm run --if-present build
