@@ -1,8 +1,11 @@
 name: Deploy
 
-# 当前是手动部署模板：只有在 GitHub Actions 页面点击 Run workflow 才会运行。
-# 等后端、前端、服务器、systemd 服务和 Secrets 都跑通后，再增加 push main 自动部署触发。
+# push main → 自动部署到 production
+# 手动触发 → 选择 staging 或 production
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       target:
@@ -18,7 +21,7 @@ jobs:
   deploy:
     name: 部署到服务器
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target }}
+    environment: ${{ inputs.target || 'production' }}
     concurrency:
       group: deploy-${{ inputs.target }}
       cancel-in-progress: false
