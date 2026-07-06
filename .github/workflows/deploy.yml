@@ -1,7 +1,7 @@
 name: Deploy
 
-# push main → 自动部署到 production
-# 手动触发 → 选择 staging 或 production
+# push main → 自动构建镜像并部署到 production
+# 手动触发 → 选择部署到 staging 或 production
 on:
   push:
     branches:
@@ -17,87 +17,78 @@ on:
           - staging
           - production
 
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/clubhub-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/clubhub-frontend
+
 jobs:
-  deploy:
-    name: 部署到服务器
+  build-and-deploy:
+    name: 构建镜像并部署
     runs-on: ubuntu-latest
     environment: ${{ inputs.target || 'production' }}
     concurrency:
-      group: deploy-${{ inputs.target }}
+      group: deploy-${{ inputs.target || 'production' }}
       cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 检查项目结构
+      # ---- 确定镜像标签 ----
+      - name: 确定镜像标签
+        id: tags
         shell: bash
         run: |
-          set -euo pipefail
-          if [ ! -d backend ]; then
-            echo "backend/ 目录不存在，请先创建 ASP.NET Core 后端项目。"
-            exit 1
-          fi
-          if ! find backend -name "*.csproj" -print -quit | grep -q .; then
-            echo "未找到后端 .csproj 文件，请先创建后端项目。"
-            exit 1
-          fi
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-
-      - name: 发布后端
-        shell: bash
-        run: |
-          set -euo pipefail
-          project="$(find backend -name "*.Api.csproj" -print -quit)"
-          if [ -z "$project" ]; then
-            project="$(find backend -name "*.csproj" -print -quit)"
-          fi
-          dotnet restore "$project"
-          dotnet publish "$project" --configuration Release --output artifacts/backend --no-restore
-
-      - name: Setup Node.js（如果有前端）
-        if: hashFiles('frontend/package.json') != ''
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: 构建前端（如果有）
-        if: hashFiles('frontend/package.json') != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd frontend
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-            pnpm run --if-present lint
-            pnpm run --if-present build
-          elif [ -f package-lock.json ]; then
-            npm ci
-            npm run lint --if-present
-            npm run build --if-present
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::未找到 lockfile，无法构建。"
-            exit 1
+            echo "tag=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
           fi
-          mkdir -p ../artifacts/frontend
-          if [ -d dist ]; then
-            cp -R dist/. ../artifacts/frontend/
-          fi
+          echo "sha_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-      - name: 上传构建产物到服务器
+      # ---- 登录 GitHub Container Registry ----
+      - name: 登录 ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- 构建并推送后端镜像 ----
+      - name: 构建后端镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.tags.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:${{ steps.tags.outputs.sha_tag }}
+
+      # ---- 构建并推送前端镜像 ----
+      - name: 构建前端镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.tags.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.tags.outputs.sha_tag }}
+
+      # ---- 上传 docker-compose.yml 到服务器 ----
+      - name: 上传 docker-compose.yml
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: artifacts/
-          target: ${{ secrets.DEPLOY_PATH }}/releases/${{ github.run_id }}
+          source: docker-compose.yml
+          target: ${{ secrets.DEPLOY_PATH }}
 
-      - name: 切换版本并重启服务
+      # ---- 服务器上拉取镜像并重启 ----
+      - name: 部署到服务器
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -106,62 +97,24 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           script: |
             set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
 
-            RELEASE_DIR="${{ secrets.DEPLOY_PATH }}/releases/${{ github.run_id }}"
-            CURRENT_LINK="${{ secrets.DEPLOY_PATH }}/current"
-            PREVIOUS_LINK="${{ secrets.DEPLOY_PATH }}/previous"
-            WWWROOT="${{ secrets.DEPLOY_PATH }}/wwwroot"
-            SERVICE="${{ secrets.APP_SERVICE_NAME }}"
+            echo "=== 拉取新镜像 ==="
+            docker compose pull
 
-            # 确保 releases 目录存在
-            mkdir -p "${{ secrets.DEPLOY_PATH }}/releases"
-
-            echo "=== 停止服务 ==="
-            sudo systemctl stop "$SERVICE"
-
-            # 备份当前版本到 previous（用于回滚）
-            if [ -L "$CURRENT_LINK" ] && [ -d "$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)" ]; then
-              rm -f "$PREVIOUS_LINK"
-              ln -s "$(readlink -f "$CURRENT_LINK")" "$PREVIOUS_LINK"
-              echo "已备份当前版本。"
-            fi
-
-            # 原子切换：符号链接替换是单次文件系统操作
-            echo "=== 切换版本 ==="
-            rm -f "$CURRENT_LINK"
-            ln -s "$RELEASE_DIR/artifacts/backend" "$CURRENT_LINK"
-
-            # 前端静态文件
-            if [ -d "$RELEASE_DIR/artifacts/frontend" ]; then
-              rm -rf "$WWWROOT"
-              cp -R "$RELEASE_DIR/artifacts/frontend" "$WWWROOT"
-              echo "前端文件已部署。"
-            fi
-
-            # 启动服务
             echo "=== 启动服务 ==="
-            sudo systemctl start "$SERVICE"
+            docker compose up -d
 
-            # 健康检查
-            sleep 3
-            if ! systemctl is-active --quiet "$SERVICE"; then
-              echo "!!! 服务启动失败，执行回滚 !!!"
-              rm -f "$CURRENT_LINK"
-              if [ -L "$PREVIOUS_LINK" ] && [ -d "$(readlink -f "$PREVIOUS_LINK" 2>/dev/null || true)" ]; then
-                ln -s "$(readlink -f "$PREVIOUS_LINK")" "$CURRENT_LINK"
-                echo "已回滚到上一个版本。"
-              fi
-              sudo systemctl start "$SERVICE"
-              sudo systemctl --no-pager --full status "$SERVICE" | head -n 30
+            echo "=== 等待健康检查 ==="
+            sleep 5
+            if ! docker compose ps --status running | grep -q "Up"; then
+              echo "!!! 服务启动失败 !!!"
+              docker compose logs --tail 50
               exit 1
             fi
 
             echo "=== 部署成功 ==="
-            sudo systemctl --no-pager --full status "$SERVICE" | head -n 20
+            docker compose ps
 
-            # 清理旧版本（保留最近 5 个）
-            find "${{ secrets.DEPLOY_PATH }}/releases" -maxdepth 1 -type d \
-              | sort -r \
-              | tail -n +6 \
-              | xargs -r rm -rf
-            echo "已清理旧版本（保留最近 5 个）。"
+            echo "=== 清理旧镜像 ==="
+            docker image prune -af --filter "until=24h"
