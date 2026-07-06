@@ -13,7 +13,6 @@ const error = ref("");
 async function checkHealth() {
   loading.value = true;
   error.value = "";
-  health.value = null;
   try {
     const res = await fetch("/api/health");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -27,47 +26,41 @@ async function checkHealth() {
 </script>
 
 <template>
-  <div class="container">
+  <header>
     <h1>ClubHub</h1>
-    <p>高校社团运营与协同管理平台</p>
+    <nav>
+      <router-link to="/clubs">社团</router-link>
+      <router-link to="/activities">活动</router-link>
+      <button class="health-btn" @click="checkHealth" :disabled="loading">
+        {{ loading ? "…" : "health" }}
+      </button>
+    </nav>
+  </header>
 
-    <button @click="checkHealth" :disabled="loading">
-      {{ loading ? "检查中…" : "检查后端连接" }}
-    </button>
+  <div v-if="health" class="banner ok">后端连接正常</div>
+  <div v-if="error" class="banner error">{{ error }}</div>
 
-    <div v-if="health" class="result ok">
-      <p>状态：{{ health.status }}</p>
-      <p>时间：{{ new Date(health.timestamp).toLocaleString() }}</p>
-    </div>
-    <div v-if="error" class="result error">
-      <p>连接失败：{{ error }}</p>
-    </div>
-  </div>
+  <main>
+    <router-view />
+  </main>
 </template>
 
 <style scoped>
-.container {
-  max-width: 480px;
-  margin: 80px auto;
-  text-align: center;
-  font-family: system-ui, sans-serif;
+header {
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
 }
-button {
-  padding: 10px 24px;
-  font-size: 16px;
-  cursor: pointer;
-}
-.result {
-  margin-top: 24px;
-  padding: 16px;
-  border-radius: 8px;
-}
-.ok {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-.error {
-  background: #fce4ec;
-  color: #c62828;
-}
+header h1 { font-size: 20px; margin: 0; }
+nav { display: flex; gap: 16px; align-items: center; }
+nav a { color: #333; text-decoration: none; font-size: 15px; }
+nav a:hover { color: #1976d2; }
+.health-btn { font-size: 12px; padding: 2px 8px; cursor: pointer; }
+.banner { text-align: center; padding: 8px; font-size: 14px; }
+.ok { background: #e8f5e9; color: #2e7d32; }
+.error { background: #fce4ec; color: #c62828; }
+main { padding: 24px; }
 </style>
