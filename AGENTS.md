@@ -75,20 +75,50 @@ pnpm run build
 
 ## CI/CD 规则
 
-当前 CI 包含三个 Job（详情见 `CONTRIBUTING.md`）：
+项目有 4 条流水线（详情见 `CONTRIBUTING.md`）：
 
-| Job | 说明 |
-|-----|------|
-| `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
-| `build-backend` | 如果存在 `.sln`，自动 restore/build。 |
-| `build-frontend` | 如果存在 `frontend/package.json`，用 pnpm 安装依赖并构建（强制要求 lockfile）。 |
+| 工作流 | 触发条件 | 作用 |
+|--------|----------|------|
+| `ci.yml` | PR / push 到 `main` `dev` | 项目结构校验、后端构建、前端构建 |
+| `code-check.yml` | PR 到 `main` `dev` | 代码质量门禁（通用 pre-commit 检查） |
+| `gen-api-code.yml` | push 到非 `main` `dev` 分支且 `api/` 变更 | 从 OpenAPI 契约自动生成前后端代码 |
+| `deploy.yml` | 手动触发 | 部署到服务器 |
 
 后续补充：
 
 - 测试步骤（`dotnet test`、`pnpm test`），待项目建立后启用。
 - Oracle 远程语法验证（`sqlplus` 连接远端 Oracle 执行 schema.sql），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
 
-部署 workflow 目前为手动模板，等服务器和可运行应用都准备好后会启用自动触发。
+## API-first 开发（Agent 操作指引）
+
+ClubHub 采用 API-first 模式。Agent 在开发功能时必须遵循以下流程：
+
+### 修改 API
+
+1. **修改 `api/openapi.yaml`**：新增端点、修改 Schema、添加字段说明。
+2. **不要手写 Controller**：先改契约，push，等 `gen-api-code.yml` 自动生成代码，然后 `git pull`。
+3. **手写业务逻辑**：生成的 Models 在 `backend/Models/` 下（只读），Agent 在 `backend/Controllers/` 写路由，在 `backend/Services/` 写业务。
+
+### 代码分区（Agent 必须遵守）
+
+| 目录 | 权限 | 说明 |
+|------|------|------|
+| `api/openapi.yaml` | ✅ 读写 | 修改 API 契约 |
+| `frontend/src/api/*` | ❌ 只读 | 自动生成，禁止 Agent 手写 |
+| `backend/Models/*` | ❌ 只读 | 自动生成，禁止 Agent 手写 |
+| `backend/Controllers/*` | ✅ 读写 | Agent 手写 API 路由 |
+| `backend/Services/*` | ✅ 读写 | Agent 手写业务逻辑 |
+| `frontend/src/`（其他） | ✅ 读写 | Agent 写 Vue 组件 |
+
+### 标准工作流
+
+```
+修改 api/openapi.yaml → git push → CI 自动生成代码并 commit →
+git pull 拉取生成代码 → 在 Controllers/Services/Vue 组件中手写业务逻辑 →
+git commit → git push → 发起 PR
+```
+
+如果 Agent 发现 API 契约缺少必要字段或端点，**必须**先改 `api/openapi.yaml`，再让 CI 生成，最后写业务代码。不允许在 Controller 里直接硬编码请求/响应模型。
 
 ## 提交前
 
