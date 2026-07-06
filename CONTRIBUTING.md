@@ -29,8 +29,9 @@
 - Visual Studio 2022 或更高版本。
 - `ASP.NET and web development` 工作负载。
 - .NET SDK。
-- Oracle Database 18c 或更高版本。建议 Oracle 21c XE。
-- SQL Developer 或其他 Oracle 客户端。
+- 远程 Oracle 数据库（团队共用，不需本地安装）。后端通过 EF Core 托管驱动直连。
+  - 首次配置：复制 `backend/appsettings.Development.example.json` 为 `appsettings.Development.json`（已 gitignore），填入连接信息。详见 `database/README.md`。
+- SQL Developer（可选，方便手动浏览数据库）。
 - 如果开发前端，再安装 Node.js LTS，并启用 Corepack / pnpm。
 - `gh` CLI（GitHub 官方命令行工具）：用于创建 PR、查看 CI 状态。未安装时请提醒用户根据用户的系统 / 环境进行安装。
 
