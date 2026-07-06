@@ -25,6 +25,176 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /api/auth/register:
+    post:
+      summary: 用户注册
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: 注册信息不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 用户名或学号已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/login:
+    post:
+      summary: 用户登录
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: 登录成功，返回用户和角色信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: 登录信息不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 账号已被禁用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/roles:
+    get:
+      summary: 获取基础角色定义
+      operationId: getRoleDefinitions
+      responses:
+        "200":
+          description: 基础角色列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleDefinition"
+
+  /api/auth/permissions:
+    get:
+      summary: 获取权限目录
+      operationId: getPermissionCatalog
+      responses:
+        "200":
+          description: 权限目录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PermissionDefinition"
+
+  /api/auth/permissions/check:
+    get:
+      summary: 检查用户是否拥有指定权限
+      operationId: checkPermission
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: permission
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 权限判断结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionCheckResult"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/roles/assign:
+    post:
+      summary: 分配用户角色
+      operationId: assignUserRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignRoleRequest"
+      responses:
+        "200":
+          description: 角色分配成功或已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleAssignmentResult"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 操作人没有角色分配权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户或角色不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/clubs:
     get:
       summary: 获取社团列表
@@ -153,6 +323,251 @@ components:
       required:
         - status
         - timestamp
+
+    ApiError:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 6
+        realName:
+          type: string
+          minLength: 1
+        studentNo:
+          type: string
+          minLength: 1
+        gender:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        college:
+          type: string
+          nullable: true
+        major:
+          type: string
+          nullable: true
+        grade:
+          type: string
+          nullable: true
+      required:
+        - username
+        - password
+        - realName
+        - studentNo
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+        - username
+        - password
+
+    AssignRoleRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+        targetUserId:
+          type: integer
+        roleCode:
+          type: string
+        clubId:
+          type: integer
+          nullable: true
+      required:
+        - operatorUserId
+        - targetUserId
+        - roleCode
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 登录演示令牌
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthRole"
+        permissions:
+          type: array
+          items:
+            type: string
+      required:
+        - token
+        - user
+        - roles
+        - permissions
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        realName:
+          type: string
+        studentNo:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        college:
+          type: string
+          nullable: true
+        major:
+          type: string
+          nullable: true
+        grade:
+          type: string
+          nullable: true
+        accountStatus:
+          type: string
+      required:
+        - id
+        - username
+        - realName
+        - accountStatus
+
+    AuthRole:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        scope:
+          type: string
+          enum: [system, club]
+        clubId:
+          type: integer
+          nullable: true
+        permissions:
+          type: array
+          items:
+            type: string
+        permissionDesc:
+          type: string
+          nullable: true
+      required:
+        - id
+        - code
+        - name
+        - scope
+        - permissions
+
+    RoleDefinition:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        scope:
+          type: string
+          enum: [system, club]
+        description:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+      required:
+        - code
+        - name
+        - scope
+        - description
+        - permissions
+
+    PermissionDefinition:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - code
+        - name
+        - description
+
+    PermissionCheckResult:
+      type: object
+      properties:
+        userId:
+          type: integer
+        permission:
+          type: string
+        clubId:
+          type: integer
+          nullable: true
+        allowed:
+          type: boolean
+        matchedRoles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthRole"
+        message:
+          type: string
+      required:
+        - userId
+        - permission
+        - allowed
+        - matchedRoles
+        - message
+
+    RoleAssignmentResult:
+      type: object
+      properties:
+        targetUserId:
+          type: integer
+        role:
+          $ref: "#/components/schemas/AuthRole"
+        alreadyExists:
+          type: boolean
+        message:
+          type: string
+      required:
+        - targetUserId
+        - role
+        - alreadyExists
+        - message
 
     Club:
       type: object

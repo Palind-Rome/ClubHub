@@ -18,6 +18,7 @@ async function checkHealth() {
     <el-header>
       <div class="brand">ClubHub</div>
       <el-menu mode="horizontal" router :default-active="$route.path" class="nav">
+        <el-menu-item index="/auth">账号与权限</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <div class="health">
