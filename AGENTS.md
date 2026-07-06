@@ -31,6 +31,8 @@
 - `frontend/`：Vue 3 + Vite 或同等轻量前端，负责页面和交互。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图和迁移脚本。
 - `docs/`：各类文档。
+- `docker-compose.yml`：生产环境 Docker 编排。
+- `docker-compose.dev.yml`：本地开发环境（源码挂载 + 热重载，只需 Docker）。
 
 ## 数据库基线
 
@@ -89,7 +91,7 @@ pnpm run build
 | `ci.yml` | PR / push 到 `main` `dev` | 项目结构校验、后端构建、前端构建 |
 | `code-check.yml` | PR 到 `main` `dev` | 代码质量门禁（通用 pre-commit 检查） |
 | `gen-api-code.yml` | push 到非 `main` `dev` 分支且 `api/` 变更 | 从 OpenAPI 契约自动生成前后端代码 |
-| `deploy.yml` | push `main` 自动部署 / 手动触发可选环境 | 部署到服务器 |
+| `deploy.yml` | push `main` 自动部署 / 手动触发可选环境 | 构建 Docker 镜像推送 ghcr.io，服务器 docker compose up |
 
 后续补充：
 
