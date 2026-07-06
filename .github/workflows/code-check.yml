@@ -1,8 +1,5 @@
 name: 代码质量门禁
 
-# 对 PR 执行 pre-commit 代码质量检查。
-# 通用检查始终运行；前后端语言检查在项目建立后启用。
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -30,54 +27,56 @@ jobs:
         with:
           extra_args: --config .pre-commit-ci-config.yaml --all-files
 
-  # TODO: 前端项目建立后取消注释
-  # frontend-check:
-  #   name: 前端代码检查
-  #   runs-on: ubuntu-latest
-  #   if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
-  #   needs: code-check
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install pnpm
-  #       uses: pnpm/action-setup@v4
-  #       with:
-  #         version: 10
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
-  #         cache: pnpm
-  #         cache-dependency-path: frontend/pnpm-lock.yaml
-  #
-  #     - name: Install dependencies
-  #       run: pnpm install --frozen-lockfile
-  #       working-directory: frontend
-  #
-  #     - name: ESLint
-  #       run: pnpm run lint:ci
-  #       working-directory: frontend
-  #
-  #     - name: Prettier
-  #       run: pnpm run format:ci
-  #       working-directory: frontend
+  frontend-check:
+    name: 前端代码检查
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    needs: code-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-  # TODO: 后端项目建立后取消注释
-  # backend-check:
-  #   name: 后端代码检查
-  #   runs-on: ubuntu-latest
-  #   if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
-  #   needs: code-check
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup .NET
-  #       uses: actions/setup-dotnet@v4
-  #       with:
-  #         dotnet-version: 9.0.x
-  #
-  #     - name: dotnet format
-  #       run: dotnet format backend/ --verify-no-changes
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Prettier 格式检查
+        run: pnpm run format:ci
+        working-directory: frontend
+
+  backend-check:
+    name: 后端代码检查
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    needs: code-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: dotnet format
+        run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes

@@ -49,7 +49,7 @@ onMounted(async () => {
   <div class="page">
     <h2>活动列表</h2>
 
-    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error=''" />
+    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
 
     <el-table v-loading="loading" :data="activities" stripe empty-text="暂无活动数据">
       <el-table-column prop="id" label="ID" width="60" />
@@ -78,6 +78,11 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.page { max-width: 960px; margin: 0 auto; }
-h2 { margin-bottom: 12px; }
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+}
+h2 {
+  margin-bottom: 12px;
+}
 </style>
