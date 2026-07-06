@@ -18,6 +18,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ```text
 .
 ├── .github/          # Issue 模板、PR 模板、CI 和部署 workflow
+├── api/              # OpenAPI 规范文件，用于生成 API 客户端代码
 ├── backend/          # ASP.NET Core Web API
 ├── database/         # Oracle 建表脚本、种子数据、视图、迁移说明
 ├── docs/             # 课程交付文档

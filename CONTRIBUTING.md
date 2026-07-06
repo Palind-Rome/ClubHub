@@ -6,13 +6,14 @@
 
 - 我们采用 GitHub Issues + Pull Requests + CI 的轻量协作流程。
 - `main` 保存阶段性稳定版本，`dev` 用作日常集成，个人任务从 `dev` 拉功能分支。
-- 功能分支可以 `fetch + rebase`。
+- 功能分支可以 `fetch + rebase`，但最好不要。
 - 密码、私钥、服务器 IP、Oracle 连接串不进仓库，只放本机环境变量或 GitHub Secrets。
 - 前后端分离：后端 C# / ASP.NET Core Web API，前端 Vue 3 / Vite，数据库 Oracle。
 
 ## 仓库目录
 
 - `.github/`：Issue 模板、PR 模板、CI 和部署 workflow。
+- `api/`：OpenAPI 规范文件，用于生成 API 客户端代码（待补充）。
 - `backend/`：后端 ASP.NET Core Web API。
 - `frontend/`：前端 Vue 3 / Vite。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图、迁移说明。
@@ -52,92 +53,153 @@
 
 - `main`
   - Require a pull request before merging。
-  - Require approvals：至少 1 人。
-  - Require status checks to pass：选择 `CI`。
+  - Require approvals：CODEOWNERS 中列出的任意一人 approve 即可。
+  - Require status checks to pass：选择 `validate`、`build-backend`、`build-frontend`。
   - Require conversation resolution before merging。
   - Do not allow force pushes。
   - Do not allow deletions。
 - `dev`
   - Require a pull request before merging。
-  - Require status checks to pass：选择 `CI`。
-  - Require approvals 可以先设 1 人；
+  - Require status checks to pass：选择 `validate`、`build-backend`、`build-frontend`。
+  - Require approvals：CODEOWNERS 中列出的任意一人 approve 即可。
   - Do not allow force pushes。
 
-这样做不是为了增加仪式感，而是为了防止主分支被误推坏，同时让贡献记录可追踪。
 
 ## 日常开发流程
 
 开始任务：
 
-```powershell
+拉取最新的 `dev` 分支，在 `dev` 分支上的最新的 commit 上开新分支进行工作：
+
+```bash
 git fetch origin
 git checkout dev
-git pull --ff-only origin dev
+git pull origin dev
 git checkout -b feature/your-task
 ```
 
 提交修改：
 
-```powershell
+```bash
 git status
 git add 具体文件名
-git commit -m "[Feature] 新增活动报名人数限制"
+git commit -m "feat(activity): 新增活动报名人数限制"
 ```
 
-不要使用 `git add .`。推送分支：
+**不要使用 `git add .`。**
 
-```powershell
+推送分支：
+
+```bash
 git push -u origin feature/your-task
 ```
 
-然后在 GitHub 上发起 PR，目标分支选 `dev`。
+然后发起 PR，目标分支选 `dev`。发起 PR 推荐 AGENT 使用 `gh` CLI 进行全自动工作流，也可以手动在 GitHub 网页端发起 PR。
 
-## fetch + rebase
-
-个人功能分支推荐用 `fetch + rebase` 跟上 `dev`：
-
-```powershell
-git fetch origin
-git rebase origin/dev
-```
-
-不建议 rebase 的情况：
-
-- `main` 和 `dev` 这种公共分支。
-- 多个人已经共同基于同一个远程分支提交。
-- 你不确定冲突怎么处理。
-
-原则：个人分支可以整理历史，公共分支不要改历史。
 
 ## Pull Request 规则
 
-每个 PR 要写清楚：
-
-- 本次做了什么。
-- 对应哪个 Issue 或课程功能点。
-- 涉及哪些数据库表和接口。
-- 如何验证。
-- 是否需要更新课程文档。
-- 是否影响部署或环境变量。
+每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
 
 合并规则：
 
 - 功能分支默认 PR 到 `dev`。
 - `dev` 到 `main` 只在阶段性节点合并。
-- 至少让 1 名组员看过再合并；数据库结构和核心业务逻辑最好让 2 人看。
-- CI 失败时不要合并。
+- PR Review Rule 参考前文所述的 `.github/CODEOWNERS` 中的规则。
+- CI 失败时禁止合并。
 
 ## Commit 信息
 
-提交信息可以用中文。例子：
+使用两段式 commit message。
+
+第一行必须使用 Conventional Commits 格式：
 
 ```text
-[Feature] 新增活动报名人数限制
-[Fix] 修复签到时间窗判断
-[DB] 补充数据库验证脚本
-[Docs] 完成需求分析文档初稿
-[Refactor] 拆分活动服务逻辑
-[Test] 增加场地冲突检测用例
+<type>(可选 scope): <简短中文摘要>
+```
+
+然后空一行。
+
+空行之后，写一段详细的中文 commit message。
+
+允许使用的 type：
+
+* feat：新功能
+* fix：修复 bug
+* docs：仅文档变更
+* style：不影响代码行为的格式调整
+* refactor：既不修复 bug，也不新增功能的代码重构
+* perf：性能优化
+* test：新增或更新测试
+* build：构建系统、依赖、包管理或 Docker 相关变更
+* ci：CI/CD 相关变更，包括 GitHub Actions
+* chore：不属于以上类型的维护性任务
+* revert：回滚之前的提交
+
+第一行规则：
+
+* `type` 必须使用上面列出的英文小写类型。
+* `scope` 可选，用于说明影响范围，例如 `activity`、`venue`、`club`、`auth`。
+* 冒号 `:` 前面的部分保持英文，例如 `feat(activity)`、`fix(venue)`、`ci(deploy)`。
+* 冒号 `:` 后面的摘要使用中文。
+* 摘要应简洁，建议整行不超过 72 个字符。
+* 中文摘要建议使用动宾结构，例如“新增……”“修复……”“更新……”“移除……”。
+
+示例：
+
+* `feat(activity): 新增活动报名人数限制`
+* `fix(venue): 修复场地预约时间冲突判断`
+* `ci(deploy): 新增 GitHub Actions SSH 部署工作流`
+* `build(deps): 升级 Oracle EF Core 到 9.x`
+
+中文详情部分规则：
+
+* 使用中文。
+* 说明具体做了什么。
+* 在有必要时说明为什么做这个改动。
+* 提到重要的影响模块、文件或行为。
+* 如果有破坏性变更、迁移步骤或部署注意事项，需要明确说明。
+* 不要写“修改了一些代码”“优化项目”这类模糊描述。
+* 详情部分保持简洁，通常使用 2–5 条 bullet points。
+
+推荐格式：
+
+```text
+<type>(可选 scope): <简短中文摘要>
+
+* 做了什么：……
+* 为什么：……
+* 影响范围：……
+* 注意事项：……
+```
+
+示例：
+
+```text
+feat(activity): 新增活动签到功能
+
+* 做了什么：新增活动签到 API 和签到记录表，支持活动现场扫码或手动签到。
+* 为什么：社团需要在活动现场确认成员实际出勤情况。
+* 影响范围：ACTIVITIES、ACTIVITY_PARTICIPATIONS、新增 ATTENDANCE_RECORDS 表。
+* 注意事项：签到接口需要验证用户已报名该活动，重复签到返回已有记录。
+```
+
+```text
+ci(deploy): 新增 GitHub Actions SSH 部署流程
+
+* 做了什么：新增 GitHub Actions 工作流，通过 SSH 登录服务器并自动拉取、构建、重启服务。
+* 为什么：减少手动部署步骤，保证每次推送后都能以一致流程发布。
+* 影响范围：影响部署流程、服务器目录结构和环境变量配置。
+* 注意事项：需要在 GitHub Secrets 中配置服务器地址、用户名、SSH 私钥和部署路径。
+```
+
+```text
+feat(club): 新增社团成员角色管理
+
+* 做了什么：新增社团内角色分配和权限检查逻辑，支持社长、副社长、普通成员三种角色。
+* 为什么：社长需要给不同成员分配管理权限，区分操作范围。
+* 影响范围：CLUBS、CLUB_MEMBERS、ROLES 表以及权限中间件。
+* 注意事项：角色变更后需要刷新用户的权限缓存。
 ```
 
 ## 数据库规则
@@ -149,21 +211,26 @@ git rebase origin/dev
 - 新增结构变更放 `database/migrations/`。
 - 表结构变更必须同步数据库设计文档。
 - 修改表名、字段名、主外键前先在群里说明原因。
-- SQL 必须使用 Oracle 语法，不混用 MySQL / SQL Server 写法。
+- SQL **必须使用 Oracle 语法**，不混用 MySQL / SQL Server 写法。
 
-CI 不自动全量刷新数据库，不自动重建生产索引。索引是否新增、删除或调整，要通过迁移脚本和 PR review 决定。全量刷新只用于本地开发库或明确的测试库。
+CI 不自动全量刷新数据库，不自动重建生产索引。索引是否新增、删除或调整，要通过迁移脚本和 PR review 决定。全量刷新只用于本地开发库或明确的测试库。远程 Oracle 就绪后，CI 会对 `schema.sql` 做只读语法验证，不会修改数据或结构。
 
 ## CI/CD 策略
 
-当前是基础 CI：
+当前 CI 包含三个 Job，每次 PR（非 draft）和 push 到 `main`/`dev` 时自动运行：
 
-- 检查仓库必要文件。
-- 检查数据库脚本至少 12 张表。
-- 检查 `varchar2` 是否有长度。
-- 如果后续出现 `.sln`，自动执行 `dotnet restore` 和 `dotnet build`。
-- 如果后续出现 `frontend/package.json`，自动执行前端安装和构建。
+| Job 名称 | 说明 |
+|----------|------|
+| `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
+| `build-backend` | 如果存在 `.sln`，自动 `dotnet restore` + `dotnet build`。 |
+| `build-frontend` | 如果存在 `frontend/package.json`，用 `pnpm install --frozen-lockfile` + `pnpm build` 构建（强制要求 lockfile）。 |
 
-部署 workflow 已预留为手动模板。意思是：现在它只会在 GitHub Actions 页面手动点击 `Run workflow` 时运行，不会因为 push 或 PR 自动部署。
+后续补充：
+
+- **测试步骤**：`dotnet test`、`pnpm test`，待后端/前端项目建立后启用。
+- **Oracle 远程语法验证**：通过 `sqlplus` 连接远端 Oracle 实例，对 `schema.sql` 做 Oracle 语法校验（不是全量刷新），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
+
+部署 workflow 已预留为手动模板。部署时使用版本化目录 + 符号链接切换，失败自动回滚到上一个版本。目前只会在 GitHub Actions 页面手动点击 `Run workflow` 时运行，不会因为 push 或 PR 自动部署。
 
 ## 文档规则
 

@@ -1,1 +1,1 @@
-请阅读 [AGENTS.md](AGENTS.md)。
+Please refer to @AGENTS.md for any information.

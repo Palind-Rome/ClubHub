@@ -11,7 +11,7 @@
 
 ## 课程要求
 
-全部要求在 `docs/2026《数据库课程设计》课程提纲.doc` 中，大致总结如下：
+全部要求在 `docs/2026《数据库课程设计》课程提纲.doc` 中，Agent 没有必要直接阅读，大致总结如下：
 
 - 使用较新版本 Visual Studio / VS.NET。
 - 使用 C#。
@@ -46,7 +46,7 @@
 
 数据库脚本放在 `database/schema.sql`。不要修改表结构。如果确有必要，请先与用户讨论。
 
-CI 不负责自动刷新生产数据库，不负责自动重建索引。全量刷新只允许用于本地开发库或明确的测试库；生产/演示库的结构变更必须通过人工确认后的迁移脚本执行。
+CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。全量刷新只允许用于本地开发库或明确的测试库；生产/演示库的结构变更必须通过人工确认后的迁移脚本执行。
 
 ## 开发规则
 
@@ -75,15 +75,20 @@ pnpm run build
 
 ## CI/CD 规则
 
-当前 CI：
+当前 CI 包含三个 Job（详情见 `CONTRIBUTING.md`）：
 
-- 检查仓库必要文件和目录。
-- 检查 Oracle schema 至少 12 张表、`varchar2` 都带长度。
-- 如果存在 .NET 解决方案则自动 restore/build；如果存在前端 `package.json` 则自动安装并构建。
+| Job | 说明 |
+|-----|------|
+| `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
+| `build-backend` | 如果存在 `.sln`，自动 restore/build。 |
+| `build-frontend` | 如果存在 `frontend/package.json`，用 pnpm 安装依赖并构建（强制要求 lockfile）。 |
 
-后续可能会进一步补充 CI。
+后续补充：
 
-部署 workflow 目前为手动模板，等服务器和可运行应用都准备好后会启用自动触发。GitHub Actions 是由事件驱动的部署入口。
+- 测试步骤（`dotnet test`、`pnpm test`），待项目建立后启用。
+- Oracle 远程语法验证（`sqlplus` 连接远端 Oracle 执行 schema.sql），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
+
+部署 workflow 目前为手动模板，等服务器和可运行应用都准备好后会启用自动触发。
 
 ## 提交前
 
