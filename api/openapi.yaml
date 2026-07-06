@@ -16,7 +16,6 @@ paths:
   /api/health:
     get:
       summary: 健康检查
-      description: 返回 API 服务运行状态。
       operationId: healthCheck
       responses:
         "200":
@@ -26,6 +25,70 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /api/clubs:
+    get:
+      summary: 获取社团列表
+      operationId: getClubs
+      responses:
+        "200":
+          description: 社团列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Club"
+
+  /api/clubs/{clubId}:
+    get:
+      summary: 获取社团详情
+      operationId: getClubById
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 社团详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
+
+  /api/activities:
+    get:
+      summary: 获取活动列表
+      operationId: getActivities
+      responses:
+        "200":
+          description: 活动列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
+  /api/activities/{activityId}:
+    get:
+      summary: 获取活动详情
+      operationId: getActivityById
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 活动详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+
 components:
   schemas:
     HealthStatus:
@@ -33,12 +96,71 @@ components:
       properties:
         status:
           type: string
-          description: 服务状态
           example: healthy
         timestamp:
           type: string
           format: date-time
-          description: 当前时间
       required:
         - status
         - timestamp
+
+    Club:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+        memberCount:
+          type: integer
+        presidentName:
+          type: string
+        establishedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - category
+        - memberCount
+        - presidentName
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        clubName:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published, ongoing, finished, cancelled]
+        maxParticipants:
+          type: integer
+          nullable: true
+        currentParticipants:
+          type: integer
+      required:
+        - id
+        - title
+        - clubName
+        - startTime
+        - endTime
+        - status
+        - currentParticipants
