@@ -70,10 +70,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g @openapitools/openapi-generator-cli@2.39.1
           mkdir -p frontend/src/api
 
-          npx @openapitools/openapi-generator-cli@2.39.1 generate \
+          npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
             -g typescript-axios \
             -o frontend/src/api \
@@ -89,10 +88,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g @openapitools/openapi-generator-cli@2.39.1
           mkdir -p backend/Models
 
-          npx @openapitools/openapi-generator-cli@2.39.1 generate \
+          npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
             -g aspnetcore \
             -o backend/Generated \
