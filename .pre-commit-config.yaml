@@ -26,13 +26,13 @@ repos:
     hooks:
       - id: dotnet-format
         name: dotnet format
-        entry: dotnet format backend/ --include
+        entry: dotnet format backend/
         language: system
         pass_filenames: false
 
   # ---- 前端：Prettier 格式化 ----
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.4.2
     hooks:
       - id: prettier
         types_or: [javascript, jsx, typescript, tsx, vue, json, yaml, css, scss, markdown]

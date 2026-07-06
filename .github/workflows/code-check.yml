@@ -30,11 +30,15 @@ jobs:
   frontend-check:
     name: 前端代码检查
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     needs: code-check
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -59,11 +63,15 @@ jobs:
   backend-check:
     name: 后端代码检查
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     needs: code-check
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -71,4 +79,4 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: dotnet format
-        run: dotnet format backend/ --verify-no-changes
+        run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes
