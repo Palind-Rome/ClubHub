@@ -11,9 +11,39 @@ on:
       - main
       - dev
 
+# 同一 PR 的新 push 自动取消旧的运行
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================================
-  # 项目结构校验：必要文件、数据库脚本
+  # 检测变更：改了什么目录就跑对应的检查
+  # 参考：dorny/paths-filter
+  # ============================================================
+  changes:
+    name: 检测变更文件
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && ! github.event.pull_request.draft
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'ClubHub.sln'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
+  # ============================================================
+  # 项目结构校验：始终运行（7 秒，不疼）
   # ============================================================
   validate:
     name: 项目结构校验
@@ -66,43 +96,17 @@ jobs:
           fi
           echo "数据库脚本检查通过：共 $table_count 张表。"
 
-      # TODO: 远程 Oracle 就绪后取消注释，对数据库执行 schema 语法验证。
-      # 需要在 GitHub Secrets 中配置 ORACLE_HOST、ORACLE_PORT、ORACLE_SERVICE_NAME、
-      # ORACLE_USERNAME、ORACLE_PASSWORD。
-      # - name: Oracle 语法验证
-      #   if: env.ORACLE_HOST != ''
-      #   shell: bash
-      #   env:
-      #     ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
-      #     ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
-      #     ORACLE_SERVICE_NAME: ${{ secrets.ORACLE_SERVICE_NAME }}
-      #     ORACLE_USERNAME: ${{ secrets.ORACLE_USERNAME }}
-      #     ORACLE_PASSWORD: ${{ secrets.ORACLE_PASSWORD }}
-      #   run: |
-      #     set -euo pipefail
-      #     # 安装 Oracle Instant Client
-      #     curl -sSLO https://download.oracle.com/otn_software/linux/instantclient/instantclient-basic-linux.x64-23.6.0.24.10.zip
-      #     unzip -q instantclient-basic-linux.x64-*.zip -d /opt
-      #     echo "/opt/instantclient_23_6" >> "$GITHUB_PATH"
-      #     sudo apt-get update -qq && sudo apt-get install -y -qq libaio1
-      #     # 连接远程 Oracle，执行 schema.sql 验证语法
-      #     sqlplus -S "$ORACLE_USERNAME/$ORACLE_PASSWORD@//$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SERVICE_NAME" <<'SQLEOF'
-      #     SET ECHO OFF
-      #     SET TERMOUT OFF
-      #     SET PAGESIZE 0
-      #     SET FEEDBACK OFF
-      #     WHENEVER SQLERROR EXIT SQL.SQLCODE
-      #     @database/schema.sql
-      #     SQLEOF
-      #     echo "Oracle schema 语法验证通过。"
-
   # ============================================================
-  # 后端构建（条件执行：仅当 .sln 文件存在时）
+  # 后端构建（仅 backend/** 或 .sln 有变更时运行）
+  # push 到 main/dev 时无条件运行
   # ============================================================
   build-backend:
     name: 后端构建
     runs-on: ubuntu-latest
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    needs: changes
+    if: |
+      ! (github.event_name == 'pull_request' && github.event.pull_request.draft) &&
+      (github.event_name == 'push' || needs.changes.outputs.backend == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -145,12 +149,16 @@ jobs:
       #     dotnet test "${{ steps.detect.outputs.path }}" --configuration Release --no-build
 
   # ============================================================
-  # 前端构建（条件执行：仅当 package.json 存在时）
+  # 前端构建（仅 frontend/** 有变更时运行）
+  # push 到 main/dev 时无条件运行
   # ============================================================
   build-frontend:
     name: 前端构建
     runs-on: ubuntu-latest
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    needs: changes
+    if: |
+      ! (github.event_name == 'pull_request' && github.event.pull_request.draft) &&
+      (github.event_name == 'push' || needs.changes.outputs.frontend == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
