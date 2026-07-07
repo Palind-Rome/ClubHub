@@ -8,6 +8,15 @@
 - `views/`：后续放统计视图。
 - `migrations/`：后续放表结构演进说明或迁移脚本。
 
+### 演示数据脚本
+
+`seeds/` 下的脚本只用于本地开发库或明确的测试库，不会由 CI 自动执行。当前建议顺序：
+
+1. `000_sample_users.sql`：补充社团申请流程需要的申请人和审核人样例。
+2. `001_sample_clubs.sql`：基础社团样例。
+3. `002_sample_activities.sql`：活动样例。
+4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
+
 ## 后端连接数据库
 
 ASP.NET Core 后端通过 EF Core + Oracle 驱动连接远程 Oracle，**不需要在本地安装 Oracle 客户端**。

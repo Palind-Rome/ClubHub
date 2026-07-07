@@ -199,6 +199,13 @@ paths:
     get:
       summary: 获取社团列表
       operationId: getClubs
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: false
+          description: 当前查看用户，用于返回与角色相关的社团视图。
+          schema:
+            type: integer
       responses:
         "200":
           description: 社团列表
@@ -224,6 +231,94 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
+
+  /api/clubs/applications:
+    get:
+      summary: 按当前用户权限查询社团注册申请
+      operationId: getClubApplications
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前用户。学生只能查看自己的申请，平台管理员可以查看全部申请。
+          schema:
+            type: integer
+        - name: auditStatus
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        "200":
+          description: 社团注册申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 当前用户缺失或审核状态不合法
+        "404":
+          description: 当前用户不存在
+    post:
+      summary: 提交社团注册申请
+      description: 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
+      operationId: createClubApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubApplicationRequest"
+      responses:
+        "201":
+          description: 社团注册申请已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "404":
+          description: 当前用户不存在
+        "403":
+          description: 当前用户不是学生申请人或无权提交申请
+        "409":
+          description: 社团名称已存在或已有待审核申请
+
+  /api/clubs/applications/{clubId}/review:
+    patch:
+      summary: 平台管理员审核社团注册申请
+      operationId: reviewClubApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewClubApplicationRequest"
+      responses:
+        "200":
+          description: 审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 审核内容不符合业务规则
+        "404":
+          description: 当前用户或申请不存在
+        "409":
+          description: 当前申请状态不允许审核
+        "403":
+          description: 当前用户没有审核权限
 
   /api/clubs/{clubId}:
     get:
@@ -308,6 +403,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Activity"
+
+  /api/users:
+    get:
+      summary: 获取可切换的当前用户列表
+      operationId: getUsers
+      responses:
+        "200":
+          description: 用户、角色和社团成员身份列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
 
 components:
   schemas:
@@ -736,19 +845,70 @@ components:
           nullable: true
         category:
           type: string
-        memberCount:
-          type: integer
-        presidentName:
-          type: string
-        establishedAt:
+          nullable: true
+        foundedAt:
           type: string
           format: date-time
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        statusText:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        presidentUserId:
+          type: integer
+          nullable: true
+        presidentName:
+          type: string
+          nullable: true
+        advisorName:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        auditStatus:
+          type: string
+          nullable: true
+        auditStatusText:
+          type: string
+        applicantUserId:
+          type: integer
+          nullable: true
+        applicantName:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+          nullable: true
+        materialUrl:
+          type: string
+          nullable: true
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
       required:
         - id
         - name
-        - category
-        - memberCount
-        - presidentName
+        - statusText
+        - auditStatusText
+        - createdAt
 
     CreateClubRequest:
       type: object
@@ -776,6 +936,205 @@ components:
         description:
           type: string
           nullable: true
+
+    ClubApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        applicantUserId:
+          type: integer
+          nullable: true
+        applicantName:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+        materialUrl:
+          type: string
+        auditStatus:
+          type: string
+          enum: [pending, approved, rejected]
+        auditStatusText:
+          type: string
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        clubStatus:
+          type: string
+          nullable: true
+        clubStatusText:
+          type: string
+        foundedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - applyReason
+        - materialUrl
+        - auditStatus
+        - auditStatusText
+        - clubStatusText
+        - createdAt
+
+    CreateClubApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: 当前学生用户 ID，后端据此写入申请人并校验角色权限。
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+          minLength: 1
+        materialUrl:
+          type: string
+          minLength: 1
+        advisorName:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - name
+        - category
+        - applyReason
+        - materialUrl
+
+    ReviewClubApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reviewComment:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - decision
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+          nullable: true
+        realName:
+          type: string
+          nullable: true
+        studentNo:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+        accountStatus:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRoleSummary"
+        memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserMembershipSummary"
+        canSubmitClubApplication:
+          type: boolean
+        canReviewClubApplication:
+          type: boolean
+      required:
+        - id
+        - displayName
+        - roles
+        - memberships
+        - canSubmitClubApplication
+        - canReviewClubApplication
+
+    UserRoleSummary:
+      type: object
+      properties:
+        roleCode:
+          type: string
+        roleName:
+          type: string
+        roleScope:
+          type: string
+          nullable: true
+        clubId:
+          type: integer
+          nullable: true
+        clubName:
+          type: string
+          nullable: true
+      required:
+        - roleCode
+        - roleName
+
+    UserMembershipSummary:
+      type: object
+      properties:
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        termName:
+          type: string
+          nullable: true
+        memberStatus:
+          type: string
+          nullable: true
+      required:
+        - clubId
+        - clubName
 
     Activity:
       type: object

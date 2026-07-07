@@ -25,4 +25,6 @@ public class UserRole
 
     [ForeignKey("RoleId")]
     public Role? Role { get; set; }
+
+    public Club? Club { get; set; }
 }
