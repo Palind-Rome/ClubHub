@@ -110,7 +110,9 @@ public class UsersController : ControllerBase
 
         return positionName.Contains("负责人", StringComparison.Ordinal) ||
                positionName.Contains("会长", StringComparison.Ordinal) ||
-               positionName.Contains("社长", StringComparison.Ordinal);
+               positionName.Contains("社长", StringComparison.Ordinal) ||
+               positionName.Contains("leader", StringComparison.OrdinalIgnoreCase) ||
+               positionName.Contains("president", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string DisplayUser(User user)
@@ -134,6 +136,7 @@ public class UsersController : ControllerBase
     private static readonly HashSet<string> KnownClubPrincipalRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         "club_president",
+        "club_leader",
         "club_admin",
         "club_manager",
         "president"
