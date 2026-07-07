@@ -7,7 +7,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ## 技术栈
 
 - IDE：Visual Studio Community 2022 或更高版本
-- 后端：C# / ASP.NET Core Web API
+- 后端：C# / ASP.NET Core 10 Web API（目标框架 `net10.0`）
 - 前端：Vue 3 / Vite
 - 数据库：Oracle Database 18c 或更高版本
 - 数据访问：Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider
@@ -41,6 +41,6 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ## 协作与环境
 
 1. 阅读 `CONTRIBUTING.md`，确认环境、分支、提交、Issue、PR、CI/CD 和安全规范。
-2. 配好 Visual Studio、.NET SDK、Oracle XE、SQL Developer。
+2. 配好 Visual Studio、.NET SDK 10.0、Oracle XE、SQL Developer。
 3. 用 `database/schema.sql` 创建本地数据库结构，用 `database/verify.sql` 验证。
 4. 日常开发先从 `dev` 分支开功能分支，用 Issue、PR 和 commit 留痕。
