@@ -10,6 +10,7 @@ on:
       - dev
     paths:
       - api/**
+  workflow_dispatch:
 
 permissions:
   contents: write # 自动提交生成代码
@@ -78,7 +79,14 @@ jobs:
             -o frontend/src/api \
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
+          npx --yes prettier@3.9.4 --write frontend/src/api
           echo "前端 TypeScript Axios 客户端已生成。"
+
+      - name: Setup .NET
+        if: steps.detect.outputs.has_backend == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
       # ============================================================
       # 后端生成：ASP.NET Core 数据模型
@@ -94,7 +102,7 @@ jobs:
             -i api/openapi.yaml \
             -g aspnetcore \
             -o backend/Generated \
-            --additional-properties=aspnetCoreVersion=8.0
+            --additional-properties=aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true
 
           # 只保留 Models 目录（Controller 由开发者手写）
           models_dir="$(find backend/Generated/src -type d -path '*/Models' -print -quit)"
@@ -105,6 +113,11 @@ jobs:
             exit 1
           fi
           rm -rf backend/Generated
+
+          find backend/Models -type f -name "*.cs" -print0 \
+            | xargs -0 sed -i '/^using Org\.OpenAPITools\.Converters;$/d'
+
+          dotnet format backend/ClubHub.Api.csproj --include backend/Models --verbosity minimal
           echo "后端 ASP.NET Core 模型已生成。"
 
       # ============================================================
