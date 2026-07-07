@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import {
-  type AuthResponse,
-  clearSession,
-  onSessionChange,
-  readAuth,
-} from "./authSession";
+import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
 
 const healthOk = ref(false);
 const router = useRouter();
@@ -63,7 +58,9 @@ onUnmounted(() => {
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <div class="session">
-          <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{ roleSummary }}</el-tag>
+          <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
+            roleSummary
+          }}</el-tag>
           <el-button link type="danger" @click="logout">退出</el-button>
         </div>
         <div class="health">

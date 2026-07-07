@@ -2,13 +2,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import {
-  type AuthResponse,
-  type AuthRole,
-  clearSession,
-  readAuth,
-  saveAuth,
-} from "../authSession";
+import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 
 interface PermissionDefinition {
   code: string;
@@ -182,7 +176,11 @@ loadPermissionCatalog();
       <el-form class="auth-panel" label-position="top">
         <h2>用户登录</h2>
         <el-form-item label="用户名" required>
-          <el-input v-model="loginForm.username" autocomplete="username" placeholder="可输入用户名或学工号" />
+          <el-input
+            v-model="loginForm.username"
+            autocomplete="username"
+            placeholder="可输入用户名或学工号"
+          />
         </el-form-item>
         <el-form-item label="密码" required>
           <el-input
@@ -193,7 +191,9 @@ loadPermissionCatalog();
             @keyup.enter="login"
           />
         </el-form-item>
-        <el-button type="primary" :loading="loading" class="full-button" @click="login">登录</el-button>
+        <el-button type="primary" :loading="loading" class="full-button" @click="login"
+          >登录</el-button
+        >
         <el-button link type="primary" class="switch-link" @click="mode = 'register'">
           没有账号？立即注册
         </el-button>
@@ -218,9 +218,17 @@ loadPermissionCatalog();
             <el-input v-model="registerForm.realName" />
           </el-form-item>
           <el-form-item label="学工号" required>
-            <el-input v-model="registerForm.studentNo" maxlength="7" placeholder="学生 7 位，教师 5 位" />
+            <el-input
+              v-model="registerForm.studentNo"
+              maxlength="7"
+              placeholder="学生 7 位，教师 5 位"
+            />
             <div class="field-help">
-              {{ registerIdentity ? `当前判断为：${registerIdentity}` : "请输入学生 7 位或教师 5 位学工号" }}
+              {{
+                registerIdentity
+                  ? `当前判断为：${registerIdentity}`
+                  : "请输入学生 7 位或教师 5 位学工号"
+              }}
             </div>
           </el-form-item>
           <el-form-item label="性别">
@@ -245,7 +253,9 @@ loadPermissionCatalog();
             <el-input v-model="registerForm.grade" />
           </el-form-item>
         </div>
-        <el-button type="primary" :loading="loading" class="full-button" @click="register">注册并继续</el-button>
+        <el-button type="primary" :loading="loading" class="full-button" @click="register"
+          >注册并继续</el-button
+        >
         <el-button link type="primary" class="switch-link" @click="mode = 'login'">
           已有账号？返回登录
         </el-button>
@@ -268,17 +278,30 @@ loadPermissionCatalog();
           <h3>账号信息</h3>
           <el-descriptions :column="1" size="small" border>
             <el-descriptions-item label="姓名">{{ auth.user.realName }}</el-descriptions-item>
-            <el-descriptions-item label="学工号">{{ auth.user.studentNo || "未填写" }}</el-descriptions-item>
-            <el-descriptions-item label="身份">{{ identityLabel(auth.user.studentNo) || "未判断" }}</el-descriptions-item>
-            <el-descriptions-item label="学院">{{ auth.user.college || "未填写" }}</el-descriptions-item>
-            <el-descriptions-item label="专业">{{ auth.user.major || "未填写" }}</el-descriptions-item>
-            <el-descriptions-item label="账号状态">{{ auth.user.accountStatus }}</el-descriptions-item>
+            <el-descriptions-item label="学工号">{{
+              auth.user.studentNo || "未填写"
+            }}</el-descriptions-item>
+            <el-descriptions-item label="身份">{{
+              identityLabel(auth.user.studentNo) || "未判断"
+            }}</el-descriptions-item>
+            <el-descriptions-item label="学院">{{
+              auth.user.college || "未填写"
+            }}</el-descriptions-item>
+            <el-descriptions-item label="专业">{{
+              auth.user.major || "未填写"
+            }}</el-descriptions-item>
+            <el-descriptions-item label="账号状态">{{
+              auth.user.accountStatus
+            }}</el-descriptions-item>
           </el-descriptions>
         </div>
 
         <div class="info-panel">
           <h3>当前角色</h3>
-          <el-empty v-if="auth.roles.length === 0" description="当前账号暂无可用角色，请联系管理员分配角色" />
+          <el-empty
+            v-if="auth.roles.length === 0"
+            description="当前账号暂无可用角色，请联系管理员分配角色"
+          />
           <div v-else class="role-list">
             <div v-for="role in auth.roles" :key="roleKey(role)" class="role-item">
               <div class="role-heading">
@@ -286,7 +309,12 @@ loadPermissionCatalog();
                 <span class="role-scope">{{ roleDescription(role) }}</span>
               </div>
               <div class="permission-tags">
-                <el-tag v-for="permission in role.permissions" :key="permission" size="small" effect="plain">
+                <el-tag
+                  v-for="permission in role.permissions"
+                  :key="permission"
+                  size="small"
+                  effect="plain"
+                >
                   {{ permissionLabel(permission) }}
                 </el-tag>
               </div>
@@ -295,7 +323,12 @@ loadPermissionCatalog();
 
           <h3 class="permission-title">权限并集</h3>
           <div class="permission-tags">
-            <el-tag v-for="permission in auth.permissions" :key="permission" size="small" effect="plain">
+            <el-tag
+              v-for="permission in auth.permissions"
+              :key="permission"
+              size="small"
+              effect="plain"
+            >
               {{ permissionLabel(permission) }}
             </el-tag>
           </div>
