@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Org.OpenAPITools.Models;
 
 namespace ClubHub.Api.Services;
 
@@ -17,6 +19,8 @@ public class AuthService
     private const string ClubLeaderRole = "CLUB_LEADER";
     private const string AdvisorRole = "ADVISOR";
     private const string SystemAdminRole = "SYSTEM_ADMIN";
+    private const int StudentNoLength = 7;
+    private const int StaffNoLength = 5;
 
     private static readonly IReadOnlyList<PermissionDefinition> PermissionCatalog =
     [
@@ -123,6 +127,11 @@ public class AuthService
 
     public AuthService(ClubHubDbContext db) => _db = db;
 
+    public async Task InitializeBaseRolesAsync()
+    {
+        await EnsureBaseRolesAsync();
+    }
+
     public async Task<AuthServiceResult<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         var username = NormalizeText(request.Username);
@@ -152,8 +161,10 @@ public class AuthService
 
         if (!IsValidStudentOrStaffNo(studentNo))
         {
-            return AuthServiceResult<AuthResponse>.Fail(400, "学工号必须为学生 7 位或教师 5 位。");
+            return AuthServiceResult<AuthResponse>.Fail(400, StudentOrStaffNoRuleMessage());
         }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
         {
@@ -165,7 +176,7 @@ public class AuthService
             return AuthServiceResult<AuthResponse>.Fail(409, "学工号已被注册，请确认信息。");
         }
 
-        var roles = await EnsureBaseRolesAsync();
+        var roles = await GetBaseRoleRowsAsync();
         var now = DateTime.UtcNow;
         var userId = (await _db.Users.MaxAsync(u => (int?)u.UserId) ?? 0) + 1;
 
@@ -189,7 +200,17 @@ public class AuthService
 
         _db.Users.Add(user);
         await EnsureIdentityRoleAsync(user, roles, now);
-        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            await transaction.RollbackAsync();
+            return AuthServiceResult<AuthResponse>.Fail(409, "用户名或学工号已存在，请更换后再注册。");
+        }
 
         return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
     }
@@ -213,7 +234,7 @@ public class AuthService
             return AuthServiceResult<AuthResponse>.Fail(403, "账号已被禁用，请联系管理员。");
         }
 
-        var roles = await EnsureBaseRolesAsync();
+        var roles = await GetBaseRoleRowsAsync();
         if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
         {
             await _db.SaveChangesAsync();
@@ -224,7 +245,6 @@ public class AuthService
 
     public async Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync()
     {
-        await EnsureBaseRolesAsync();
         return BaseRoles;
     }
 
@@ -280,7 +300,7 @@ public class AuthService
             return AuthServiceResult<RoleAssignmentResult>.Fail(404, "被分配角色的用户不存在。");
         }
 
-        var roleRows = await EnsureBaseRolesAsync();
+        var roleRows = await GetBaseRoleRowsAsync();
         var role = roleRows.Single(r => r.RoleCode == roleCode);
         var clubId = roleDef.Scope == ClubScope ? request.ClubId : null;
         var permissionResult = await CanAssignRoleAsync(request.OperatorUserId, roleDef, clubId);
@@ -629,6 +649,21 @@ public class AuthService
             (role.ClubId == clubId || role.ClubIds.Contains(clubId.Value));
     }
 
+    private async Task<List<Role>> GetBaseRoleRowsAsync()
+    {
+        var roleCodes = BaseRoles.Select(role => role.Code).ToList();
+        var roles = await _db.Roles
+            .Where(role => roleCodes.Contains(role.RoleCode))
+            .ToListAsync();
+
+        if (roles.Count < BaseRoles.Count)
+        {
+            throw new InvalidOperationException("基础角色尚未初始化，请检查应用启动种子流程。");
+        }
+
+        return roles;
+    }
+
     private async Task<List<Role>> EnsureBaseRolesAsync()
     {
         var roles = await _db.Roles.ToListAsync();
@@ -715,11 +750,21 @@ public class AuthService
     private static bool IsNormalAccount(User user) =>
         string.Equals(user.AccountStatus, NormalStatus, StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        return message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool IsValidStudentOrStaffNo(string value) => IsStudentNo(value) || IsStaffNo(value);
 
-    private static bool IsStudentNo(string value) => value.Length == 7 && value.All(char.IsDigit);
+    private static bool IsStudentNo(string value) => value.Length == StudentNoLength && value.All(char.IsDigit);
 
-    private static bool IsStaffNo(string value) => value.Length == 5 && value.All(char.IsDigit);
+    private static bool IsStaffNo(string value) => value.Length == StaffNoLength && value.All(char.IsDigit);
+
+    private static string StudentOrStaffNoRuleMessage() =>
+        $"学工号必须为学生 {StudentNoLength} 位或教师 {StaffNoLength} 位。";
 
     private static string? GetDefaultIdentityRoleCode(string? studentNo)
     {

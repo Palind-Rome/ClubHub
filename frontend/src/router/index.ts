@@ -16,7 +16,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   if (to.path !== "/auth" && !hasCompletedSession()) {
-    return "/auth";
+    return { path: "/auth", query: { redirect: to.fullPath } };
   }
 });
 

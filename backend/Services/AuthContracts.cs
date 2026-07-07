@@ -1,35 +1,5 @@
 namespace ClubHub.Api.Services;
 
-public class RegisterRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string RealName { get; set; } = string.Empty;
-    public string StudentNo { get; set; } = string.Empty;
-    public string? Gender { get; set; }
-    public string? Phone { get; set; }
-    public string? Email { get; set; }
-    public string? College { get; set; }
-    public string? Major { get; set; }
-    public string? Grade { get; set; }
-}
-
-public class LoginRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-public class AssignRoleRequest
-{
-    public int OperatorUserId { get; set; }
-    public int TargetUserId { get; set; }
-    public string RoleCode { get; set; } = string.Empty;
-    public int? ClubId { get; set; }
-}
-
-public record ApiError(string Message);
-
 public record AuthResponse(
     string Token,
     AuthUser User,

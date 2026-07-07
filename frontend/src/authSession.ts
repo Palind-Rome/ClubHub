@@ -1,35 +1,6 @@
-export interface AuthUser {
-  id: number;
-  username: string;
-  realName: string;
-  studentNo: string | null;
-  gender: string | null;
-  phone: string | null;
-  email: string | null;
-  college: string | null;
-  major: string | null;
-  grade: string | null;
-  accountStatus: string;
-}
+import type { AuthResponse } from "./api/models";
 
-export interface AuthRole {
-  id: number;
-  code: string;
-  name: string;
-  displayName: string;
-  scope: "system" | "club";
-  clubId: number | null;
-  clubIds: number[];
-  permissions: string[];
-  permissionDesc: string | null;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: AuthUser;
-  roles: AuthRole[];
-  permissions: string[];
-}
+export type { AuthUser, AuthRole, AuthResponse } from "./api/models";
 
 const authKey = "clubhub-auth";
 const roleKeyName = "clubhub-active-role";

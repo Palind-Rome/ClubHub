@@ -13,6 +13,12 @@ builder.Services.AddDbContext<ClubHubDbContext>(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
+    await authService.InitializeBaseRolesAsync();
+}
+
 app.UseCors(policy =>
     policy.AllowAnyOrigin()
           .AllowAnyMethod()

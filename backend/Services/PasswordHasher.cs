@@ -6,7 +6,7 @@ public static class PasswordHasher
 {
     private const int SaltSize = 16;
     private const int KeySize = 32;
-    private const int Iterations = 100_000;
+    private const int Iterations = 600_000;
     private const string Prefix = "PBKDF2";
 
     public static string Hash(string password)
@@ -29,6 +29,11 @@ public static class PasswordHasher
 
     public static bool Verify(string password, string storedHash)
     {
+        if (string.IsNullOrEmpty(storedHash))
+        {
+            return false;
+        }
+
         try
         {
             var parts = storedHash.Split('$');

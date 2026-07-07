@@ -1,20 +1,27 @@
 ﻿<script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
+import type { FormInstance, FormRules } from "element-plus";
+import type { PermissionDefinition, RegisterRequest } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 
-interface PermissionDefinition {
-  code: string;
-  name: string;
-  description: string;
-}
-
 const router = useRouter();
+const route = useRoute();
 const auth = ref<AuthResponse | null>(readAuth());
 const mode = ref<"login" | "register">("login");
 const loading = ref(false);
 const permissionCatalog = ref<PermissionDefinition[]>([]);
+const loginFormRef = ref<FormInstance>();
+const registerFormRef = ref<FormInstance>();
+
+const STUDENT_NO_LENGTH = 7;
+const STAFF_NO_LENGTH = 5;
+const STUDENT_NO_MAX_LENGTH = Math.max(STUDENT_NO_LENGTH, STAFF_NO_LENGTH);
+const studentNoRuleMessage = `学工号必须为学生 ${STUDENT_NO_LENGTH} 位或教师 ${STAFF_NO_LENGTH} 位`;
+const studentNoPlaceholder = `学生 ${STUDENT_NO_LENGTH} 位，教师 ${STAFF_NO_LENGTH} 位`;
+const studentNoHelpMessage = `请输入学生 ${STUDENT_NO_LENGTH} 位或教师 ${STAFF_NO_LENGTH} 位学工号`;
+const studentNoIntroText = `学工号学生 ${STUDENT_NO_LENGTH} 位、教师 ${STAFF_NO_LENGTH} 位；可用角色由数据库中的用户角色关系决定。`;
 
 const loginForm = ref({
   username: "",
@@ -33,6 +40,38 @@ const registerForm = ref({
   major: "",
   grade: "",
 });
+
+const loginRules: FormRules = {
+  username: [{ required: true, message: "请输入用户名或学工号", trigger: "blur" }],
+  password: [{ required: true, message: "请输入密码", trigger: "blur" }],
+};
+
+const registerRules: FormRules = {
+  username: [
+    { required: true, message: "请输入用户名", trigger: "blur" },
+    { min: 3, max: 50, message: "用户名长度为 3 到 50 个字符", trigger: "blur" },
+  ],
+  password: [
+    { required: true, message: "请输入密码", trigger: "blur" },
+    { min: 6, max: 128, message: "密码长度为 6 到 128 个字符", trigger: "blur" },
+  ],
+  realName: [
+    { required: true, message: "请输入姓名", trigger: "blur" },
+    { max: 50, message: "姓名最多 50 个字符", trigger: "blur" },
+  ],
+  studentNo: [
+    { required: true, message: "请输入学工号", trigger: "blur" },
+    { validator: validateStudentNo, trigger: "blur" },
+  ],
+  phone: [{ pattern: /^[0-9+\-\s()]{0,20}$/, message: "请输入有效手机号", trigger: "blur" }],
+  email: [
+    { type: "email", message: "请输入有效邮箱", trigger: "blur" },
+    { max: 100, message: "邮箱最多 100 个字符", trigger: "blur" },
+  ],
+  college: [{ max: 100, message: "学院最多 100 个字符", trigger: "blur" }],
+  major: [{ max: 100, message: "专业最多 100 个字符", trigger: "blur" }],
+  grade: [{ max: 20, message: "年级最多 20 个字符", trigger: "blur" }],
+};
 
 const currentStep = computed(() => {
   if (!auth.value) return mode.value;
@@ -62,8 +101,7 @@ async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 async function login() {
-  if (!loginForm.value.username || !loginForm.value.password) {
-    ElMessage.warning("请输入用户名或学工号和密码");
+  if (!(await validateForm(loginFormRef.value))) {
     return;
   }
 
@@ -71,11 +109,14 @@ async function login() {
   try {
     const result = await requestJson<AuthResponse>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify(loginForm.value),
+      body: JSON.stringify({
+        username: loginForm.value.username.trim(),
+        password: loginForm.value.password,
+      }),
     });
     applyAuth(result);
     ElMessage.success("登录成功");
-    router.push("/clubs");
+    router.push(authRedirectPath());
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "登录失败");
   } finally {
@@ -84,18 +125,7 @@ async function login() {
 }
 
 async function register() {
-  if (
-    !registerForm.value.username ||
-    !registerForm.value.password ||
-    !registerForm.value.realName ||
-    !registerForm.value.studentNo
-  ) {
-    ElMessage.warning("请填写用户名、密码、姓名和学工号");
-    return;
-  }
-
-  if (!identityLabel(registerForm.value.studentNo)) {
-    ElMessage.warning("学工号必须为学生 7 位或教师 5 位");
+  if (!(await validateForm(registerFormRef.value))) {
     return;
   }
 
@@ -103,16 +133,55 @@ async function register() {
   try {
     const result = await requestJson<AuthResponse>("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify(registerForm.value),
+      body: JSON.stringify(buildRegisterPayload()),
     });
     applyAuth(result);
     ElMessage.success("注册成功");
-    router.push("/clubs");
+    router.push(authRedirectPath());
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "注册失败");
   } finally {
     loading.value = false;
   }
+}
+
+async function validateForm(form?: FormInstance) {
+  if (!form) return false;
+  return form.validate().catch(() => false);
+}
+
+function validateStudentNo(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  if (identityLabel(value)) {
+    callback();
+    return;
+  }
+
+  callback(new Error(studentNoRuleMessage));
+}
+
+function buildRegisterPayload(): RegisterRequest {
+  return {
+    username: registerForm.value.username.trim(),
+    password: registerForm.value.password,
+    realName: registerForm.value.realName.trim(),
+    studentNo: registerForm.value.studentNo.trim(),
+    gender: optionalText(registerForm.value.gender),
+    phone: optionalText(registerForm.value.phone),
+    email: optionalText(registerForm.value.email),
+    college: optionalText(registerForm.value.college),
+    major: optionalText(registerForm.value.major),
+    grade: optionalText(registerForm.value.grade),
+  };
+}
+
+function optionalText(value: string) {
+  const normalized = value.trim();
+  return normalized ? normalized : undefined;
+}
+
+function authRedirectPath() {
+  const redirect = route.query.redirect;
+  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/clubs";
 }
 
 function applyAuth(nextAuth: AuthResponse) {
@@ -149,9 +218,13 @@ function permissionLabel(code: string) {
 
 function identityLabel(studentNo?: string | null) {
   const normalized = (studentNo ?? "").trim();
-  if (/^\d{7}$/.test(normalized)) return "学生";
-  if (/^\d{5}$/.test(normalized)) return "教师";
+  if (hasDigitLength(normalized, STUDENT_NO_LENGTH)) return "学生";
+  if (hasDigitLength(normalized, STAFF_NO_LENGTH)) return "教师";
   return "";
+}
+
+function hasDigitLength(value: string, length: number) {
+  return value.length === length && /^\d+$/.test(value);
 }
 
 async function loadPermissionCatalog() {
@@ -173,19 +246,27 @@ loadPermissionCatalog();
         <p>高校社团运营与协同管理平台</p>
       </div>
 
-      <el-form class="auth-panel" label-position="top">
+      <el-form
+        ref="loginFormRef"
+        :model="loginForm"
+        :rules="loginRules"
+        class="auth-panel"
+        label-position="top"
+      >
         <h2>用户登录</h2>
-        <el-form-item label="用户名" required>
+        <el-form-item label="用户名" prop="username">
           <el-input
             v-model="loginForm.username"
+            maxlength="50"
             autocomplete="username"
             placeholder="可输入用户名或学工号"
           />
         </el-form-item>
-        <el-form-item label="密码" required>
+        <el-form-item label="密码" prop="password">
           <el-input
             v-model="loginForm.password"
             type="password"
+            maxlength="128"
             autocomplete="current-password"
             show-password
             @keyup.enter="login"
@@ -203,32 +284,40 @@ loadPermissionCatalog();
     <section v-else-if="currentStep === 'register'" class="auth-shell register-shell">
       <div class="intro">
         <h1>创建账号</h1>
-        <p>学工号学生 7 位、教师 5 位；可用角色由数据库中的用户角色关系决定。</p>
+        <p>{{ studentNoIntroText }}</p>
       </div>
 
-      <el-form class="auth-panel register-panel" label-position="top">
+      <el-form
+        ref="registerFormRef"
+        :model="registerForm"
+        :rules="registerRules"
+        class="auth-panel register-panel"
+        label-position="top"
+      >
         <div class="form-grid">
-          <el-form-item label="用户名" required>
-            <el-input v-model="registerForm.username" />
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="registerForm.username" maxlength="50" />
           </el-form-item>
-          <el-form-item label="密码" required>
-            <el-input v-model="registerForm.password" type="password" show-password />
+          <el-form-item label="密码" prop="password">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              :minlength="6"
+              maxlength="128"
+              show-password
+            />
           </el-form-item>
-          <el-form-item label="姓名" required>
-            <el-input v-model="registerForm.realName" />
+          <el-form-item label="姓名" prop="realName">
+            <el-input v-model="registerForm.realName" maxlength="50" />
           </el-form-item>
-          <el-form-item label="学工号" required>
+          <el-form-item label="学工号" prop="studentNo">
             <el-input
               v-model="registerForm.studentNo"
-              maxlength="7"
-              placeholder="学生 7 位，教师 5 位"
+              :maxlength="STUDENT_NO_MAX_LENGTH"
+              :placeholder="studentNoPlaceholder"
             />
             <div class="field-help">
-              {{
-                registerIdentity
-                  ? `当前判断为：${registerIdentity}`
-                  : "请输入学生 7 位或教师 5 位学工号"
-              }}
+              {{ registerIdentity ? `当前判断为：${registerIdentity}` : studentNoHelpMessage }}
             </div>
           </el-form-item>
           <el-form-item label="性别">
@@ -237,20 +326,20 @@ loadPermissionCatalog();
               <el-option label="女" value="女" />
             </el-select>
           </el-form-item>
-          <el-form-item label="手机号">
-            <el-input v-model="registerForm.phone" />
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="registerForm.phone" maxlength="20" />
           </el-form-item>
-          <el-form-item label="邮箱">
-            <el-input v-model="registerForm.email" />
+          <el-form-item label="邮箱" prop="email">
+            <el-input v-model="registerForm.email" type="email" maxlength="100" />
           </el-form-item>
-          <el-form-item label="学院">
-            <el-input v-model="registerForm.college" />
+          <el-form-item label="学院" prop="college">
+            <el-input v-model="registerForm.college" maxlength="100" />
           </el-form-item>
-          <el-form-item label="专业">
-            <el-input v-model="registerForm.major" />
+          <el-form-item label="专业" prop="major">
+            <el-input v-model="registerForm.major" maxlength="100" />
           </el-form-item>
-          <el-form-item label="年级">
-            <el-input v-model="registerForm.grade" />
+          <el-form-item label="年级" prop="grade">
+            <el-input v-model="registerForm.grade" maxlength="20" />
           </el-form-item>
         </div>
         <el-button type="primary" :loading="loading" class="full-button" @click="register"

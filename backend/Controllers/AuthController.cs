@@ -1,5 +1,6 @@
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Org.OpenAPITools.Models;
 
 namespace ClubHub.Api.Controllers;
 
@@ -62,6 +63,8 @@ public class AuthController : ControllerBase
             return StatusCode(result.StatusCode, result.Value);
         }
 
-        return StatusCode(result.StatusCode, new ApiError(result.ErrorMessage ?? "请求处理失败。"));
+        return StatusCode(
+            result.StatusCode,
+            new ApiError { Message = result.ErrorMessage ?? "请求处理失败。" });
     }
 }
