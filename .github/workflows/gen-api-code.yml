@@ -79,7 +79,7 @@ jobs:
             -o frontend/src/api \
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
-          npx --yes prettier@3.9.4 --write "frontend/src/api"
+          npx --yes prettier@3.9.4 --no-ignore --write "frontend/src/api"
 
           # 清理生成器自带文件（模板脚本、忽略文件、元数据、文档）
           rm -f frontend/src/api/git_push.sh
