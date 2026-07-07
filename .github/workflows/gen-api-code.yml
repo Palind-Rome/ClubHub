@@ -80,6 +80,15 @@ jobs:
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
           npx --yes prettier@3.9.4 --write frontend/src/api
+
+          # 清理生成器自带文件（模板脚本、忽略文件、元数据、文档）
+          rm -f frontend/src/api/git_push.sh
+          rm -f frontend/src/api/.gitignore
+          rm -f frontend/src/api/.npmignore
+          rm -f frontend/src/api/.openapi-generator-ignore
+          rm -rf frontend/src/api/.openapi-generator
+          rm -rf frontend/src/api/docs
+
           echo "前端 TypeScript Axios 客户端已生成。"
 
       - name: Setup .NET
