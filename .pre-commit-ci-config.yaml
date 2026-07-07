@@ -2,7 +2,7 @@
 # 由 .github/workflows/code-check.yml 调用。
 # 与本地配置的区别：仅检查不修改（prettier --check、dotnet format --verify-no-changes）。
 
-exclude: "frontend/src/api/.*|backend/Models/.*|backend/Generated/.*|.*\\.md$"
+exclude: "frontend/src/api/.*|backend/Models/.*|backend/Generated/.*"
 
 repos:
   # ---- 通用检查 ----
@@ -10,6 +10,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ".*\\.md$"
       - id: end-of-file-fixer
       - id: check-yaml
         args: [--allow-multiple-documents]
