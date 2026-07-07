@@ -105,6 +105,9 @@
  5. git add 具体文件名（禁止 git add .）
     git commit -m "feat(scope): 中文摘要"
     git push -u origin feature/your-task
+    
+    → 推送后，PR 描述可能与实际提交内容不同步。
+    → 此时应执行 gh pr edit 更新 PR 描述，确保"改动内容"和"关联 Issue"反映最新状态
        │
  6. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
     → CI 生成 backend/Models/* 和 frontend/src/api/*
@@ -129,7 +132,7 @@
 ## Pull Request 规则
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
-
+    
 **关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅作示例用）。例外场景见 `AGENTS.md` → Agent 特别提醒。
 
 **PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
