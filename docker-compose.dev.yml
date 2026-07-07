@@ -30,5 +30,7 @@ services:
       sh -c "corepack enable &&
              pnpm install --frozen-lockfile &&
              pnpm run dev --host"
+    environment:
+      - API_PROXY_TARGET=http://backend:5000
     depends_on:
       - backend
