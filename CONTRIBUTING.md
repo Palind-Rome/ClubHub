@@ -79,7 +79,7 @@
  2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
     gh pr create --draft --base dev \
       --title "feat(scope): 功能名称" \
-      --label "类型标签,优先级标签,领域标签"
+      --label "课程功能点,优先级:P1,area:activity"
     （未安装 gh CLI 时：winget install GitHub.cli）
     → CI 不会在 draft 阶段运行，等代码写好再 mark ready
        │
@@ -156,7 +156,7 @@ gh label list
 # PR（创建时直接带上标签，避免遗漏）
 gh pr create --draft --base dev \
   --title "feat(scope): 标题" \
-  --label "类型标签,优先级标签,领域标签"
+  --label "课程功能点,优先级:P1,area:activity"
 
 # Issue（使用对应模板，按规则带齐标签）
 gh issue create --template bug_report.md \
@@ -458,7 +458,7 @@ docker compose build                            # 构建生产镜像
 docker compose up -d                            # 生产启动
 
 # GitHub CLI（未安装时 winget install GitHub.cli）
-gh pr create --draft --base dev --title "feat(scope): 摘要" --label "类型标签,优先级标签,领域标签"   # 创建 draft PR（按标签规范带齐标签）
+gh pr create --draft --base dev --title "feat(scope): 摘要" --label "课程功能点,优先级:P1,area:activity"   # 创建 draft PR（按标签规范带齐标签）
 gh pr ready                                                     # 标记为 Ready for Review
 gh pr checks                                                    # 查看 CI 状态
 gh pr view --comments                                           # 查看 review 意见
