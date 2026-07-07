@@ -1,4 +1,4 @@
-using ClubHub.Api.Data.Entities;
+﻿using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubHub.Api.Data;
@@ -13,6 +13,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
+    public DbSet<Project> Projects => Set<Project>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,5 +81,11 @@ public class ClubHubDbContext : DbContext
              .HasForeignKey(cm => cm.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
         });
+
+        modelBuilder.Entity<Project>(e =>
+        {
+            e.HasKey(p => p.ProjectId);
+        });
     }
 }
+
