@@ -121,6 +121,13 @@
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
 
+**PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
+
+- `feat(activity): 新增活动报名人数限制`
+- `fix(venue): 修复场地预约时间冲突判断`
+- `docs: 更新 README 部署说明`
+- `ci(deploy): 新增 GitHub Actions SSH 部署工作流`
+
 合并规则：
 
 - 功能分支默认 PR 到 `dev`。
@@ -193,6 +200,8 @@ gh issue create --template feature_request.md \
 然后空一行。
 
 空行之后，写一段详细的中文 commit message。
+
+> **PR 标题也使用同一格式**（不加空行和详情），参见 Pull Request 规则章节。
 
 允许使用的 type：
 

@@ -1,5 +1,11 @@
 <!--
 ==================================================================
+PR 标题格式：<type>(可选 scope): <简短中文摘要>
+  例如：feat(activity): 新增活动报名人数限制
+       fix(venue): 修复场地预约冲突
+       docs: 更新 README
+  允许的 type 见 CONTRIBUTING.md → Commit 信息
+
 标签指引（创建 PR 后立即添加，均为必选）：
   类型（必选一）  ：课程功能点 / documentation / enhancement
   优先级（必选一） ：优先级:P0 / 优先级:P1 / 优先级:P2
