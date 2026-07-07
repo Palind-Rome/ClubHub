@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ClubHub API
  *
  * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
@@ -26,11 +26,26 @@ namespace Org.OpenAPITools.Models
     public partial class ApiError 
     {
         /// <summary>
+        /// Gets or Sets Code
+        /// </summary>
+        /* <example>venue_reservation_conflict</example> */
+        [DataMember(Name="code", EmitDefaultValue=true)]
+        public string? Code { get; set; }
+
+        /// <summary>
         /// Gets or Sets Message
         /// </summary>
+        /* <example>该场地在所选时间段已有已通过预约。</example> */
         [Required]
         [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }
 
+        /// <summary>
+        /// Gets or Sets Detail
+        /// </summary>
+        [DataMember(Name="detail", EmitDefaultValue=true)]
+        public string? Detail { get; set; }
+
     }
 }
+

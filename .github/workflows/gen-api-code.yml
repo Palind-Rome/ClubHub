@@ -1,6 +1,6 @@
 name: 生成 API 代码
 
-# 从 api/openapi.yaml 自动生成前端 TypeScript Axios 客户端和后端 ASP.NET Core 数据模型。
+# 从 api/openapi.yaml 自动生成前端 TypeScript Fetch 客户端和后端 ASP.NET Core 数据模型。
 # 开发者修改 API 契约后 push，本 workflow 自动生成代码并提交回分支。
 
 on:
@@ -64,9 +64,9 @@ jobs:
           echo "OpenAPI 规范语法检查通过。"
 
       # ============================================================
-      # 前端生成：TypeScript Axios 客户端
+      # 前端生成：TypeScript Fetch 客户端
       # ============================================================
-      - name: 生成前端 TypeScript Axios 客户端
+      - name: 生成前端 TypeScript Fetch 客户端
         if: steps.detect.outputs.has_frontend == 'true'
         shell: bash
         run: |
@@ -75,9 +75,12 @@ jobs:
 
           npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
-            -g typescript-axios \
+            -g typescript-fetch \
             -o frontend/src/api \
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
+
+          # 生成代码由 OpenAPI Generator 维护，不按业务源码规则做逐行类型检查。
+          find frontend/src/api -type f -name "*.ts" -exec sed -i '1i// @ts-nocheck' {} +
 
           npx --yes prettier@3.9.4 --no-ignore --write "frontend/src/api"
 
@@ -89,7 +92,17 @@ jobs:
           rm -rf frontend/src/api/.openapi-generator
           rm -rf frontend/src/api/docs
 
-          echo "前端 TypeScript Axios 客户端已生成。"
+          # 删除与 PascalCase 同名的小写文件（Windows 大小写冲突）
+          # 逻辑：小写 + 无连字符 → 猜测有 PascalCase 对应文件 → 有则删除
+          for f in frontend/src/api/models/[a-z]*.ts; do
+            [[ ! -f "$f" ]] && continue
+            base=$(basename "$f")
+            [[ "$base" == *-* ]] && continue  # 连字符文件不冲突（如 api-error.ts ≠ ApiError.ts）
+            pascal="${base^}"                   # bash: 首字母大写
+            [[ -f "$(dirname "$f")/${pascal}" ]] && rm -f "$f"
+          done
+
+          echo "前端 TypeScript Fetch 客户端已生成。"
 
       - name: Setup .NET
         if: steps.detect.outputs.has_backend == 'true'
