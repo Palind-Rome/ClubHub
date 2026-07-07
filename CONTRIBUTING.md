@@ -76,8 +76,10 @@
  1. git checkout dev && git pull origin dev
     git checkout -b feature/your-task
        │
- 2. 立即创建 draft PR（feature/your-task → dev）：
-    gh pr create --draft --base dev --title "feat(scope): 功能名称"
+ 2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
+    gh pr create --draft --base dev \
+      --title "feat(scope): 功能名称" \
+      --label "课程功能点,优先级:P1,area:activity"
     （未安装 gh CLI 时：winget install GitHub.cli）
     → CI 不会在 draft 阶段运行，等代码写好再 mark ready
        │
@@ -125,6 +127,58 @@
 - `dev` 到 `main` 只在阶段性节点合并。
 - PR Review Rule 参考前文所述的 `.github/CODEOWNERS` 中的规则。
 - CI 失败时禁止合并。
+
+## Issue 与 PR 标签规范
+
+标签是 Issue 和 PR 分类管理的核心工具。仓库预设了以下几类标签，创建者必须按规则标注。
+
+### 标签分类
+
+| 分类 | 必选 | 作用 |
+|------|------|------|
+| **类型** | 必选其一 | 标识 Issue/PR 的性质（缺陷、功能点、文档、改进等） |
+| **优先级** | 必选其一 | 标识紧急程度，用于排期；由维护者与创建者协商确定 |
+| **领域** | 必选其一 | 标识涉及的业务模块，方便按模块筛选和分配任务 |
+| **全栈任务** | 涉及前后端联动时必选 | 标识需要前端 + 后端 + 数据库联动的任务 |
+| **状态** | 维护者管理 | 标识认领、重复、无效等处理状态 |
+
+### 查看可用标签
+
+具体标签值可能随项目阶段动态调整，以仓库实际配置为准。创建 Issue 或 PR 前，先用以下命令查看当前所有标签：
+
+```bash
+gh label list
+```
+
+### 创建命令
+
+```bash
+# PR（创建时直接带上标签，避免遗漏）
+gh pr create --draft --base dev \
+  --title "feat(scope): 标题" \
+  --label "课程功能点,优先级:P1,area:activity"
+
+# Issue（使用对应模板，按规则带齐标签）
+gh issue create --template bug_report.md \
+  --label "bug,优先级:P1,area:activity"
+gh issue create --template feature_request.md \
+  --label "课程功能点,优先级:P2,area:club"
+```
+
+### 核心规则
+
+- 类型、优先级、领域三个标签**必须**同时标注，不可缺省；全栈任务在涉及前后端联动时也必须标注。
+- 一个 Issue / PR 可以有多个标签，但类型标签只能选一个。
+- **禁止创建仓库中不存在的标签**，以 `gh label list` 输出的标签为准，避免标签膨胀。
+- 标签的具体使用场景和模板中的填写指引，见：
+
+  | 文件 | 用途 |
+  |------|------|
+  | `.github/pull_request_template.md` | PR 模板，顶部注释列出标签指引 |
+  | `.github/ISSUE_TEMPLATE/bug_report.md` | 缺陷报告 |
+  | `.github/ISSUE_TEMPLATE/feature_request.md` | 课程功能点 |
+  | `.github/ISSUE_TEMPLATE/doc_task.md` | 文档任务 |
+  | `.github/ISSUE_TEMPLATE/enhancement.md` | 功能改进 |
 
 ## Commit 信息
 
@@ -404,7 +458,7 @@ docker compose build                            # 构建生产镜像
 docker compose up -d                            # 生产启动
 
 # GitHub CLI（未安装时 winget install GitHub.cli）
-gh pr create --draft --base dev --title "feat(scope): 摘要"   # 创建 draft PR
+gh pr create --draft --base dev --title "feat(scope): 摘要" --label "课程功能点,优先级:P1,area:activity"   # 创建 draft PR（按标签规范带齐标签）
 gh pr ready                                                     # 标记为 Ready for Review
 gh pr checks                                                    # 查看 CI 状态
 gh pr view --comments                                           # 查看 review 意见
