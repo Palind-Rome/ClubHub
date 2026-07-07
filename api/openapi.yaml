@@ -728,6 +728,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/Activity"
 
+  /api/activities/{activityId}/registrations:
+    post:
+      summary: 报名活动
+      operationId: registerActivity
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterActivityRequest"
+      responses:
+        "201":
+          description: 报名成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityRegistrationResult"
+        "400":
+          description: 报名请求不合法或不符合报名条件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 活动或用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 报名状态冲突，例如重复报名或名额已满
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/activities/{activityId}/review:
     post:
       summary: 审核活动并发布或驳回
@@ -2191,6 +2233,15 @@ components:
         - clubId
         - clubName
 
+    RegisterActivityRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+          description: 报名用户 ID
+      required:
+        - userId
+
     Activity:
       type: object
       properties:
@@ -2584,3 +2635,47 @@ components:
           nullable: true
       required:
         - currentUserId
+
+    ActivityRegistrationResult:
+      type: object
+      properties:
+        participationId:
+          type: integer
+          description: 活动参与记录 ID
+        activityId:
+          type: integer
+        userId:
+          type: integer
+        registerStatus:
+          type: string
+          enum: [pending, accepted, cancelled, rejected]
+        registeredAt:
+          type: string
+          format: date-time
+        currentParticipants:
+          type: integer
+          description: 报名成功后的当前有效报名人数
+        message:
+          type: string
+          example: 报名成功
+      required:
+        - participationId
+        - activityId
+        - userId
+        - registerStatus
+        - registeredAt
+        - currentParticipants
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: CAPACITY_FULL
+        message:
+          type: string
+          example: 活动名额已满
+      required:
+        - code
+        - message
