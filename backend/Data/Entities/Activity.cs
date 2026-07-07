@@ -74,5 +74,6 @@ public class Activity
     [ForeignKey("ClubId")]
     public Club? Club { get; set; }
 
-    public ICollection<ActivityParticipation> Participations { get; set; } = new List<ActivityParticipation>();
+    public ICollection<ActivityParticipation> Participations { get; set; } =
+        new List<ActivityParticipation>();
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { ElMessage } from "element-plus";
-import { readAuth } from "../authSession";
+import { onSessionChange, readAuth } from "../authSession";
 
 interface Activity {
   id: number;
@@ -25,6 +25,7 @@ interface Activity {
   checkoutStartAt: string | null;
   checkoutEndAt: string | null;
   currentParticipants: number;
+  isRegistered: boolean;
 }
 
 interface ActivityParticipation {
@@ -58,10 +59,13 @@ interface ReviewActivityForm {
 }
 
 const activities = ref<Activity[]>([]);
+const auth = ref(readAuth());
 const statusFilter = ref("all");
 const loading = ref(true);
 const error = ref("");
 const saving = ref(false);
+const registeringActivityId = ref<number | null>(null);
+let stopSessionListener: (() => void) | undefined;
 
 const createDialogVisible = ref(false);
 const reviewDialogVisible = ref(false);
@@ -72,6 +76,8 @@ const participationsDialogVisible = ref(false);
 const currentActivity = ref<Activity | null>(null);
 const participations = ref<ActivityParticipation[]>([]);
 const participationLoading = ref(false);
+
+const currentUserId = computed(() => auth.value?.user.id ?? null);
 
 const createForm = ref<CreateActivityForm>({
   clubId: 1,
@@ -152,6 +158,18 @@ const signStatusLabel: Record<string, string> = {
 const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+onMounted(async () => {
+  stopSessionListener = onSessionChange(() => {
+    auth.value = readAuth();
+    void loadActivities();
+  });
+  await loadActivities();
+});
+
+onUnmounted(() => {
+  stopSessionListener?.();
+});
+
 function formatDateTimeForPicker(date: Date) {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
@@ -188,7 +206,7 @@ function buildDefaultCreateTimes() {
 }
 
 function getCurrentUserId() {
-  return readAuth()?.user?.id ?? 1;
+  return currentUserId.value ?? 1;
 }
 
 function generateSignCode() {
@@ -238,14 +256,39 @@ async function loadActivities() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/activities");
+    const query = new URLSearchParams();
+    if (currentUserId.value) {
+      query.set("currentUserId", String(currentUserId.value));
+    }
+
+    const url = query.toString() ? `/api/activities?${query}` : "/api/activities";
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    activities.value = await res.json();
+    const data = (await res.json()) as Activity[];
+    activities.value = data.map((activity) => ({
+      ...activity,
+      currentParticipants: activity.currentParticipants ?? 0,
+      isRegistered: activity.isRegistered ?? false,
+    }));
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载失败";
   } finally {
     loading.value = false;
   }
+}
+
+function canRegister(activity: Activity) {
+  return (
+    Boolean(currentUserId.value) &&
+    activity.status === "published" &&
+    !activity.isRegistered &&
+    (activity.maxParticipants == null || activity.currentParticipants < activity.maxParticipants)
+  );
+}
+
+function registerButtonText(activity: Activity) {
+  if (activity.isRegistered) return "已报名";
+  return canRegister(activity) ? "报名" : "不可报名";
 }
 
 function openCreate() {
@@ -299,6 +342,33 @@ async function createActivity() {
     ElMessage.error(error.value);
   } finally {
     saving.value = false;
+  }
+}
+
+async function registerActivity(activity: Activity) {
+  const userId = currentUserId.value;
+  if (!userId) {
+    ElMessage.warning("请先登录后再报名");
+    return;
+  }
+
+  registeringActivityId.value = activity.id;
+  try {
+    const res = await fetch(`/api/activities/${activity.id}/registrations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+
+    const result = (await res.json()) as { currentParticipants?: number; message?: string };
+    activity.currentParticipants = result.currentParticipants ?? activity.currentParticipants + 1;
+    activity.isRegistered = true;
+    ElMessage.success(result.message || "报名成功");
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "报名失败");
+  } finally {
+    registeringActivityId.value = null;
   }
 }
 
@@ -461,7 +531,19 @@ async function openParticipations(activity: Activity) {
   }
 }
 
-onMounted(loadActivities);
+async function readErrorMessage(res: Response) {
+  const body = await res.text();
+  if (!body) {
+    return `请求失败（${res.status}）`;
+  }
+
+  try {
+    const parsed = JSON.parse(body) as { message?: string };
+    return parsed.message || `请求失败（${res.status}）`;
+  } catch {
+    return body;
+  }
+}
 </script>
 
 <template>
@@ -514,9 +596,18 @@ onMounted(loadActivities);
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="330" align="center">
+      <el-table-column label="操作" width="410" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
+            <el-button
+              v-if="row.status === 'published'"
+              size="small"
+              type="primary"
+              :disabled="!canRegister(row)"
+              :loading="registeringActivityId === row.id"
+              @click="registerActivity(row)"
+              >{{ registerButtonText(row) }}</el-button
+            >
             <el-button
               v-if="row.status === 'pending_review'"
               size="small"
