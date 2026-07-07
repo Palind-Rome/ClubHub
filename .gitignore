@@ -76,6 +76,9 @@ wallet/
 Wallet_*/
 tnsnames.ora.local
 
+# OpenAPI generator (local CLI artifact)
+openapitools.json
+
 # Course scratch exports
 .claude/
 .codex-extracted/
