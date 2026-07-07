@@ -106,7 +106,7 @@
     git commit -m "feat(scope): 中文摘要"
     git push -u origin feature/your-task
 
-    
+
     → 推送后，PR 描述可能与实际提交内容不同步。
     → 此时应执行 gh pr edit 更新 PR 描述，确保"改动内容"和"关联 Issue"反映最新状态
        │
