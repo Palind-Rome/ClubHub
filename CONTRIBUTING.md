@@ -39,10 +39,10 @@
 
 - `main`：阶段性稳定版本。只有课程节点、演示版本、答辩版本合入。
 - `dev`：日常集成分支。功能完成后先合入这里。
-- `feature/xxx`：功能分支，例如 `feature/activity-checkin`。
-- `fix/xxx`：缺陷修复分支，例如 `fix/venue-conflict`。
-- `docs/xxx`：文档分支，例如 `docs/requirements-analysis`。
-- `db/xxx`：数据库变更分支，例如 `db/add-seed-data`。
+- `feature/xxx`：功能分支，带关联 Issue 编号，例如 `feature/42-activity-checkin`。
+- `fix/xxx`：缺陷修复分支，带关联 Issue 编号，例如 `fix/56-venue-conflict`。
+- `docs/xxx`：文档分支，带关联 Issue 编号，例如 `docs/55-pr-title-format`。
+- `db/xxx`：数据库变更分支，带关联 Issue 编号，例如 `db/38-add-seed-data`。
 
 不要直接在 `main` 上提交。`dev` 通过 PR 合入。
 
@@ -70,11 +70,20 @@
 
 ## 日常开发流程
 
+实行 Issue 驱动开发：每个 PR **必须**关联一个 Issue，说明"为什么做"和"做什么"。在开始任何实质性改动之前，先确认或创建对应的 Issue。
+
+具体的判定标准（极少数的例外场景）见 `AGENTS.md` → Agent 操作约束。
+
 一个功能点的完整路径（11 步）：
 
-```
+```text
+ 0. 确认或创建关联 Issue：
+    → 搜索是否已有相关 Issue，有则记录编号
+    → 没有则创建：gh issue create --template 对应模板 --label "..."
+    → 如果不属于必须关联的场景，跳过此步
+       │
  1. git checkout dev && git pull origin dev
-    git checkout -b feature/your-task
+    git checkout -b 类型/编号-简短描述    # 例如 feature/42-activity-checkin
        │
  2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
     gh pr create --draft --base dev \
@@ -96,6 +105,10 @@
  5. git add 具体文件名（禁止 git add .）
     git commit -m "feat(scope): 中文摘要"
     git push -u origin feature/your-task
+
+
+    → 推送后，PR 描述可能与实际提交内容不同步。
+    → 此时应执行 gh pr edit 更新 PR 描述，确保"改动内容"和"关联 Issue"反映最新状态
        │
  6. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
     → CI 生成 backend/Models/* 和 frontend/src/api/*
@@ -120,6 +133,15 @@
 ## Pull Request 规则
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
+    
+**关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅作示例用）。例外场景见 `AGENTS.md` → Agent 操作约束。
+
+**PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
+
+- `feat(activity): 新增活动报名人数限制`
+- `fix(venue): 修复场地预约时间冲突判断`
+- `docs: 更新 README 部署说明`
+- `ci(deploy): 新增 GitHub Actions SSH 部署工作流`
 
 合并规则：
 
@@ -193,6 +215,8 @@ gh issue create --template feature_request.md \
 然后空一行。
 
 空行之后，写一段详细的中文 commit message。
+
+> **PR 标题也使用同一格式**（不加空行和详情），参见 Pull Request 规则章节。
 
 允许使用的 type：
 
