@@ -146,6 +146,12 @@ export interface Activity {
    * @memberof Activity
    */
   currentParticipants: number;
+  /**
+   * 当前用户是否已报名；未传 currentUserId 时为 false
+   * @type {boolean}
+   * @memberof Activity
+   */
+  isRegistered: boolean;
 }
 
 /**
@@ -174,6 +180,7 @@ export function instanceOfActivity(value: object): value is Activity {
   if (!("endTime" in value) || value["endTime"] === undefined) return false;
   if (!("status" in value) || value["status"] === undefined) return false;
   if (!("currentParticipants" in value) || value["currentParticipants"] === undefined) return false;
+  if (!("isRegistered" in value) || value["isRegistered"] === undefined) return false;
   return true;
 }
 
@@ -209,6 +216,7 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
       json["checkoutStartAt"] == null ? undefined : new Date(json["checkoutStartAt"]),
     checkoutEndAt: json["checkoutEndAt"] == null ? undefined : new Date(json["checkoutEndAt"]),
     currentParticipants: json["currentParticipants"],
+    isRegistered: json["isRegistered"],
   };
 }
 
@@ -260,5 +268,6 @@ export function ActivityToJSONTyped(
         ? value["checkoutEndAt"]
         : value["checkoutEndAt"].toISOString(),
     currentParticipants: value["currentParticipants"],
+    isRegistered: value["isRegistered"],
   };
 }

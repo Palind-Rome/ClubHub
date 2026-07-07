@@ -21,6 +21,11 @@ import {
   ActivityParticipationToJSON,
 } from "../models/ActivityParticipation";
 import {
+  type ActivityRegistrationResult,
+  ActivityRegistrationResultFromJSON,
+  ActivityRegistrationResultToJSON,
+} from "../models/ActivityRegistrationResult";
+import {
   type ActivitySignRequest,
   ActivitySignRequestFromJSON,
   ActivitySignRequestToJSON,
@@ -124,6 +129,11 @@ import {
   PermissionDefinitionToJSON,
 } from "../models/PermissionDefinition";
 import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
+import {
+  type RegisterActivityRequest,
+  RegisterActivityRequestFromJSON,
+  RegisterActivityRequestToJSON,
+} from "../models/RegisterActivityRequest";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -236,8 +246,13 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
+export interface GetActivitiesRequest {
+  currentUserId?: number;
+}
+
 export interface GetActivityByIdRequest {
   activityId: number;
+  currentUserId?: number;
 }
 
 export interface GetActivityParticipationsRequest {
@@ -293,6 +308,11 @@ export interface LoginUserRequest {
 export interface MarkNoticeReadOperationRequest {
   noticeId: number;
   markNoticeReadRequest: MarkNoticeReadRequest;
+}
+
+export interface RegisterActivityOperationRequest {
+  activityId: number;
+  registerActivityRequest: RegisterActivityRequest;
 }
 
 export interface RegisterUserRequest {
@@ -1139,8 +1159,14 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getActivities without sending the request
    */
-  async getActivitiesRequestOpts(): Promise<runtime.RequestOpts> {
+  async getActivitiesRequestOpts(
+    requestParameters: GetActivitiesRequest,
+  ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1158,9 +1184,10 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取活动列表
    */
   async getActivitiesRaw(
+    requestParameters: GetActivitiesRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<Activity>>> {
-    const requestOptions = await this.getActivitiesRequestOpts();
+    const requestOptions = await this.getActivitiesRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ActivityFromJSON));
@@ -1170,9 +1197,10 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取活动列表
    */
   async getActivities(
+    requestParameters: GetActivitiesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Activity>> {
-    const response = await this.getActivitiesRaw(initOverrides);
+    const response = await this.getActivitiesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1190,6 +1218,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1999,6 +2031,73 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for registerActivity without sending the request
+   */
+  async registerActivityRequestOpts(
+    requestParameters: RegisterActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling registerActivity().',
+      );
+    }
+
+    if (requestParameters["registerActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "registerActivityRequest",
+        'Required parameter "registerActivityRequest" was null or undefined when calling registerActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/registrations`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterActivityRequestToJSON(requestParameters["registerActivityRequest"]),
+    };
+  }
+
+  /**
+   * 报名活动
+   */
+  async registerActivityRaw(
+    requestParameters: RegisterActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityRegistrationResult>> {
+    const requestOptions = await this.registerActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityRegistrationResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 报名活动
+   */
+  async registerActivity(
+    requestParameters: RegisterActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityRegistrationResult> {
+    const response = await this.registerActivityRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
