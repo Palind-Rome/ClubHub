@@ -70,9 +70,18 @@
 
 ## 日常开发流程
 
+鼓励 Issue 驱动开发：每个 PR 应尽可能关联一个 Issue，说明"为什么做"和"做什么"。
+
+具体的判定标准（何时必须关联、何时可以不关联）见 `AGENTS.md` → Agent 特别提醒。
+
 一个功能点的完整路径（11 步）：
 
 ```
+ 0. 确认或创建关联 Issue：
+    → 搜索是否已有相关 Issue，有则记录编号
+    → 没有则创建：gh issue create --template 对应模板 --label "..."
+    → 如果不属于必须关联的场景，跳过此步
+       │
  1. git checkout dev && git pull origin dev
     git checkout -b feature/your-task
        │
@@ -120,6 +129,8 @@
 ## Pull Request 规则
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
+
+**关联 Issue**：PR 应尽可能关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`。判定标准（何时必须关联、何时可以不关联）见 `AGENTS.md` → Agent 特别提醒。
 
 **PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
 
