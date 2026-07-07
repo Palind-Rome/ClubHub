@@ -39,10 +39,10 @@
 
 - `main`：阶段性稳定版本。只有课程节点、演示版本、答辩版本合入。
 - `dev`：日常集成分支。功能完成后先合入这里。
-- `feature/xxx`：功能分支，例如 `feature/activity-checkin`。
-- `fix/xxx`：缺陷修复分支，例如 `fix/venue-conflict`。
-- `docs/xxx`：文档分支，例如 `docs/requirements-analysis`。
-- `db/xxx`：数据库变更分支，例如 `db/add-seed-data`。
+- `feature/xxx`：功能分支，带关联 Issue 编号，例如 `feature/42-activity-checkin`。
+- `fix/xxx`：缺陷修复分支，带关联 Issue 编号，例如 `fix/56-venue-conflict`。
+- `docs/xxx`：文档分支，带关联 Issue 编号，例如 `docs/55-pr-title-format`。
+- `db/xxx`：数据库变更分支，带关联 Issue 编号，例如 `db/38-add-seed-data`。
 
 不要直接在 `main` 上提交。`dev` 通过 PR 合入。
 
@@ -70,14 +70,25 @@
 
 ## 日常开发流程
 
+实行 Issue 驱动开发：每个 PR **必须**关联一个 Issue，说明"为什么做"和"做什么"。在开始任何实质性改动之前，先确认或创建对应的 Issue。
+
+具体的判定标准（极少数的例外场景）见 `AGENTS.md` → Agent 操作约束。
+
 一个功能点的完整路径（11 步）：
 
-```
- 1. git checkout dev && git pull origin dev
-    git checkout -b feature/your-task
+```text
+ 0. 确认或创建关联 Issue：
+    → 搜索是否已有相关 Issue，有则记录编号
+    → 没有则创建：gh issue create --template 对应模板 --label "..."
+    → 如果不属于必须关联的场景，跳过此步
        │
- 2. 立即创建 draft PR（feature/your-task → dev）：
-    gh pr create --draft --base dev --title "feat(scope): 功能名称"
+ 1. git checkout dev && git pull origin dev
+    git checkout -b 类型/编号-简短描述    # 例如 feature/42-activity-checkin
+       │
+ 2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
+    gh pr create --draft --base dev \
+      --title "feat(scope): 功能名称" \
+      --label "课程功能点,优先级:P1,area:activity"
     （未安装 gh CLI 时：winget install GitHub.cli）
     → CI 不会在 draft 阶段运行，等代码写好再 mark ready
        │
@@ -94,6 +105,10 @@
  5. git add 具体文件名（禁止 git add .）
     git commit -m "feat(scope): 中文摘要"
     git push -u origin feature/your-task
+
+
+    → 推送后，PR 描述可能与实际提交内容不同步。
+    → 此时应执行 gh pr edit 更新 PR 描述，确保"改动内容"和"关联 Issue"反映最新状态
        │
  6. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
     → CI 生成 backend/Models/* 和 frontend/src/api/*
@@ -118,6 +133,15 @@
 ## Pull Request 规则
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
+    
+**关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅做示例用）。**`Closes` 必须放在行首，不能缩进或用列表符号**，否则 GitHub 不会自动关闭 Issue。不需要提 issue 的例外场景见 `AGENTS.md` → Agent 操作约束。
+
+**PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
+
+- `feat(activity): 新增活动报名人数限制`
+- `fix(venue): 修复场地预约时间冲突判断`
+- `docs: 更新 README 部署说明`
+- `ci(deploy): 新增 GitHub Actions SSH 部署工作流`
 
 合并规则：
 
@@ -125,6 +149,58 @@
 - `dev` 到 `main` 只在阶段性节点合并。
 - PR Review Rule 参考前文所述的 `.github/CODEOWNERS` 中的规则。
 - CI 失败时禁止合并。
+
+## Issue 与 PR 标签规范
+
+标签是 Issue 和 PR 分类管理的核心工具。仓库预设了以下几类标签，创建者必须按规则标注。
+
+### 标签分类
+
+| 分类 | 必选 | 作用 |
+|------|------|------|
+| **类型** | 必选其一 | 标识 Issue/PR 的性质（缺陷、功能点、文档、改进等） |
+| **优先级** | 必选其一 | 标识紧急程度，用于排期；由维护者与创建者协商确定 |
+| **领域** | 必选其一 | 标识涉及的业务模块，方便按模块筛选和分配任务 |
+| **全栈任务** | 涉及前后端联动时必选 | 标识需要前端 + 后端 + 数据库联动的任务 |
+| **状态** | 维护者管理 | 标识认领、重复、无效等处理状态 |
+
+### 查看可用标签
+
+具体标签值可能随项目阶段动态调整，以仓库实际配置为准。创建 Issue 或 PR 前，先用以下命令查看当前所有标签：
+
+```bash
+gh label list
+```
+
+### 创建命令
+
+```bash
+# PR（创建时直接带上标签，避免遗漏）
+gh pr create --draft --base dev \
+  --title "feat(scope): 标题" \
+  --label "课程功能点,优先级:P1,area:activity"
+
+# Issue（使用对应模板，按规则带齐标签）
+gh issue create --template bug_report.md \
+  --label "bug,优先级:P1,area:activity"
+gh issue create --template feature_request.md \
+  --label "课程功能点,优先级:P2,area:club"
+```
+
+### 核心规则
+
+- 类型、优先级、领域三个标签**必须**同时标注，不可缺省；全栈任务在涉及前后端联动时也必须标注。
+- 一个 Issue / PR 可以有多个标签，但类型标签只能选一个。
+- **禁止创建仓库中不存在的标签**，以 `gh label list` 输出的标签为准，避免标签膨胀。
+- 标签的具体使用场景和模板中的填写指引，见：
+
+  | 文件 | 用途 |
+  |------|------|
+  | `.github/pull_request_template.md` | PR 模板，顶部注释列出标签指引 |
+  | `.github/ISSUE_TEMPLATE/bug_report.md` | 缺陷报告 |
+  | `.github/ISSUE_TEMPLATE/feature_request.md` | 课程功能点 |
+  | `.github/ISSUE_TEMPLATE/doc_task.md` | 文档任务 |
+  | `.github/ISSUE_TEMPLATE/enhancement.md` | 功能改进 |
 
 ## Commit 信息
 
@@ -139,6 +215,8 @@
 然后空一行。
 
 空行之后，写一段详细的中文 commit message。
+
+> **PR 标题也使用同一格式**（不加空行和详情），参见 Pull Request 规则章节。
 
 允许使用的 type：
 
@@ -372,6 +450,7 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
 > 需要修改 API 行为时，请改 `api/openapi.yaml`，然后让流水线重新生成。
 > 如果只是同步了生成 workflow 的修复、但 `api/openapi.yaml` 没有新变化，可以在 GitHub Actions 中手动运行 `生成 API 代码`，选择自己的 feature 分支重新生成。
 > 维护生成 workflow 时，后端 `aspnetcore` generator 使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`。不要加入 `classModifier=public`；当前生成器会直接报错。生成后会删除无用的 `Org.OpenAPITools.Converters` 引用并运行格式化，避免生成代码破坏 CI。
+> `code-check.yml` 中排除自动生成后端模型时必须写仓库相对路径 `backend/Models/**`，不能写 `Models/**`；后者不会命中生成目录。
 
 ## 本地运行
 
@@ -404,7 +483,7 @@ docker compose build                            # 构建生产镜像
 docker compose up -d                            # 生产启动
 
 # GitHub CLI（未安装时 winget install GitHub.cli）
-gh pr create --draft --base dev --title "feat(scope): 摘要"   # 创建 draft PR
+gh pr create --draft --base dev --title "feat(scope): 摘要" --label "课程功能点,优先级:P1,area:activity"   # 创建 draft PR（按标签规范带齐标签）
 gh pr ready                                                     # 标记为 Ready for Review
 gh pr checks                                                    # 查看 CI 状态
 gh pr view --comments                                           # 查看 review 意见

@@ -12,7 +12,6 @@ jobs:
   code-check:
     name: 代码质量门禁
     runs-on: ubuntu-latest
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     needs: code-check
     steps:
       - name: Checkout
@@ -65,7 +63,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     needs: code-check
     steps:
       - name: Checkout
@@ -79,4 +76,4 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: dotnet format
-        run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes
+        run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes --exclude "backend/Models/**"
