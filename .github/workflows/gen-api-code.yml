@@ -79,7 +79,7 @@ jobs:
             -o frontend/src/api \
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
-          npx --yes prettier@3.9.4 --write frontend/src/api
+          npx --yes prettier@3.9.4 --write "frontend/src/api"
 
           # 清理生成器自带文件（模板脚本、忽略文件、元数据、文档）
           rm -f frontend/src/api/git_push.sh
@@ -123,8 +123,16 @@ jobs:
           fi
           rm -rf backend/Generated
 
-          find backend/Models -type f -name "*.cs" -print0 \
-            | xargs -0 sed -i '/^using Org\.OpenAPITools\.Converters;$/d'
+          # 移除生成代码中对不存在命名空间和类型的引用
+          find backend/Models -type f -name "*.cs" -exec sed -i \
+            -e '/^using Org\.OpenAPITools\.Converters;$/d' \
+            -e '/\[TypeConverter(typeof(CustomEnumConverter<.*>))\]/d' \
+            {} +
+
+          # 确保 Newtonsoft.Json 包已在项目中（生成模型依赖此包）
+          if ! grep -q 'Newtonsoft\.Json' backend/ClubHub.Api.csproj; then
+            dotnet add backend/ClubHub.Api.csproj package Newtonsoft.Json --version 13.0.3
+          fi
 
           dotnet format backend/ClubHub.Api.csproj --include backend/Models --verbosity minimal
           echo "后端 ASP.NET Core 模型已生成。"
@@ -138,5 +146,5 @@ jobs:
           commit_message: "chore(api): 从 openapi.yaml 自动生成 API 代码"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
-          file_pattern: "frontend/src/api/* backend/Models/*"
+          file_pattern: "frontend/src/api/** backend/Models/**"
           commit_options: "--no-verify"
