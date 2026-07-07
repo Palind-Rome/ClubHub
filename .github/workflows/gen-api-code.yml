@@ -92,6 +92,10 @@ jobs:
           rm -rf frontend/src/api/.openapi-generator
           rm -rf frontend/src/api/docs
 
+          # 删除 kebab-case 文件（未被引用，且与 PascalCase 在 Windows 上冲突）
+          rm -f frontend/src/api/models/activity.ts
+          rm -f frontend/src/api/models/club.ts
+
           echo "前端 TypeScript Fetch 客户端已生成。"
 
       - name: Setup .NET
