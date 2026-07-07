@@ -370,7 +370,8 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
 > **注意**：生成的文件（`frontend/src/api/*`、`backend/Models/*`）禁止手动修改。
 > 如果改了它们，下次 `gen-api-code.yml` 运行会覆盖你的改动。
 > 需要修改 API 行为时，请改 `api/openapi.yaml`，然后让流水线重新生成。
-> 维护生成 workflow 时，后端 `aspnetcore` generator 目前只保留 `aspnetCoreVersion=8.0` 参数。不要加入 `classModifier=public`；当前生成器会直接报错。`operationModifier` 只影响生成 Controller，而我们只复制 Models，因此也不需要保留。
+> 如果只是同步了生成 workflow 的修复、但 `api/openapi.yaml` 没有新变化，可以在 GitHub Actions 中手动运行 `生成 API 代码`，选择自己的 feature 分支重新生成。
+> 维护生成 workflow 时，后端 `aspnetcore` generator 使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`。不要加入 `classModifier=public`；当前生成器会直接报错。生成后会删除无用的 `Org.OpenAPITools.Converters` 引用并运行格式化，避免生成代码破坏 CI。
 
 ## 本地运行
 
