@@ -20,28 +20,34 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 认证上下文中的用户基础信息。
     /// </summary>
     [DataContract]
     public partial class AuthUser 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// 用户 ID。
         /// </summary>
+        /// <value>用户 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or Sets Username
+        /// 登录用户名。
         /// </summary>
+        /// <value>登录用户名。</value>
+        /* <example>stu_public</example> */
         [Required]
         [DataMember(Name="username", EmitDefaultValue=false)]
         public string Username { get; set; }
 
         /// <summary>
-        /// Gets or Sets RealName
+        /// 用户真实姓名。
         /// </summary>
+        /// <value>用户真实姓名。</value>
+        /* <example>张三</example> */
         [Required]
         [DataMember(Name="realName", EmitDefaultValue=false)]
         public string RealName { get; set; }
@@ -50,48 +56,63 @@ namespace Org.OpenAPITools.Models
         /// 学工号；学生 7 位，教师 5 位。
         /// </summary>
         /// <value>学工号；学生 7 位，教师 5 位。</value>
+        /* <example>2450001</example> */
         [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
-        /// Gets or Sets Gender
+        /// 性别。
         /// </summary>
+        /// <value>性别。</value>
+        /* <example>男</example> */
         [DataMember(Name="gender", EmitDefaultValue=true)]
         public string? Gender { get; set; }
 
         /// <summary>
-        /// Gets or Sets Phone
+        /// 联系电话。
         /// </summary>
+        /// <value>联系电话。</value>
+        /* <example>13800138000</example> */
         [DataMember(Name="phone", EmitDefaultValue=true)]
         public string? Phone { get; set; }
 
         /// <summary>
-        /// Gets or Sets Email
+        /// 邮箱地址。
         /// </summary>
+        /// <value>邮箱地址。</value>
+        /* <example>zhangsan@example.com</example> */
         [DataMember(Name="email", EmitDefaultValue=true)]
         public string? Email { get; set; }
 
         /// <summary>
-        /// Gets or Sets College
+        /// 所属学院。
         /// </summary>
+        /// <value>所属学院。</value>
+        /* <example>软件学院</example> */
         [DataMember(Name="college", EmitDefaultValue=true)]
         public string? College { get; set; }
 
         /// <summary>
-        /// Gets or Sets Major
+        /// 所属专业。
         /// </summary>
+        /// <value>所属专业。</value>
+        /* <example>软件工程</example> */
         [DataMember(Name="major", EmitDefaultValue=true)]
         public string? Major { get; set; }
 
         /// <summary>
-        /// Gets or Sets Grade
+        /// 年级。
         /// </summary>
+        /// <value>年级。</value>
+        /* <example>2024</example> */
         [DataMember(Name="grade", EmitDefaultValue=true)]
         public string? Grade { get; set; }
 
         /// <summary>
-        /// Gets or Sets AccountStatus
+        /// 账号状态，例如 normal 或 disabled。
         /// </summary>
+        /// <value>账号状态，例如 normal 或 disabled。</value>
+        /* <example>normal</example> */
         [Required]
         [DataMember(Name="accountStatus", EmitDefaultValue=false)]
         public string AccountStatus { get; set; }

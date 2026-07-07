@@ -20,29 +20,34 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 系统预置角色定义。
     /// </summary>
     [DataContract]
     public partial class RoleDefinition 
     {
         /// <summary>
-        /// Gets or Sets Code
+        /// 角色编码。
         /// </summary>
+        /// <value>角色编码。</value>
+        /* <example>STUDENT</example> */
         [Required]
         [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
-        /// Gets or Sets Name
+        /// 角色名称。
         /// </summary>
+        /// <value>角色名称。</value>
+        /* <example>普通学生</example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets Scope
+        /// 角色作用域。
         /// </summary>
+        /// <value>角色作用域。</value>
         
         public enum ScopeEnum
         {
@@ -61,22 +66,28 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets Scope
+        /// 角色作用域。
         /// </summary>
+        /// <value>角色作用域。</value>
+        /* <example>system</example> */
         [Required]
         [DataMember(Name="scope", EmitDefaultValue=true)]
         public ScopeEnum Scope { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 角色业务说明。
         /// </summary>
+        /// <value>角色业务说明。</value>
+        /* <example>注册后默认角色，可维护个人信息并浏览公开内容。</example> */
         [Required]
         [DataMember(Name="description", EmitDefaultValue=false)]
         public string Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets Permissions
+        /// 角色拥有的权限编码列表。
         /// </summary>
+        /// <value>角色拥有的权限编码列表。</value>
+        /* <example>[&quot;profile:view&quot;,&quot;public:view&quot;]</example> */
         [Required]
         [DataMember(Name="permissions", EmitDefaultValue=false)]
         public List<string> Permissions { get; set; }

@@ -23,43 +23,43 @@ import {
 } from "./AuthRole";
 
 /**
- *
+ * 权限检查结果。
  * @export
  * @interface PermissionCheckResult
  */
 export interface PermissionCheckResult {
   /**
-   *
+   * 被检查的用户 ID。
    * @type {number}
    * @memberof PermissionCheckResult
    */
   userId: number;
   /**
-   *
+   * 被检查的权限编码。
    * @type {string}
    * @memberof PermissionCheckResult
    */
   permission: string;
   /**
-   *
+   * 权限检查涉及的社团 ID；全局权限可为空。
    * @type {number}
    * @memberof PermissionCheckResult
    */
   clubId?: number | null;
   /**
-   *
+   * 是否允许访问。
    * @type {boolean}
    * @memberof PermissionCheckResult
    */
   allowed: boolean;
   /**
-   *
+   * 命中该权限的角色列表。
    * @type {Array<AuthRole>}
    * @memberof PermissionCheckResult
    */
   matchedRoles: Array<AuthRole>;
   /**
-   *
+   * 面向调用方的判定说明。
    * @type {string}
    * @memberof PermissionCheckResult
    */

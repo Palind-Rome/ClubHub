@@ -15,37 +15,37 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 系统预置角色定义。
  * @export
  * @interface RoleDefinition
  */
 export interface RoleDefinition {
   /**
-   *
+   * 角色编码。
    * @type {string}
    * @memberof RoleDefinition
    */
   code: string;
   /**
-   *
+   * 角色名称。
    * @type {string}
    * @memberof RoleDefinition
    */
   name: string;
   /**
-   *
+   * 角色作用域。
    * @type {RoleDefinitionScopeEnum}
    * @memberof RoleDefinition
    */
   scope: RoleDefinitionScopeEnum;
   /**
-   *
+   * 角色业务说明。
    * @type {string}
    * @memberof RoleDefinition
    */
   description: string;
   /**
-   *
+   * 角色拥有的权限编码列表。
    * @type {Array<string>}
    * @memberof RoleDefinition
    */

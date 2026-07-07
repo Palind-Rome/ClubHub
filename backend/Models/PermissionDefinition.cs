@@ -20,28 +20,34 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 权限目录项。
     /// </summary>
     [DataContract]
     public partial class PermissionDefinition 
     {
         /// <summary>
-        /// Gets or Sets Code
+        /// 权限编码。
         /// </summary>
+        /// <value>权限编码。</value>
+        /* <example>profile:view</example> */
         [Required]
         [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
-        /// Gets or Sets Name
+        /// 权限展示名称。
         /// </summary>
+        /// <value>权限展示名称。</value>
+        /* <example>查看个人信息</example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 权限说明。
         /// </summary>
+        /// <value>权限说明。</value>
+        /* <example>查看自己的账号、学工号和联系方式。</example> */
         [Required]
         [DataMember(Name="description", EmitDefaultValue=false)]
         public string Description { get; set; }

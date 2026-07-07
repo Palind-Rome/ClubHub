@@ -15,25 +15,25 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 权限目录项。
  * @export
  * @interface PermissionDefinition
  */
 export interface PermissionDefinition {
   /**
-   *
+   * 权限编码。
    * @type {string}
    * @memberof PermissionDefinition
    */
   code: string;
   /**
-   *
+   * 权限展示名称。
    * @type {string}
    * @memberof PermissionDefinition
    */
   name: string;
   /**
-   *
+   * 权限说明。
    * @type {string}
    * @memberof PermissionDefinition
    */

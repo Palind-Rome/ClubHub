@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 注册或登录成功后的认证响应。
     /// </summary>
     [DataContract]
     public partial class AuthResponse 
@@ -29,6 +29,7 @@ namespace Org.OpenAPITools.Models
         /// 登录演示令牌
         /// </summary>
         /// <value>登录演示令牌</value>
+        /* <example>demo-token</example> */
         [Required]
         [DataMember(Name="token", EmitDefaultValue=false)]
         public string Token { get; set; }
@@ -41,15 +42,18 @@ namespace Org.OpenAPITools.Models
         public AuthUser User { get; set; }
 
         /// <summary>
-        /// Gets or Sets Roles
+        /// 当前用户拥有的角色列表。
         /// </summary>
+        /// <value>当前用户拥有的角色列表。</value>
         [Required]
         [DataMember(Name="roles", EmitDefaultValue=false)]
         public List<AuthRole> Roles { get; set; }
 
         /// <summary>
-        /// Gets or Sets Permissions
+        /// 当前用户角色权限的并集。
         /// </summary>
+        /// <value>当前用户角色权限的并集。</value>
+        /* <example>[&quot;profile:view&quot;,&quot;public:view&quot;]</example> */
         [Required]
         [DataMember(Name="permissions", EmitDefaultValue=false)]
         public List<string> Permissions { get; set; }

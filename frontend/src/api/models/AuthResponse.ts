@@ -30,7 +30,7 @@ import {
 } from "./AuthUser";
 
 /**
- *
+ * 注册或登录成功后的认证响应。
  * @export
  * @interface AuthResponse
  */
@@ -48,13 +48,13 @@ export interface AuthResponse {
    */
   user: AuthUser;
   /**
-   *
+   * 当前用户拥有的角色列表。
    * @type {Array<AuthRole>}
    * @memberof AuthResponse
    */
   roles: Array<AuthRole>;
   /**
-   *
+   * 当前用户角色权限的并集。
    * @type {Array<string>}
    * @memberof AuthResponse
    */

@@ -15,31 +15,31 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 为目标用户分配系统级或社团级角色。
  * @export
  * @interface AssignRoleRequest
  */
 export interface AssignRoleRequest {
   /**
-   *
+   * 发起分配操作的用户 ID。
    * @type {number}
    * @memberof AssignRoleRequest
    */
   operatorUserId: number;
   /**
-   *
+   * 被分配角色的用户 ID。
    * @type {number}
    * @memberof AssignRoleRequest
    */
   targetUserId: number;
   /**
-   *
+   * 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
    * @type {string}
    * @memberof AssignRoleRequest
    */
   roleCode: string;
   /**
-   *
+   * 社团级角色所属社团 ID；系统级角色可为空。
    * @type {number}
    * @memberof AssignRoleRequest
    */

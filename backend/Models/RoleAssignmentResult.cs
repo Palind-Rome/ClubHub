@@ -20,14 +20,16 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 角色分配结果。
     /// </summary>
     [DataContract]
     public partial class RoleAssignmentResult 
     {
         /// <summary>
-        /// Gets or Sets TargetUserId
+        /// 被分配角色的用户 ID。
         /// </summary>
+        /// <value>被分配角色的用户 ID。</value>
+        /* <example>2</example> */
         [Required]
         [DataMember(Name="targetUserId", EmitDefaultValue=true)]
         public int TargetUserId { get; set; }
@@ -40,15 +42,19 @@ namespace Org.OpenAPITools.Models
         public AuthRole Role { get; set; }
 
         /// <summary>
-        /// Gets or Sets AlreadyExists
+        /// 该角色分配是否原本已存在。
         /// </summary>
+        /// <value>该角色分配是否原本已存在。</value>
+        /* <example>false</example> */
         [Required]
         [DataMember(Name="alreadyExists", EmitDefaultValue=true)]
         public bool AlreadyExists { get; set; }
 
         /// <summary>
-        /// Gets or Sets Message
+        /// 角色分配结果说明。
         /// </summary>
+        /// <value>角色分配结果说明。</value>
+        /* <example>角色分配成功。</example> */
         [Required]
         [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }

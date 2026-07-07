@@ -23,13 +23,13 @@ import {
 } from "./AuthRole";
 
 /**
- *
+ * 角色分配结果。
  * @export
  * @interface RoleAssignmentResult
  */
 export interface RoleAssignmentResult {
   /**
-   *
+   * 被分配角色的用户 ID。
    * @type {number}
    * @memberof RoleAssignmentResult
    */
@@ -41,13 +41,13 @@ export interface RoleAssignmentResult {
    */
   role: AuthRole;
   /**
-   *
+   * 该角色分配是否原本已存在。
    * @type {boolean}
    * @memberof RoleAssignmentResult
    */
   alreadyExists: boolean;
   /**
-   *
+   * 角色分配结果说明。
    * @type {string}
    * @memberof RoleAssignmentResult
    */

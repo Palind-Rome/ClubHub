@@ -20,48 +20,59 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 权限检查结果。
     /// </summary>
     [DataContract]
     public partial class PermissionCheckResult 
     {
         /// <summary>
-        /// Gets or Sets UserId
+        /// 被检查的用户 ID。
         /// </summary>
+        /// <value>被检查的用户 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Permission
+        /// 被检查的权限编码。
         /// </summary>
+        /// <value>被检查的权限编码。</value>
+        /* <example>club:internal:view</example> */
         [Required]
         [DataMember(Name="permission", EmitDefaultValue=false)]
         public string Permission { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 权限检查涉及的社团 ID；全局权限可为空。
         /// </summary>
+        /// <value>权限检查涉及的社团 ID；全局权限可为空。</value>
+        /* <example>1</example> */
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Allowed
+        /// 是否允许访问。
         /// </summary>
+        /// <value>是否允许访问。</value>
+        /* <example>true</example> */
         [Required]
         [DataMember(Name="allowed", EmitDefaultValue=true)]
         public bool Allowed { get; set; }
 
         /// <summary>
-        /// Gets or Sets MatchedRoles
+        /// 命中该权限的角色列表。
         /// </summary>
+        /// <value>命中该权限的角色列表。</value>
         [Required]
         [DataMember(Name="matchedRoles", EmitDefaultValue=false)]
         public List<AuthRole> MatchedRoles { get; set; }
 
         /// <summary>
-        /// Gets or Sets Message
+        /// 面向调用方的判定说明。
         /// </summary>
+        /// <value>面向调用方的判定说明。</value>
+        /* <example>允许访问。</example> */
         [Required]
         [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }

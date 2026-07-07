@@ -15,25 +15,25 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 用户在认证上下文中的角色及其权限。
  * @export
  * @interface AuthRole
  */
 export interface AuthRole {
   /**
-   *
+   * 角色 ID。
    * @type {number}
    * @memberof AuthRole
    */
   id: number;
   /**
-   *
+   * 角色编码。
    * @type {string}
    * @memberof AuthRole
    */
   code: string;
   /**
-   *
+   * 角色名称。
    * @type {string}
    * @memberof AuthRole
    */
@@ -45,13 +45,13 @@ export interface AuthRole {
    */
   displayName: string;
   /**
-   *
+   * 角色作用域，system 表示全局，club 表示社团范围。
    * @type {AuthRoleScopeEnum}
    * @memberof AuthRole
    */
   scope: AuthRoleScopeEnum;
   /**
-   *
+   * 当前角色对应的单个社团 ID；全局角色为空。
    * @type {number}
    * @memberof AuthRole
    */
@@ -63,13 +63,13 @@ export interface AuthRole {
    */
   clubIds: Array<number>;
   /**
-   *
+   * 该角色授予的权限编码列表。
    * @type {Array<string>}
    * @memberof AuthRole
    */
   permissions: Array<string>;
   /**
-   *
+   * 角色权限说明。
    * @type {string}
    * @memberof AuthRole
    */

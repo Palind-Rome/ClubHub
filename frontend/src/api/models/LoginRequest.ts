@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 用户登录请求，username 可填写用户名或学工号。
  * @export
  * @interface LoginRequest
  */
@@ -27,7 +27,7 @@ export interface LoginRequest {
    */
   username: string;
   /**
-   *
+   * 登录密码。
    * @type {string}
    * @memberof LoginRequest
    */

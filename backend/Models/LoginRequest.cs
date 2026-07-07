@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 用户登录请求，username 可填写用户名或学工号。
     /// </summary>
     [DataContract]
     public partial class LoginRequest 
@@ -29,16 +29,19 @@ namespace Org.OpenAPITools.Models
         /// 用户名或学工号。
         /// </summary>
         /// <value>用户名或学工号。</value>
+        /* <example>stu_public</example> */
         [Required]
-        [MinLength(1)]
+        [StringLength(50, MinimumLength=1)]
         [DataMember(Name="username", EmitDefaultValue=false)]
         public string Username { get; set; }
 
         /// <summary>
-        /// Gets or Sets Password
+        /// 登录密码。
         /// </summary>
+        /// <value>登录密码。</value>
+        /* <example>ClubHub123</example> */
         [Required]
-        [MinLength(1)]
+        [StringLength(128, MinimumLength=1)]
         [DataMember(Name="password", EmitDefaultValue=false)]
         public string Password { get; set; }
 

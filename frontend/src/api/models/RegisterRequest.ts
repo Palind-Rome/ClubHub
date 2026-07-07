@@ -15,25 +15,25 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
  * @export
  * @interface RegisterRequest
  */
 export interface RegisterRequest {
   /**
-   *
+   * 登录用户名，注册后必须唯一。
    * @type {string}
    * @memberof RegisterRequest
    */
   username: string;
   /**
-   *
+   * 登录密码，服务端仅保存密码摘要。
    * @type {string}
    * @memberof RegisterRequest
    */
   password: string;
   /**
-   *
+   * 用户真实姓名。
    * @type {string}
    * @memberof RegisterRequest
    */
@@ -45,37 +45,37 @@ export interface RegisterRequest {
    */
   studentNo: string;
   /**
-   *
+   * 性别，可为空；当前支持男、女。
    * @type {string}
    * @memberof RegisterRequest
    */
   gender?: string | null;
   /**
-   *
+   * 联系电话，可为空。
    * @type {string}
    * @memberof RegisterRequest
    */
   phone?: string | null;
   /**
-   *
+   * 邮箱地址，可为空。
    * @type {string}
    * @memberof RegisterRequest
    */
   email?: string | null;
   /**
-   *
+   * 所属学院，可为空。
    * @type {string}
    * @memberof RegisterRequest
    */
   college?: string | null;
   /**
-   *
+   * 所属专业，可为空。
    * @type {string}
    * @memberof RegisterRequest
    */
   major?: string | null;
   /**
-   *
+   * 年级，可为空。
    * @type {string}
    * @memberof RegisterRequest
    */
