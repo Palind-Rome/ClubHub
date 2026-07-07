@@ -70,9 +70,9 @@
 
 ## 日常开发流程
 
-鼓励 Issue 驱动开发：每个 PR 应尽可能关联一个 Issue，说明"为什么做"和"做什么"。
+实行 Issue 驱动开发：每个 PR **必须**关联一个 Issue，说明"为什么做"和"做什么"。在开始任何实质性改动之前，先确认或创建对应的 Issue。
 
-具体的判定标准（何时必须关联、何时可以不关联）见 `AGENTS.md` → Agent 特别提醒。
+具体的判定标准（极少数的例外场景）见 `AGENTS.md` → Agent 特别提醒。
 
 一个功能点的完整路径（11 步）：
 
@@ -130,7 +130,7 @@
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
 
-**关联 Issue**：PR 应尽可能关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`。判定标准（何时必须关联、何时可以不关联）见 `AGENTS.md` → Agent 特别提醒。
+**关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅作示例用）。例外场景见 `AGENTS.md` → Agent 特别提醒。
 
 **PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
 
