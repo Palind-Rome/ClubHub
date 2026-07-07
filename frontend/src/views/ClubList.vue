@@ -403,7 +403,11 @@ onMounted(async () => {
         <el-tag v-if="currentUser.canReviewClubApplication" type="warning" effect="plain">
           可审核注册申请
         </el-tag>
-        <el-tag v-for="role in currentUser.roles" :key="`${role.roleCode}-${role.clubId}`" effect="plain">
+        <el-tag
+          v-for="role in currentUser.roles"
+          :key="`${role.roleCode}-${role.clubId}`"
+          effect="plain"
+        >
           {{ role.roleName }}{{ role.clubName ? ` / ${role.clubName}` : "" }}
         </el-tag>
       </div>
@@ -452,7 +456,12 @@ onMounted(async () => {
         </div>
 
         <div v-if="isReviewer" class="filter-bar">
-          <el-select v-model="filters.auditStatus" clearable placeholder="审核状态" class="filter-item">
+          <el-select
+            v-model="filters.auditStatus"
+            clearable
+            placeholder="审核状态"
+            class="filter-item"
+          >
             <el-option label="待审核" value="pending" />
             <el-option label="已通过" value="approved" />
             <el-option label="已退回" value="rejected" />
@@ -551,7 +560,9 @@ onMounted(async () => {
           <el-table-column prop="category" label="类别" width="110" />
           <el-table-column prop="description" label="简介" min-width="220" show-overflow-tooltip />
           <el-table-column label="负责人" min-width="140">
-            <template #default="{ row }">{{ row.presidentName || row.applicantName || "-" }}</template>
+            <template #default="{ row }">{{
+              row.presidentName || row.applicantName || "-"
+            }}</template>
           </el-table-column>
           <el-table-column prop="advisorName" label="指导老师" width="120" />
           <el-table-column prop="contactPhone" label="联系电话" width="140" />
