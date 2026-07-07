@@ -128,62 +128,17 @@
 
 ## Issue 与 PR 标签规范
 
-Issue 和 PR 使用以下标签体系进行分类管理：
+仓库已预设一套标签体系（类型、优先级、领域、状态）。具体标签列表和使用规则写在模板中：
 
-### 类型标签（必选其一）
+- **PR 标签指引** → `.github/pull_request_template.md`（顶部 HTML 注释）
+- **缺陷报告** → `.github/ISSUE_TEMPLATE/bug_report.md`
+- **课程功能点** → `.github/ISSUE_TEMPLATE/feature_request.md`
+- **文档任务** → `.github/ISSUE_TEMPLATE/doc_task.md`
+- **功能改进** → `.github/ISSUE_TEMPLATE/enhancement.md`
 
-| 标签 | 含义 | 适用 |
-|------|------|------|
-| `bug` | 报告缺陷或非预期行为 | Issue |
-| `enhancement` | 新功能或改进请求 | Issue |
-| `documentation` | 文档相关（README、注释、设计文档） | Issue / PR |
-| `question` | 疑问、讨论或咨询 | Issue |
-| 课程功能点 | 对应课程数据库设计文档中的业务功能点 | Issue / PR |
-| 全栈任务 | 需要前端、后端、数据库联动完成的任务 | Issue |
+也可通过 `gh label list` 或 GitHub 网页查看所有可用标签。
 
-### 优先级标签（Issue 需要标注）
-
-| 标签 | 含义 | 适用场景 |
-|------|------|----------|
-| `优先级:P0` | 最高优先级 | 第一批打通主流程的任务，阻塞后续开发 |
-| `优先级:P1` | 高优先级 | 核心功能任务，必须在当前迭代完成 |
-| `优先级:P2` | 普通优先级 | 增强功能、统计展示、非紧急优化 |
-
-### 领域标签（Issue 需要标注）
-
-| 标签 | 含义 |
-|------|------|
-| `area:auth` | 用户、登录、注册、角色权限 |
-| `area:club` | 社团组织、成员、干部换届 |
-| `area:recruitment` | 社团招新与报名录取 |
-| `area:activity` | 活动创建、报名、签到、经费 |
-| `area:venue` | 场地与预约 |
-| `area:project` | 项目、任务、成果 |
-| `area:learning` | 课程、资料、学习记录 |
-| `area:material` | 物资库存、借用、归还 |
-| `area:evaluation` | 评优评奖、成员考核、贡献度 |
-| `area:notice` | 公告、通知、已读记录 |
-| `area:analytics` | 统计分析与可视化 |
-| `area:forum` | 讨论区、话题、回复 |
-| `area:frontend` | 前端 UI 美化、样式、交互体验 |
-
-### 状态标签
-
-| 标签 | 含义 | 说明 |
-|------|------|------|
-| `待领取` | 尚未指派 | 组员可在 Issue 评论区认领 |
-| `help wanted` | 需要协助 | 需要额外人手或技术支援 |
-| `good first issue` | 适合新手 | 推荐给新加入的组员 |
-| `duplicate` | 重复 | 已有相同 Issue / PR |
-| `invalid` | 无效 | 不符合规范或无法复现 |
-| `wontfix` | 不处理 | 经讨论决定暂不处理 |
-
-### 使用规则
-
-1. **新建 Issue** 时：必须选择 1 个类型标签；优先级和领域标签按需添加。
-2. **新建 PR** 时：标签应与关联的 Issue 保持一致；如果 PR 对应课程功能点，加上 `课程功能点` 标签。
-3. 一个 Issue / PR 可以有多个标签（如 `bug` + `area:activity` + `优先级:P1`），但类型标签只能选一个。
-4. 使用 `gh label list` 或 GitHub 网页端查看所有可用标签；不要创建仓库中不存在的标签，避免标签膨胀。
+**核心规则**：不要创建仓库中不存在的标签，避免标签膨胀。
 
 ## Commit 信息
 

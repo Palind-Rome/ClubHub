@@ -1,8 +1,8 @@
 ---
-name: 缺陷报告
-about: 报告缺陷或答辩演示风险
-title: "[缺陷] "
-labels: bug
+name: 功能改进
+about: 建议新功能、改进或优化（非课程强制要求）
+title: "[改进] "
+labels: enhancement
 assignees: ""
 ---
 
@@ -14,23 +14,19 @@ assignees: ""
                    area:project / area:learning / area:material /
                    area:evaluation / area:notice / area:analytics /
                    area:forum / area:frontend / area:recruitment
+  全栈任务       ：如果涉及前后端数据库联动，加上（必选）
 ============================================================
 -->
 
-## 问题现象
+## 改进目标
 
 
-## 预期表现
+## 现状与痛点
 
 
-## 复现步骤
+## 建议方案
 
-1.
 
-## 环境
+## 验收标准
 
-- 分支：
-- 浏览器 / 系统：
-- Oracle 连接：
-
-## 证据
+- [ ]
