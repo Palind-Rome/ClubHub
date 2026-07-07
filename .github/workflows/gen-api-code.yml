@@ -70,10 +70,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g @openapitools/openapi-generator-cli
           mkdir -p frontend/src/api
 
-          npx @openapitools/openapi-generator-cli generate \
+          npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
             -g typescript-axios \
             -o frontend/src/api \
@@ -89,14 +88,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g @openapitools/openapi-generator-cli
           mkdir -p backend/Models
 
-          npx @openapitools/openapi-generator-cli generate \
+          npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
             -g aspnetcore \
             -o backend/Generated \
-            --additional-properties=aspnetCoreVersion=net9.0,classModifier=public,operationModifier=virtual
+            --additional-properties=aspnetCoreVersion=8.0,classModifier=public,operationModifier=virtual
 
           # 只保留 Models 目录（Controller 由开发者手写）
           if [[ -d backend/Generated/src/*/Models ]]; then
