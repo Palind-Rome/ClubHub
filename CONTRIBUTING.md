@@ -134,7 +134,7 @@
 
 每个 PR 写清楚的内容：参考 `.github/pull_request_template.md`。
     
-**关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅作示例用）。例外场景见 `AGENTS.md` → Agent 操作约束。
+**关联 Issue**：PR 必须关联一个 Issue，在 PR 描述中写明 `Closes #123` 或 `Part of #456`（这里的数字仅做示例用）。**`Closes` 必须放在行首，不能缩进或用列表符号**，否则 GitHub 不会自动关闭 Issue。不需要提 issue 的例外场景见 `AGENTS.md` → Agent 操作约束。
 
 **PR 标题**必须使用 Conventional Commits 格式（与 Commit 信息规范保持一致），例如：
 
