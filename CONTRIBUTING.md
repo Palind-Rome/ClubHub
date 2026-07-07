@@ -39,10 +39,10 @@
 
 - `main`：阶段性稳定版本。只有课程节点、演示版本、答辩版本合入。
 - `dev`：日常集成分支。功能完成后先合入这里。
-- `feature/xxx`：功能分支，例如 `feature/activity-checkin`。
-- `fix/xxx`：缺陷修复分支，例如 `fix/venue-conflict`。
-- `docs/xxx`：文档分支，例如 `docs/requirements-analysis`。
-- `db/xxx`：数据库变更分支，例如 `db/add-seed-data`。
+- `feature/xxx`：功能分支，带关联 Issue 编号，例如 `feature/42-activity-checkin`。
+- `fix/xxx`：缺陷修复分支，带关联 Issue 编号，例如 `fix/56-venue-conflict`。
+- `docs/xxx`：文档分支，带关联 Issue 编号，例如 `docs/55-pr-title-format`。
+- `db/xxx`：数据库变更分支，带关联 Issue 编号，例如 `db/38-add-seed-data`。
 
 不要直接在 `main` 上提交。`dev` 通过 PR 合入。
 
@@ -83,7 +83,7 @@
     → 如果不属于必须关联的场景，跳过此步
        │
  1. git checkout dev && git pull origin dev
-    git checkout -b feature/your-task
+    git checkout -b 类型/编号-简短描述    # 例如 feature/42-activity-checkin
        │
  2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
     gh pr create --draft --base dev \
