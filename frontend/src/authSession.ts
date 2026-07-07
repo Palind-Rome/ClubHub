@@ -16,8 +16,10 @@ export interface AuthRole {
   id: number;
   code: string;
   name: string;
+  displayName: string;
   scope: "system" | "club";
   clubId: number | null;
+  clubIds: number[];
   permissions: string[];
   permissionDesc: string | null;
 }
@@ -33,10 +35,6 @@ const authKey = "clubhub-auth";
 const roleKeyName = "clubhub-active-role";
 const sessionEvent = "clubhub-session-change";
 
-export function roleKey(role: AuthRole) {
-  return `${role.code}:${role.clubId ?? "system"}`;
-}
-
 export function readAuth(): AuthResponse | null {
   const raw = localStorage.getItem(authKey);
   if (!raw) return null;
@@ -50,24 +48,8 @@ export function readAuth(): AuthResponse | null {
   }
 }
 
-export function readActiveRole(auth = readAuth()): AuthRole | null {
-  const key = localStorage.getItem(roleKeyName);
-  if (!auth || !key) return null;
-  return auth.roles.find((role) => roleKey(role) === key) ?? null;
-}
-
 export function saveAuth(auth: AuthResponse) {
   localStorage.setItem(authKey, JSON.stringify(auth));
-  localStorage.removeItem(roleKeyName);
-  notifySessionChange();
-}
-
-export function saveActiveRole(role: AuthRole) {
-  localStorage.setItem(roleKeyName, roleKey(role));
-  notifySessionChange();
-}
-
-export function clearActiveRole() {
   localStorage.removeItem(roleKeyName);
   notifySessionChange();
 }
@@ -79,8 +61,7 @@ export function clearSession() {
 }
 
 export function hasCompletedSession() {
-  const auth = readAuth();
-  return Boolean(auth && readActiveRole(auth));
+  return Boolean(readAuth());
 }
 
 export function onSessionChange(callback: () => void) {

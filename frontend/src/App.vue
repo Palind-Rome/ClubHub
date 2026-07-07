@@ -3,30 +3,30 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
   type AuthResponse,
-  type AuthRole,
-  clearActiveRole,
   clearSession,
   onSessionChange,
-  readActiveRole,
   readAuth,
 } from "./authSession";
 
 const healthOk = ref(false);
 const router = useRouter();
 const auth = ref<AuthResponse | null>(null);
-const activeRole = ref<AuthRole | null>(null);
 let stopSessionListener: (() => void) | null = null;
 
-const hasCompletedSession = computed(() => Boolean(auth.value && activeRole.value));
+const hasSession = computed(() => Boolean(auth.value));
 const accountLabel = computed(() => {
   const user = auth.value?.user;
   if (!user) return "账号与权限";
   return user.studentNo ? `${user.realName} / ${user.studentNo}` : user.realName;
 });
+const roleSummary = computed(() => {
+  const roles = auth.value?.roles ?? [];
+  if (roles.length === 0) return "暂无角色";
+  return roles.map((role) => role.displayName || role.name).join("、");
+});
 
 function refreshSession() {
   auth.value = readAuth();
-  activeRole.value = readActiveRole(auth.value);
 }
 
 async function checkHealth() {
@@ -36,12 +36,6 @@ async function checkHealth() {
   } catch {
     healthOk.value = false;
   }
-}
-
-function switchRole() {
-  clearActiveRole();
-  refreshSession();
-  router.push("/auth");
 }
 
 function logout() {
@@ -62,15 +56,14 @@ onUnmounted(() => {
 
 <template>
   <el-container>
-    <el-header v-if="hasCompletedSession">
+    <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
       <el-menu mode="horizontal" router :default-active="$route.path" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <div class="session">
-          <el-tag type="success" size="small">{{ activeRole?.name }}</el-tag>
-          <el-button link type="primary" @click="switchRole">切换角色</el-button>
+          <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{ roleSummary }}</el-tag>
           <el-button link type="danger" @click="logout">退出</el-button>
         </div>
         <div class="health">
@@ -113,5 +106,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+.role-tag {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

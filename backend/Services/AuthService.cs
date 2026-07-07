@@ -11,6 +11,10 @@ public class AuthService
     private const string SystemScope = "system";
     private const string ClubScope = "club";
     private const string StudentRole = "STUDENT";
+    private const string TeacherRole = "TEACHER";
+    private const string ClubMemberRole = "CLUB_MEMBER";
+    private const string ClubOfficerRole = "CLUB_OFFICER";
+    private const string ClubLeaderRole = "CLUB_LEADER";
     private const string AdvisorRole = "ADVISOR";
     private const string SystemAdminRole = "SYSTEM_ADMIN";
 
@@ -72,19 +76,25 @@ public class AuthService
             "注册后默认角色，可维护个人信息、浏览公开内容、申请社团和参与报名。",
             ["profile:view", "profile:update", "public:view", "club:apply", "recruitment:apply", "activity:register", "own:records:view"]),
         new(
-            "CLUB_MEMBER",
+            TeacherRole,
+            "教师",
+            SystemScope,
+            "教师基础身份，可维护个人信息并浏览公开社团、招募、活动和公告。",
+            ["profile:view", "profile:update", "public:view", "own:records:view"]),
+        new(
+            ClubMemberRole,
             "社团成员",
             ClubScope,
             "指定社团内角色，可查看社团内部信息、资源、通知和参与讨论、签到。",
             ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view"]),
         new(
-            "CLUB_OFFICER",
+            ClubOfficerRole,
             "社团干部",
             ClubScope,
             "指定社团内角色，可管理招募、活动、通知、资源、项目任务和物资借还。",
             ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft"]),
         new(
-            "CLUB_LEADER",
+            ClubLeaderRole,
             "社团负责人",
             ClubScope,
             "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
@@ -142,7 +152,7 @@ public class AuthService
 
         if (!IsValidStudentOrStaffNo(studentNo))
         {
-            return AuthServiceResult<AuthResponse>.Fail(400, "学工号必须为学生 7 位或老师 5 位。");
+            return AuthServiceResult<AuthResponse>.Fail(400, "学工号必须为学生 7 位或教师 5 位。");
         }
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
@@ -234,7 +244,7 @@ public class AuthService
             return AuthServiceResult<PermissionCheckResult>.Fail(404, "用户不存在。");
         }
 
-        var roles = await GetAuthRolesAsync(userId);
+        var roles = await GetPermissionRolesAsync(userId);
         var matchedRoles = roles
             .Where(role => RoleAllows(role, permission, clubId))
             .ToList();
@@ -326,7 +336,7 @@ public class AuthService
             return (false, "操作人账号已被禁用。");
         }
 
-        var roles = await GetAuthRolesAsync(operatorUserId);
+        var roles = await GetPermissionRolesAsync(operatorUserId);
         var canAssignGlobal = roles.Any(role => RoleAllows(role, "role:assign:global", clubId));
         if (targetRole.Scope == SystemScope)
         {
@@ -342,7 +352,7 @@ public class AuthService
             return (true, "允许分配社团角色。");
         }
 
-        var limitedClubRoles = new[] { "CLUB_MEMBER", "CLUB_OFFICER" };
+        var limitedClubRoles = new[] { ClubMemberRole, ClubOfficerRole };
         if (canAssignOwnClub && limitedClubRoles.Contains(targetRole.Code))
         {
             return (true, "允许分配本社团成员或干部角色。");
@@ -353,8 +363,9 @@ public class AuthService
 
     private async Task<AuthResponse> BuildAuthResponseAsync(User user)
     {
-        var roles = await GetAuthRolesAsync(user.UserId);
-        var permissions = roles
+        var rawRoles = await GetRawAuthRolesAsync(user.UserId);
+        var displayRoles = await BuildDisplayRolesAsync(rawRoles);
+        var permissions = BuildPermissionRoles(rawRoles)
             .SelectMany(r => r.Permissions)
             .Distinct()
             .OrderBy(p => p)
@@ -363,11 +374,17 @@ public class AuthService
         return new AuthResponse(
             GenerateDemoToken(),
             ToAuthUser(user),
-            roles,
+            displayRoles,
             permissions);
     }
 
-    private async Task<IReadOnlyList<AuthRole>> GetAuthRolesAsync(int userId)
+    private async Task<IReadOnlyList<AuthRole>> GetPermissionRolesAsync(int userId)
+    {
+        var rawRoles = await GetRawAuthRolesAsync(userId);
+        return BuildPermissionRoles(rawRoles);
+    }
+
+    private async Task<IReadOnlyList<AuthRole>> GetRawAuthRolesAsync(int userId)
     {
         var userRoles = await _db.UserRoles
             .Include(ur => ur.Role)
@@ -381,6 +398,177 @@ public class AuthService
             .Select(ur => ToAuthRole(ur.Role!, ur.ClubId))
             .ToList();
     }
+
+    private async Task<IReadOnlyList<AuthRole>> BuildDisplayRolesAsync(IReadOnlyList<AuthRole> rawRoles)
+    {
+        var clubIds = rawRoles
+            .Where(role => role.ClubId is not null)
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .ToList();
+        var clubNames = clubIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _db.Clubs
+                .Where(club => clubIds.Contains(club.ClubId))
+                .ToDictionaryAsync(club => club.ClubId, club => club.ClubName);
+        var displayRoles = new List<AuthRole>();
+
+        foreach (var role in rawRoles)
+        {
+            if (role.Code == StudentRole)
+            {
+                AddDisplayRole(role with { DisplayName = role.Name, ClubId = null, ClubIds = [] });
+                continue;
+            }
+
+            if (IsStudentClubRole(role))
+            {
+                var clubId = role.ClubId!.Value;
+                AddDisplayRole(role with
+                {
+                    DisplayName = BuildScopedDisplayName(GetClubName(clubId), role.Name),
+                    ClubIds = [clubId]
+                });
+                continue;
+            }
+
+            if (role.Code == AdvisorRole)
+            {
+                if (role.ClubId is not null)
+                {
+                    var clubId = role.ClubId.Value;
+                    AddDisplayRole(role with
+                    {
+                        DisplayName = BuildScopedDisplayName(GetClubName(clubId), role.Name),
+                        ClubIds = [clubId]
+                    });
+                }
+
+                continue;
+            }
+
+            AddDisplayRole(role with { DisplayName = role.Name });
+        }
+
+        return displayRoles;
+
+        string GetClubName(int clubId) =>
+            clubNames.TryGetValue(clubId, out var clubName) && !string.IsNullOrWhiteSpace(clubName)
+                ? clubName
+                : $"社团{clubId}";
+
+        void AddDisplayRole(AuthRole role)
+        {
+            if (displayRoles.Any(existing => existing.Code == role.Code && existing.ClubId == role.ClubId))
+            {
+                return;
+            }
+
+            displayRoles.Add(role);
+        }
+    }
+
+    private static IReadOnlyList<AuthRole> BuildPermissionRoles(IReadOnlyList<AuthRole> rawRoles)
+    {
+        var permissionRoles = new List<AuthRole>();
+        AuthRole? permissionStudentRole = null;
+        AuthRole? permissionAdvisorRole = null;
+
+        foreach (var role in rawRoles)
+        {
+            if (role.Code == StudentRole)
+            {
+                permissionStudentRole ??= BuildStudentRole(rawRoles, role);
+                if (!permissionRoles.Any(r => r.Code == StudentRole))
+                {
+                    permissionRoles.Add(permissionStudentRole);
+                }
+                continue;
+            }
+
+            if (role.Code == ClubMemberRole && rawRoles.Any(r => r.Code == StudentRole))
+            {
+                continue;
+            }
+
+            if (role.Code == AdvisorRole)
+            {
+                if (role.ClubId is null)
+                {
+                    continue;
+                }
+
+                permissionAdvisorRole ??= BuildAdvisorRole(rawRoles, role);
+                if (!permissionRoles.Any(r => r.Code == AdvisorRole))
+                {
+                    permissionRoles.Add(permissionAdvisorRole);
+                }
+                continue;
+            }
+
+            permissionRoles.Add(role);
+        }
+
+        return permissionRoles;
+    }
+
+    private static AuthRole BuildStudentRole(IReadOnlyList<AuthRole> rawRoles, AuthRole template)
+    {
+        var clubIds = rawRoles
+            .Where(role => role.Code == ClubMemberRole && role.ClubId is not null)
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .OrderBy(clubId => clubId)
+            .ToList();
+        var permissions = MergePermissions(
+            GetRolePermissions(StudentRole),
+            GetRolePermissions(ClubMemberRole));
+
+        return template with
+        {
+            ClubId = null,
+            ClubIds = clubIds,
+            Permissions = permissions
+        };
+    }
+
+    private static AuthRole BuildAdvisorRole(IReadOnlyList<AuthRole> rawRoles, AuthRole template)
+    {
+        var clubIds = rawRoles
+            .Where(role => role.Code == AdvisorRole && role.ClubId is not null)
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .OrderBy(clubId => clubId)
+            .ToList();
+
+        return template with
+        {
+            ClubId = null,
+            ClubIds = clubIds
+        };
+    }
+
+    private static bool IsStudentClubRole(AuthRole role) =>
+        role.ClubId is not null && role.Code is ClubMemberRole or ClubOfficerRole or ClubLeaderRole;
+
+    private static string BuildScopedDisplayName(string clubName, string roleName)
+    {
+        const string clubPrefix = "社团";
+        var roleSuffix = roleName.StartsWith(clubPrefix, StringComparison.Ordinal)
+            ? roleName[clubPrefix.Length..]
+            : roleName;
+        return $"{clubName}{roleSuffix}";
+    }
+
+    private static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
+        BaseRoles.FirstOrDefault(role => role.Code == roleCode)?.Permissions ?? [];
+
+    private static IReadOnlyList<string> MergePermissions(params IReadOnlyList<string>[] permissionGroups) =>
+        permissionGroups
+            .SelectMany(permission => permission)
+            .Distinct()
+            .OrderBy(permission => permission)
+            .ToList();
 
     private static AuthUser ToAuthUser(User user) => new(
         user.UserId,
@@ -402,20 +590,43 @@ public class AuthService
             role.RoleId,
             role.RoleCode,
             role.RoleName,
+            role.RoleName,
             role.RoleScope,
             clubId,
+            clubId is null ? [] : [clubId.Value],
             roleDef?.Permissions ?? [],
             role.PermissionDesc);
     }
 
     private static bool RoleAllows(AuthRole role, string permission, int? clubId)
     {
-        if (!role.Permissions.Contains("*") && !role.Permissions.Contains(permission))
+        if (role.Permissions.Contains("*"))
+        {
+            return true;
+        }
+
+        if (!role.Permissions.Contains(permission))
         {
             return false;
         }
 
-        return role.Scope == SystemScope || (clubId is not null && role.ClubId == clubId);
+        if (role.Code == StudentRole && GetRolePermissions(ClubMemberRole).Contains(permission))
+        {
+            return clubId is not null && role.ClubIds.Contains(clubId.Value);
+        }
+
+        if (role.Code == AdvisorRole)
+        {
+            return clubId is not null && role.ClubIds.Contains(clubId.Value);
+        }
+
+        if (role.Scope == SystemScope)
+        {
+            return true;
+        }
+
+        return clubId is not null &&
+            (role.ClubId == clubId || role.ClubIds.Contains(clubId.Value));
     }
 
     private async Task<List<Role>> EnsureBaseRolesAsync()
@@ -514,7 +725,7 @@ public class AuthService
     {
         var normalized = NormalizeText(studentNo);
         if (IsStudentNo(normalized)) return StudentRole;
-        if (IsStaffNo(normalized)) return AdvisorRole;
+        if (IsStaffNo(normalized)) return TeacherRole;
         return null;
     }
 

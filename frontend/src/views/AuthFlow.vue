@@ -5,12 +5,8 @@ import { ElMessage } from "element-plus";
 import {
   type AuthResponse,
   type AuthRole,
-  clearActiveRole,
   clearSession,
-  readActiveRole,
   readAuth,
-  roleKey,
-  saveActiveRole,
   saveAuth,
 } from "../authSession";
 
@@ -22,7 +18,6 @@ interface PermissionDefinition {
 
 const router = useRouter();
 const auth = ref<AuthResponse | null>(readAuth());
-const activeRole = ref<AuthRole | null>(readActiveRole(auth.value));
 const mode = ref<"login" | "register">("login");
 const loading = ref(false);
 const permissionCatalog = ref<PermissionDefinition[]>([]);
@@ -47,7 +42,6 @@ const registerForm = ref({
 
 const currentStep = computed(() => {
   if (!auth.value) return mode.value;
-  if (!activeRole.value) return "role";
   return "account";
 });
 
@@ -86,7 +80,8 @@ async function login() {
       body: JSON.stringify(loginForm.value),
     });
     applyAuth(result);
-    ElMessage.success("登录成功，请选择本次使用的角色");
+    ElMessage.success("登录成功");
+    router.push("/clubs");
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "登录失败");
   } finally {
@@ -106,7 +101,7 @@ async function register() {
   }
 
   if (!identityLabel(registerForm.value.studentNo)) {
-    ElMessage.warning("学工号必须为学生 7 位或老师 5 位");
+    ElMessage.warning("学工号必须为学生 7 位或教师 5 位");
     return;
   }
 
@@ -117,7 +112,8 @@ async function register() {
       body: JSON.stringify(registerForm.value),
     });
     applyAuth(result);
-    ElMessage.success("注册成功，请选择本次使用的角色");
+    ElMessage.success("注册成功");
+    router.push("/clubs");
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "注册失败");
   } finally {
@@ -127,25 +123,11 @@ async function register() {
 
 function applyAuth(nextAuth: AuthResponse) {
   auth.value = nextAuth;
-  activeRole.value = null;
   saveAuth(nextAuth);
-}
-
-function chooseRole(role: AuthRole) {
-  activeRole.value = role;
-  saveActiveRole(role);
-  ElMessage.success(`当前角色已切换为：${role.name}`);
-  router.push("/clubs");
-}
-
-function switchRole() {
-  activeRole.value = null;
-  clearActiveRole();
 }
 
 function logout() {
   auth.value = null;
-  activeRole.value = null;
   clearSession();
   mode.value = "login";
 }
@@ -154,8 +136,17 @@ function scopeLabel(scope: string) {
   return scope === "club" ? "社团范围" : "全局";
 }
 
+function roleDisplayName(role: AuthRole) {
+  return role.displayName || role.name;
+}
+
+function roleKey(role: AuthRole) {
+  const clubKey = role.clubId ?? (role.clubIds.length ? role.clubIds.join("-") : "global");
+  return `${role.code}:${clubKey}:${roleDisplayName(role)}`;
+}
+
 function roleDescription(role: AuthRole) {
-  return role.clubId ? `${scopeLabel(role.scope)} / 社团 ${role.clubId}` : scopeLabel(role.scope);
+  return scopeLabel(role.scope);
 }
 
 function permissionLabel(code: string) {
@@ -165,7 +156,7 @@ function permissionLabel(code: string) {
 function identityLabel(studentNo?: string | null) {
   const normalized = (studentNo ?? "").trim();
   if (/^\d{7}$/.test(normalized)) return "学生";
-  if (/^\d{5}$/.test(normalized)) return "老师";
+  if (/^\d{5}$/.test(normalized)) return "教师";
   return "";
 }
 
@@ -212,7 +203,7 @@ loadPermissionCatalog();
     <section v-else-if="currentStep === 'register'" class="auth-shell register-shell">
       <div class="intro">
         <h1>创建账号</h1>
-        <p>学工号学生 7 位、老师 5 位；可用角色由数据库中的用户角色关系决定。</p>
+        <p>学工号学生 7 位、教师 5 位；可用角色由数据库中的用户角色关系决定。</p>
       </div>
 
       <el-form class="auth-panel register-panel" label-position="top">
@@ -227,9 +218,9 @@ loadPermissionCatalog();
             <el-input v-model="registerForm.realName" />
           </el-form-item>
           <el-form-item label="学工号" required>
-            <el-input v-model="registerForm.studentNo" maxlength="7" placeholder="学生 7 位，老师 5 位" />
+            <el-input v-model="registerForm.studentNo" maxlength="7" placeholder="学生 7 位，教师 5 位" />
             <div class="field-help">
-              {{ registerIdentity ? `当前判断为：${registerIdentity}` : "请输入学生 7 位或老师 5 位学工号" }}
+              {{ registerIdentity ? `当前判断为：${registerIdentity}` : "请输入学生 7 位或教师 5 位学工号" }}
             </div>
           </el-form-item>
           <el-form-item label="性别">
@@ -261,41 +252,13 @@ loadPermissionCatalog();
       </el-form>
     </section>
 
-    <section v-else-if="currentStep === 'role' && auth" class="role-page">
-      <div class="page-title">
-        <div>
-          <h2>选择本次使用的角色</h2>
-          <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）可以拥有多个角色，请选择一个进入系统。</p>
-        </div>
-        <el-button plain type="danger" @click="logout">退出登录</el-button>
-      </div>
-
-      <el-empty v-if="auth.roles.length === 0" description="当前账号暂无可用角色，请联系管理员分配角色" />
-      <div v-else class="role-grid">
-        <button
-          v-for="role in auth.roles"
-          :key="roleKey(role)"
-          type="button"
-          class="role-card"
-          @click="chooseRole(role)"
-        >
-          <span class="role-name">{{ role.name }}</span>
-          <span class="role-scope">{{ roleDescription(role) }}</span>
-          <span class="role-permissions">
-            {{ role.permissions.slice(0, 4).map(permissionLabel).join("、") }}
-          </span>
-        </button>
-      </div>
-    </section>
-
-    <section v-else-if="auth && activeRole" class="account-page">
+    <section v-else-if="auth" class="account-page">
       <div class="page-title">
         <div>
           <h2>当前账号</h2>
           <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）</p>
         </div>
         <div class="actions">
-          <el-button @click="switchRole">切换角色</el-button>
           <el-button type="danger" plain @click="logout">退出登录</el-button>
         </div>
       </div>
@@ -315,10 +278,24 @@ loadPermissionCatalog();
 
         <div class="info-panel">
           <h3>当前角色</h3>
-          <el-tag type="success">{{ activeRole.name }}</el-tag>
-          <p class="muted">{{ roleDescription(activeRole) }}</p>
+          <el-empty v-if="auth.roles.length === 0" description="当前账号暂无可用角色，请联系管理员分配角色" />
+          <div v-else class="role-list">
+            <div v-for="role in auth.roles" :key="roleKey(role)" class="role-item">
+              <div class="role-heading">
+                <el-tag type="success">{{ roleDisplayName(role) }}</el-tag>
+                <span class="role-scope">{{ roleDescription(role) }}</span>
+              </div>
+              <div class="permission-tags">
+                <el-tag v-for="permission in role.permissions" :key="permission" size="small" effect="plain">
+                  {{ permissionLabel(permission) }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="permission-title">权限并集</h3>
           <div class="permission-tags">
-            <el-tag v-for="permission in activeRole.permissions" :key="permission" size="small" effect="plain">
+            <el-tag v-for="permission in auth.permissions" :key="permission" size="small" effect="plain">
               {{ permissionLabel(permission) }}
             </el-tag>
           </div>
@@ -403,44 +380,32 @@ loadPermissionCatalog();
   margin-bottom: 16px;
 }
 
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+.role-list {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.role-card {
-  text-align: left;
-  background: #fff;
+.role-item {
   border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  padding: 16px;
-  cursor: pointer;
+  padding: 12px;
 }
 
-.role-card:hover {
-  border-color: var(--el-color-primary);
+.role-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.role-name,
-.role-scope,
-.role-permissions {
-  display: block;
-}
-
-.role-name {
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.role-scope,
-.role-permissions {
+.role-scope {
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
-.role-permissions {
-  margin-top: 10px;
+.permission-title {
+  margin-top: 18px;
 }
 
 .account-grid {

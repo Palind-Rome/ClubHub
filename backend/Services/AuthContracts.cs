@@ -55,8 +55,10 @@ public record AuthRole(
     int Id,
     string Code,
     string Name,
+    string DisplayName,
     string Scope,
     int? ClubId,
+    IReadOnlyList<int> ClubIds,
     IReadOnlyList<string> Permissions,
     string? PermissionDesc
 );

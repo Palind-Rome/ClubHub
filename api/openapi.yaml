@@ -346,7 +346,7 @@ components:
           minLength: 1
         studentNo:
           type: string
-          description: 学工号；学生 7 位，老师 5 位。
+          description: 学工号；学生 7 位，教师 5 位。
           pattern: "^([0-9]{7}|[0-9]{5})$"
         gender:
           type: string
@@ -436,7 +436,7 @@ components:
           type: string
         studentNo:
           type: string
-          description: 学工号；学生 7 位，老师 5 位。
+          description: 学工号；学生 7 位，教师 5 位。
           nullable: true
         gender:
           type: string
@@ -473,12 +473,20 @@ components:
           type: string
         name:
           type: string
+        displayName:
+          type: string
+          description: 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
         scope:
           type: string
           enum: [system, club]
         clubId:
           type: integer
           nullable: true
+        clubIds:
+          type: array
+          description: 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
+          items:
+            type: integer
         permissions:
           type: array
           items:
@@ -490,7 +498,9 @@ components:
         - id
         - code
         - name
+        - displayName
         - scope
+        - clubIds
         - permissions
 
     RoleDefinition:
