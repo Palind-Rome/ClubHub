@@ -76,7 +76,7 @@
 
 一个功能点的完整路径（11 步）：
 
-```
+```text
  0. 确认或创建关联 Issue：
     → 搜索是否已有相关 Issue，有则记录编号
     → 没有则创建：gh issue create --template 对应模板 --label "..."
