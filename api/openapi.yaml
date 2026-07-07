@@ -141,6 +141,22 @@ paths:
 
 components:
   schemas:
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+          example: venue_reservation_conflict
+        message:
+          type: string
+          example: 该场地在所选时间段已有已通过预约。
+        detail:
+          type: string
+          nullable: true
+      required:
+        - message
+
     HealthStatus:
       type: object
       properties:
