@@ -1,6 +1,9 @@
-export * from "./activity";
-export * from "./api-error";
-export * from "./club";
-export * from "./create-club-request";
-export * from "./health-status";
-export * from "./update-club-request";
+// @ts-nocheck
+/* tslint:disable */
+/* eslint-disable */
+export * from "./Activity";
+export * from "./ApiError";
+export * from "./Club";
+export * from "./CreateClubRequest";
+export * from "./HealthStatus";
+export * from "./UpdateClubRequest";
