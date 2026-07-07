@@ -94,11 +94,15 @@ jobs:
             -i api/openapi.yaml \
             -g aspnetcore \
             -o backend/Generated \
-            --additional-properties=aspnetCoreVersion=8.0,classModifier=public,operationModifier=virtual
+            --additional-properties=aspnetCoreVersion=8.0
 
           # 只保留 Models 目录（Controller 由开发者手写）
-          if [[ -d backend/Generated/src/*/Models ]]; then
-            cp -R backend/Generated/src/*/Models/* backend/Models/ 2>/dev/null || true
+          models_dir="$(find backend/Generated/src -type d -path '*/Models' -print -quit)"
+          if [[ -n "$models_dir" ]]; then
+            cp -R "$models_dir"/. backend/Models/
+          else
+            echo "::error::未找到 OpenAPI Generator 输出的 Models 目录。"
+            exit 1
           fi
           rm -rf backend/Generated
           echo "后端 ASP.NET Core 模型已生成。"
