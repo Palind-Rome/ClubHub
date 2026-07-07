@@ -1,23 +1,25 @@
 using ClubHub.Api.Data;
-using ClubHub.Api.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiProject = Org.OpenAPITools.Models.Project;
+using AssignProjectLeaderRequest = Org.OpenAPITools.Models.AssignProjectLeaderRequest;
+using CreateProjectRequest = Org.OpenAPITools.Models.CreateProjectRequest;
+using DbProject = ClubHub.Api.Data.Entities.Project;
+using ReviewProjectRequest = Org.OpenAPITools.Models.ReviewProjectRequest;
 
 namespace ClubHub.Api.Controllers;
 
 /// <summary>
-/// 项目立项申请与负责人分配接口。对应数据库设计文档 1.10 功能点。
+/// Project initiation and leader assignment APIs for requirement 1.10.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class ProjectsController : ControllerBase
 {
-    // 项目状态取值来自数据库设计文档 PROJECTS.project_status。
+    private const int MaxCreateRetries = 3;
     private const string PendingStatus = "pending";
     private const string RunningStatus = "running";
     private const string ClosedStatus = "closed";
-
-    // 用户与社团成员状态分别来自 USERS.account_status 和 CLUB_MEMBERS.member_status。
     private const string NormalAccountStatus = "normal";
     private const string ActiveMemberStatus = "active";
 
@@ -32,7 +34,7 @@ public class ProjectsController : ControllerBase
     public ProjectsController(ClubHubDbContext db) => _db = db;
 
     /// <summary>
-    /// 获取项目列表，可按社团编号筛选。
+    /// Gets project applications, optionally filtered by club.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? clubId)
@@ -50,7 +52,7 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// 获取单个项目立项申请详情。
+    /// Gets a single project application by id.
     /// </summary>
     [HttpGet("{projectId:int}")]
     public async Task<IActionResult> GetById(int projectId)
@@ -65,37 +67,58 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// 提交项目立项申请，初始状态固定为 pending，等待审核后进入执行或关闭。
+    /// Creates a project initiation application in pending status.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest? req)
     {
         if (req is null) return BadRequest("请求体不能为空。");
 
-        var validation = await ValidateProjectInput(req.ClubId, req.ProjectName, req.LeaderUserId, req.StartDate, req.EndDate);
+        var validation = await ValidateProjectInput(
+            req.ClubId,
+            req.ProjectName,
+            req.LeaderUserId,
+            req.StartDate,
+            req.EndDate);
         if (validation is not null) return validation;
 
-        var project = new Project
+        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
-            ProjectId = await GetNextProjectId(),
-            ClubId = req.ClubId,
-            ProjectName = req.ProjectName.Trim(),
-            Description = NormalizeOptionalText(req.Description),
-            LeaderUserId = req.LeaderUserId,
-            StartDate = req.StartDate,
-            EndDate = req.EndDate,
-            ProjectStatus = PendingStatus,
-            CreatedAt = DateTime.UtcNow
-        };
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            var project = new DbProject
+            {
+                ProjectId = await GetNextProjectId(),
+                ClubId = req.ClubId,
+                ProjectName = req.ProjectName.Trim(),
+                Description = NormalizeOptionalText(req.Description),
+                LeaderUserId = req.LeaderUserId,
+                StartDate = req.StartDate,
+                EndDate = req.EndDate,
+                ProjectStatus = PendingStatus,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _db.Projects.Add(project);
-        await _db.SaveChangesAsync();
+            _db.Projects.Add(project);
 
-        return CreatedAtAction(nameof(GetById), new { projectId = project.ProjectId }, ToProjectDto(project));
+            try
+            {
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return CreatedAtAction(nameof(GetById), new { projectId = project.ProjectId }, ToProjectDto(project));
+            }
+            catch (DbUpdateException) when (attempt < MaxCreateRetries)
+            {
+                await transaction.RollbackAsync();
+                _db.Entry(project).State = EntityState.Detached;
+            }
+        }
+
+        return Conflict("项目编号生成冲突，请重试。");
     }
 
     /// <summary>
-    /// 分配或调整项目负责人；负责人必须是该社团的有效成员。
+    /// Assigns or updates the project leader. The leader must be an active member of the project club.
     /// </summary>
     [HttpPut("{projectId:int}/leader")]
     public async Task<IActionResult> AssignLeader(int projectId, [FromBody] AssignProjectLeaderRequest? req)
@@ -115,29 +138,31 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// 审核项目立项申请。1.10 只允许审核为 running 或 closed。
+    /// Reviews a project initiation application. Requirement 1.10 only allows running or closed.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
     {
         if (req is null) return BadRequest("请求体不能为空。");
-        if (string.IsNullOrWhiteSpace(req.ProjectStatus)) return BadRequest("项目审核状态不能为空。");
 
-        var project = await _db.Projects.FindAsync(projectId);
-        if (project is null) return NotFound("项目不存在。");
-
-        var normalizedStatus = req.ProjectStatus.Trim().ToLowerInvariant();
+        var normalizedStatus = ToReviewStatusValue(req.ProjectStatus);
         if (!ReviewStatuses.Contains(normalizedStatus))
         {
             return BadRequest("项目审核状态只能为 running 或 closed。");
         }
 
+        var project = await _db.Projects.FindAsync(projectId);
+        if (project is null) return NotFound("项目不存在。");
+
         var reviewerExists = await ActiveUserExists(req.ReviewerUserId);
         if (!reviewerExists) return BadRequest("审核人不存在或账号不可用。");
 
-        // 立项审核是从 pending 进入执行或关闭；保留幂等重审能力，避免重复点击造成异常。
-        if (!string.Equals(project.ProjectStatus, PendingStatus, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(project.ProjectStatus, normalizedStatus, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(project.ProjectStatus, normalizedStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok(ToProjectDto(project));
+        }
+
+        if (!string.Equals(project.ProjectStatus, PendingStatus, StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest("只有待审核项目可以变更审核结果。");
         }
@@ -154,14 +179,13 @@ public class ProjectsController : ControllerBase
         int clubId,
         string projectName,
         int? leaderUserId,
-        DateTime? startDate,
+        DateTime startDate,
         DateTime? endDate)
     {
-        // 立项申请的字段校验集中在这里，避免 Create 中混入过多分支判断。
+        // Keep all create-time checks together so later project fields can be added without scattering validation.
         if (clubId <= 0) return BadRequest("所属社团不能为空。");
         if (string.IsNullOrWhiteSpace(projectName)) return BadRequest("项目名称不能为空。");
         if (projectName.Trim().Length > 100) return BadRequest("项目名称不能超过 100 个字符。");
-        if (startDate is null) return BadRequest("项目开始日期不能为空。");
         if (endDate is not null && endDate < startDate) return BadRequest("项目结束日期不能早于开始日期。");
 
         var clubExists = await _db.Clubs.AnyAsync(c => c.ClubId == clubId);
@@ -177,7 +201,7 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// 校验项目负责人是否为可用用户，并且属于项目所在社团。
+    /// Validates that the project leader is an active user and active member of the club.
     /// </summary>
     private async Task<IActionResult?> ValidateProjectLeader(int clubId, int leaderUserId)
     {
@@ -197,7 +221,7 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// 判断用户是否存在且账号未禁用。空状态兼容早期种子数据。
+    /// Checks whether a user exists and is not disabled. Null status is allowed for early seed data.
     /// </summary>
     private Task<bool> ActiveUserExists(int userId)
     {
@@ -208,78 +232,55 @@ public class ProjectsController : ControllerBase
 
     private async Task<int> GetNextProjectId()
     {
-        // 当前 schema 未使用 identity；沿用仓库已有 Controller 的 max(id)+1 方式，保持实现风格一致。
+        // The current course schema has no identity/sequence for PROJECTS.
+        // Creation wraps max(id)+1 in a transaction and retries on insert collision.
         var maxId = await _db.Projects.MaxAsync(p => (int?)p.ProjectId) ?? 0;
         return maxId + 1;
     }
 
     /// <summary>
-    /// 将空白字符串统一归一化为空值，避免数据库中出现无意义空白内容。
+    /// Normalizes optional text fields so blank strings are not stored as meaningful values.
     /// </summary>
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static ProjectDto ToProjectDto(Project project) => new(
-        project.ProjectId,
-        project.ClubId,
-        project.ProjectName,
-        project.Description,
-        project.LeaderUserId,
-        project.StartDate,
-        project.EndDate,
-        project.ProjectStatus,
-        project.ReviewerUserId,
-        project.ReviewComment,
-        project.CreatedAt
-    );
-}
+    private static ApiProject ToProjectDto(DbProject project) => new()
+    {
+        Id = project.ProjectId,
+        ClubId = project.ClubId,
+        ProjectName = project.ProjectName,
+        Description = project.Description!,
+        LeaderUserId = project.LeaderUserId,
+        StartDate = project.StartDate,
+        EndDate = project.EndDate,
+        ProjectStatus = ToProjectStatusEnum(project.ProjectStatus),
+        ReviewerUserId = project.ReviewerUserId,
+        ReviewComment = project.ReviewComment!,
+        CreatedAt = project.CreatedAt
+    };
 
-/// <summary>
-/// 项目立项申请响应模型，与 PROJECTS 表核心字段对应。
-/// </summary>
-public record ProjectDto(
-    int Id,
-    int ClubId,
-    string ProjectName,
-    string? Description,
-    int? LeaderUserId,
-    DateTime? StartDate,
-    DateTime? EndDate,
-    string? ProjectStatus,
-    int? ReviewerUserId,
-    string? ReviewComment,
-    DateTime CreatedAt
-);
+    private static string ToReviewStatusValue(ReviewProjectRequest.ProjectStatusEnum status)
+    {
+        return status switch
+        {
+            ReviewProjectRequest.ProjectStatusEnum.RunningEnum => RunningStatus,
+            ReviewProjectRequest.ProjectStatusEnum.ClosedEnum => ClosedStatus,
+            _ => string.Empty
+        };
+    }
 
-/// <summary>
-/// 创建项目立项申请的请求模型。
-/// </summary>
-public class CreateProjectRequest
-{
-    public int ClubId { get; set; }
-    public string ProjectName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int? LeaderUserId { get; set; }
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
-}
-
-/// <summary>
-/// 分配或调整项目负责人的请求模型。
-/// </summary>
-public class AssignProjectLeaderRequest
-{
-    public int LeaderUserId { get; set; }
-}
-
-/// <summary>
-/// 审核项目立项申请的请求模型。
-/// </summary>
-public class ReviewProjectRequest
-{
-    public string ProjectStatus { get; set; } = string.Empty;
-    public int ReviewerUserId { get; set; }
-    public string? ReviewComment { get; set; }
+    private static ApiProject.ProjectStatusEnum? ToProjectStatusEnum(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            PendingStatus => ApiProject.ProjectStatusEnum.PendingEnum,
+            RunningStatus => ApiProject.ProjectStatusEnum.RunningEnum,
+            "finished" => ApiProject.ProjectStatusEnum.FinishedEnum,
+            "delayed" => ApiProject.ProjectStatusEnum.DelayedEnum,
+            ClosedStatus => ApiProject.ProjectStatusEnum.ClosedEnum,
+            _ => null
+        };
+    }
 }
