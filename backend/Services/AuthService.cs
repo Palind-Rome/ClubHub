@@ -243,10 +243,7 @@ public class AuthService
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
     }
 
-    public async Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync()
-    {
-        return BaseRoles;
-    }
+    public Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync() => Task.FromResult(BaseRoles);
 
     public IReadOnlyList<PermissionDefinition> GetPermissionCatalog() => PermissionCatalog;
 

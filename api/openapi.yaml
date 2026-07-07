@@ -102,7 +102,6 @@ paths:
             application/json:
               schema:
                 type: array
-                maxItems: 20
                 items:
                   $ref: "#/components/schemas/RoleDefinition"
 
