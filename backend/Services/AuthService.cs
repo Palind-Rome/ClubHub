@@ -11,11 +11,12 @@ public class AuthService
     private const string SystemScope = "system";
     private const string ClubScope = "club";
     private const string StudentRole = "STUDENT";
+    private const string AdvisorRole = "ADVISOR";
     private const string SystemAdminRole = "SYSTEM_ADMIN";
 
     private static readonly IReadOnlyList<PermissionDefinition> PermissionCatalog =
     [
-        new("profile:view", "查看个人信息", "查看自己的账号、学号、学院、专业、年级和联系方式。"),
+        new("profile:view", "查看个人信息", "查看自己的账号、学工号、学院、专业、年级和联系方式。"),
         new("profile:update", "维护个人信息", "修改自己的联系方式、邮箱等个人资料。"),
         new("public:view", "浏览公开信息", "浏览公开社团、招募、活动和公告。"),
         new("club:apply", "申请创建社团", "提交社团注册申请并查看审核状态。"),
@@ -89,7 +90,7 @@ public class AuthService
             "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
             ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:apply", "project:apply", "club:stats:view"]),
         new(
-            "ADVISOR",
+            AdvisorRole,
             "指导老师",
             ClubScope,
             "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价。",
@@ -136,7 +137,12 @@ public class AuthService
 
         if (string.IsNullOrWhiteSpace(studentNo))
         {
-            return AuthServiceResult<AuthResponse>.Fail(400, "学号不能为空。");
+            return AuthServiceResult<AuthResponse>.Fail(400, "学工号不能为空。");
+        }
+
+        if (!IsValidStudentOrStaffNo(studentNo))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(400, "学工号必须为学生 7 位或老师 5 位。");
         }
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
@@ -146,14 +152,12 @@ public class AuthService
 
         if (await _db.Users.AnyAsync(u => u.StudentNo == studentNo))
         {
-            return AuthServiceResult<AuthResponse>.Fail(409, "学号已被注册，请确认信息。");
+            return AuthServiceResult<AuthResponse>.Fail(409, "学工号已被注册，请确认信息。");
         }
 
         var roles = await EnsureBaseRolesAsync();
-        var studentRole = roles.Single(r => r.RoleCode == StudentRole);
         var now = DateTime.UtcNow;
         var userId = (await _db.Users.MaxAsync(u => (int?)u.UserId) ?? 0) + 1;
-        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
 
         var user = new User
         {
@@ -174,14 +178,7 @@ public class AuthService
         };
 
         _db.Users.Add(user);
-        _db.UserRoles.Add(new UserRole
-        {
-            UserRoleId = userRoleId,
-            UserId = user.UserId,
-            RoleId = studentRole.RoleId,
-            ClubId = null,
-            AssignedAt = now
-        });
+        await EnsureIdentityRoleAsync(user, roles, now);
         await _db.SaveChangesAsync();
 
         return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
@@ -189,16 +186,16 @@ public class AuthService
 
     public async Task<AuthServiceResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        var username = NormalizeText(request.Username);
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(request.Password))
+        var loginName = NormalizeText(request.Username);
+        if (string.IsNullOrWhiteSpace(loginName) || string.IsNullOrEmpty(request.Password))
         {
-            return AuthServiceResult<AuthResponse>.Fail(400, "请输入用户名和密码。");
+            return AuthServiceResult<AuthResponse>.Fail(400, "请输入用户名或学工号和密码。");
         }
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == loginName || u.StudentNo == loginName);
         if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
-            return AuthServiceResult<AuthResponse>.Fail(401, "用户名或密码错误。");
+            return AuthServiceResult<AuthResponse>.Fail(401, "用户名/学工号或密码错误。");
         }
 
         if (!IsNormalAccount(user))
@@ -206,7 +203,12 @@ public class AuthService
             return AuthServiceResult<AuthResponse>.Fail(403, "账号已被禁用，请联系管理员。");
         }
 
-        await EnsureBaseRolesAsync();
+        var roles = await EnsureBaseRolesAsync();
+        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        {
+            await _db.SaveChangesAsync();
+        }
+
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
     }
 
@@ -462,6 +464,36 @@ public class AuthService
         return roles;
     }
 
+    private async Task<bool> EnsureIdentityRoleAsync(User user, IReadOnlyList<Role> roles, DateTime now)
+    {
+        var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
+        if (roleCode is null)
+        {
+            return false;
+        }
+
+        var role = roles.Single(r => r.RoleCode == roleCode);
+        var exists = await _db.UserRoles.AnyAsync(ur =>
+            ur.UserId == user.UserId &&
+            ur.RoleId == role.RoleId &&
+            ur.ClubId == null);
+        if (exists)
+        {
+            return false;
+        }
+
+        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
+        _db.UserRoles.Add(new UserRole
+        {
+            UserRoleId = userRoleId,
+            UserId = user.UserId,
+            RoleId = role.RoleId,
+            ClubId = null,
+            AssignedAt = now
+        });
+        return true;
+    }
+
     private static string BuildPermissionDesc(RoleDefinition roleDef)
     {
         var names = roleDef.Permissions
@@ -471,6 +503,20 @@ public class AuthService
 
     private static bool IsNormalAccount(User user) =>
         string.Equals(user.AccountStatus, NormalStatus, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsValidStudentOrStaffNo(string value) => IsStudentNo(value) || IsStaffNo(value);
+
+    private static bool IsStudentNo(string value) => value.Length == 7 && value.All(char.IsDigit);
+
+    private static bool IsStaffNo(string value) => value.Length == 5 && value.All(char.IsDigit);
+
+    private static string? GetDefaultIdentityRoleCode(string? studentNo)
+    {
+        var normalized = NormalizeText(studentNo);
+        if (IsStudentNo(normalized)) return StudentRole;
+        if (IsStaffNo(normalized)) return AdvisorRole;
+        return null;
+    }
 
     private static string NormalizeText(string? value) => (value ?? string.Empty).Trim();
 

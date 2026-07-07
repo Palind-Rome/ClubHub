@@ -49,7 +49,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 用户名或学号已存在
+          description: 用户名或学工号已存在
           content:
             application/json:
               schema:
@@ -79,7 +79,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "401":
-          description: 用户名或密码错误
+          description: 用户名/学工号或密码错误
           content:
             application/json:
               schema:
@@ -346,7 +346,8 @@ components:
           minLength: 1
         studentNo:
           type: string
-          minLength: 1
+          description: 学工号；学生 7 位，老师 5 位。
+          pattern: "^([0-9]{7}|[0-9]{5})$"
         gender:
           type: string
           nullable: true
@@ -376,6 +377,7 @@ components:
       properties:
         username:
           type: string
+          description: 用户名或学工号。
           minLength: 1
         password:
           type: string
@@ -434,6 +436,7 @@ components:
           type: string
         studentNo:
           type: string
+          description: 学工号；学生 7 位，老师 5 位。
           nullable: true
         gender:
           type: string

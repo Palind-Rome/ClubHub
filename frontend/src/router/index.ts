@@ -1,16 +1,23 @@
 import { createRouter, createWebHistory } from "vue-router";
 import ClubList from "../views/ClubList.vue";
 import ActivityList from "../views/ActivityList.vue";
-import AuthPanel from "../views/AuthPanel.vue";
+import AuthFlow from "../views/AuthFlow.vue";
+import { hasCompletedSession } from "../authSession";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", redirect: "/auth" },
-    { path: "/auth", component: AuthPanel },
+    { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
     { path: "/activities", component: ActivityList },
   ],
+});
+
+router.beforeEach((to) => {
+  if (to.path !== "/auth" && !hasCompletedSession()) {
+    return "/auth";
+  }
 });
 
 export default router;
