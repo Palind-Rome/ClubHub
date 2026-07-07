@@ -76,8 +76,10 @@
  1. git checkout dev && git pull origin dev
     git checkout -b feature/your-task
        │
- 2. 立即创建 draft PR（feature/your-task → dev）：
-    gh pr create --draft --base dev --title "feat(scope): 功能名称"
+ 2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
+    gh pr create --draft --base dev \
+      --title "feat(scope): 功能名称" \
+      --label "类型标签,优先级标签,领域标签"
     （未安装 gh CLI 时：winget install GitHub.cli）
     → CI 不会在 draft 阶段运行，等代码写好再 mark ready
        │
@@ -128,17 +130,59 @@
 
 ## Issue 与 PR 标签规范
 
-仓库已预设一套标签体系（类型、优先级、领域、状态）。具体标签列表和使用规则写在模板中：
+仓库预设了以下标签体系，Issue 和 PR 创建者必须按规则标注。
 
-- **PR 标签指引** → `.github/pull_request_template.md`（顶部 HTML 注释）
-- **缺陷报告** → `.github/ISSUE_TEMPLATE/bug_report.md`
-- **课程功能点** → `.github/ISSUE_TEMPLATE/feature_request.md`
-- **文档任务** → `.github/ISSUE_TEMPLATE/doc_task.md`
-- **功能改进** → `.github/ISSUE_TEMPLATE/enhancement.md`
+### 可用标签
 
-也可通过 `gh label list` 或 GitHub 网页查看所有可用标签。
+**类型（必选其一）**
+`bug` · `课程功能点` · `documentation` · `enhancement`
 
-**核心规则**：不要创建仓库中不存在的标签，避免标签膨胀。
+**优先级（必选其一）**
+`优先级:P0` · `优先级:P1` · `优先级:P2`
+
+**领域（必选其一）**
+`area:auth` · `area:club` · `area:recruitment` · `area:activity` · `area:venue` ·
+`area:project` · `area:learning` · `area:material` · `area:evaluation` ·
+`area:notice` · `area:analytics` · `area:forum` · `area:frontend`
+
+**全栈任务（涉及前后端联动时必选）**
+`全栈任务`
+
+**状态（由维护者管理）**
+`待领取` · `help wanted` · `good first issue` · `duplicate` · `invalid` · `wontfix`
+
+### 创建命令
+
+```bash
+# PR（创建时直接带上标签，避免遗漏）
+#   类型标签：课程功能点 / bug / documentation / enhancement
+#   优先级标签：优先级:P0 / 优先级:P1 / 优先级:P2
+#   领域标签：area:auth / area:club / activity / venue / ……
+gh pr create --draft --base dev \
+  --title "feat(scope): 标题" \
+  --label "课程功能点,优先级:P1,area:activity"
+
+# Issue（使用对应模板，按规则带齐标签）
+gh issue create --template bug_report.md \
+  --label "bug,优先级:P1,area:activity"
+gh issue create --template feature_request.md \
+  --label "课程功能点,优先级:P2,area:club"
+```
+
+### 核心规则
+
+- 类型、优先级、领域三个标签**必须**同时标注，不可缺省；全栈任务在涉及前后端联动时也必须标注。
+- 一个 Issue / PR 可以有多个标签，但类型标签只能选一个。
+- 使用 `gh label list` 查看所有可用标签，**禁止创建仓库中不存在的标签**，避免标签膨胀，所有标签见上方的"可用标签"列表。
+- 标签的具体使用场景和模板中的填写指引，见：
+
+  | 文件 | 用途 |
+  |------|------|
+  | `.github/pull_request_template.md` | PR 模板，顶部注释列出标签指引 |
+  | `.github/ISSUE_TEMPLATE/bug_report.md` | 缺陷报告 |
+  | `.github/ISSUE_TEMPLATE/feature_request.md` | 课程功能点 |
+  | `.github/ISSUE_TEMPLATE/doc_task.md` | 文档任务 |
+  | `.github/ISSUE_TEMPLATE/enhancement.md` | 功能改进 |
 
 ## Commit 信息
 
@@ -418,7 +462,7 @@ docker compose build                            # 构建生产镜像
 docker compose up -d                            # 生产启动
 
 # GitHub CLI（未安装时 winget install GitHub.cli）
-gh pr create --draft --base dev --title "feat(scope): 摘要"   # 创建 draft PR
+gh pr create --draft --base dev --title "feat(scope): 摘要" --label "类型标签,优先级标签,领域标签"   # 创建 draft PR（按标签规范带齐标签）
 gh pr ready                                                     # 标记为 Ready for Review
 gh pr checks                                                    # 查看 CI 状态
 gh pr view --comments                                           # 查看 review 意见
