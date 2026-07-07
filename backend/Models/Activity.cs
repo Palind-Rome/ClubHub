@@ -210,5 +210,13 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="currentParticipants", EmitDefaultValue=true)]
         public int CurrentParticipants { get; set; }
 
+        /// <summary>
+        /// 当前用户是否已报名；未传 currentUserId 时为 false
+        /// </summary>
+        /// <value>当前用户是否已报名；未传 currentUserId 时为 false</value>
+        [Required]
+        [DataMember(Name="isRegistered", EmitDefaultValue=true)]
+        public bool IsRegistered { get; set; }
+
     }
 }
