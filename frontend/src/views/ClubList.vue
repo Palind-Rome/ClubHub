@@ -148,12 +148,14 @@ const clubOperationViewPermission = "club:operation:view";
 
 const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
+const dialogUsers = ref<UserSummary[]>([]);
 const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
+const dialogUsersLoading = ref(false);
 const memberLoading = ref(false);
 const saving = ref(false);
 const reviewing = ref(false);
@@ -242,6 +244,10 @@ const memberTermRules: FormRules = {
 };
 
 let stopSessionListener: (() => void) | null = null;
+let usersRequestId = 0;
+let dialogUsersRequestId = 0;
+let dataRequestId = 0;
+let membersRequestId = 0;
 
 const currentUser = computed<UserSummary | null>(() => {
   const session = auth.value;
@@ -354,7 +360,8 @@ const identityRows = computed(() => {
 const activePresidentOptions = computed(() =>
   clubMembers.value.filter((member) => member.isCurrent && isActiveStatus(member.memberStatus)),
 );
-const advisorOptions = computed(() => users.value.filter((user) => isAdvisorCandidate(user)));
+const advisorOptions = computed(() => dialogUsers.value.filter((user) => isAdvisorCandidate(user)));
+const memberTermUserOptions = computed(() => dialogUsers.value);
 const visibleIdentityRows = computed(() => {
   if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
   return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
@@ -395,9 +402,21 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function loadUsers(options: { clubId?: number } = {}) {
+async function validateForm(form: FormInstance | undefined) {
+  if (!form) return false;
+
+  try {
+    await form.validate();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function loadUsers() {
+  const requestId = ++usersRequestId;
   if (!currentUserId.value) {
-    users.value = [];
+    if (requestId === usersRequestId) users.value = [];
     usersLoading.value = false;
     return;
   }
@@ -405,21 +424,48 @@ async function loadUsers(options: { clubId?: number } = {}) {
   usersLoading.value = true;
   try {
     const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
-    if (options.clubId) query.set("clubId", String(options.clubId));
-    users.value = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    if (requestId === usersRequestId) users.value = data;
   } catch (e) {
-    error.value = e instanceof Error ? e.message : "用户加载失败";
+    if (requestId === usersRequestId) error.value = e instanceof Error ? e.message : "用户加载失败";
   } finally {
-    usersLoading.value = false;
+    if (requestId === usersRequestId) usersLoading.value = false;
+  }
+}
+
+async function loadDialogUsers(clubId?: number) {
+  const requestId = ++dialogUsersRequestId;
+  if (!currentUserId.value) {
+    if (requestId === dialogUsersRequestId) dialogUsers.value = [];
+    dialogUsersLoading.value = false;
+    return;
+  }
+
+  dialogUsersLoading.value = true;
+  try {
+    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    if (clubId) query.set("clubId", String(clubId));
+    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    if (requestId === dialogUsersRequestId) dialogUsers.value = data;
+  } catch (e) {
+    if (requestId === dialogUsersRequestId) {
+      error.value = e instanceof Error ? e.message : "用户加载失败";
+      dialogUsers.value = [];
+    }
+  } finally {
+    if (requestId === dialogUsersRequestId) dialogUsersLoading.value = false;
   }
 }
 
 async function loadData() {
+  const requestId = ++dataRequestId;
   if (!currentUserId.value) {
-    loading.value = false;
-    applications.value = [];
-    clubs.value = [];
-    clubMembers.value = [];
+    if (requestId === dataRequestId) {
+      loading.value = false;
+      applications.value = [];
+      clubs.value = [];
+      clubMembers.value = [];
+    }
     return;
   }
 
@@ -439,37 +485,47 @@ async function loadData() {
         ? requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`)
         : Promise.resolve([]),
     ]);
+    if (requestId !== dataRequestId) return;
     applications.value = applicationData;
     clubs.value = clubData;
     syncSelectedClub();
     await loadMembers();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : "加载失败";
+    if (requestId === dataRequestId) error.value = e instanceof Error ? e.message : "加载失败";
   } finally {
-    loading.value = false;
+    if (requestId === dataRequestId) loading.value = false;
   }
 }
 
 async function loadMembers() {
-  if (!currentUserId.value || !selectedClubId.value || !canViewSelectedClub()) {
-    clubMembers.value = [];
+  const requestId = ++membersRequestId;
+  const userId = currentUserId.value;
+  const clubId = selectedClubId.value;
+  const include = includeHistory.value;
+  if (!userId || !clubId || !canViewSelectedClub()) {
+    if (requestId === membersRequestId) {
+      clubMembers.value = [];
+    }
     return;
   }
 
   memberLoading.value = true;
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(currentUserId.value),
-      includeHistory: String(includeHistory.value),
+      viewerUserId: String(userId),
+      includeHistory: String(include),
     });
-    clubMembers.value = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${selectedClubId.value}/members?${query.toString()}`,
+    const data = await requestJson<ClubMemberRecord[]>(
+      `/api/clubs/${clubId}/members?${query.toString()}`,
     );
+    if (requestId === membersRequestId) clubMembers.value = data;
   } catch (e) {
-    clubMembers.value = [];
-    ElMessage.error(e instanceof Error ? e.message : "成员任期加载失败");
+    if (requestId === membersRequestId) {
+      clubMembers.value = [];
+      ElMessage.error(e instanceof Error ? e.message : "成员任期加载失败");
+    }
   } finally {
-    memberLoading.value = false;
+    if (requestId === membersRequestId) memberLoading.value = false;
   }
 }
 
@@ -596,7 +652,7 @@ function openApplicationDialog() {
 
 async function submitApplication() {
   if (!applicationFormRef.value || !currentUserId.value) return;
-  await applicationFormRef.value.validate();
+  if (!(await validateForm(applicationFormRef.value))) return;
 
   saving.value = true;
   try {
@@ -633,7 +689,7 @@ function openReviewDialog(row: ClubApplication) {
 
 async function submitReview() {
   if (!reviewFormRef.value || !reviewTarget.value || !currentUserId.value) return;
-  await reviewFormRef.value.validate();
+  if (!(await validateForm(reviewFormRef.value))) return;
 
   if (reviewForm.decision === "rejected" && !reviewForm.reviewComment.trim()) {
     ElMessage.warning("退回申请时必须填写审核意见");
@@ -680,7 +736,7 @@ async function openProfileDialog(row: Club) {
   }
 
   selectedClubId.value = row.id;
-  await Promise.all([loadMembers(), loadUsers({ clubId: row.id })]);
+  await Promise.all([loadMembers(), loadDialogUsers(row.id)]);
   profileTarget.value = row;
   profileForm.name = row.name;
   profileForm.category = row.category ?? "";
@@ -695,7 +751,7 @@ async function openProfileDialog(row: Club) {
 
 async function submitProfile() {
   if (!profileFormRef.value || !profileTarget.value || !currentUserId.value) return;
-  await profileFormRef.value.validate();
+  if (!(await validateForm(profileFormRef.value))) return;
 
   profileSaving.value = true;
   try {
@@ -782,7 +838,7 @@ async function openCreateMemberTermDialog() {
   memberTermMode.value = "create";
   memberTermTarget.value = null;
   resetMemberTermForm();
-  await loadUsers({ clubId: selectedClub.value.id });
+  await loadDialogUsers(selectedClub.value.id);
   memberTermDialogVisible.value = true;
 }
 
@@ -810,7 +866,7 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
 
 async function submitMemberTerm() {
   if (!memberTermFormRef.value || !selectedClubId.value || !currentUserId.value) return;
-  await memberTermFormRef.value.validate();
+  if (!(await validateForm(memberTermFormRef.value))) return;
 
   termSaving.value = true;
   try {
@@ -886,7 +942,11 @@ function dateOnly(value: string | null | undefined) {
 }
 
 function todayInput() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function datePayload(value: string) {
@@ -1656,7 +1716,7 @@ onUnmounted(() => {
         <el-form-item label="指导老师">
           <el-select
             v-model="profileForm.advisorUserId"
-            :loading="usersLoading"
+            :loading="dialogUsersLoading"
             clearable
             filterable
             placeholder="选择教师账号"
@@ -1698,12 +1758,12 @@ onUnmounted(() => {
         <el-form-item v-if="memberTermMode === 'create'" label="成员" prop="userId">
           <el-select
             v-model="memberTermForm.userId"
-            :loading="usersLoading"
+            :loading="dialogUsersLoading"
             filterable
             placeholder="选择用户"
           >
             <el-option
-              v-for="user in users"
+              v-for="user in memberTermUserOptions"
               :key="user.id"
               :label="user.displayName"
               :value="user.id"

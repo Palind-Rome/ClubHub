@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 角色分配结果。
     /// </summary>
     [DataContract]
-    public partial class RoleAssignmentResult 
+    public partial class RoleAssignmentResult
     {
         /// <summary>
         /// 被分配角色的用户 ID。
@@ -31,14 +31,14 @@ namespace Org.OpenAPITools.Models
         /// <value>被分配角色的用户 ID。</value>
         /* <example>2</example> */
         [Required]
-        [DataMember(Name="targetUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "targetUserId", EmitDefaultValue = true)]
         public int TargetUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets Role
         /// </summary>
         [Required]
-        [DataMember(Name="role", EmitDefaultValue=false)]
+        [DataMember(Name = "role", EmitDefaultValue = false)]
         public AuthRole Role { get; set; }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace Org.OpenAPITools.Models
         /// <value>该角色分配是否原本已存在。</value>
         /* <example>false</example> */
         [Required]
-        [DataMember(Name="alreadyExists", EmitDefaultValue=true)]
+        [DataMember(Name = "alreadyExists", EmitDefaultValue = true)]
         public bool AlreadyExists { get; set; }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Org.OpenAPITools.Models
         /// <value>角色分配结果说明。</value>
         /* <example>角色分配成功。</example> */
         [Required]
-        [DataMember(Name="message", EmitDefaultValue=false)]
+        [DataMember(Name = "message", EmitDefaultValue = false)]
         public string Message { get; set; }
 
     }

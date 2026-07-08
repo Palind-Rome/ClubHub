@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 认证上下文中的用户基础信息。
     /// </summary>
     [DataContract]
-    public partial class AuthUser 
+    public partial class AuthUser
     {
         /// <summary>
         /// 用户 ID。
@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>用户 ID。</value>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name="id", EmitDefaultValue=true)]
+        [DataMember(Name = "id", EmitDefaultValue = true)]
         public int Id { get; set; }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Org.OpenAPITools.Models
         /// <value>登录用户名。</value>
         /* <example>stu_public</example> */
         [Required]
-        [DataMember(Name="username", EmitDefaultValue=false)]
+        [DataMember(Name = "username", EmitDefaultValue = false)]
         public string Username { get; set; }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace Org.OpenAPITools.Models
         /// <value>用户真实姓名。</value>
         /* <example>张三</example> */
         [Required]
-        [DataMember(Name="realName", EmitDefaultValue=false)]
+        [DataMember(Name = "realName", EmitDefaultValue = false)]
         public string RealName { get; set; }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>学工号；学生 7 位，教师 5 位。</value>
         /* <example>2450001</example> */
-        [DataMember(Name="studentNo", EmitDefaultValue=true)]
+        [DataMember(Name = "studentNo", EmitDefaultValue = true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>性别。</value>
         /* <example>男</example> */
-        [DataMember(Name="gender", EmitDefaultValue=true)]
+        [DataMember(Name = "gender", EmitDefaultValue = true)]
         public string? Gender { get; set; }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>联系电话。</value>
         /* <example>13800138000</example> */
-        [DataMember(Name="phone", EmitDefaultValue=true)]
+        [DataMember(Name = "phone", EmitDefaultValue = true)]
         public string? Phone { get; set; }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>邮箱地址。</value>
         /* <example>zhangsan@example.com</example> */
-        [DataMember(Name="email", EmitDefaultValue=true)]
+        [DataMember(Name = "email", EmitDefaultValue = true)]
         public string? Email { get; set; }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>所属学院。</value>
         /* <example>软件学院</example> */
-        [DataMember(Name="college", EmitDefaultValue=true)]
+        [DataMember(Name = "college", EmitDefaultValue = true)]
         public string? College { get; set; }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>所属专业。</value>
         /* <example>软件工程</example> */
-        [DataMember(Name="major", EmitDefaultValue=true)]
+        [DataMember(Name = "major", EmitDefaultValue = true)]
         public string? Major { get; set; }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>年级。</value>
         /* <example>2024</example> */
-        [DataMember(Name="grade", EmitDefaultValue=true)]
+        [DataMember(Name = "grade", EmitDefaultValue = true)]
         public string? Grade { get; set; }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace Org.OpenAPITools.Models
         /// <value>账号状态，例如 normal 或 disabled。</value>
         /* <example>normal</example> */
         [Required]
-        [DataMember(Name="accountStatus", EmitDefaultValue=false)]
+        [DataMember(Name = "accountStatus", EmitDefaultValue = false)]
         public string AccountStatus { get; set; }
 
     }

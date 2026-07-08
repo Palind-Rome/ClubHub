@@ -231,6 +231,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
+        "400":
+          description: 当前用户缺失、账号不可用或请求内容不合法
+        "403":
+          description: 仅平台管理员可以直接创建社团
+        "404":
+          description: 当前操作用户不存在
+        "409":
+          description: 社团名称已存在或已有有效注册申请
 
   /api/clubs/applications:
     get:
@@ -1100,6 +1108,9 @@ components:
     CreateClubRequest:
       type: object
       properties:
+        currentUserId:
+          type: integer
+          minimum: 1
         name:
           type: string
           minLength: 1
@@ -1109,6 +1120,7 @@ components:
           type: string
           nullable: true
       required:
+        - currentUserId
         - name
         - category
 

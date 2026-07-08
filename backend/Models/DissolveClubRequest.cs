@@ -18,18 +18,18 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class DissolveClubRequest 
+    public partial class DissolveClubRequest
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
         /// </summary>
         [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "currentUserId", EmitDefaultValue = true)]
         public int CurrentUserId { get; set; }
 
     }

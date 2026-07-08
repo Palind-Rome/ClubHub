@@ -18,43 +18,43 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class UserRoleSummary 
+    public partial class UserRoleSummary
     {
         /// <summary>
         /// Gets or Sets RoleCode
         /// </summary>
         [Required]
-        [DataMember(Name="roleCode", EmitDefaultValue=false)]
+        [DataMember(Name = "roleCode", EmitDefaultValue = false)]
         public string RoleCode { get; set; }
 
         /// <summary>
         /// Gets or Sets RoleName
         /// </summary>
         [Required]
-        [DataMember(Name="roleName", EmitDefaultValue=false)]
+        [DataMember(Name = "roleName", EmitDefaultValue = false)]
         public string RoleName { get; set; }
 
         /// <summary>
         /// Gets or Sets RoleScope
         /// </summary>
-        [DataMember(Name="roleScope", EmitDefaultValue=true)]
+        [DataMember(Name = "roleScope", EmitDefaultValue = true)]
         public string? RoleScope { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubId
         /// </summary>
-        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        [DataMember(Name = "clubId", EmitDefaultValue = true)]
         public int? ClubId { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
-        [DataMember(Name="clubName", EmitDefaultValue=true)]
+        [DataMember(Name = "clubName", EmitDefaultValue = true)]
         public string? ClubName { get; set; }
 
     }

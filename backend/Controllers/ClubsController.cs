@@ -23,6 +23,18 @@ public class ClubsController : ControllerBase
     private const string ClubAdvisorRoleCode = "ADVISOR";
 
     private readonly ClubHubDbContext _db;
+    private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
+    private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\u8d1f\u8d23\u4eba",
+        "\u4f1a\u957f",
+        "\u793e\u957f",
+        "\u793e\u56e2\u8d1f\u8d23\u4eba",
+        "president",
+        "leader",
+        "club president",
+        "club leader"
+    };
 
     public ClubsController(ClubHubDbContext db) => _db = db;
 
@@ -252,6 +264,11 @@ public class ClubsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateClubRequest req)
     {
+        if (req.CurrentUserId <= 0)
+        {
+            return BadRequest(new { message = "请选择当前操作用户。" });
+        }
+
         if (string.IsNullOrWhiteSpace(req.Name))
         {
             return BadRequest(new { message = "社团名称不能为空。" });
@@ -260,6 +277,32 @@ public class ClubsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Category))
         {
             return BadRequest(new { message = "社团类别不能为空。" });
+        }
+
+        var creator = await LoadUserAsync(req.CurrentUserId);
+        if (creator is null)
+        {
+            return NotFound(new { message = "当前操作用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(creator.AccountStatus))
+        {
+            return BadRequest(new { message = "当前操作用户账号不可用，不能直接创建社团。" });
+        }
+
+        if (!UsersController.IsPlatformAdmin(creator))
+        {
+            return StatusCode(403, new { message = "只有平台管理员可以直接创建社团；学生请提交社团注册申请。" });
+        }
+
+        var normalizedName = req.Name.Trim().ToUpperInvariant();
+        var hasConflict = await _db.Clubs.AnyAsync(c =>
+            c.ClubName.ToUpper() == normalizedName &&
+            (c.AuditStatus == null || c.AuditStatus != AuditRejected) &&
+            (c.ClubStatus == null || c.ClubStatus != ClubRejected));
+        if (hasConflict)
+        {
+            return Conflict(new { message = "社团名称已存在，或已有待审核/已通过的注册申请。" });
         }
 
         var maxId = await _db.Clubs.MaxAsync(c => (int?)c.ClubId) ?? 0;
@@ -339,7 +382,7 @@ public class ClubsController : ControllerBase
                 return NotFound(new { message = "指定的社团负责人不存在。" });
             }
 
-            var today = DateTime.UtcNow.Date;
+            var today = BusinessToday();
             var isActiveMember = await _db.ClubMembers.AnyAsync(cm =>
                 cm.ClubId == clubId &&
                 cm.UserId == req.PresidentUserId.Value &&
@@ -398,7 +441,7 @@ public class ClubsController : ControllerBase
         var access = await EnsureCanViewMembersAsync(clubId, viewerUserId);
         if (access.Result is not null) return access.Result;
 
-        var today = DateTime.UtcNow.Date;
+        var today = BusinessToday();
         var query = _db.ClubMembers
             .AsNoTracking()
             .Include(cm => cm.Club)
@@ -503,7 +546,7 @@ public class ClubsController : ControllerBase
 
         _db.ClubMembers.Add(member);
 
-        if (IsCurrentMemberTerm(member) && IsPrincipalPosition(member.PositionName))
+        if (IsCurrentMemberTerm(member) && IsStrictPrincipalPosition(member.PositionName))
         {
             club.PresidentUserId = req.UserId;
             club.UpdatedAt = now;
@@ -564,7 +607,7 @@ public class ClubsController : ControllerBase
         if (req.ContributionScore is not null) member.ContributionScore = req.ContributionScore;
 
         var now = DateTime.UtcNow;
-        if (IsCurrentMemberTerm(member) && IsPrincipalPosition(member.PositionName))
+        if (IsCurrentMemberTerm(member) && IsStrictPrincipalPosition(member.PositionName))
         {
             club.PresidentUserId = member.UserId;
             club.UpdatedAt = now;
@@ -858,7 +901,7 @@ public class ClubsController : ControllerBase
 
     private async Task RefreshClubPresidentAsync(Club club, int ignoredMemberId, DateTime now)
     {
-        var today = now.Date;
+        var today = BusinessDate(now);
         var nextPresident = await _db.ClubMembers
             .Where(cm =>
                 cm.ClubId == club.ClubId &&
@@ -870,7 +913,7 @@ public class ClubsController : ControllerBase
             .ThenByDescending(cm => cm.JoinAt)
             .ToListAsync();
 
-        var selected = nextPresident.FirstOrDefault(cm => IsPrincipalPosition(cm.PositionName));
+        var selected = nextPresident.FirstOrDefault(cm => IsStrictPrincipalPosition(cm.PositionName));
         club.PresidentUserId = selected?.UserId;
         club.UpdatedAt = now;
 
@@ -925,7 +968,7 @@ public class ClubsController : ControllerBase
                 UserId = club.ApplicantUserId.Value,
                 PositionName = "负责人",
                 TermName = $"{now.Year} 创始任期",
-                TermStart = now.Date,
+                TermStart = BusinessDate(now),
                 MemberStatus = "active",
                 JoinAt = now,
                 ContributionScore = 0
@@ -1043,21 +1086,47 @@ public class ClubsController : ControllerBase
 
     private static bool IsCurrentMemberTerm(ClubMember member)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = BusinessToday();
         return (member.MemberStatus == null || member.MemberStatus == MemberActive) &&
                (member.TermStart == null || member.TermStart.Value.Date <= today) &&
                (member.TermEnd == null || member.TermEnd.Value.Date >= today);
     }
 
-    private static bool IsPrincipalPosition(string? positionName)
+    private static bool IsStrictPrincipalPosition(string? positionName)
     {
         if (string.IsNullOrWhiteSpace(positionName)) return false;
 
-        return positionName.Contains("负责人", StringComparison.Ordinal) ||
-               positionName.Contains("会长", StringComparison.Ordinal) ||
-               positionName.Contains("社长", StringComparison.Ordinal) ||
-               positionName.Contains("president", StringComparison.OrdinalIgnoreCase) ||
-               positionName.Contains("leader", StringComparison.OrdinalIgnoreCase);
+        var normalized = positionName.Trim();
+        if (normalized.StartsWith("\u526f", StringComparison.Ordinal)) return false;
+
+        return PrincipalPositionNames.Contains(normalized);
+    }
+
+    private static DateTime BusinessToday() =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
+
+    private static DateTime BusinessDate(DateTime utcDateTime)
+    {
+        var utc = utcDateTime.Kind == DateTimeKind.Utc
+            ? utcDateTime
+            : DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+        return TimeZoneInfo.ConvertTimeFromUtc(utc, BusinessTimeZone).Date;
+    }
+
+    private static TimeZoneInfo ResolveBusinessTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
+        }
     }
 
     private static bool IsTeacherCandidate(User user)
@@ -1188,6 +1257,7 @@ public record ClubApplicationDto(
 
 public class CreateClubRequest
 {
+    public int CurrentUserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Category { get; set; }
     public string? Description { get; set; }

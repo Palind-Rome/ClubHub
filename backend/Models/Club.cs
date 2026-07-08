@@ -18,162 +18,162 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class Club 
+    public partial class Club
     {
         /// <summary>
         /// Gets or Sets Id
         /// </summary>
         [Required]
-        [DataMember(Name="id", EmitDefaultValue=true)]
+        [DataMember(Name = "id", EmitDefaultValue = true)]
         public int Id { get; set; }
 
         /// <summary>
         /// Gets or Sets Name
         /// </summary>
         [Required]
-        [DataMember(Name="name", EmitDefaultValue=false)]
+        [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name="description", EmitDefaultValue=true)]
+        [DataMember(Name = "description", EmitDefaultValue = true)]
         public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets Category
         /// </summary>
-        [DataMember(Name="category", EmitDefaultValue=true)]
+        [DataMember(Name = "category", EmitDefaultValue = true)]
         public string? Category { get; set; }
 
         /// <summary>
         /// Gets or Sets FoundedAt
         /// </summary>
-        [DataMember(Name="foundedAt", EmitDefaultValue=true)]
+        [DataMember(Name = "foundedAt", EmitDefaultValue = true)]
         public DateTime? FoundedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
-        [DataMember(Name="status", EmitDefaultValue=true)]
+        [DataMember(Name = "status", EmitDefaultValue = true)]
         public string? Status { get; set; }
 
         /// <summary>
         /// Gets or Sets StatusText
         /// </summary>
         [Required]
-        [DataMember(Name="statusText", EmitDefaultValue=false)]
+        [DataMember(Name = "statusText", EmitDefaultValue = false)]
         public string StatusText { get; set; }
 
         /// <summary>
         /// Gets or Sets LogoUrl
         /// </summary>
-        [DataMember(Name="logoUrl", EmitDefaultValue=true)]
+        [DataMember(Name = "logoUrl", EmitDefaultValue = true)]
         public string? LogoUrl { get; set; }
 
         /// <summary>
         /// Gets or Sets PresidentUserId
         /// </summary>
-        [DataMember(Name="presidentUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "presidentUserId", EmitDefaultValue = true)]
         public int? PresidentUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets PresidentName
         /// </summary>
-        [DataMember(Name="presidentName", EmitDefaultValue=true)]
+        [DataMember(Name = "presidentName", EmitDefaultValue = true)]
         public string? PresidentName { get; set; }
 
         /// <summary>
         /// 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
         /// </summary>
         /// <value>当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。</value>
-        [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "advisorUserId", EmitDefaultValue = true)]
         public int? AdvisorUserId { get; set; }
 
         /// <summary>
         /// 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
         /// </summary>
         /// <value>当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。</value>
-        [DataMember(Name="advisorName", EmitDefaultValue=true)]
+        [DataMember(Name = "advisorName", EmitDefaultValue = true)]
         public string? AdvisorName { get; set; }
 
         /// <summary>
         /// Gets or Sets ContactPhone
         /// </summary>
-        [DataMember(Name="contactPhone", EmitDefaultValue=true)]
+        [DataMember(Name = "contactPhone", EmitDefaultValue = true)]
         public string? ContactPhone { get; set; }
 
         /// <summary>
         /// Gets or Sets AuditStatus
         /// </summary>
-        [DataMember(Name="auditStatus", EmitDefaultValue=true)]
+        [DataMember(Name = "auditStatus", EmitDefaultValue = true)]
         public string? AuditStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets AuditStatusText
         /// </summary>
         [Required]
-        [DataMember(Name="auditStatusText", EmitDefaultValue=false)]
+        [DataMember(Name = "auditStatusText", EmitDefaultValue = false)]
         public string AuditStatusText { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicantUserId
         /// </summary>
-        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "applicantUserId", EmitDefaultValue = true)]
         public int? ApplicantUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicantName
         /// </summary>
-        [DataMember(Name="applicantName", EmitDefaultValue=true)]
+        [DataMember(Name = "applicantName", EmitDefaultValue = true)]
         public string? ApplicantName { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplyReason
         /// </summary>
-        [DataMember(Name="applyReason", EmitDefaultValue=true)]
+        [DataMember(Name = "applyReason", EmitDefaultValue = true)]
         public string? ApplyReason { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialUrl
         /// </summary>
-        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
+        [DataMember(Name = "materialUrl", EmitDefaultValue = true)]
         public string? MaterialUrl { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewerUserId
         /// </summary>
-        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        [DataMember(Name = "reviewerUserId", EmitDefaultValue = true)]
         public int? ReviewerUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewerName
         /// </summary>
-        [DataMember(Name="reviewerName", EmitDefaultValue=true)]
+        [DataMember(Name = "reviewerName", EmitDefaultValue = true)]
         public string? ReviewerName { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewComment
         /// </summary>
-        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
+        [DataMember(Name = "reviewComment", EmitDefaultValue = true)]
         public string? ReviewComment { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
-        [DataMember(Name="createdAt", EmitDefaultValue=true)]
+        [DataMember(Name = "createdAt", EmitDefaultValue = true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets UpdatedAt
         /// </summary>
-        [DataMember(Name="updatedAt", EmitDefaultValue=true)]
+        [DataMember(Name = "updatedAt", EmitDefaultValue = true)]
         public DateTime? UpdatedAt { get; set; }
 
     }

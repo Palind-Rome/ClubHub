@@ -39,6 +39,19 @@ USING (
   FROM dual
 ) source
 ON (target.club_id = source.club_id)
+WHEN MATCHED THEN UPDATE SET
+  target.club_name = source.club_name,
+  target.category = source.category,
+  target.description = source.description,
+  target.president_user_id = source.president_user_id,
+  target.advisor_name = source.advisor_name,
+  target.contact_phone = source.contact_phone,
+  target.audit_status = source.audit_status,
+  target.reviewer_user_id = source.reviewer_user_id,
+  target.review_comment = source.review_comment,
+  target.club_status = source.club_status,
+  target.founded_at = source.founded_at,
+  target.updated_at = SYSDATE
 WHEN NOT MATCHED THEN
   INSERT (club_id, club_name, category, description, president_user_id, advisor_name, contact_phone, audit_status, reviewer_user_id, review_comment, club_status, founded_at, created_at, updated_at)
   VALUES (source.club_id, source.club_name, source.category, source.description, source.president_user_id, source.advisor_name, source.contact_phone, source.audit_status, source.reviewer_user_id, source.review_comment, source.club_status, source.founded_at, SYSDATE, SYSDATE);
@@ -82,6 +95,19 @@ USING (
   FROM dual
 ) source
 ON (target.club_id = source.club_id)
+WHEN MATCHED THEN UPDATE SET
+  target.club_name = source.club_name,
+  target.category = source.category,
+  target.description = source.description,
+  target.president_user_id = source.president_user_id,
+  target.advisor_name = source.advisor_name,
+  target.contact_phone = source.contact_phone,
+  target.audit_status = source.audit_status,
+  target.reviewer_user_id = source.reviewer_user_id,
+  target.review_comment = source.review_comment,
+  target.club_status = source.club_status,
+  target.founded_at = source.founded_at,
+  target.updated_at = SYSDATE
 WHEN NOT MATCHED THEN
   INSERT (club_id, club_name, category, description, president_user_id, advisor_name, contact_phone, audit_status, reviewer_user_id, review_comment, club_status, founded_at, created_at, updated_at)
   VALUES (source.club_id, source.club_name, source.category, source.description, source.president_user_id, source.advisor_name, source.contact_phone, source.audit_status, source.reviewer_user_id, source.review_comment, source.club_status, source.founded_at, SYSDATE, SYSDATE);
@@ -97,6 +123,19 @@ USING (
   FROM dual
 ) source
 ON (target.club_id = source.club_id)
+WHEN MATCHED THEN UPDATE SET
+  target.club_name = source.club_name,
+  target.category = source.category,
+  target.description = source.description,
+  target.president_user_id = source.president_user_id,
+  target.advisor_name = source.advisor_name,
+  target.contact_phone = source.contact_phone,
+  target.audit_status = source.audit_status,
+  target.reviewer_user_id = source.reviewer_user_id,
+  target.review_comment = source.review_comment,
+  target.club_status = source.club_status,
+  target.founded_at = source.founded_at,
+  target.updated_at = SYSDATE
 WHEN NOT MATCHED THEN
   INSERT (club_id, club_name, category, description, president_user_id, advisor_name, contact_phone, audit_status, reviewer_user_id, review_comment, club_status, founded_at, created_at, updated_at)
   VALUES (source.club_id, source.club_name, source.category, source.description, source.president_user_id, source.advisor_name, source.contact_phone, source.audit_status, source.reviewer_user_id, source.review_comment, source.club_status, source.founded_at, SYSDATE, SYSDATE);

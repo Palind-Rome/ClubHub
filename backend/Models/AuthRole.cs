@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 用户在认证上下文中的角色及其权限。
     /// </summary>
     [DataContract]
-    public partial class AuthRole 
+    public partial class AuthRole
     {
         /// <summary>
         /// 角色 ID。
@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>角色 ID。</value>
         /* <example>3</example> */
         [Required]
-        [DataMember(Name="id", EmitDefaultValue=true)]
+        [DataMember(Name = "id", EmitDefaultValue = true)]
         public int Id { get; set; }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Org.OpenAPITools.Models
         /// <value>角色编码。</value>
         /* <example>CLUB_MEMBER</example> */
         [Required]
-        [DataMember(Name="code", EmitDefaultValue=false)]
+        [DataMember(Name = "code", EmitDefaultValue = false)]
         public string Code { get; set; }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace Org.OpenAPITools.Models
         /// <value>角色名称。</value>
         /* <example>社团成员</example> */
         [Required]
-        [DataMember(Name="name", EmitDefaultValue=false)]
+        [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Org.OpenAPITools.Models
         /// <value>前端展示用角色名称，例如“A社团成员”“A社团负责人”。</value>
         /* <example>计算机协会成员</example> */
         [Required]
-        [DataMember(Name="displayName", EmitDefaultValue=false)]
+        [DataMember(Name = "displayName", EmitDefaultValue = false)]
         public string DisplayName { get; set; }
 
 
@@ -66,16 +66,16 @@ namespace Org.OpenAPITools.Models
         /// 角色作用域，system 表示全局，club 表示社团范围。
         /// </summary>
         /// <value>角色作用域，system 表示全局，club 表示社团范围。</value>
-        
+
         public enum ScopeEnum
         {
-            
+
             /// <summary>
             /// Enum SystemEnum for system
             /// </summary>
             [EnumMember(Value = "system")]
             SystemEnum = 1,
-            
+
             /// <summary>
             /// Enum ClubEnum for club
             /// </summary>
@@ -89,7 +89,7 @@ namespace Org.OpenAPITools.Models
         /// <value>角色作用域，system 表示全局，club 表示社团范围。</value>
         /* <example>club</example> */
         [Required]
-        [DataMember(Name="scope", EmitDefaultValue=true)]
+        [DataMember(Name = "scope", EmitDefaultValue = true)]
         public ScopeEnum Scope { get; set; }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前角色对应的单个社团 ID；全局角色为空。</value>
         /* <example>1</example> */
-        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        [DataMember(Name = "clubId", EmitDefaultValue = true)]
         public int? ClubId { get; set; }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace Org.OpenAPITools.Models
         /// <value>该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。</value>
         /* <example>[1]</example> */
         [Required]
-        [DataMember(Name="clubIds", EmitDefaultValue=false)]
+        [DataMember(Name = "clubIds", EmitDefaultValue = false)]
         public List<int> ClubIds { get; set; }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Org.OpenAPITools.Models
         /// <value>该角色授予的权限编码列表。</value>
         /* <example>[&quot;club:internal:view&quot;,&quot;activity:checkin&quot;]</example> */
         [Required]
-        [DataMember(Name="permissions", EmitDefaultValue=false)]
+        [DataMember(Name = "permissions", EmitDefaultValue = false)]
         public List<string> Permissions { get; set; }
 
         /// <summary>
@@ -123,7 +123,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>角色权限说明。</value>
         /* <example>可查看社团内部信息并参与活动签到。</example> */
-        [DataMember(Name="permissionDesc", EmitDefaultValue=true)]
+        [DataMember(Name = "permissionDesc", EmitDefaultValue = true)]
         public string? PermissionDesc { get; set; }
 
     }

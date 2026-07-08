@@ -18,55 +18,55 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class UserMembershipSummary 
+    public partial class UserMembershipSummary
     {
         /// <summary>
         /// Gets or Sets ClubId
         /// </summary>
         [Required]
-        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        [DataMember(Name = "clubId", EmitDefaultValue = true)]
         public int ClubId { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
         [Required]
-        [DataMember(Name="clubName", EmitDefaultValue=false)]
+        [DataMember(Name = "clubName", EmitDefaultValue = false)]
         public string ClubName { get; set; }
 
         /// <summary>
         /// Gets or Sets DepartmentName
         /// </summary>
-        [DataMember(Name="departmentName", EmitDefaultValue=true)]
+        [DataMember(Name = "departmentName", EmitDefaultValue = true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
         /// Gets or Sets GroupName
         /// </summary>
-        [DataMember(Name="groupName", EmitDefaultValue=true)]
+        [DataMember(Name = "groupName", EmitDefaultValue = true)]
         public string? GroupName { get; set; }
 
         /// <summary>
         /// Gets or Sets PositionName
         /// </summary>
-        [DataMember(Name="positionName", EmitDefaultValue=true)]
+        [DataMember(Name = "positionName", EmitDefaultValue = true)]
         public string? PositionName { get; set; }
 
         /// <summary>
         /// Gets or Sets TermName
         /// </summary>
-        [DataMember(Name="termName", EmitDefaultValue=true)]
+        [DataMember(Name = "termName", EmitDefaultValue = true)]
         public string? TermName { get; set; }
 
         /// <summary>
         /// Gets or Sets MemberStatus
         /// </summary>
-        [DataMember(Name="memberStatus", EmitDefaultValue=true)]
+        [DataMember(Name = "memberStatus", EmitDefaultValue = true)]
         public string? MemberStatus { get; set; }
 
     }

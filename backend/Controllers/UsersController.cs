@@ -10,6 +10,17 @@ namespace ClubHub.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ClubHubDbContext _db;
+    private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\u8d1f\u8d23\u4eba",
+        "\u4f1a\u957f",
+        "\u793e\u957f",
+        "\u793e\u56e2\u8d1f\u8d23\u4eba",
+        "president",
+        "leader",
+        "club president",
+        "club leader"
+    };
 
     public UsersController(ClubHubDbContext db) => _db = db;
 
@@ -87,7 +98,7 @@ public class UsersController : ControllerBase
         user.ClubMemberships.Any(cm =>
             cm.ClubId == clubId &&
             IsActive(cm.MemberStatus) &&
-            IsPrincipalPosition(cm.PositionName));
+            IsStrictPrincipalPosition(cm.PositionName));
 
     internal static bool IsActive(string? accountOrMemberStatus) =>
         string.IsNullOrWhiteSpace(accountOrMemberStatus) ||
@@ -158,15 +169,14 @@ public class UsersController : ControllerBase
                (role.RoleName ?? string.Empty).Contains("系统管理员", StringComparison.Ordinal);
     }
 
-    private static bool IsPrincipalPosition(string? positionName)
+    private static bool IsStrictPrincipalPosition(string? positionName)
     {
         if (string.IsNullOrWhiteSpace(positionName)) return false;
 
-        return positionName.Contains("负责人", StringComparison.Ordinal) ||
-               positionName.Contains("会长", StringComparison.Ordinal) ||
-               positionName.Contains("社长", StringComparison.Ordinal) ||
-               positionName.Contains("leader", StringComparison.OrdinalIgnoreCase) ||
-               positionName.Contains("president", StringComparison.OrdinalIgnoreCase);
+        var normalized = positionName.Trim();
+        if (normalized.StartsWith("\u526f", StringComparison.Ordinal)) return false;
+
+        return PrincipalPositionNames.Contains(normalized);
     }
 
     private static string DisplayUser(User user)

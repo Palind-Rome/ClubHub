@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 注册或登录成功后的认证响应。
     /// </summary>
     [DataContract]
-    public partial class AuthResponse 
+    public partial class AuthResponse
     {
         /// <summary>
         /// 登录演示令牌
@@ -31,14 +31,14 @@ namespace Org.OpenAPITools.Models
         /// <value>登录演示令牌</value>
         /* <example>demo-token</example> */
         [Required]
-        [DataMember(Name="token", EmitDefaultValue=false)]
+        [DataMember(Name = "token", EmitDefaultValue = false)]
         public string Token { get; set; }
 
         /// <summary>
         /// Gets or Sets User
         /// </summary>
         [Required]
-        [DataMember(Name="user", EmitDefaultValue=false)]
+        [DataMember(Name = "user", EmitDefaultValue = false)]
         public AuthUser User { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前用户拥有的角色列表。</value>
         [Required]
-        [DataMember(Name="roles", EmitDefaultValue=false)]
+        [DataMember(Name = "roles", EmitDefaultValue = false)]
         public List<AuthRole> Roles { get; set; }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Org.OpenAPITools.Models
         /// <value>当前用户角色权限的并集。</value>
         /* <example>[&quot;profile:view&quot;,&quot;public:view&quot;]</example> */
         [Required]
-        [DataMember(Name="permissions", EmitDefaultValue=false)]
+        [DataMember(Name = "permissions", EmitDefaultValue = false)]
         public List<string> Permissions { get; set; }
 
     }
