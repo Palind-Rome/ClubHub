@@ -64,6 +64,7 @@ onUnmounted(() => {
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
+        <el-menu-item index="/venue-reservations">场地预约</el-menu-item>
         <div class="session">
           <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
             roleSummary
