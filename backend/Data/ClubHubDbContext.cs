@@ -14,9 +14,6 @@ public class ClubHubDbContext : DbContext
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
-    public DbSet<Project> Projects => Set<Project>();
-    public DbSet<Notice> Notices => Set<Notice>();
-    public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,10 +54,6 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
-            e.HasMany(c => c.Notices)
-             .WithOne(n => n.Club)
-             .HasForeignKey(n => n.ClubId)
-             .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(c => c.Applicant)
              .WithMany()
              .HasForeignKey(c => c.ApplicantUserId)
@@ -80,12 +73,25 @@ public class ClubHubDbContext : DbContext
             e.HasKey(a => a.ActivityId);
             e.HasMany(a => a.Participations)
              .WithOne(p => p.Activity)
-             .HasForeignKey(p => p.ActivityId);
+             .HasForeignKey(p => p.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.CreatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ActivityParticipation>(e =>
         {
             e.HasKey(p => p.ParticipationId);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(p => p.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ClubMember>(e =>
@@ -94,41 +100,6 @@ public class ClubHubDbContext : DbContext
             e.HasOne(cm => cm.Club)
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
-             .OnDelete(DeleteBehavior.NoAction);
-        });
-
-        modelBuilder.Entity<Project>(e =>
-        {
-            e.HasKey(p => p.ProjectId);
-            e.HasOne(p => p.Club)
-             .WithMany()
-             .HasForeignKey(p => p.ClubId)
-             .OnDelete(DeleteBehavior.NoAction);
-            e.HasOne<User>()
-             .WithMany()
-             .HasForeignKey(p => p.LeaderUserId)
-             .OnDelete(DeleteBehavior.NoAction);
-        });
-
-        modelBuilder.Entity<Notice>(e =>
-        {
-            e.HasKey(n => n.NoticeId);
-            e.HasOne(n => n.Publisher)
-             .WithMany()
-             .HasForeignKey(n => n.PublisherUserId)
-             .OnDelete(DeleteBehavior.NoAction);
-            e.HasMany(n => n.Reads)
-             .WithOne(r => r.Notice)
-             .HasForeignKey(r => r.NoticeId)
-             .OnDelete(DeleteBehavior.NoAction);
-        });
-
-        modelBuilder.Entity<NoticeRead>(e =>
-        {
-            e.HasKey(r => r.ReadId);
-            e.HasOne(r => r.User)
-             .WithMany()
-             .HasForeignKey(r => r.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

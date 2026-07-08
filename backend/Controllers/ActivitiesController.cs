@@ -277,9 +277,9 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = isCheckin ? "签到码不能为空。" : "签退码不能为空。" });
         }
 
-        if (activity.ActivityStatus != "published")
+        if (activity.ActivityStatus is not "published" and not "ongoing")
         {
-            return BadRequest(new { message = "只有已发布的活动可以签到或签退。" });
+            return BadRequest(new { message = "只有已发布或进行中的活动可以签到或签退。" });
         }
 
         if (!await UserExists(req.UserId))
