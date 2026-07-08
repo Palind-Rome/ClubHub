@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,86 +20,98 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 璁よ瘉涓婁笅鏂囦腑鐨勭敤鎴峰熀纭€淇℃伅銆?    /// </summary>
+    /// 认证上下文中的用户基础信息。
+    /// </summary>
     [DataContract]
     public partial class AuthUser 
     {
         /// <summary>
-        /// 鐢ㄦ埛 ID銆?        /// </summary>
-        /// <value>鐢ㄦ埛 ID銆?/value>
+        /// 用户 ID。
+        /// </summary>
+        /// <value>用户 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// 鐧诲綍鐢ㄦ埛鍚嶃€?        /// </summary>
-        /// <value>鐧诲綍鐢ㄦ埛鍚嶃€?/value>
+        /// 登录用户名。
+        /// </summary>
+        /// <value>登录用户名。</value>
         /* <example>stu_public</example> */
         [Required]
         [DataMember(Name="username", EmitDefaultValue=false)]
         public string Username { get; set; }
 
         /// <summary>
-        /// 鐢ㄦ埛鐪熷疄濮撳悕銆?        /// </summary>
-        /// <value>鐢ㄦ埛鐪熷疄濮撳悕銆?/value>
-        /* <example>寮犱笁</example> */
+        /// 用户真实姓名。
+        /// </summary>
+        /// <value>用户真实姓名。</value>
+        /* <example>张三</example> */
         [Required]
         [DataMember(Name="realName", EmitDefaultValue=false)]
         public string RealName { get; set; }
 
         /// <summary>
-        /// 瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?        /// </summary>
-        /// <value>瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?/value>
+        /// 学工号；学生 7 位，教师 5 位。
+        /// </summary>
+        /// <value>学工号；学生 7 位，教师 5 位。</value>
         /* <example>2450001</example> */
         [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
-        /// 鎬у埆銆?        /// </summary>
-        /// <value>鎬у埆銆?/value>
-        /* <example>鐢?/example> */
+        /// 性别。
+        /// </summary>
+        /// <value>性别。</value>
+        /* <example>男</example> */
         [DataMember(Name="gender", EmitDefaultValue=true)]
         public string? Gender { get; set; }
 
         /// <summary>
-        /// 鑱旂郴鐢佃瘽銆?        /// </summary>
-        /// <value>鑱旂郴鐢佃瘽銆?/value>
+        /// 联系电话。
+        /// </summary>
+        /// <value>联系电话。</value>
         /* <example>13800138000</example> */
         [DataMember(Name="phone", EmitDefaultValue=true)]
         public string? Phone { get; set; }
 
         /// <summary>
-        /// 閭鍦板潃銆?        /// </summary>
-        /// <value>閭鍦板潃銆?/value>
+        /// 邮箱地址。
+        /// </summary>
+        /// <value>邮箱地址。</value>
         /* <example>zhangsan@example.com</example> */
         [DataMember(Name="email", EmitDefaultValue=true)]
         public string? Email { get; set; }
 
         /// <summary>
-        /// 鎵€灞炲闄€?        /// </summary>
-        /// <value>鎵€灞炲闄€?/value>
-        /* <example>杞欢瀛﹂櫌</example> */
+        /// 所属学院。
+        /// </summary>
+        /// <value>所属学院。</value>
+        /* <example>软件学院</example> */
         [DataMember(Name="college", EmitDefaultValue=true)]
         public string? College { get; set; }
 
         /// <summary>
-        /// 鎵€灞炰笓涓氥€?        /// </summary>
-        /// <value>鎵€灞炰笓涓氥€?/value>
-        /* <example>杞欢宸ョ▼</example> */
+        /// 所属专业。
+        /// </summary>
+        /// <value>所属专业。</value>
+        /* <example>软件工程</example> */
         [DataMember(Name="major", EmitDefaultValue=true)]
         public string? Major { get; set; }
 
         /// <summary>
-        /// 骞寸骇銆?        /// </summary>
-        /// <value>骞寸骇銆?/value>
+        /// 年级。
+        /// </summary>
+        /// <value>年级。</value>
         /* <example>2024</example> */
         [DataMember(Name="grade", EmitDefaultValue=true)]
         public string? Grade { get; set; }
 
         /// <summary>
-        /// 璐﹀彿鐘舵€侊紝渚嬪 normal 鎴?disabled銆?        /// </summary>
-        /// <value>璐﹀彿鐘舵€侊紝渚嬪 normal 鎴?disabled銆?/value>
+        /// 账号状态，例如 normal 或 disabled。
+        /// </summary>
+        /// <value>账号状态，例如 normal 或 disabled。</value>
         /* <example>normal</example> */
         [Required]
         [DataMember(Name="accountStatus", EmitDefaultValue=false)]
@@ -107,4 +119,3 @@ namespace Org.OpenAPITools.Models
 
     }
 }
-

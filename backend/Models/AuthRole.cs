@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,46 +20,52 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 鐢ㄦ埛鍦ㄨ璇佷笂涓嬫枃涓殑瑙掕壊鍙婂叾鏉冮檺銆?    /// </summary>
+    /// 用户在认证上下文中的角色及其权限。
+    /// </summary>
     [DataContract]
     public partial class AuthRole 
     {
         /// <summary>
-        /// 瑙掕壊 ID銆?        /// </summary>
-        /// <value>瑙掕壊 ID銆?/value>
+        /// 角色 ID。
+        /// </summary>
+        /// <value>角色 ID。</value>
         /* <example>3</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// 瑙掕壊缂栫爜銆?        /// </summary>
-        /// <value>瑙掕壊缂栫爜銆?/value>
+        /// 角色编码。
+        /// </summary>
+        /// <value>角色编码。</value>
         /* <example>CLUB_MEMBER</example> */
         [Required]
         [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
-        /// 瑙掕壊鍚嶇О銆?        /// </summary>
-        /// <value>瑙掕壊鍚嶇О銆?/value>
-        /* <example>绀惧洟鎴愬憳</example> */
+        /// 角色名称。
+        /// </summary>
+        /// <value>角色名称。</value>
+        /* <example>社团成员</example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// 鍓嶇灞曠ず鐢ㄨ鑹插悕绉帮紝渚嬪鈥淎绀惧洟鎴愬憳鈥濃€淎绀惧洟璐熻矗浜衡€濄€?        /// </summary>
-        /// <value>鍓嶇灞曠ず鐢ㄨ鑹插悕绉帮紝渚嬪鈥淎绀惧洟鎴愬憳鈥濃€淎绀惧洟璐熻矗浜衡€濄€?/value>
-        /* <example>璁＄畻鏈哄崗浼氭垚鍛?/example> */
+        /// 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
+        /// </summary>
+        /// <value>前端展示用角色名称，例如“A社团成员”“A社团负责人”。</value>
+        /* <example>计算机协会成员</example> */
         [Required]
         [DataMember(Name="displayName", EmitDefaultValue=false)]
         public string DisplayName { get; set; }
 
 
         /// <summary>
-        /// 瑙掕壊浣滅敤鍩燂紝system 琛ㄧず鍏ㄥ眬锛宑lub 琛ㄧず绀惧洟鑼冨洿銆?        /// </summary>
-        /// <value>瑙掕壊浣滅敤鍩燂紝system 琛ㄧず鍏ㄥ眬锛宑lub 琛ㄧず绀惧洟鑼冨洿銆?/value>
+        /// 角色作用域，system 表示全局，club 表示社团范围。
+        /// </summary>
+        /// <value>角色作用域，system 表示全局，club 表示社团范围。</value>
         
         public enum ScopeEnum
         {
@@ -78,43 +84,47 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// 瑙掕壊浣滅敤鍩燂紝system 琛ㄧず鍏ㄥ眬锛宑lub 琛ㄧず绀惧洟鑼冨洿銆?        /// </summary>
-        /// <value>瑙掕壊浣滅敤鍩燂紝system 琛ㄧず鍏ㄥ眬锛宑lub 琛ㄧず绀惧洟鑼冨洿銆?/value>
+        /// 角色作用域，system 表示全局，club 表示社团范围。
+        /// </summary>
+        /// <value>角色作用域，system 表示全局，club 表示社团范围。</value>
         /* <example>club</example> */
         [Required]
         [DataMember(Name="scope", EmitDefaultValue=true)]
         public ScopeEnum Scope { get; set; }
 
         /// <summary>
-        /// 褰撳墠瑙掕壊瀵瑰簲鐨勫崟涓ぞ鍥?ID锛涘叏灞€瑙掕壊涓虹┖銆?        /// </summary>
-        /// <value>褰撳墠瑙掕壊瀵瑰簲鐨勫崟涓ぞ鍥?ID锛涘叏灞€瑙掕壊涓虹┖銆?/value>
+        /// 当前角色对应的单个社团 ID；全局角色为空。
+        /// </summary>
+        /// <value>当前角色对应的单个社团 ID；全局角色为空。</value>
         /* <example>1</example> */
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
         /// <summary>
-        /// 璇ヨ鑹茶鐩栫殑绀惧洟鑼冨洿锛涚敤浜庡睍绀哄拰鏉冮檺鍒ゆ柇涓殑绀惧洟鑼冨洿瑙掕壊銆?        /// </summary>
-        /// <value>璇ヨ鑹茶鐩栫殑绀惧洟鑼冨洿锛涚敤浜庡睍绀哄拰鏉冮檺鍒ゆ柇涓殑绀惧洟鑼冨洿瑙掕壊銆?/value>
+        /// 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
+        /// </summary>
+        /// <value>该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。</value>
         /* <example>[1]</example> */
         [Required]
         [DataMember(Name="clubIds", EmitDefaultValue=false)]
         public List<int> ClubIds { get; set; }
 
         /// <summary>
-        /// 璇ヨ鑹叉巿浜堢殑鏉冮檺缂栫爜鍒楄〃銆?        /// </summary>
-        /// <value>璇ヨ鑹叉巿浜堢殑鏉冮檺缂栫爜鍒楄〃銆?/value>
+        /// 该角色授予的权限编码列表。
+        /// </summary>
+        /// <value>该角色授予的权限编码列表。</value>
         /* <example>[&quot;club:internal:view&quot;,&quot;activity:checkin&quot;]</example> */
         [Required]
         [DataMember(Name="permissions", EmitDefaultValue=false)]
         public List<string> Permissions { get; set; }
 
         /// <summary>
-        /// 瑙掕壊鏉冮檺璇存槑銆?        /// </summary>
-        /// <value>瑙掕壊鏉冮檺璇存槑銆?/value>
-        /* <example>鍙煡鐪嬬ぞ鍥㈠唴閮ㄤ俊鎭苟鍙備笌娲诲姩绛惧埌銆?/example> */
+        /// 角色权限说明。
+        /// </summary>
+        /// <value>角色权限说明。</value>
+        /* <example>可查看社团内部信息并参与活动签到。</example> */
         [DataMember(Name="permissionDesc", EmitDefaultValue=true)]
         public string? PermissionDesc { get; set; }
 
     }
 }
-

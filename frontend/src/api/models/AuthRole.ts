@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,52 +15,62 @@
 
 import { mapValues } from "../runtime";
 /**
- * 鐢ㄦ埛鍦ㄨ璇佷笂涓嬫枃涓殑瑙掕壊鍙婂叾鏉冮檺銆? * @export
+ * 用户在认证上下文中的角色及其权限。
+ * @export
  * @interface AuthRole
  */
 export interface AuthRole {
   /**
-   * 瑙掕壊 ID銆?     * @type {number}
+   * 角色 ID。
+   * @type {number}
    * @memberof AuthRole
    */
   id: number;
   /**
-   * 瑙掕壊缂栫爜銆?     * @type {string}
+   * 角色编码。
+   * @type {string}
    * @memberof AuthRole
    */
   code: string;
   /**
-   * 瑙掕壊鍚嶇О銆?     * @type {string}
+   * 角色名称。
+   * @type {string}
    * @memberof AuthRole
    */
   name: string;
   /**
-   * 鍓嶇灞曠ず鐢ㄨ鑹插悕绉帮紝渚嬪鈥淎绀惧洟鎴愬憳鈥濃€淎绀惧洟璐熻矗浜衡€濄€?     * @type {string}
+   * 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
+   * @type {string}
    * @memberof AuthRole
    */
   displayName: string;
   /**
-   * 瑙掕壊浣滅敤鍩燂紝system 琛ㄧず鍏ㄥ眬锛宑lub 琛ㄧず绀惧洟鑼冨洿銆?     * @type {AuthRoleScopeEnum}
+   * 角色作用域，system 表示全局，club 表示社团范围。
+   * @type {AuthRoleScopeEnum}
    * @memberof AuthRole
    */
   scope: AuthRoleScopeEnum;
   /**
-   * 褰撳墠瑙掕壊瀵瑰簲鐨勫崟涓ぞ鍥?ID锛涘叏灞€瑙掕壊涓虹┖銆?     * @type {number}
+   * 当前角色对应的单个社团 ID；全局角色为空。
+   * @type {number}
    * @memberof AuthRole
    */
   clubId?: number | null;
   /**
-   * 璇ヨ鑹茶鐩栫殑绀惧洟鑼冨洿锛涚敤浜庡睍绀哄拰鏉冮檺鍒ゆ柇涓殑绀惧洟鑼冨洿瑙掕壊銆?     * @type {Array<number>}
+   * 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
+   * @type {Array<number>}
    * @memberof AuthRole
    */
   clubIds: Array<number>;
   /**
-   * 璇ヨ鑹叉巿浜堢殑鏉冮檺缂栫爜鍒楄〃銆?     * @type {Array<string>}
+   * 该角色授予的权限编码列表。
+   * @type {Array<string>}
    * @memberof AuthRole
    */
   permissions: Array<string>;
   /**
-   * 瑙掕壊鏉冮檺璇存槑銆?     * @type {string}
+   * 角色权限说明。
+   * @type {string}
    * @memberof AuthRole
    */
   permissionDesc?: string | null;

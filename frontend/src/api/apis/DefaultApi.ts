@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -295,7 +295,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒嗛厤鎴栬皟鏁撮」鐩礋璐ｄ汉
+   * 分配或调整项目负责人
    */
   async assignProjectLeaderRaw(
     requestParameters: AssignProjectLeaderOperationRequest,
@@ -308,7 +308,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒嗛厤鎴栬皟鏁撮」鐩礋璐ｄ汉
+   * 分配或调整项目负责人
    */
   async assignProjectLeader(
     requestParameters: AssignProjectLeaderOperationRequest,
@@ -349,7 +349,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒嗛厤鐢ㄦ埛瑙掕壊
+   * 分配用户角色
    */
   async assignUserRoleRaw(
     requestParameters: AssignUserRoleRequest,
@@ -364,7 +364,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒嗛厤鐢ㄦ埛瑙掕壊
+   * 分配用户角色
    */
   async assignUserRole(
     requestParameters: AssignUserRoleRequest,
@@ -416,7 +416,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎾ら攢寰呭鏍告垨杩涜涓殑椤圭洰
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 撤销待审核或进行中的项目
    */
   async cancelProjectRaw(
     requestParameters: CancelProjectOperationRequest,
@@ -429,7 +430,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎾ら攢寰呭鏍告垨杩涜涓殑椤圭洰
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 撤销待审核或进行中的项目
    */
   async cancelProject(
     requestParameters: CancelProjectOperationRequest,
@@ -486,7 +488,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 妫€鏌ョ敤鎴锋槸鍚︽嫢鏈夋寚瀹氭潈闄?     */
+   * 检查用户是否拥有指定权限
+   */
   async checkPermissionRaw(
     requestParameters: CheckPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -500,7 +503,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 妫€鏌ョ敤鎴锋槸鍚︽嫢鏈夋寚瀹氭潈闄?     */
+   * 检查用户是否拥有指定权限
+   */
   async checkPermission(
     requestParameters: CheckPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -540,7 +544,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒涘缓绀惧洟
+   * 创建社团
    */
   async createClubRaw(
     requestParameters: CreateClubOperationRequest,
@@ -553,7 +557,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍒涘缓绀惧洟
+   * 创建社团
    */
   async createClub(
     requestParameters: CreateClubOperationRequest,
@@ -594,7 +598,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 浠呭鐢熻鑹插彲浠ユ彁浜ょぞ鍥㈡敞鍐岀敵璇凤紱骞冲彴绠＄悊鍛樸€佹寚瀵艰€佸笀绛夐潪瀛︾敓瑙掕壊涓嶈兘閫氳繃璇ュ叆鍙ｅ彂璧风敵璇枫€?     * 鎻愪氦绀惧洟娉ㄥ唽鐢宠
+   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
+   * 提交社团注册申请
    */
   async createClubApplicationRaw(
     requestParameters: CreateClubApplicationOperationRequest,
@@ -607,7 +612,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 浠呭鐢熻鑹插彲浠ユ彁浜ょぞ鍥㈡敞鍐岀敵璇凤紱骞冲彴绠＄悊鍛樸€佹寚瀵艰€佸笀绛夐潪瀛︾敓瑙掕壊涓嶈兘閫氳繃璇ュ叆鍙ｅ彂璧风敵璇枫€?     * 鎻愪氦绀惧洟娉ㄥ唽鐢宠
+   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
+   * 提交社团注册申请
    */
   async createClubApplication(
     requestParameters: CreateClubApplicationOperationRequest,
@@ -656,7 +662,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互涓烘垚鍛樻柊澧炶亴浣嶄换鏈燂紱鏂板浠绘湡鏃跺彲鍏抽棴璇ユ垚鍛樺師鏈夋晥浠绘湡浠ヤ繚鐣欏巻鍙茶褰曘€?     * 鏂板绀惧洟鎴愬憳鎴栧共閮ㄤ换鏈?     */
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 新增社团成员或干部任期
+   */
   async createClubMemberTermRaw(
     requestParameters: CreateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -670,7 +678,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互涓烘垚鍛樻柊澧炶亴浣嶄换鏈燂紱鏂板浠绘湡鏃跺彲鍏抽棴璇ユ垚鍛樺師鏈夋晥浠绘湡浠ヤ繚鐣欏巻鍙茶褰曘€?     * 鏂板绀惧洟鎴愬憳鎴栧共閮ㄤ换鏈?     */
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 新增社团成员或干部任期
+   */
   async createClubMemberTerm(
     requestParameters: CreateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -710,7 +720,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绀惧洟璐熻矗浜烘垨鎸囧鑰佸笀鎻愪氦椤圭洰绔嬮」鐢宠
+   * 社团负责人或指导老师提交项目立项申请
    */
   async createProjectRaw(
     requestParameters: CreateProjectOperationRequest,
@@ -723,7 +733,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绀惧洟璐熻矗浜烘垨鎸囧鑰佸笀鎻愪氦椤圭洰绔嬮」鐢宠
+   * 社团负责人或指导老师提交项目立项申请
    */
   async createProject(
     requestParameters: CreateProjectOperationRequest,
@@ -772,7 +782,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绀惧洟绠＄悊鍛樻垨绯荤粺绠＄悊鍛樺彲浠ヨВ鏁ｇぞ鍥紱绯荤粺淇濈暀绀惧洟妗ｆ鍜屾垚鍛樹换鏈熷巻鍙诧紝灏嗙ぞ鍥㈢姸鎬佹爣璁颁负 inactive銆?     * 瑙ｆ暎绀惧洟
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
   async dissolveClubRaw(
     requestParameters: DissolveClubOperationRequest,
@@ -785,7 +796,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绀惧洟绠＄悊鍛樻垨绯荤粺绠＄悊鍛樺彲浠ヨВ鏁ｇぞ鍥紱绯荤粺淇濈暀绀惧洟妗ｆ鍜屾垚鍛樹换鏈熷巻鍙诧紝灏嗙ぞ鍥㈢姸鎬佹爣璁颁负 inactive銆?     * 瑙ｆ暎绀惧洟
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
   async dissolveClub(
     requestParameters: DissolveClubOperationRequest,
@@ -813,7 +825,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇娲诲姩鍒楄〃
+   * 获取活动列表
    */
   async getActivitiesRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -825,7 +837,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇娲诲姩鍒楄〃
+   * 获取活动列表
    */
   async getActivities(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -866,7 +878,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇娲诲姩璇︽儏
+   * 获取活动详情
    */
   async getActivityByIdRaw(
     requestParameters: GetActivityByIdRequest,
@@ -879,7 +891,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇娲诲姩璇︽儏
+   * 获取活动详情
    */
   async getActivityById(
     requestParameters: GetActivityByIdRequest,
@@ -925,7 +937,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎸夊綋鍓嶇敤鎴锋潈闄愭煡璇㈢ぞ鍥㈡敞鍐岀敵璇?     */
+   * 按当前用户权限查询社团注册申请
+   */
   async getClubApplicationsRaw(
     requestParameters: GetClubApplicationsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -939,7 +952,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎸夊綋鍓嶇敤鎴锋潈闄愭煡璇㈢ぞ鍥㈡敞鍐岀敵璇?     */
+   * 按当前用户权限查询社团注册申请
+   */
   async getClubApplications(
     requestParameters: GetClubApplicationsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -977,7 +991,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇绀惧洟璇︽儏
+   * 获取社团详情
    */
   async getClubByIdRaw(
     requestParameters: GetClubByIdRequest,
@@ -990,7 +1004,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇绀惧洟璇︽儏
+   * 获取社团详情
    */
   async getClubById(
     requestParameters: GetClubByIdRequest,
@@ -1044,7 +1058,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樸€佹湰绀惧洟璐熻矗浜恒€佸共閮ㄣ€佹垚鍛樺拰鎸囧鑰佸笀鍙互鏌ョ湅鎴愬憳鍙婁换鏈燂紱榛樿浠呰繑鍥炲綋鍓嶆湁鏁堣褰曪紝鍙€夋嫨鍖呭惈鍘嗗彶璁板綍銆傜ぞ鍥㈢鐞嗗憳涓嶆煡鐪嬬ぞ鍥㈠唴閮ㄤ换鏈熴€?     * 鏌ヨ绀惧洟鎴愬憳涓庡共閮ㄤ换鏈熻褰?     */
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 查询社团成员与干部任期记录
+   */
   async getClubMembersRaw(
     requestParameters: GetClubMembersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1058,7 +1074,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樸€佹湰绀惧洟璐熻矗浜恒€佸共閮ㄣ€佹垚鍛樺拰鎸囧鑰佸笀鍙互鏌ョ湅鎴愬憳鍙婁换鏈燂紱榛樿浠呰繑鍥炲綋鍓嶆湁鏁堣褰曪紝鍙€夋嫨鍖呭惈鍘嗗彶璁板綍銆傜ぞ鍥㈢鐞嗗憳涓嶆煡鐪嬬ぞ鍥㈠唴閮ㄤ换鏈熴€?     * 鏌ヨ绀惧洟鎴愬憳涓庡共閮ㄤ换鏈熻褰?     */
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 查询社团成员与干部任期记录
+   */
   async getClubMembers(
     requestParameters: GetClubMembersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1090,7 +1108,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇绀惧洟鍒楄〃
+   * 获取社团列表
    */
   async getClubsRaw(
     requestParameters: GetClubsRequest,
@@ -1103,7 +1121,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇绀惧洟鍒楄〃
+   * 获取社团列表
    */
   async getClubs(
     requestParameters: GetClubsRequest = {},
@@ -1132,7 +1150,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇鏉冮檺鐩綍
+   * 获取权限目录
    */
   async getPermissionCatalogRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1146,7 +1164,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇鏉冮檺鐩綍
+   * 获取权限目录
    */
   async getPermissionCatalog(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1187,7 +1205,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇椤圭洰璇︽儏
+   * 获取项目详情
    */
   async getProjectByIdRaw(
     requestParameters: GetProjectByIdRequest,
@@ -1200,7 +1218,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇椤圭洰璇︽儏
+   * 获取项目详情
    */
   async getProjectById(
     requestParameters: GetProjectByIdRequest,
@@ -1243,7 +1261,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇椤圭洰鍒楄〃
+   * 获取项目列表
    */
   async getProjectsRaw(
     requestParameters: GetProjectsRequest,
@@ -1256,7 +1274,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇椤圭洰鍒楄〃
+   * 获取项目列表
    */
   async getProjects(
     requestParameters: GetProjectsRequest = {},
@@ -1285,7 +1303,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇鍩虹瑙掕壊瀹氫箟
+   * 获取基础角色定义
    */
   async getRoleDefinitionsRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1299,7 +1317,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇鍩虹瑙掕壊瀹氫箟
+   * 获取基础角色定义
    */
   async getRoleDefinitions(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1342,7 +1360,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇褰撳墠璐﹀彿鍙煡鐪嬫垨鍙垎閰嶇殑鐢ㄦ埛鍒楄〃
+   * 获取当前账号可查看或可分配的用户列表
    */
   async getUsersRaw(
     requestParameters: GetUsersRequest,
@@ -1355,7 +1373,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鑾峰彇褰撳墠璐﹀彿鍙煡鐪嬫垨鍙垎閰嶇殑鐢ㄦ埛鍒楄〃
+   * 获取当前账号可查看或可分配的用户列表
    */
   async getUsers(
     requestParameters: GetUsersRequest,
@@ -1384,7 +1402,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍋ュ悍妫€鏌?     */
+   * 健康检查
+   */
   async healthCheckRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<HealthStatus>> {
@@ -1395,7 +1414,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鍋ュ悍妫€鏌?     */
+   * 健康检查
+   */
   async healthCheck(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<HealthStatus> {
@@ -1432,7 +1452,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鐢ㄦ埛鐧诲綍
+   * 用户登录
    */
   async loginUserRaw(
     requestParameters: LoginUserRequest,
@@ -1445,7 +1465,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鐢ㄦ埛鐧诲綍
+   * 用户登录
    */
   async loginUser(
     requestParameters: LoginUserRequest,
@@ -1486,7 +1506,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鐢ㄦ埛娉ㄥ唽
+   * 用户注册
    */
   async registerUserRaw(
     requestParameters: RegisterUserRequest,
@@ -1499,7 +1519,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鐢ㄦ埛娉ㄥ唽
+   * 用户注册
    */
   async registerUser(
     requestParameters: RegisterUserRequest,
@@ -1548,7 +1568,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 骞冲彴绠＄悊鍛樺鏍哥ぞ鍥㈡敞鍐岀敵璇?     */
+   * 平台管理员审核社团注册申请
+   */
   async reviewClubApplicationRaw(
     requestParameters: ReviewClubApplicationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1560,7 +1581,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 骞冲彴绠＄悊鍛樺鏍哥ぞ鍥㈡敞鍐岀敵璇?     */
+   * 平台管理员审核社团注册申请
+   */
   async reviewClubApplication(
     requestParameters: ReviewClubApplicationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1611,7 +1633,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎸囧鑰佸笀瀹℃牳椤圭洰绔嬮」鐢宠
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+   * 指导老师审核项目立项申请
    */
   async reviewProjectRaw(
     requestParameters: ReviewProjectOperationRequest,
@@ -1624,7 +1647,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鎸囧鑰佸笀瀹℃牳椤圭洰绔嬮」鐢宠
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+   * 指导老师审核项目立项申请
    */
   async reviewProject(
     requestParameters: ReviewProjectOperationRequest,
@@ -1673,7 +1697,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鏇存柊绀惧洟
+   * 更新社团
    */
   async updateClubRaw(
     requestParameters: UpdateClubOperationRequest,
@@ -1686,7 +1710,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 鏇存柊绀惧洟
+   * 更新社团
    */
   async updateClub(
     requestParameters: UpdateClubOperationRequest,
@@ -1746,7 +1770,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互淇鎴愬憳閮ㄩ棬銆佽亴浣嶃€佷换鏈熷拰鐘舵€侊紝涓嶅垹闄ゅ巻鍙茶褰曘€?     * 鏇存柊绀惧洟鎴愬憳鎴栧共閮ㄤ换鏈?     */
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 更新社团成员或干部任期
+   */
   async updateClubMemberTermRaw(
     requestParameters: UpdateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1760,7 +1786,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互淇鎴愬憳閮ㄩ棬銆佽亴浣嶃€佷换鏈熷拰鐘舵€侊紝涓嶅垹闄ゅ巻鍙茶褰曘€?     * 鏇存柊绀惧洟鎴愬憳鎴栧共閮ㄤ换鏈?     */
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 更新社团成员或干部任期
+   */
   async updateClubMemberTerm(
     requestParameters: UpdateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1808,7 +1836,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互缁存姢绀惧洟绠€浠嬨€佽仈绯绘柟寮忋€佹寚瀵艰€佸笀鍜岃礋璐ｄ汉淇℃伅锛涚ぞ鍥㈢鐞嗗憳鍙鐞嗙ぞ鍥㈡敞鍐屽鏍稿拰绀惧洟鐘舵€佺鐞嗭紝涓嶅弬涓庣ぞ鍥㈠唴閮ㄦ。妗堢淮鎶ゃ€?     * 缁存姢绀惧洟鍩虹淇℃伅
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 维护社团基础信息
    */
   async updateClubProfileRaw(
     requestParameters: UpdateClubProfileOperationRequest,
@@ -1821,7 +1850,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 绯荤粺绠＄悊鍛樻垨鏈ぞ鍥㈣礋璐ｄ汉鍙互缁存姢绀惧洟绠€浠嬨€佽仈绯绘柟寮忋€佹寚瀵艰€佸笀鍜岃礋璐ｄ汉淇℃伅锛涚ぞ鍥㈢鐞嗗憳鍙鐞嗙ぞ鍥㈡敞鍐屽鏍稿拰绀惧洟鐘舵€佺鐞嗭紝涓嶅弬涓庣ぞ鍥㈠唴閮ㄦ。妗堢淮鎶ゃ€?     * 缁存姢绀惧洟鍩虹淇℃伅
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 维护社团基础信息
    */
   async updateClubProfile(
     requestParameters: UpdateClubProfileOperationRequest,

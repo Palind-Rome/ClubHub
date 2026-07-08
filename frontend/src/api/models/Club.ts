@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -81,12 +81,14 @@ export interface Club {
    */
   presidentName?: string | null;
   /**
-   * 褰撳墠鎸囧鑰佸笀鐢ㄦ埛 ID锛岀敱 USER_ROLES 涓?ADVISOR 绀惧洟瑙掕壊鍏崇郴鎺ㄥ銆?     * @type {number}
+   * 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
+   * @type {number}
    * @memberof Club
    */
   advisorUserId?: number | null;
   /**
-   * 褰撳墠鎸囧鑰佸笀灞曠ず鍚嶇О锛涗紭鍏堢敱 ADVISOR 瑙掕壊瀵瑰簲鐢ㄦ埛鎺ㄥ锛屽巻鍙叉暟鎹彲鍥為€€鍒扮ぞ鍥㈡枃鏈瓧娈点€?     * @type {string}
+   * 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
+   * @type {string}
    * @memberof Club
    */
   advisorName?: string | null;

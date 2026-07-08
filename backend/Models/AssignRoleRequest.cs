@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,29 +20,33 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 涓虹洰鏍囩敤鎴峰垎閰嶇郴缁熺骇鎴栫ぞ鍥㈢骇瑙掕壊銆?    /// </summary>
+    /// 为目标用户分配系统级或社团级角色。
+    /// </summary>
     [DataContract]
     public partial class AssignRoleRequest 
     {
         /// <summary>
-        /// 鍙戣捣鍒嗛厤鎿嶄綔鐨勭敤鎴?ID銆?        /// </summary>
-        /// <value>鍙戣捣鍒嗛厤鎿嶄綔鐨勭敤鎴?ID銆?/value>
+        /// 发起分配操作的用户 ID。
+        /// </summary>
+        /// <value>发起分配操作的用户 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
         public int OperatorUserId { get; set; }
 
         /// <summary>
-        /// 琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?        /// </summary>
-        /// <value>琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?/value>
+        /// 被分配角色的用户 ID。
+        /// </summary>
+        /// <value>被分配角色的用户 ID。</value>
         /* <example>2</example> */
         [Required]
         [DataMember(Name="targetUserId", EmitDefaultValue=true)]
         public int TargetUserId { get; set; }
 
         /// <summary>
-        /// 瑙掕壊缂栫爜锛屼緥濡?STUDENT銆丆LUB_MEMBER銆丼YSTEM_ADMIN銆?        /// </summary>
-        /// <value>瑙掕壊缂栫爜锛屼緥濡?STUDENT銆丆LUB_MEMBER銆丼YSTEM_ADMIN銆?/value>
+        /// 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+        /// </summary>
+        /// <value>角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。</value>
         /* <example>CLUB_MEMBER</example> */
         [Required]
         [MaxLength(50)]
@@ -50,12 +54,12 @@ namespace Org.OpenAPITools.Models
         public string RoleCode { get; set; }
 
         /// <summary>
-        /// 绀惧洟绾ц鑹叉墍灞炵ぞ鍥?ID锛涚郴缁熺骇瑙掕壊鍙负绌恒€?        /// </summary>
-        /// <value>绀惧洟绾ц鑹叉墍灞炵ぞ鍥?ID锛涚郴缁熺骇瑙掕壊鍙负绌恒€?/value>
+        /// 社团级角色所属社团 ID；系统级角色可为空。
+        /// </summary>
+        /// <value>社团级角色所属社团 ID；系统级角色可为空。</value>
         /* <example>1</example> */
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
     }
 }
-

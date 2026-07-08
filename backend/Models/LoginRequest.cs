@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,13 +20,15 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 鐢ㄦ埛鐧诲綍璇锋眰锛寀sername 鍙～鍐欑敤鎴峰悕鎴栧宸ュ彿銆?    /// </summary>
+    /// 用户登录请求，username 可填写用户名或学工号。
+    /// </summary>
     [DataContract]
     public partial class LoginRequest 
     {
         /// <summary>
-        /// 鐢ㄦ埛鍚嶆垨瀛﹀伐鍙枫€?        /// </summary>
-        /// <value>鐢ㄦ埛鍚嶆垨瀛﹀伐鍙枫€?/value>
+        /// 用户名或学工号。
+        /// </summary>
+        /// <value>用户名或学工号。</value>
         /* <example>stu_public</example> */
         [Required]
         [StringLength(50, MinimumLength=1)]
@@ -34,8 +36,9 @@ namespace Org.OpenAPITools.Models
         public string Username { get; set; }
 
         /// <summary>
-        /// 鐧诲綍瀵嗙爜銆?        /// </summary>
-        /// <value>鐧诲綍瀵嗙爜銆?/value>
+        /// 登录密码。
+        /// </summary>
+        /// <value>登录密码。</value>
         /* <example>ClubHub123</example> */
         [Required]
         [StringLength(128, MinimumLength=1)]
@@ -44,4 +47,3 @@ namespace Org.OpenAPITools.Models
 
     }
 }
-

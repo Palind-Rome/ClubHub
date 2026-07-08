@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,13 +20,15 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 鐢ㄦ埛娉ㄥ唽璇锋眰銆傚鐢熷宸ュ彿涓?7 浣嶆暟瀛楋紝鏁欏笀宸ュ彿涓?5 浣嶆暟瀛椼€?    /// </summary>
+    /// 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
+    /// </summary>
     [DataContract]
     public partial class RegisterRequest 
     {
         /// <summary>
-        /// 鐧诲綍鐢ㄦ埛鍚嶏紝娉ㄥ唽鍚庡繀椤诲敮涓€銆?        /// </summary>
-        /// <value>鐧诲綍鐢ㄦ埛鍚嶏紝娉ㄥ唽鍚庡繀椤诲敮涓€銆?/value>
+        /// 登录用户名，注册后必须唯一。
+        /// </summary>
+        /// <value>登录用户名，注册后必须唯一。</value>
         /* <example>stu_public</example> */
         [Required]
         [StringLength(50, MinimumLength=3)]
@@ -34,8 +36,9 @@ namespace Org.OpenAPITools.Models
         public string Username { get; set; }
 
         /// <summary>
-        /// 鐧诲綍瀵嗙爜锛屾湇鍔＄浠呬繚瀛樺瘑鐮佹憳瑕併€?        /// </summary>
-        /// <value>鐧诲綍瀵嗙爜锛屾湇鍔＄浠呬繚瀛樺瘑鐮佹憳瑕併€?/value>
+        /// 登录密码，服务端仅保存密码摘要。
+        /// </summary>
+        /// <value>登录密码，服务端仅保存密码摘要。</value>
         /* <example>ClubHub123</example> */
         [Required]
         [StringLength(128, MinimumLength=6)]
@@ -43,17 +46,19 @@ namespace Org.OpenAPITools.Models
         public string Password { get; set; }
 
         /// <summary>
-        /// 鐢ㄦ埛鐪熷疄濮撳悕銆?        /// </summary>
-        /// <value>鐢ㄦ埛鐪熷疄濮撳悕銆?/value>
-        /* <example>寮犱笁</example> */
+        /// 用户真实姓名。
+        /// </summary>
+        /// <value>用户真实姓名。</value>
+        /* <example>张三</example> */
         [Required]
         [StringLength(50, MinimumLength=1)]
         [DataMember(Name="realName", EmitDefaultValue=false)]
         public string RealName { get; set; }
 
         /// <summary>
-        /// 瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?        /// </summary>
-        /// <value>瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?/value>
+        /// 学工号；学生 7 位，教师 5 位。
+        /// </summary>
+        /// <value>学工号；学生 7 位，教师 5 位。</value>
         /* <example>2450001</example> */
         [Required]
         [RegularExpression("^([0-9]{7}|[0-9]{5})$")]
@@ -62,17 +67,19 @@ namespace Org.OpenAPITools.Models
         public string StudentNo { get; set; }
 
         /// <summary>
-        /// 鎬у埆锛屽彲涓虹┖锛涘綋鍓嶆敮鎸佺敺銆佸コ銆?        /// </summary>
-        /// <value>鎬у埆锛屽彲涓虹┖锛涘綋鍓嶆敮鎸佺敺銆佸コ銆?/value>
-        /* <example>鐢?/example> */
-        [RegularExpression("^(鐢穦濂?$")]
+        /// 性别，可为空；当前支持男、女。
+        /// </summary>
+        /// <value>性别，可为空；当前支持男、女。</value>
+        /* <example>男</example> */
+        [RegularExpression("^(男|女)$")]
         [MaxLength(10)]
         [DataMember(Name="gender", EmitDefaultValue=true)]
         public string? Gender { get; set; }
 
         /// <summary>
-        /// 鑱旂郴鐢佃瘽锛屽彲涓虹┖銆?        /// </summary>
-        /// <value>鑱旂郴鐢佃瘽锛屽彲涓虹┖銆?/value>
+        /// 联系电话，可为空。
+        /// </summary>
+        /// <value>联系电话，可为空。</value>
         /* <example>13800138000</example> */
         [RegularExpression("^[0-9+\\-\\s()]{0,20}$")]
         [MaxLength(20)]
@@ -80,32 +87,36 @@ namespace Org.OpenAPITools.Models
         public string? Phone { get; set; }
 
         /// <summary>
-        /// 閭鍦板潃锛屽彲涓虹┖銆?        /// </summary>
-        /// <value>閭鍦板潃锛屽彲涓虹┖銆?/value>
+        /// 邮箱地址，可为空。
+        /// </summary>
+        /// <value>邮箱地址，可为空。</value>
         /* <example>zhangsan@example.com</example> */
         [MaxLength(100)]
         [DataMember(Name="email", EmitDefaultValue=true)]
         public string? Email { get; set; }
 
         /// <summary>
-        /// 鎵€灞炲闄紝鍙负绌恒€?        /// </summary>
-        /// <value>鎵€灞炲闄紝鍙负绌恒€?/value>
-        /* <example>杞欢瀛﹂櫌</example> */
+        /// 所属学院，可为空。
+        /// </summary>
+        /// <value>所属学院，可为空。</value>
+        /* <example>软件学院</example> */
         [MaxLength(100)]
         [DataMember(Name="college", EmitDefaultValue=true)]
         public string? College { get; set; }
 
         /// <summary>
-        /// 鎵€灞炰笓涓氾紝鍙负绌恒€?        /// </summary>
-        /// <value>鎵€灞炰笓涓氾紝鍙负绌恒€?/value>
-        /* <example>杞欢宸ョ▼</example> */
+        /// 所属专业，可为空。
+        /// </summary>
+        /// <value>所属专业，可为空。</value>
+        /* <example>软件工程</example> */
         [MaxLength(100)]
         [DataMember(Name="major", EmitDefaultValue=true)]
         public string? Major { get; set; }
 
         /// <summary>
-        /// 骞寸骇锛屽彲涓虹┖銆?        /// </summary>
-        /// <value>骞寸骇锛屽彲涓虹┖銆?/value>
+        /// 年级，可为空。
+        /// </summary>
+        /// <value>年级，可为空。</value>
         /* <example>2024</example> */
         [MaxLength(20)]
         [DataMember(Name="grade", EmitDefaultValue=true)]
@@ -113,4 +124,3 @@ namespace Org.OpenAPITools.Models
 
     }
 }
-

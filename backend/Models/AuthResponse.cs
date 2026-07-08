@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,14 +20,15 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 娉ㄥ唽鎴栫櫥褰曟垚鍔熷悗鐨勮璇佸搷搴斻€?    /// </summary>
+    /// 注册或登录成功后的认证响应。
+    /// </summary>
     [DataContract]
     public partial class AuthResponse 
     {
         /// <summary>
-        /// 鐧诲綍婕旂ず浠ょ墝
+        /// 登录演示令牌
         /// </summary>
-        /// <value>鐧诲綍婕旂ず浠ょ墝</value>
+        /// <value>登录演示令牌</value>
         /* <example>demo-token</example> */
         [Required]
         [DataMember(Name="token", EmitDefaultValue=false)]
@@ -41,15 +42,17 @@ namespace Org.OpenAPITools.Models
         public AuthUser User { get; set; }
 
         /// <summary>
-        /// 褰撳墠鐢ㄦ埛鎷ユ湁鐨勮鑹插垪琛ㄣ€?        /// </summary>
-        /// <value>褰撳墠鐢ㄦ埛鎷ユ湁鐨勮鑹插垪琛ㄣ€?/value>
+        /// 当前用户拥有的角色列表。
+        /// </summary>
+        /// <value>当前用户拥有的角色列表。</value>
         [Required]
         [DataMember(Name="roles", EmitDefaultValue=false)]
         public List<AuthRole> Roles { get; set; }
 
         /// <summary>
-        /// 褰撳墠鐢ㄦ埛瑙掕壊鏉冮檺鐨勫苟闆嗐€?        /// </summary>
-        /// <value>褰撳墠鐢ㄦ埛瑙掕壊鏉冮檺鐨勫苟闆嗐€?/value>
+        /// 当前用户角色权限的并集。
+        /// </summary>
+        /// <value>当前用户角色权限的并集。</value>
         /* <example>[&quot;profile:view&quot;,&quot;public:view&quot;]</example> */
         [Required]
         [DataMember(Name="permissions", EmitDefaultValue=false)]
@@ -57,4 +60,3 @@ namespace Org.OpenAPITools.Models
 
     }
 }
-

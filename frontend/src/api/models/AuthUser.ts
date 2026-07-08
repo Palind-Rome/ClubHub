@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,62 +15,74 @@
 
 import { mapValues } from "../runtime";
 /**
- * 璁よ瘉涓婁笅鏂囦腑鐨勭敤鎴峰熀纭€淇℃伅銆? * @export
+ * 认证上下文中的用户基础信息。
+ * @export
  * @interface AuthUser
  */
 export interface AuthUser {
   /**
-   * 鐢ㄦ埛 ID銆?     * @type {number}
+   * 用户 ID。
+   * @type {number}
    * @memberof AuthUser
    */
   id: number;
   /**
-   * 鐧诲綍鐢ㄦ埛鍚嶃€?     * @type {string}
+   * 登录用户名。
+   * @type {string}
    * @memberof AuthUser
    */
   username: string;
   /**
-   * 鐢ㄦ埛鐪熷疄濮撳悕銆?     * @type {string}
+   * 用户真实姓名。
+   * @type {string}
    * @memberof AuthUser
    */
   realName: string;
   /**
-   * 瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?     * @type {string}
+   * 学工号；学生 7 位，教师 5 位。
+   * @type {string}
    * @memberof AuthUser
    */
   studentNo?: string | null;
   /**
-   * 鎬у埆銆?     * @type {string}
+   * 性别。
+   * @type {string}
    * @memberof AuthUser
    */
   gender?: string | null;
   /**
-   * 鑱旂郴鐢佃瘽銆?     * @type {string}
+   * 联系电话。
+   * @type {string}
    * @memberof AuthUser
    */
   phone?: string | null;
   /**
-   * 閭鍦板潃銆?     * @type {string}
+   * 邮箱地址。
+   * @type {string}
    * @memberof AuthUser
    */
   email?: string | null;
   /**
-   * 鎵€灞炲闄€?     * @type {string}
+   * 所属学院。
+   * @type {string}
    * @memberof AuthUser
    */
   college?: string | null;
   /**
-   * 鎵€灞炰笓涓氥€?     * @type {string}
+   * 所属专业。
+   * @type {string}
    * @memberof AuthUser
    */
   major?: string | null;
   /**
-   * 骞寸骇銆?     * @type {string}
+   * 年级。
+   * @type {string}
    * @memberof AuthUser
    */
   grade?: string | null;
   /**
-   * 璐﹀彿鐘舵€侊紝渚嬪 normal 鎴?disabled銆?     * @type {string}
+   * 账号状态，例如 normal 或 disabled。
+   * @type {string}
    * @memberof AuthUser
    */
   accountStatus: string;

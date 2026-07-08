@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,56 +20,62 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 鏉冮檺妫€鏌ョ粨鏋溿€?    /// </summary>
+    /// 权限检查结果。
+    /// </summary>
     [DataContract]
     public partial class PermissionCheckResult 
     {
         /// <summary>
-        /// 琚鏌ョ殑鐢ㄦ埛 ID銆?        /// </summary>
-        /// <value>琚鏌ョ殑鐢ㄦ埛 ID銆?/value>
+        /// 被检查的用户 ID。
+        /// </summary>
+        /// <value>被检查的用户 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// 琚鏌ョ殑鏉冮檺缂栫爜銆?        /// </summary>
-        /// <value>琚鏌ョ殑鏉冮檺缂栫爜銆?/value>
+        /// 被检查的权限编码。
+        /// </summary>
+        /// <value>被检查的权限编码。</value>
         /* <example>club:internal:view</example> */
         [Required]
         [DataMember(Name="permission", EmitDefaultValue=false)]
         public string Permission { get; set; }
 
         /// <summary>
-        /// 鏉冮檺妫€鏌ユ秹鍙婄殑绀惧洟 ID锛涘叏灞€鏉冮檺鍙负绌恒€?        /// </summary>
-        /// <value>鏉冮檺妫€鏌ユ秹鍙婄殑绀惧洟 ID锛涘叏灞€鏉冮檺鍙负绌恒€?/value>
+        /// 权限检查涉及的社团 ID；全局权限可为空。
+        /// </summary>
+        /// <value>权限检查涉及的社团 ID；全局权限可为空。</value>
         /* <example>1</example> */
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
         /// <summary>
-        /// 鏄惁鍏佽璁块棶銆?        /// </summary>
-        /// <value>鏄惁鍏佽璁块棶銆?/value>
+        /// 是否允许访问。
+        /// </summary>
+        /// <value>是否允许访问。</value>
         /* <example>true</example> */
         [Required]
         [DataMember(Name="allowed", EmitDefaultValue=true)]
         public bool Allowed { get; set; }
 
         /// <summary>
-        /// 鍛戒腑璇ユ潈闄愮殑瑙掕壊鍒楄〃銆?        /// </summary>
-        /// <value>鍛戒腑璇ユ潈闄愮殑瑙掕壊鍒楄〃銆?/value>
+        /// 命中该权限的角色列表。
+        /// </summary>
+        /// <value>命中该权限的角色列表。</value>
         [Required]
         [DataMember(Name="matchedRoles", EmitDefaultValue=false)]
         public List<AuthRole> MatchedRoles { get; set; }
 
         /// <summary>
-        /// 闈㈠悜璋冪敤鏂圭殑鍒ゅ畾璇存槑銆?        /// </summary>
-        /// <value>闈㈠悜璋冪敤鏂圭殑鍒ゅ畾璇存槑銆?/value>
-        /* <example>鍏佽璁块棶銆?/example> */
+        /// 面向调用方的判定说明。
+        /// </summary>
+        /// <value>面向调用方的判定说明。</value>
+        /* <example>允许访问。</example> */
         [Required]
         [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }
 
     }
 }
-

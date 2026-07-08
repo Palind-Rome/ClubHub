@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,17 +15,20 @@
 
 import { mapValues } from "../runtime";
 /**
- * 鐢ㄦ埛鐧诲綍璇锋眰锛寀sername 鍙～鍐欑敤鎴峰悕鎴栧宸ュ彿銆? * @export
+ * 用户登录请求，username 可填写用户名或学工号。
+ * @export
  * @interface LoginRequest
  */
 export interface LoginRequest {
   /**
-   * 鐢ㄦ埛鍚嶆垨瀛﹀伐鍙枫€?     * @type {string}
+   * 用户名或学工号。
+   * @type {string}
    * @memberof LoginRequest
    */
   username: string;
   /**
-   * 鐧诲綍瀵嗙爜銆?     * @type {string}
+   * 登录密码。
+   * @type {string}
    * @memberof LoginRequest
    */
   password: string;

@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -21,7 +21,8 @@ import { mapValues } from "../runtime";
  */
 export interface CancelProjectRequest {
   /**
-   * 褰撳墠鎾ら攢鎿嶄綔鐢ㄦ埛 ID锛涚郴缁熺鐞嗗憳鍙挙閿€寰呭鏍?杩涜涓」鐩紝鏈ぞ鍥㈣礋璐ｄ汉鍙挙閿€寰呭鏍哥敵璇凤紝鏍＄骇绀惧洟绠＄悊鍛樺彲鎾ら攢杩涜涓」鐩€?     * @type {number}
+   * 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
+   * @type {number}
    * @memberof CancelProjectRequest
    */
   currentUserId: number;
