@@ -1,13 +1,8 @@
-// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
-<<<<<<< HEAD
  * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
-=======
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -167,8 +162,6 @@ export interface CheckPermissionRequest {
     userId: number;
     permission: string;
     clubId?: number;
-    page?: number;
-    pageSize?: number;
 }
 
 export interface CreateClubOperationRequest {
@@ -317,71 +310,12 @@ export class DefaultApi extends runtime.BaseAPI {
         return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
     }
 
-<<<<<<< HEAD
     /**
      * 分配或调整项目负责人
      */
     async assignProjectLeader(requestParameters: AssignProjectLeaderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Project> {
         const response = await this.assignProjectLeaderRaw(requestParameters, initOverrides);
         return await response.value();
-=======
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    headerParameters["Content-Type"] = "application/json";
-
-    let urlPath = `/api/projects/{projectId}/leader`;
-    urlPath = urlPath.replace(
-      "{projectId}",
-      encodeURIComponent(String(requestParameters["projectId"])),
-    );
-
-    return {
-      path: urlPath,
-      method: "PUT",
-      headers: headerParameters,
-      query: queryParameters,
-      body: AssignProjectLeaderRequestToJSON(requestParameters["assignProjectLeaderRequest"]),
-    };
-  }
-
-  /**
-   * 分配或调整项目负责人
-   */
-  async assignProjectLeaderRaw(
-    requestParameters: AssignProjectLeaderOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
-    const requestOptions = await this.assignProjectLeaderRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
-  }
-
-  /**
-   * 分配或调整项目负责人
-   */
-  async assignProjectLeader(
-    requestParameters: AssignProjectLeaderOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Project> {
-    const response = await this.assignProjectLeaderRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for assignUserRole without sending the request
-   */
-  async assignUserRoleRequestOpts(
-    requestParameters: AssignUserRoleRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["assignRoleRequest"] == null) {
-      throw new runtime.RequiredError(
-        "assignRoleRequest",
-        'Required parameter "assignRoleRequest" was null or undefined when calling assignUserRole().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -402,7 +336,6 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-<<<<<<< HEAD
         let urlPath = `/api/auth/roles/assign`;
 
         return {
@@ -412,45 +345,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
             body: AssignRoleRequestToJSON(requestParameters['assignRoleRequest']),
         };
-=======
-  /**
-   * 分配用户角色
-   */
-  async assignUserRoleRaw(
-    requestParameters: AssignUserRoleRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<RoleAssignmentResult>> {
-    const requestOptions = await this.assignUserRoleRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      RoleAssignmentResultFromJSON(jsonValue),
-    );
-  }
-
-  /**
-   * 分配用户角色
-   */
-  async assignUserRole(
-    requestParameters: AssignUserRoleRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<RoleAssignmentResult> {
-    const response = await this.assignUserRoleRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for checkPermission without sending the request
-   */
-  async checkPermissionRequestOpts(
-    requestParameters: CheckPermissionRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["userId"] == null) {
-      throw new runtime.RequiredError(
-        "userId",
-        'Required parameter "userId" was null or undefined when calling checkPermission().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -501,14 +395,6 @@ export class DefaultApi extends runtime.BaseAPI {
 
         if (requestParameters['clubId'] != null) {
             queryParameters['clubId'] = requestParameters['clubId'];
-        }
-
-        if (requestParameters['page'] != null) {
-            queryParameters['page'] = requestParameters['page'];
-        }
-
-        if (requestParameters['pageSize'] != null) {
-            queryParameters['pageSize'] = requestParameters['pageSize'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -578,7 +464,6 @@ export class DefaultApi extends runtime.BaseAPI {
         const requestOptions = await this.createClubRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-<<<<<<< HEAD
         return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
     }
 
@@ -588,109 +473,6 @@ export class DefaultApi extends runtime.BaseAPI {
     async createClub(requestParameters: CreateClubOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Club> {
         const response = await this.createClubRaw(requestParameters, initOverrides);
         return await response.value();
-=======
-    let urlPath = `/api/auth/permissions/check`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 检查用户是否拥有指定权限
-   */
-  async checkPermissionRaw(
-    requestParameters: CheckPermissionRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
-    const requestOptions = await this.checkPermissionRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      PermissionCheckResultFromJSON(jsonValue),
-    );
-  }
-
-  /**
-   * 检查用户是否拥有指定权限
-   */
-  async checkPermission(
-    requestParameters: CheckPermissionRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<PermissionCheckResult> {
-    const response = await this.checkPermissionRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for createClub without sending the request
-   */
-  async createClubRequestOpts(
-    requestParameters: CreateClubOperationRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["createClubRequest"] == null) {
-      throw new runtime.RequiredError(
-        "createClubRequest",
-        'Required parameter "createClubRequest" was null or undefined when calling createClub().',
-      );
-    }
-
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    headerParameters["Content-Type"] = "application/json";
-
-    let urlPath = `/api/clubs`;
-
-    return {
-      path: urlPath,
-      method: "POST",
-      headers: headerParameters,
-      query: queryParameters,
-      body: CreateClubRequestToJSON(requestParameters["createClubRequest"]),
-    };
-  }
-
-  /**
-   * 创建社团
-   */
-  async createClubRaw(
-    requestParameters: CreateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
-    const requestOptions = await this.createClubRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
-  }
-
-  /**
-   * 创建社团
-   */
-  async createClub(
-    requestParameters: CreateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Club> {
-    const response = await this.createClubRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for createProject without sending the request
-   */
-  async createProjectRequestOpts(
-    requestParameters: CreateProjectOperationRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["createProjectRequest"] == null) {
-      throw new runtime.RequiredError(
-        "createProjectRequest",
-        'Required parameter "createProjectRequest" was null or undefined when calling createProject().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -711,7 +493,6 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-<<<<<<< HEAD
         let urlPath = `/api/clubs/applications`;
 
         return {
@@ -721,41 +502,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
             body: CreateClubApplicationRequestToJSON(requestParameters['createClubApplicationRequest']),
         };
-=======
-  /**
-   * 提交项目立项申请
-   */
-  async createProjectRaw(
-    requestParameters: CreateProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
-    const requestOptions = await this.createProjectRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
-  }
-
-  /**
-   * 提交项目立项申请
-   */
-  async createProject(
-    requestParameters: CreateProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Project> {
-    const response = await this.createProjectRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for deleteClub without sending the request
-   */
-  async deleteClubRequestOpts(requestParameters: DeleteClubRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling deleteClub().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -766,7 +512,6 @@ export class DefaultApi extends runtime.BaseAPI {
         const requestOptions = await this.createClubApplicationRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-<<<<<<< HEAD
         return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
     }
 
@@ -777,150 +522,6 @@ export class DefaultApi extends runtime.BaseAPI {
     async createClubApplication(requestParameters: CreateClubApplicationOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClubApplication> {
         const response = await this.createClubApplicationRaw(requestParameters, initOverrides);
         return await response.value();
-=======
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/clubs/{clubId}`;
-    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
-
-    return {
-      path: urlPath,
-      method: "DELETE",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 删除社团
-   */
-  async deleteClubRaw(
-    requestParameters: DeleteClubRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<void>> {
-    const requestOptions = await this.deleteClubRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.VoidApiResponse(response);
-  }
-
-  /**
-   * 删除社团
-   */
-  async deleteClub(
-    requestParameters: DeleteClubRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<void> {
-    await this.deleteClubRaw(requestParameters, initOverrides);
-  }
-
-  /**
-   * Creates request options for getActivities without sending the request
-   */
-  async getActivitiesRequestOpts(): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/activities`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取活动列表
-   */
-  async getActivitiesRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Activity>>> {
-    const requestOptions = await this.getActivitiesRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ActivityFromJSON));
-  }
-
-  /**
-   * 获取活动列表
-   */
-  async getActivities(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<Activity>> {
-    const response = await this.getActivitiesRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getActivityById without sending the request
-   */
-  async getActivityByIdRequestOpts(
-    requestParameters: GetActivityByIdRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["activityId"] == null) {
-      throw new runtime.RequiredError(
-        "activityId",
-        'Required parameter "activityId" was null or undefined when calling getActivityById().',
-      );
-    }
-
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/activities/{activityId}`;
-    urlPath = urlPath.replace(
-      "{activityId}",
-      encodeURIComponent(String(requestParameters["activityId"])),
-    );
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取活动详情
-   */
-  async getActivityByIdRaw(
-    requestParameters: GetActivityByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Activity>> {
-    const requestOptions = await this.getActivityByIdRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
-  }
-
-  /**
-   * 获取活动详情
-   */
-  async getActivityById(
-    requestParameters: GetActivityByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Activity> {
-    const response = await this.getActivityByIdRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getClubById without sending the request
-   */
-  async getClubByIdRequestOpts(
-    requestParameters: GetClubByIdRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling getClubById().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -945,22 +546,9 @@ export class DefaultApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-<<<<<<< HEAD
         headerParameters['Content-Type'] = 'application/json';
-=======
-  /**
-   * 获取社团详情
-   */
-  async getClubByIdRaw(
-    requestParameters: GetClubByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
-    const requestOptions = await this.getClubByIdRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
 
 
-<<<<<<< HEAD
         let urlPath = `/api/clubs/{clubId}/members/terms`;
         urlPath = urlPath.replace('{clubId}', encodeURIComponent(String(requestParameters['clubId'])));
 
@@ -971,110 +559,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
             body: CreateClubMemberTermRequestToJSON(requestParameters['createClubMemberTermRequest']),
         };
-=======
-  /**
-   * 获取社团详情
-   */
-  async getClubById(
-    requestParameters: GetClubByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Club> {
-    const response = await this.getClubByIdRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getClubs without sending the request
-   */
-  async getClubsRequestOpts(): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/clubs`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取社团列表
-   */
-  async getClubsRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Club>>> {
-    const requestOptions = await this.getClubsRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClubFromJSON));
-  }
-
-  /**
-   * 获取社团列表
-   */
-  async getClubs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Club>> {
-    const response = await this.getClubsRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getPermissionCatalog without sending the request
-   */
-  async getPermissionCatalogRequestOpts(): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/auth/permissions`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取权限目录
-   */
-  async getPermissionCatalogRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<PermissionDefinition>>> {
-    const requestOptions = await this.getPermissionCatalogRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(PermissionDefinitionFromJSON),
-    );
-  }
-
-  /**
-   * 获取权限目录
-   */
-  async getPermissionCatalog(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<PermissionDefinition>> {
-    const response = await this.getPermissionCatalogRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getProjectById without sending the request
-   */
-  async getProjectByIdRequestOpts(
-    requestParameters: GetProjectByIdRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["projectId"] == null) {
-      throw new runtime.RequiredError(
-        "projectId",
-        'Required parameter "projectId" was null or undefined when calling getProjectById().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -1085,7 +569,6 @@ export class DefaultApi extends runtime.BaseAPI {
         const requestOptions = await this.createClubMemberTermRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-<<<<<<< HEAD
         return new runtime.JSONApiResponse(response, (jsonValue) => ClubMemberRecordFromJSON(jsonValue));
     }
 
@@ -1096,187 +579,6 @@ export class DefaultApi extends runtime.BaseAPI {
     async createClubMemberTerm(requestParameters: CreateClubMemberTermOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClubMemberRecord> {
         const response = await this.createClubMemberTermRaw(requestParameters, initOverrides);
         return await response.value();
-=======
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/projects/{projectId}`;
-    urlPath = urlPath.replace(
-      "{projectId}",
-      encodeURIComponent(String(requestParameters["projectId"])),
-    );
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取项目详情
-   */
-  async getProjectByIdRaw(
-    requestParameters: GetProjectByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
-    const requestOptions = await this.getProjectByIdRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
-  }
-
-  /**
-   * 获取项目详情
-   */
-  async getProjectById(
-    requestParameters: GetProjectByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Project> {
-    const response = await this.getProjectByIdRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getProjects without sending the request
-   */
-  async getProjectsRequestOpts(
-    requestParameters: GetProjectsRequest,
-  ): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    if (requestParameters["clubId"] != null) {
-      queryParameters["clubId"] = requestParameters["clubId"];
-    }
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/projects`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取项目列表
-   */
-  async getProjectsRaw(
-    requestParameters: GetProjectsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Project>>> {
-    const requestOptions = await this.getProjectsRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ProjectFromJSON));
-  }
-
-  /**
-   * 获取项目列表
-   */
-  async getProjects(
-    requestParameters: GetProjectsRequest = {},
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<Project>> {
-    const response = await this.getProjectsRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getRoleDefinitions without sending the request
-   */
-  async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/auth/roles`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 获取基础角色定义
-   */
-  async getRoleDefinitionsRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<RoleDefinition>>> {
-    const requestOptions = await this.getRoleDefinitionsRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(RoleDefinitionFromJSON),
-    );
-  }
-
-  /**
-   * 获取基础角色定义
-   */
-  async getRoleDefinitions(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<RoleDefinition>> {
-    const response = await this.getRoleDefinitionsRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for healthCheck without sending the request
-   */
-  async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    let urlPath = `/api/health`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 健康检查
-   */
-  async healthCheckRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<HealthStatus>> {
-    const requestOptions = await this.healthCheckRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => HealthStatusFromJSON(jsonValue));
-  }
-
-  /**
-   * 健康检查
-   */
-  async healthCheck(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<HealthStatus> {
-    const response = await this.healthCheckRaw(initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for loginUser without sending the request
-   */
-  async loginUserRequestOpts(requestParameters: LoginUserRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["loginRequest"] == null) {
-      throw new runtime.RequiredError(
-        "loginRequest",
-        'Required parameter "loginRequest" was null or undefined when calling loginUser().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -1297,7 +599,6 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-<<<<<<< HEAD
         let urlPath = `/api/projects`;
 
         return {
@@ -1307,43 +608,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
             body: CreateProjectRequestToJSON(requestParameters['createProjectRequest']),
         };
-=======
-  /**
-   * 用户登录
-   */
-  async loginUserRaw(
-    requestParameters: LoginUserRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<AuthResponse>> {
-    const requestOptions = await this.loginUserRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
-  }
-
-  /**
-   * 用户登录
-   */
-  async loginUser(
-    requestParameters: LoginUserRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<AuthResponse> {
-    const response = await this.loginUserRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for registerUser without sending the request
-   */
-  async registerUserRequestOpts(
-    requestParameters: RegisterUserRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["registerRequest"] == null) {
-      throw new runtime.RequiredError(
-        "registerRequest",
-        'Required parameter "registerRequest" was null or undefined when calling registerUser().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -1353,60 +617,7 @@ export class DefaultApi extends runtime.BaseAPI {
         const requestOptions = await this.createProjectRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-<<<<<<< HEAD
         return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
-=======
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    headerParameters["Content-Type"] = "application/json";
-
-    let urlPath = `/api/auth/register`;
-
-    return {
-      path: urlPath,
-      method: "POST",
-      headers: headerParameters,
-      query: queryParameters,
-      body: RegisterRequestToJSON(requestParameters["registerRequest"]),
-    };
-  }
-
-  /**
-   * 用户注册
-   */
-  async registerUserRaw(
-    requestParameters: RegisterUserRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<AuthResponse>> {
-    const requestOptions = await this.registerUserRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
-  }
-
-  /**
-   * 用户注册
-   */
-  async registerUser(
-    requestParameters: RegisterUserRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<AuthResponse> {
-    const response = await this.registerUserRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for reviewProject without sending the request
-   */
-  async reviewProjectRequestOpts(
-    requestParameters: ReviewProjectOperationRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["projectId"] == null) {
-      throw new runtime.RequiredError(
-        "projectId",
-        'Required parameter "projectId" was null or undefined when calling reviewProject().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -1441,23 +652,10 @@ export class DefaultApi extends runtime.BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
-<<<<<<< HEAD
-=======
-  /**
-   * 审核项目立项申请
-   */
-  async reviewProjectRaw(
-    requestParameters: ReviewProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
-    const requestOptions = await this.reviewProjectRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
 
         let urlPath = `/api/clubs/{clubId}/dissolve`;
         urlPath = urlPath.replace('{clubId}', encodeURIComponent(String(requestParameters['clubId'])));
 
-<<<<<<< HEAD
         return {
             path: urlPath,
             method: 'PATCH',
@@ -1465,30 +663,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
             body: DissolveClubRequestToJSON(requestParameters['dissolveClubRequest']),
         };
-=======
-  /**
-   * 审核项目立项申请
-   */
-  async reviewProject(
-    requestParameters: ReviewProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Project> {
-    const response = await this.reviewProjectRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for updateClub without sending the request
-   */
-  async updateClubRequestOpts(
-    requestParameters: UpdateClubOperationRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling updateClub().',
-      );
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
     }
 
     /**
@@ -1521,7 +695,6 @@ export class DefaultApi extends runtime.BaseAPI {
 
         let urlPath = `/api/activities`;
 
-<<<<<<< HEAD
         return {
             path: urlPath,
             method: 'GET',
@@ -1529,17 +702,6 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
         };
     }
-=======
-  /**
-   * 更新社团
-   */
-  async updateClubRaw(
-    requestParameters: UpdateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
-    const requestOptions = await this.updateClubRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
 
     /**
      * 获取活动列表
@@ -2442,19 +1604,6 @@ export class DefaultApi extends runtime.BaseAPI {
         return await response.value();
     }
 
-<<<<<<< HEAD
-=======
-  /**
-   * 更新社团
-   */
-  async updateClub(
-    requestParameters: UpdateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Club> {
-    const response = await this.updateClubRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
 }
 
 /**
@@ -2466,4 +1615,3 @@ export const GetClubApplicationsAuditStatusEnum = {
     Rejected: 'rejected'
 } as const;
 export type GetClubApplicationsAuditStatusEnum = typeof GetClubApplicationsAuditStatusEnum[keyof typeof GetClubApplicationsAuditStatusEnum];
-
