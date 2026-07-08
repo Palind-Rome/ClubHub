@@ -2,6 +2,10 @@ using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiCreateNoticeRequest = Org.OpenAPITools.Models.CreateNoticeRequest;
+using ApiMarkNoticeReadRequest = Org.OpenAPITools.Models.MarkNoticeReadRequest;
+using ApiNotice = Org.OpenAPITools.Models.Notice;
+using ApiNoticeReadResult = Org.OpenAPITools.Models.NoticeReadResult;
 
 namespace ClubHub.Api.Controllers;
 
@@ -69,7 +73,8 @@ public class NoticesController : ControllerBase
             .OrderByDescending(n => n.PublishAt)
             .ThenByDescending(n => n.NoticeId)
             .ToListAsync();
-        var result = new List<NoticeDto>();
+        var context = await NoticeListContext.LoadAsync(_db, notices);
+        var result = new List<ApiNotice>();
 
         foreach (var notice in notices)
         {
@@ -83,12 +88,12 @@ public class NoticesController : ControllerBase
                 continue;
             }
 
-            if (!await CanViewNoticeAsync(viewer, notice, effectiveStatus))
+            if (!CanViewNotice(viewer, notice, effectiveStatus, context))
             {
                 continue;
             }
 
-            var dto = await ToNoticeDtoAsync(notice, viewer.UserId, effectiveStatus);
+            var dto = ToApiNotice(notice, viewer.UserId, context, effectiveStatus);
             if (unreadOnly && dto.IsRead) continue;
             result.Add(dto);
         }
@@ -97,7 +102,7 @@ public class NoticesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateNoticeRequest req)
+    public async Task<IActionResult> Create([FromBody] ApiCreateNoticeRequest req)
     {
         var validationError = ValidateCreateRequest(req);
         if (validationError is not null) return BadRequest(new { message = validationError });
@@ -141,11 +146,12 @@ public class NoticesController : ControllerBase
         await _db.SaveChangesAsync();
 
         var created = await NoticeQuery().FirstAsync(n => n.NoticeId == notice.NoticeId);
-        return CreatedAtAction(nameof(GetAll), new { viewerUserId = publisher.UserId }, await ToNoticeDtoAsync(created, publisher.UserId));
+        var context = await NoticeListContext.LoadAsync(_db, [created]);
+        return CreatedAtAction(nameof(GetAll), new { viewerUserId = publisher.UserId }, ToApiNotice(created, publisher.UserId, context));
     }
 
     [HttpPost("{noticeId:int}/reads")]
-    public async Task<IActionResult> MarkRead(int noticeId, [FromBody] MarkNoticeReadRequest req)
+    public async Task<IActionResult> MarkRead(int noticeId, [FromBody] ApiMarkNoticeReadRequest req)
     {
         if (req.CurrentUserId <= 0) return BadRequest(new { message = "请提供当前阅读用户。" });
 
@@ -160,7 +166,8 @@ public class NoticesController : ControllerBase
         if (notice is null) return NotFound(new { message = "通知不存在。" });
 
         var effectiveStatus = EffectiveStatus(notice, DateTime.UtcNow);
-        if (!await CanViewNoticeAsync(user, notice, effectiveStatus))
+        var context = await NoticeListContext.LoadAsync(_db, [notice]);
+        if (!CanViewNotice(user, notice, effectiveStatus, context))
         {
             return StatusCode(403, new { message = "当前用户不可阅读该通知。" });
         }
@@ -170,7 +177,13 @@ public class NoticesController : ControllerBase
             r.UserId == user.UserId);
         if (existing is not null)
         {
-            return Ok(new NoticeReadResultDto(noticeId, user.UserId, true, existing.ReadAt));
+            return Ok(new ApiNoticeReadResult
+            {
+                NoticeId = noticeId,
+                UserId = user.UserId,
+                IsRead = true,
+                ReadAt = existing.ReadAt
+            });
         }
 
         var now = DateTime.UtcNow;
@@ -186,7 +199,13 @@ public class NoticesController : ControllerBase
         _db.NoticeReads.Add(read);
         await _db.SaveChangesAsync();
 
-        return Ok(new NoticeReadResultDto(noticeId, user.UserId, true, now));
+        return Ok(new ApiNoticeReadResult
+        {
+            NoticeId = noticeId,
+            UserId = user.UserId,
+            IsRead = true,
+            ReadAt = now
+        });
     }
 
     private IQueryable<Notice> NoticeQuery() =>
@@ -203,7 +222,7 @@ public class NoticesController : ControllerBase
             .FirstOrDefaultAsync(u => u.UserId == userId);
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveCreateTargetAsync(
-        CreateNoticeRequest req,
+        ApiCreateNoticeRequest req,
         User publisher,
         string targetType)
     {
@@ -218,7 +237,7 @@ public class NoticesController : ControllerBase
     }
 
     private Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveSchoolTargetAsync(
-        CreateNoticeRequest req,
+        ApiCreateNoticeRequest req,
         User publisher)
     {
         if (req.TargetId is not null || req.ClubId is not null)
@@ -237,7 +256,7 @@ public class NoticesController : ControllerBase
     }
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveClubTargetAsync(
-        CreateNoticeRequest req,
+        ApiCreateNoticeRequest req,
         User publisher)
     {
         if (req.TargetId is null or <= 0)
@@ -256,7 +275,7 @@ public class NoticesController : ControllerBase
     }
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveDepartmentTargetAsync(
-        CreateNoticeRequest req,
+        ApiCreateNoticeRequest req,
         User publisher)
     {
         if (req.TargetId is null or <= 0)
@@ -282,7 +301,7 @@ public class NoticesController : ControllerBase
     }
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveMemberTargetAsync(
-        CreateNoticeRequest req,
+        ApiCreateNoticeRequest req,
         User publisher)
     {
         if (req.TargetId is null or <= 0)
@@ -329,7 +348,7 @@ public class NoticesController : ControllerBase
         return (null, club.ClubId, targetUser.UserId);
     }
 
-    private async Task<bool> CanViewNoticeAsync(User viewer, Notice notice, string effectiveStatus)
+    private bool CanViewNotice(User viewer, Notice notice, string effectiveStatus, NoticeListContext context)
     {
         if (effectiveStatus == StatusDraft)
         {
@@ -345,7 +364,7 @@ public class NoticesController : ControllerBase
         {
             TargetSchool => true,
             TargetClub => notice.ClubId is not null && CanAccessClubNotice(viewer, notice.ClubId.Value),
-            TargetDepartment => await CanAccessDepartmentNoticeAsync(viewer, notice),
+            TargetDepartment => CanAccessDepartmentNotice(viewer, notice, context),
             TargetMember => notice.TargetId == viewer.UserId || CanManageNotice(viewer, notice),
             _ => false
         };
@@ -377,13 +396,16 @@ public class NoticesController : ControllerBase
                user.UserRoles.Any(ur => ur.ClubId == clubId && ur.Role is not null);
     }
 
-    private async Task<bool> CanAccessDepartmentNoticeAsync(User user, Notice notice)
+    private bool CanAccessDepartmentNotice(User user, Notice notice, NoticeListContext context)
     {
         if (notice.TargetId is null || notice.ClubId is null) return false;
         if (CanManageNotice(user, notice)) return true;
 
-        var target = await _db.ClubMembers.AsNoTracking().FirstOrDefaultAsync(cm => cm.MemberId == notice.TargetId.Value);
-        if (target is null || string.IsNullOrWhiteSpace(target.DepartmentName)) return false;
+        if (!context.DepartmentTargets.TryGetValue(notice.TargetId.Value, out var target) ||
+            string.IsNullOrWhiteSpace(target.DepartmentName))
+        {
+            return false;
+        }
 
         return user.ClubMemberships.Any(cm =>
             cm.ClubId == target.ClubId &&
@@ -391,7 +413,11 @@ public class NoticesController : ControllerBase
             string.Equals(cm.DepartmentName?.Trim(), target.DepartmentName.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<NoticeDto> ToNoticeDtoAsync(Notice notice, int viewerUserId, string? effectiveStatus = null)
+    private ApiNotice ToApiNotice(
+        Notice notice,
+        int viewerUserId,
+        NoticeListContext context,
+        string? effectiveStatus = null)
     {
         effectiveStatus ??= EffectiveStatus(notice, DateTime.UtcNow);
         var read = notice.Reads
@@ -399,121 +425,79 @@ public class NoticesController : ControllerBase
             .OrderByDescending(r => r.ReadAt)
             .FirstOrDefault();
         var readCount = notice.Reads.Select(r => r.UserId).Distinct().Count();
-        var targetName = await ResolveTargetNameAsync(notice);
-        var audienceCount = await CountAudienceAsync(notice);
-
-        return new NoticeDto(
-            notice.NoticeId,
-            notice.ClubId,
-            notice.Club?.ClubName,
-            notice.PublisherUserId,
-            DisplayUser(notice.Publisher),
-            notice.NoticeType ?? "announcement",
-            notice.Title,
-            notice.Content,
-            notice.TargetType,
-            notice.TargetId,
-            targetName,
-            notice.PublishAt,
-            notice.ExpireAt,
-            effectiveStatus,
-            read is not null,
-            read?.ReadAt,
-            audienceCount,
-            readCount);
+        return new ApiNotice
+        {
+            Id = notice.NoticeId,
+            ClubId = notice.ClubId,
+            ClubName = notice.Club?.ClubName,
+            PublisherUserId = notice.PublisherUserId,
+            PublisherName = DisplayUser(notice.Publisher),
+            NoticeType = notice.NoticeType ?? "announcement",
+            Title = notice.Title,
+            Content = notice.Content,
+            TargetType = ToApiTargetType(notice.TargetType),
+            TargetId = notice.TargetId,
+            TargetName = ResolveTargetName(notice, context),
+            PublishAt = notice.PublishAt,
+            ExpireAt = notice.ExpireAt,
+            NoticeStatus = ToApiNoticeStatus(effectiveStatus),
+            IsRead = read is not null,
+            ReadAt = read?.ReadAt,
+            AudienceCount = CountAudience(notice, context),
+            ReadCount = readCount
+        };
     }
 
-    private async Task<string> ResolveTargetNameAsync(Notice notice)
+    private static string ResolveTargetName(Notice notice, NoticeListContext context)
     {
         if (notice.TargetType == TargetSchool) return "全校";
         if (notice.TargetType == TargetClub) return notice.Club?.ClubName ?? $"社团 {notice.TargetId}";
 
         if (notice.TargetType == TargetMember && notice.TargetId is not null)
         {
-            var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == notice.TargetId.Value);
+            context.MemberTargets.TryGetValue(notice.TargetId.Value, out var user);
             var name = DisplayUser(user) ?? $"用户 {notice.TargetId}";
             return notice.Club is null ? name : $"{notice.Club.ClubName} / {name}";
         }
 
-        if (notice.TargetType == TargetDepartment && notice.TargetId is not null)
+        if (notice.TargetType == TargetDepartment &&
+            notice.TargetId is not null &&
+            context.DepartmentTargets.TryGetValue(notice.TargetId.Value, out var member))
         {
-            var member = await _db.ClubMembers
-                .AsNoTracking()
-                .Include(cm => cm.Club)
-                .FirstOrDefaultAsync(cm => cm.MemberId == notice.TargetId.Value);
-            if (member is not null)
-            {
-                return $"{member.Club?.ClubName ?? $"社团 {member.ClubId}"} / {member.DepartmentName ?? "未命名部门"}";
-            }
+            return $"{member.Club?.ClubName ?? $"社团 {member.ClubId}"} / {member.DepartmentName ?? "未命名部门"}";
         }
 
         return "未指定目标";
     }
 
-    private async Task<int?> CountAudienceAsync(Notice notice)
+    private static int? CountAudience(Notice notice, NoticeListContext context)
     {
-        if (notice.TargetType == TargetSchool)
-        {
-            return await _db.Users.CountAsync(u =>
-                u.AccountStatus == null ||
-                u.AccountStatus == "" ||
-                u.AccountStatus.ToLower() == "active" ||
-                u.AccountStatus.ToLower() == "normal" ||
-                u.AccountStatus.ToLower() == "enabled");
-        }
-
-        if (notice.TargetType == TargetMember)
-        {
-            return notice.TargetId is null ? 0 : 1;
-        }
-
+        if (notice.TargetType == TargetSchool) return context.ActiveUserCount;
+        if (notice.TargetType == TargetMember) return notice.TargetId is null ? 0 : 1;
         if (notice.ClubId is null) return null;
 
         if (notice.TargetType == TargetClub)
         {
-            var today = DateTime.UtcNow.Date;
-            return await _db.ClubMembers
-                .Where(cm => cm.ClubId == notice.ClubId.Value)
-                .Where(cm =>
-                    cm.MemberStatus == null ||
-                    cm.MemberStatus == "" ||
-                    cm.MemberStatus.ToLower() == "active" ||
-                    cm.MemberStatus.ToLower() == "normal" ||
-                    cm.MemberStatus.ToLower() == "enabled")
-                .Where(cm => cm.TermStart == null || cm.TermStart <= today)
-                .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
-                .Select(cm => cm.UserId)
-                .Distinct()
-                .CountAsync();
+            return context.ClubAudienceCounts.GetValueOrDefault(notice.ClubId.Value, 0);
         }
 
         if (notice.TargetType == TargetDepartment && notice.TargetId is not null)
         {
-            var target = await _db.ClubMembers.AsNoTracking().FirstOrDefaultAsync(cm => cm.MemberId == notice.TargetId.Value);
-            if (target is null || string.IsNullOrWhiteSpace(target.DepartmentName)) return 0;
-            var departmentName = target.DepartmentName.Trim();
-            var today = DateTime.UtcNow.Date;
+            if (!context.DepartmentTargets.TryGetValue(notice.TargetId.Value, out var target) ||
+                string.IsNullOrWhiteSpace(target.DepartmentName))
+            {
+                return 0;
+            }
 
-            return await _db.ClubMembers
-                .Where(cm => cm.ClubId == target.ClubId)
-                .Where(cm =>
-                    cm.MemberStatus == null ||
-                    cm.MemberStatus == "" ||
-                    cm.MemberStatus.ToLower() == "active" ||
-                    cm.MemberStatus.ToLower() == "normal" ||
-                    cm.MemberStatus.ToLower() == "enabled")
-                .Where(cm => cm.TermStart == null || cm.TermStart <= today)
-                .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
-                .Where(cm => cm.DepartmentName != null && cm.DepartmentName.ToUpper() == departmentName.ToUpper())
-                .Select(cm => cm.UserId)
-                .Distinct()
-                .CountAsync();
+            return context.DepartmentAudienceCounts.GetValueOrDefault(
+                DepartmentAudienceKey(target.ClubId, target.DepartmentName),
+                0);
         }
 
         return null;
     }
 
-    private static string? ValidateCreateRequest(CreateNoticeRequest req)
+    private static string? ValidateCreateRequest(ApiCreateNoticeRequest req)
     {
         if (req.CurrentUserId <= 0) return "请选择当前发布人。";
         if (string.IsNullOrWhiteSpace(req.NoticeType)) return "通知类型不能为空。";
@@ -526,6 +510,16 @@ public class NoticesController : ControllerBase
         if (NormalizePublishStatus(req.NoticeStatus) is null) return "通知状态只能是 draft 或 published。";
         return null;
     }
+
+    private static string? NormalizeTargetType(ApiCreateNoticeRequest.TargetTypeEnum targetType) =>
+        targetType switch
+        {
+            ApiCreateNoticeRequest.TargetTypeEnum.SchoolEnum => TargetSchool,
+            ApiCreateNoticeRequest.TargetTypeEnum.ClubEnum => TargetClub,
+            ApiCreateNoticeRequest.TargetTypeEnum.DepartmentEnum => TargetDepartment,
+            ApiCreateNoticeRequest.TargetTypeEnum.MemberEnum => TargetMember,
+            _ => null
+        };
 
     private static string? NormalizeTargetType(string? targetType) =>
         (targetType ?? string.Empty).Trim().ToLowerInvariant() switch
@@ -559,6 +553,34 @@ public class NoticesController : ControllerBase
         };
     }
 
+    private static string? NormalizePublishStatus(ApiCreateNoticeRequest.NoticeStatusEnum status) =>
+        status switch
+        {
+            0 => StatusPublished,
+            ApiCreateNoticeRequest.NoticeStatusEnum.DraftEnum => StatusDraft,
+            ApiCreateNoticeRequest.NoticeStatusEnum.PublishedEnum => StatusPublished,
+            _ => null
+        };
+
+    private static ApiNotice.TargetTypeEnum ToApiTargetType(string targetType) =>
+        targetType switch
+        {
+            TargetSchool => ApiNotice.TargetTypeEnum.SchoolEnum,
+            TargetClub => ApiNotice.TargetTypeEnum.ClubEnum,
+            TargetDepartment => ApiNotice.TargetTypeEnum.DepartmentEnum,
+            TargetMember => ApiNotice.TargetTypeEnum.MemberEnum,
+            _ => throw new InvalidOperationException($"Unknown notice target type '{targetType}'.")
+        };
+
+    private static ApiNotice.NoticeStatusEnum ToApiNoticeStatus(string status) =>
+        status switch
+        {
+            StatusDraft => ApiNotice.NoticeStatusEnum.DraftEnum,
+            StatusPublished => ApiNotice.NoticeStatusEnum.PublishedEnum,
+            StatusExpired => ApiNotice.NoticeStatusEnum.ExpiredEnum,
+            _ => throw new InvalidOperationException($"Unknown notice status '{status}'.")
+        };
+
     private static string EffectiveStatus(Notice notice, DateTime now)
     {
         var status = string.IsNullOrWhiteSpace(notice.NoticeStatus)
@@ -571,6 +593,108 @@ public class NoticesController : ControllerBase
 
         return status;
     }
+
+    private sealed class NoticeListContext
+    {
+        public Dictionary<int, ClubMember> DepartmentTargets { get; private init; } = [];
+
+        public Dictionary<int, User> MemberTargets { get; private init; } = [];
+
+        public Dictionary<int, int> ClubAudienceCounts { get; private init; } = [];
+
+        public Dictionary<string, int> DepartmentAudienceCounts { get; private init; } = [];
+
+        public int ActiveUserCount { get; private init; }
+
+        public static async Task<NoticeListContext> LoadAsync(ClubHubDbContext db, IReadOnlyCollection<Notice> notices)
+        {
+            var departmentTargetIds = notices
+                .Where(n => n.TargetType == TargetDepartment && n.TargetId is not null)
+                .Select(n => n.TargetId!.Value)
+                .Distinct()
+                .ToList();
+
+            var memberTargetIds = notices
+                .Where(n => n.TargetType == TargetMember && n.TargetId is not null)
+                .Select(n => n.TargetId!.Value)
+                .Distinct()
+                .ToList();
+
+            var departmentTargets = departmentTargetIds.Count == 0
+                ? []
+                : await db.ClubMembers
+                    .AsNoTracking()
+                    .Include(cm => cm.Club)
+                    .Where(cm => departmentTargetIds.Contains(cm.MemberId))
+                    .ToDictionaryAsync(cm => cm.MemberId);
+
+            var memberTargets = memberTargetIds.Count == 0
+                ? []
+                : await db.Users
+                    .AsNoTracking()
+                    .Where(u => memberTargetIds.Contains(u.UserId))
+                    .ToDictionaryAsync(u => u.UserId);
+
+            var needsSchoolCount = notices.Any(n => n.TargetType == TargetSchool);
+            var activeUserCount = needsSchoolCount
+                ? await db.Users.CountAsync(u =>
+                    u.AccountStatus == null ||
+                    u.AccountStatus == "" ||
+                    u.AccountStatus.ToLower() == "active" ||
+                    u.AccountStatus.ToLower() == "normal" ||
+                    u.AccountStatus.ToLower() == "enabled")
+                : 0;
+
+            var clubIds = notices
+                .Where(n => n.ClubId is not null && (n.TargetType == TargetClub || n.TargetType == TargetDepartment))
+                .Select(n => n.ClubId!.Value)
+                .Concat(departmentTargets.Values.Select(cm => cm.ClubId))
+                .Distinct()
+                .ToList();
+
+            var activeMembers = clubIds.Count == 0
+                ? []
+                : await LoadActiveClubMembersAsync(db, clubIds);
+
+            var clubAudienceCounts = activeMembers
+                .GroupBy(cm => cm.ClubId)
+                .ToDictionary(g => g.Key, g => g.Select(cm => cm.UserId).Distinct().Count());
+
+            var departmentAudienceCounts = activeMembers
+                .Where(cm => !string.IsNullOrWhiteSpace(cm.DepartmentName))
+                .GroupBy(cm => DepartmentAudienceKey(cm.ClubId, cm.DepartmentName!))
+                .ToDictionary(g => g.Key, g => g.Select(cm => cm.UserId).Distinct().Count());
+
+            return new NoticeListContext
+            {
+                DepartmentTargets = departmentTargets,
+                MemberTargets = memberTargets,
+                ActiveUserCount = activeUserCount,
+                ClubAudienceCounts = clubAudienceCounts,
+                DepartmentAudienceCounts = departmentAudienceCounts
+            };
+        }
+
+        private static async Task<List<ClubMember>> LoadActiveClubMembersAsync(ClubHubDbContext db, IReadOnlyCollection<int> clubIds)
+        {
+            var today = DateTime.UtcNow.Date;
+            return await db.ClubMembers
+                .AsNoTracking()
+                .Where(cm => clubIds.Contains(cm.ClubId))
+                .Where(cm =>
+                    cm.MemberStatus == null ||
+                    cm.MemberStatus == "" ||
+                    cm.MemberStatus.ToLower() == "active" ||
+                    cm.MemberStatus.ToLower() == "normal" ||
+                    cm.MemberStatus.ToLower() == "enabled")
+                .Where(cm => cm.TermStart == null || cm.TermStart <= today)
+                .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
+                .ToListAsync();
+        }
+    }
+
+    private static string DepartmentAudienceKey(int clubId, string departmentName) =>
+        $"{clubId}:{departmentName.Trim().ToUpperInvariant()}";
 
     private static bool IsActiveMemberTerm(ClubMember member)
     {
@@ -588,47 +712,3 @@ public class NoticesController : ControllerBase
         return $"用户 {user.UserId}";
     }
 }
-
-public record NoticeDto(
-    int Id,
-    int? ClubId,
-    string? ClubName,
-    int PublisherUserId,
-    string? PublisherName,
-    string NoticeType,
-    string Title,
-    string Content,
-    string TargetType,
-    int? TargetId,
-    string? TargetName,
-    DateTime PublishAt,
-    DateTime? ExpireAt,
-    string NoticeStatus,
-    bool IsRead,
-    DateTime? ReadAt,
-    int? AudienceCount,
-    int ReadCount);
-
-public class CreateNoticeRequest
-{
-    public int CurrentUserId { get; set; }
-    public string NoticeType { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-    public string TargetType { get; set; } = string.Empty;
-    public int? ClubId { get; set; }
-    public int? TargetId { get; set; }
-    public DateTime? ExpireAt { get; set; }
-    public string? NoticeStatus { get; set; }
-}
-
-public class MarkNoticeReadRequest
-{
-    public int CurrentUserId { get; set; }
-}
-
-public record NoticeReadResultDto(
-    int NoticeId,
-    int UserId,
-    bool IsRead,
-    DateTime ReadAt);

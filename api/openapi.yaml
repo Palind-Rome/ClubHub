@@ -216,6 +216,7 @@ paths:
           schema:
             type: string
             enum: [draft, published, expired]
+            default: published
         - name: targetType
           in: query
           required: false
@@ -1381,6 +1382,7 @@ components:
         currentUserId:
           type: integer
           description: 当前发布人用户 ID。
+          minimum: 1
           example: 2
         noticeType:
           type: string
@@ -1407,12 +1409,12 @@ components:
           example: club
         clubId:
           type: integer
-          description: 成员定向所属社团 ID；全校、社团、部门定向可为空。
+          description: 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
           nullable: true
           example: 1
         targetId:
           type: integer
-          description: 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+          description: 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
           nullable: true
           example: 1
         expireAt:
@@ -1424,6 +1426,7 @@ components:
           type: string
           description: 通知状态；默认 published。
           enum: [draft, published]
+          default: published
           example: published
       required:
         - currentUserId
@@ -1439,13 +1442,14 @@ components:
         currentUserId:
           type: integer
           description: 当前阅读用户 ID。
+          minimum: 1
           example: 3
       required:
         - currentUserId
 
     NoticeReadResult:
       type: object
-      description: 通知已读记录结果。
+      description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
       properties:
         noticeId:
           type: integer
@@ -1457,7 +1461,7 @@ components:
           example: 3
         isRead:
           type: boolean
-          description: 是否已读。
+          description: 是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。
           example: true
         readAt:
           type: string

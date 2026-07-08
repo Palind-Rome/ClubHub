@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { Bell, Check, Plus, Refresh, Search } from "@element-plus/icons-vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import type { Club, ClubMemberRecord, Notice as ApiNotice } from "../api/models";
 
 type TargetType = "school" | "club" | "department" | "member";
 type NoticeStatus = "draft" | "published" | "expired";
@@ -12,47 +13,16 @@ interface ApiError {
   title?: string;
 }
 
-interface Notice {
-  id: number;
-  clubId: number | null;
-  clubName: string | null;
-  publisherUserId: number;
-  publisherName: string | null;
-  noticeType: string;
-  title: string;
-  content: string;
+type Notice = Omit<
+  ApiNotice,
+  "publishAt" | "expireAt" | "readAt" | "targetType" | "noticeStatus"
+> & {
   targetType: TargetType;
-  targetId: number | null;
-  targetName: string | null;
   publishAt: string;
-  expireAt: string | null;
+  expireAt?: string | null;
   noticeStatus: NoticeStatus;
-  isRead: boolean;
-  readAt: string | null;
-  audienceCount: number | null;
-  readCount: number;
-}
-
-interface Club {
-  id: number;
-  name: string;
-  status: string | null;
-  statusText: string;
-}
-
-interface ClubMemberRecord {
-  memberId: number;
-  clubId: number;
-  clubName: string;
-  userId: number;
-  userName: string;
-  studentNo: string | null;
-  departmentName: string | null;
-  groupName: string | null;
-  positionName: string | null;
-  memberStatus: string | null;
-  isCurrent: boolean;
-}
+  readAt?: string | null;
+};
 
 interface DepartmentOption {
   memberId: number;
@@ -557,10 +527,10 @@ onUnmounted(() => {
       <el-form ref="publishFormRef" :model="publishForm" :rules="publishRules" label-width="100px">
         <el-form-item label="定向范围" prop="targetType">
           <el-radio-group v-model="publishForm.targetType">
-            <el-radio-button v-if="canPublishSchool" label="school">全校</el-radio-button>
-            <el-radio-button v-if="canPublishClub" label="club">社团</el-radio-button>
-            <el-radio-button v-if="canPublishClub" label="department">部门</el-radio-button>
-            <el-radio-button v-if="canPublishClub" label="member">成员</el-radio-button>
+            <el-radio-button v-if="canPublishSchool" value="school">全校</el-radio-button>
+            <el-radio-button v-if="canPublishClub" value="club">社团</el-radio-button>
+            <el-radio-button v-if="canPublishClub" value="department">部门</el-radio-button>
+            <el-radio-button v-if="canPublishClub" value="member">成员</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="publishForm.targetType !== 'school'" label="社团">

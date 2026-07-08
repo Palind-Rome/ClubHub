@@ -1,3 +1,4 @@
+using ClubHub.Api;
 using ClubHub.Api.Data;
 using ClubHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
