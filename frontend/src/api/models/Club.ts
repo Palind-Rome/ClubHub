@@ -81,7 +81,13 @@ export interface Club {
    */
   presidentName?: string | null;
   /**
-   *
+   * 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
+   * @type {number}
+   * @memberof Club
+   */
+  advisorUserId?: number | null;
+  /**
+   * 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
    * @type {string}
    * @memberof Club
    */
@@ -191,6 +197,7 @@ export function ClubFromJSONTyped(json: any, ignoreDiscriminator: boolean): Club
     logoUrl: json["logoUrl"] == null ? undefined : json["logoUrl"],
     presidentUserId: json["presidentUserId"] == null ? undefined : json["presidentUserId"],
     presidentName: json["presidentName"] == null ? undefined : json["presidentName"],
+    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
     advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
     contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
     auditStatus: json["auditStatus"] == null ? undefined : json["auditStatus"],
@@ -227,6 +234,7 @@ export function ClubToJSONTyped(value?: Club | null, ignoreDiscriminator: boolea
     logoUrl: value["logoUrl"],
     presidentUserId: value["presidentUserId"],
     presidentName: value["presidentName"],
+    advisorUserId: value["advisorUserId"],
     advisorName: value["advisorName"],
     contactPhone: value["contactPhone"],
     auditStatus: value["auditStatus"],

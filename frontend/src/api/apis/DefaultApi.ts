@@ -159,6 +159,11 @@ export interface GetClubsRequest {
   viewerUserId?: number;
 }
 
+export interface GetUsersRequest {
+  viewerUserId: number;
+  clubId?: number;
+}
+
 export interface LoginUserRequest {
   loginRequest: LoginRequest;
 }
@@ -957,8 +962,23 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getUsers without sending the request
    */
-  async getUsersRequestOpts(): Promise<runtime.RequestOpts> {
+  async getUsersRequestOpts(requestParameters: GetUsersRequest): Promise<runtime.RequestOpts> {
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getUsers().',
+      );
+    }
+
     const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -973,24 +993,26 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取可切换的当前用户列表
+   * 获取当前账号可查看或可分配的用户列表
    */
   async getUsersRaw(
+    requestParameters: GetUsersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<UserSummary>>> {
-    const requestOptions = await this.getUsersRequestOpts();
+    const requestOptions = await this.getUsersRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserSummaryFromJSON));
   }
 
   /**
-   * 获取可切换的当前用户列表
+   * 获取当前账号可查看或可分配的用户列表
    */
   async getUsers(
+    requestParameters: GetUsersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<UserSummary>> {
-    const response = await this.getUsersRaw(initOverrides);
+    const response = await this.getUsersRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

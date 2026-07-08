@@ -57,9 +57,16 @@ export interface UpdateClubProfileRequest {
    */
   presidentUserId?: number | null;
   /**
-   *
+   * 指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。
+   * @type {number}
+   * @memberof UpdateClubProfileRequest
+   */
+  advisorUserId?: number | null;
+  /**
+   * 历史兼容字段；新流程请使用 advisorUserId。
    * @type {string}
    * @memberof UpdateClubProfileRequest
+   * @deprecated
    */
   advisorName?: string | null;
   /**
@@ -100,6 +107,7 @@ export function UpdateClubProfileRequestFromJSONTyped(
     description: json["description"] == null ? undefined : json["description"],
     logoUrl: json["logoUrl"] == null ? undefined : json["logoUrl"],
     presidentUserId: json["presidentUserId"] == null ? undefined : json["presidentUserId"],
+    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
     advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
     contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
   };
@@ -124,6 +132,7 @@ export function UpdateClubProfileRequestToJSONTyped(
     description: value["description"],
     logoUrl: value["logoUrl"],
     presidentUserId: value["presidentUserId"],
+    advisorUserId: value["advisorUserId"],
     advisorName: value["advisorName"],
     contactPhone: value["contactPhone"],
   };

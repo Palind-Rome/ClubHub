@@ -72,8 +72,16 @@ namespace Org.OpenAPITools.Models
         public string MaterialUrl { get; set; }
 
         /// <summary>
-        /// Gets or Sets AdvisorName
+        /// 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
         /// </summary>
+        /// <value>拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。</value>
+        [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
+        public int? AdvisorUserId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程请使用 advisorUserId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程请使用 advisorUserId。</value>
         [DataMember(Name="advisorName", EmitDefaultValue=true)]
         public string? AdvisorName { get; set; }
 

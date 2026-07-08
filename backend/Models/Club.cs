@@ -89,8 +89,16 @@ namespace Org.OpenAPITools.Models
         public string? PresidentName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AdvisorName
+        /// 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
         /// </summary>
+        /// <value>当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。</value>
+        [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
+        public int? AdvisorUserId { get; set; }
+
+        /// <summary>
+        /// 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
+        /// </summary>
+        /// <value>当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。</value>
         [DataMember(Name="advisorName", EmitDefaultValue=true)]
         public string? AdvisorName { get; set; }
 

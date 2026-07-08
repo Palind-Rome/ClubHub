@@ -57,9 +57,16 @@ export interface CreateClubApplicationRequest {
    */
   materialUrl: string;
   /**
-   *
+   * 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
+   * @type {number}
+   * @memberof CreateClubApplicationRequest
+   */
+  advisorUserId?: number | null;
+  /**
+   * 历史兼容字段；新流程请使用 advisorUserId。
    * @type {string}
    * @memberof CreateClubApplicationRequest
+   * @deprecated
    */
   advisorName?: string | null;
   /**
@@ -102,6 +109,7 @@ export function CreateClubApplicationRequestFromJSONTyped(
     description: json["description"] == null ? undefined : json["description"],
     applyReason: json["applyReason"],
     materialUrl: json["materialUrl"],
+    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
     advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
     contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
   };
@@ -126,6 +134,7 @@ export function CreateClubApplicationRequestToJSONTyped(
     description: value["description"],
     applyReason: value["applyReason"],
     materialUrl: value["materialUrl"],
+    advisorUserId: value["advisorUserId"],
     advisorName: value["advisorName"],
     contactPhone: value["contactPhone"],
   };
