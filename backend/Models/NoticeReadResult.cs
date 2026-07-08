@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 通知已读记录结果。
+    /// 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
     /// </summary>
     [DataContract]
     public partial class NoticeReadResult 
@@ -44,9 +44,9 @@ namespace Org.OpenAPITools.Models
         public int UserId { get; set; }
 
         /// <summary>
-        /// 是否已读。
+        /// 是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。
         /// </summary>
-        /// <value>是否已读。</value>
+        /// <value>是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。</value>
         /* <example>true</example> */
         [Required]
         [DataMember(Name="isRead", EmitDefaultValue=true)]

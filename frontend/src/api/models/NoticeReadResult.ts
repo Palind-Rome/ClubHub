@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 通知已读记录结果。
+ * 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
  * @export
  * @interface NoticeReadResult
  */
@@ -33,7 +33,7 @@ export interface NoticeReadResult {
    */
   userId: number;
   /**
-   * 是否已读。
+   * 是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。
    * @type {boolean}
    * @memberof NoticeReadResult
    */

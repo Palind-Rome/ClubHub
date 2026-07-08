@@ -108,17 +108,17 @@ namespace Org.OpenAPITools.Models
         public TargetTypeEnum TargetType { get; set; }
 
         /// <summary>
-        /// 成员定向所属社团 ID；全校、社团、部门定向可为空。
+        /// 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
         /// </summary>
-        /// <value>成员定向所属社团 ID；全校、社团、部门定向可为空。</value>
+        /// <value>成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。</value>
         /* <example>1</example> */
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
         /// <summary>
-        /// 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+        /// 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
         /// </summary>
-        /// <value>目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。</value>
+        /// <value>目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。</value>
         /* <example>1</example> */
         [DataMember(Name="targetId", EmitDefaultValue=true)]
         public int? TargetId { get; set; }
@@ -158,7 +158,7 @@ namespace Org.OpenAPITools.Models
         /// <value>通知状态；默认 published。</value>
         /* <example>published</example> */
         [DataMember(Name="noticeStatus", EmitDefaultValue=true)]
-        public NoticeStatusEnum NoticeStatus { get; set; }
+        public NoticeStatusEnum NoticeStatus { get; set; } = NoticeStatusEnum.PublishedEnum;
 
     }
 }

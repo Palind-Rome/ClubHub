@@ -51,13 +51,13 @@ export interface CreateNoticeRequest {
    */
   targetType: CreateNoticeRequestTargetTypeEnum;
   /**
-   * 成员定向所属社团 ID；全校、社团、部门定向可为空。
+   * 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
    * @type {number}
    * @memberof CreateNoticeRequest
    */
   clubId?: number | null;
   /**
-   * 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+   * 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
    * @type {number}
    * @memberof CreateNoticeRequest
    */
