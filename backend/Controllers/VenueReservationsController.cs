@@ -224,7 +224,23 @@ public class VenueReservationsController : ControllerBase
             return BadRequest(Error("reservation_time_invalid", "预约开始时间必须早于结束时间。"));
         }
 
+        var now = DateTime.UtcNow;
+        if (ToUtc(startTime) < now)
+        {
+            return BadRequest(Error("reservation_start_time_in_past", "预约开始时间不能早于当前时间。"));
+        }
+
+        if (ToUtc(endTime) < now)
+        {
+            return BadRequest(Error("reservation_end_time_in_past", "预约结束时间不能早于当前时间。"));
+        }
+
         return null;
+    }
+
+    private static DateTime ToUtc(DateTime value)
+    {
+        return value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
     }
 
     private static VenueReservationDto ToDto(VenueReservationEntity reservation)

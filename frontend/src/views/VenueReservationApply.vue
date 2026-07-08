@@ -77,11 +77,27 @@ const statusType: Record<string, "success" | "warning" | "info"> = {
 
 const rules: FormRules<ReservationForm> = {
   clubId: [{ required: true, message: "请输入申请社团 ID", trigger: "blur" }],
-  startTime: [{ required: true, message: "请选择开始时间", trigger: "change" }],
+  startTime: [
+    { required: true, message: "请选择开始时间", trigger: "change" },
+    {
+      validator: (_rule, value, callback) => {
+        if (isBeforeNow(value)) {
+          callback(new Error("开始时间不能早于当前时间"));
+          return;
+        }
+        callback();
+      },
+      trigger: "change",
+    },
+  ],
   endTime: [
     { required: true, message: "请选择结束时间", trigger: "change" },
     {
       validator: (_rule, value, callback) => {
+        if (isBeforeNow(value)) {
+          callback(new Error("结束时间不能早于当前时间"));
+          return;
+        }
         if (!value || !form.startTime) {
           callback();
           return;
@@ -100,6 +116,16 @@ const rules: FormRules<ReservationForm> = {
     { min: 2, max: 200, message: "用途需为 2-200 个字符", trigger: "blur" },
   ],
 };
+
+function isBeforeNow(value?: string) {
+  return value ? new Date(value).getTime() < Date.now() : false;
+}
+
+function disablePastDate(date: Date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date.getTime() < today.getTime();
+}
 
 async function readErrorMessage(res: Response) {
   try {
@@ -137,7 +163,8 @@ function openReservation(venue: Venue) {
 
 async function submitReservation() {
   if (!reservationFormRef.value) return;
-  await reservationFormRef.value.validate();
+  const valid = await reservationFormRef.value.validate().catch(() => false);
+  if (!valid) return;
 
   const applicantUserId = auth.value?.user.id;
   if (!applicantUserId || !form.venueId || !form.clubId) {
@@ -277,6 +304,7 @@ onMounted(loadVenues);
             value-format="YYYY-MM-DDTHH:mm:ss"
             format="YYYY-MM-DD HH:mm"
             placeholder="选择开始时间"
+            :disabled-date="disablePastDate"
             class="full-width"
           />
         </el-form-item>
@@ -287,6 +315,7 @@ onMounted(loadVenues);
             value-format="YYYY-MM-DDTHH:mm:ss"
             format="YYYY-MM-DD HH:mm"
             placeholder="选择结束时间"
+            :disabled-date="disablePastDate"
             class="full-width"
           />
         </el-form-item>
