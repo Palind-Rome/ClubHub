@@ -678,6 +678,196 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/recruitments:
+    get:
+      summary: 查询社团招募列表
+      description: 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+      operationId: getRecruitments
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, closed]
+      responses:
+        "200":
+          description: 招募列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求参数不合法
+        "404":
+          description: 当前用户不存在
+    post:
+      summary: 发布社团招募
+      description: 系统管理员或目标社团的社团干部、负责人可以发布招募。
+      operationId: createRecruitment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecruitmentRequest"
+      responses:
+        "201":
+          description: 招募已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有管理该社团招募的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许发布招募
+
+  /api/recruitments/{recruitId}:
+    patch:
+      summary: 更新社团招募
+      description: 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+      operationId: updateRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRecruitmentRequest"
+      responses:
+        "200":
+          description: 招募已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有管理该社团招募的权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 招募状态不允许维护
+
+  /api/recruitments/{recruitId}/applications:
+    get:
+      summary: 查询招募报名列表
+      description: 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+      operationId: getRecruitmentApplications
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 招募报名列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecruitmentApplication"
+        "403":
+          description: 当前用户没有查看该招募报名的权限
+        "404":
+          description: 当前用户或招募不存在
+    post:
+      summary: 提交招募报名
+      description: 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+      operationId: createRecruitmentApplication
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecruitmentApplicationRequest"
+      responses:
+        "201":
+          description: 报名已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecruitmentApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有报名权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 已报名、已是成员或招募不接受报名
+
+  /api/recruitments/applications/{applicationId}/review:
+    patch:
+      summary: 筛选招募报名
+      description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+      operationId: reviewRecruitmentApplication
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRecruitmentApplicationRequest"
+      responses:
+        "200":
+          description: 筛选结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecruitmentApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有筛选该报名的权限
+        "404":
+          description: 当前用户或报名不存在
+        "409":
+          description: 报名状态、名额或成员关系不允许录取
+
   /api/activities:
     get:
       summary: 获取活动列表
@@ -2101,6 +2291,233 @@ components:
           enum: [approved, rejected]
         reviewComment:
           type: string
+          nullable: true
+      required:
+        - currentUserId
+        - decision
+
+    Recruitment:
+      type: object
+      properties:
+        id:
+          type: integer
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        quota:
+          type: integer
+          nullable: true
+        requirements:
+          type: string
+          nullable: true
+        recruitStatus:
+          type: string
+          enum: [draft, published, closed]
+        recruitStatusText:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        applicationCount:
+          type: integer
+        acceptedCount:
+          type: integer
+        currentUserApplicationId:
+          type: integer
+          nullable: true
+        currentUserApplicationStatus:
+          type: string
+          enum: [pending, accepted, rejected]
+          nullable: true
+        currentUserApplicationStatusText:
+          type: string
+          nullable: true
+        canManage:
+          type: boolean
+      required:
+        - id
+        - clubId
+        - clubName
+        - title
+        - recruitStatus
+        - recruitStatusText
+        - createdAt
+        - applicationCount
+        - acceptedCount
+        - canManage
+
+    RecruitmentApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+        recruitId:
+          type: integer
+        recruitTitle:
+          type: string
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        userId:
+          type: integer
+        applicantName:
+          type: string
+        studentNo:
+          type: string
+          nullable: true
+        applicationReason:
+          type: string
+        interviewScore:
+          type: number
+          format: double
+          nullable: true
+        applicationStatus:
+          type: string
+          enum: [pending, accepted, rejected]
+        applicationStatusText:
+          type: string
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - recruitId
+        - recruitTitle
+        - clubId
+        - clubName
+        - userId
+        - applicantName
+        - applicationReason
+        - applicationStatus
+        - applicationStatusText
+
+    CreateRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        clubId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        quota:
+          type: integer
+          minimum: 1
+        requirements:
+          type: string
+          minLength: 1
+        recruitStatus:
+          type: string
+          enum: [draft, published, closed]
+          default: published
+      required:
+        - currentUserId
+        - clubId
+        - title
+        - startAt
+        - endAt
+        - quota
+        - requirements
+
+    UpdateRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        quota:
+          type: integer
+          minimum: 1
+          nullable: true
+        requirements:
+          type: string
+          nullable: true
+        recruitStatus:
+          type: string
+          enum: [draft, published, closed]
+          nullable: true
+      required:
+        - currentUserId
+
+    CreateRecruitmentApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        applicationReason:
+          type: string
+          minLength: 1
+      required:
+        - currentUserId
+        - applicationReason
+
+    ReviewRecruitmentApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [accepted, rejected]
+        interviewScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
           nullable: true
       required:
         - currentUserId
