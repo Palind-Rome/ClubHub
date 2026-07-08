@@ -155,7 +155,7 @@ namespace Org.OpenAPITools.Models
         /// Gets or Sets CurrentUserApplicationStatus
         /// </summary>
         [DataMember(Name="currentUserApplicationStatus", EmitDefaultValue=true)]
-        public CurrentUserApplicationStatusEnum? CurrentUserApplicationStatus { get; set; }
+        public string? CurrentUserApplicationStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets CurrentUserApplicationStatusText

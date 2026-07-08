@@ -112,10 +112,10 @@ export interface Recruitment {
   currentUserApplicationId?: number | null;
   /**
    *
-   * @type {RecruitmentCurrentUserApplicationStatusEnum}
+   * @type {string}
    * @memberof Recruitment
    */
-  currentUserApplicationStatus?: RecruitmentCurrentUserApplicationStatusEnum | null;
+  currentUserApplicationStatus?: string | null;
   /**
    *
    * @type {string}
@@ -140,17 +140,6 @@ export const RecruitmentRecruitStatusEnum = {
 } as const;
 export type RecruitmentRecruitStatusEnum =
   (typeof RecruitmentRecruitStatusEnum)[keyof typeof RecruitmentRecruitStatusEnum];
-
-/**
- * @export
- */
-export const RecruitmentCurrentUserApplicationStatusEnum = {
-  Pending: "pending",
-  Accepted: "accepted",
-  Rejected: "rejected",
-} as const;
-export type RecruitmentCurrentUserApplicationStatusEnum =
-  (typeof RecruitmentCurrentUserApplicationStatusEnum)[keyof typeof RecruitmentCurrentUserApplicationStatusEnum];
 
 /**
  * Check if a given object implements the Recruitment interface.
