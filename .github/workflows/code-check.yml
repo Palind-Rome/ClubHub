@@ -8,6 +8,10 @@ on:
       - dev
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   # ============================================================
   # 检测变更：前端 / 后端语言检查按路径运行
