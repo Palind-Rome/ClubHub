@@ -14,6 +14,8 @@ public class ClubHubDbContext : DbContext
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Notice> Notices => Set<Notice>();
+    public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +56,10 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
+            e.HasMany(c => c.Notices)
+             .WithOne(n => n.Club)
+             .HasForeignKey(n => n.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(c => c.Applicant)
              .WithMany()
              .HasForeignKey(c => c.ApplicantUserId)
@@ -92,6 +98,28 @@ public class ClubHubDbContext : DbContext
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Notice>(e =>
+        {
+            e.HasKey(n => n.NoticeId);
+            e.HasOne(n => n.Publisher)
+             .WithMany()
+             .HasForeignKey(n => n.PublisherUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(n => n.Reads)
+             .WithOne(r => r.Notice)
+             .HasForeignKey(r => r.NoticeId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<NoticeRead>(e =>
+        {
+            e.HasKey(r => r.ReadId);
+            e.HasOne(r => r.User)
+             .WithMany()
+             .HasForeignKey(r => r.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

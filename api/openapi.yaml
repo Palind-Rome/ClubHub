@@ -197,6 +197,144 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/notices:
+    get:
+      summary: 查询公告通知
+      description: 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      operationId: getNotices
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前查看用户 ID。
+          schema:
+            type: integer
+        - name: noticeStatus
+          in: query
+          required: false
+          description: 公告状态筛选；默认返回 published。
+          schema:
+            type: string
+            enum: [draft, published, expired]
+        - name: targetType
+          in: query
+          required: false
+          description: 定向类型筛选。
+          schema:
+            type: string
+            enum: [school, club, department, member]
+        - name: clubId
+          in: query
+          required: false
+          description: 社团上下文筛选。
+          schema:
+            type: integer
+        - name: unreadOnly
+          in: query
+          required: false
+          description: 是否仅返回未读通知。
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: 当前用户可见的公告通知列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notice"
+        "400":
+          description: 查询参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 发布公告通知
+      description: 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+      operationId: createNotice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
+      responses:
+        "201":
+          description: 公告通知已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notice"
+        "400":
+          description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有发布权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 发布人、社团或目标对象不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/notices/{noticeId}/reads:
+    post:
+      summary: 标记通知已读
+      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+      operationId: markNoticeRead
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkNoticeReadRequest"
+      responses:
+        "200":
+          description: 已读记录已存在或已写入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeReadResult"
+        "400":
+          description: 当前用户缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不可阅读该通知
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户或通知不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/clubs:
     get:
       summary: 获取社团列表
@@ -1138,6 +1276,198 @@ components:
         - code
         - name
         - description
+
+    Notice:
+      type: object
+      description: 公告通知及当前用户已读状态。
+      properties:
+        id:
+          type: integer
+          description: 通知 ID。
+          example: 1
+        clubId:
+          type: integer
+          description: 社团 ID；全校通知可为空。
+          nullable: true
+          example: 1
+        clubName:
+          type: string
+          description: 社团名称。
+          nullable: true
+          example: 计算机协会
+        publisherUserId:
+          type: integer
+          description: 发布人用户 ID。
+          example: 2
+        publisherName:
+          type: string
+          description: 发布人展示名称。
+          nullable: true
+          example: 李四
+        noticeType:
+          type: string
+          description: 通知类型，例如 announcement、urgent、event。
+          example: announcement
+        title:
+          type: string
+          description: 通知标题。
+          example: 本周例会通知
+        content:
+          type: string
+          description: 通知正文。
+          example: 请各位成员准时参加本周例会。
+        targetType:
+          type: string
+          description: 定向类型。
+          enum: [school, club, department, member]
+          example: club
+        targetId:
+          type: integer
+          description: 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+          nullable: true
+          example: 1
+        targetName:
+          type: string
+          description: 前端展示用目标名称。
+          nullable: true
+          example: 计算机协会
+        publishAt:
+          type: string
+          format: date-time
+          description: 发布时间。
+        expireAt:
+          type: string
+          format: date-time
+          description: 过期时间。
+          nullable: true
+        noticeStatus:
+          type: string
+          description: 通知状态。
+          enum: [draft, published, expired]
+          example: published
+        isRead:
+          type: boolean
+          description: 当前查看用户是否已读。
+        readAt:
+          type: string
+          format: date-time
+          description: 当前查看用户已读时间。
+          nullable: true
+        audienceCount:
+          type: integer
+          description: 当前规则下可接收该通知的用户数。
+          nullable: true
+          example: 28
+        readCount:
+          type: integer
+          description: 已读人数。
+          example: 12
+      required:
+        - id
+        - publisherUserId
+        - noticeType
+        - title
+        - content
+        - targetType
+        - publishAt
+        - noticeStatus
+        - isRead
+        - readCount
+
+    CreateNoticeRequest:
+      type: object
+      description: 发布公告通知请求。
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前发布人用户 ID。
+          example: 2
+        noticeType:
+          type: string
+          description: 通知类型，例如 announcement、urgent、event。
+          minLength: 1
+          maxLength: 50
+          example: announcement
+        title:
+          type: string
+          description: 通知标题。
+          minLength: 1
+          maxLength: 120
+          example: 本周例会通知
+        content:
+          type: string
+          description: 通知正文。
+          minLength: 1
+          maxLength: 4000
+          example: 请各位成员准时参加本周例会。
+        targetType:
+          type: string
+          description: 定向类型。
+          enum: [school, club, department, member]
+          example: club
+        clubId:
+          type: integer
+          description: 成员定向所属社团 ID；全校、社团、部门定向可为空。
+          nullable: true
+          example: 1
+        targetId:
+          type: integer
+          description: 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+          nullable: true
+          example: 1
+        expireAt:
+          type: string
+          format: date-time
+          description: 过期时间，必须晚于发布时间。
+          nullable: true
+        noticeStatus:
+          type: string
+          description: 通知状态；默认 published。
+          enum: [draft, published]
+          example: published
+      required:
+        - currentUserId
+        - noticeType
+        - title
+        - content
+        - targetType
+
+    MarkNoticeReadRequest:
+      type: object
+      description: 标记通知已读请求。
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前阅读用户 ID。
+          example: 3
+      required:
+        - currentUserId
+
+    NoticeReadResult:
+      type: object
+      description: 通知已读记录结果。
+      properties:
+        noticeId:
+          type: integer
+          description: 通知 ID。
+          example: 1
+        userId:
+          type: integer
+          description: 阅读用户 ID。
+          example: 3
+        isRead:
+          type: boolean
+          description: 是否已读。
+          example: true
+        readAt:
+          type: string
+          format: date-time
+          description: 已读时间。
+      required:
+        - noticeId
+        - userId
+        - isRead
+        - readAt
 
     PermissionCheckResult:
       type: object

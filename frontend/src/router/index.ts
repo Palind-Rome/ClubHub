@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import ClubList from "../views/ClubList.vue";
 import ActivityList from "../views/ActivityList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
+import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
 import { hasCompletedSession } from "../authSession";
 
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
     { path: "/activities", component: ActivityList },
+    { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },
   ],
 });
