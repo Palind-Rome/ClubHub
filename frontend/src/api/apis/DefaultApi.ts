@@ -1334,7 +1334,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 招募创建人可以删除自己创建的草稿招募。
+   * 目标社团的社团干部、负责人可以删除本社团草稿招募。
    * 删除草稿招募
    */
   async deleteRecruitmentRaw(
@@ -1348,7 +1348,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 招募创建人可以删除自己创建的草稿招募。
+   * 目标社团的社团干部、负责人可以删除本社团草稿招募。
    * 删除草稿招募
    */
   async deleteRecruitment(
@@ -2200,7 +2200,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
+   * 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
    * 查询社团招募列表
    */
   async getRecruitmentsRaw(
@@ -2214,7 +2214,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
+   * 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
    * 查询社团招募列表
    */
   async getRecruitments(
@@ -3312,7 +3312,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+   * 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
    * 更新社团招募
    */
   async updateRecruitmentRaw(
@@ -3326,7 +3326,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+   * 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
    * 更新社团招募
    */
   async updateRecruitment(

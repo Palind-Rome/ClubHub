@@ -88,18 +88,6 @@ export interface Recruitment {
   recruitStatusText: string;
   /**
    *
-   * @type {number}
-   * @memberof Recruitment
-   */
-  creatorUserId?: number | null;
-  /**
-   *
-   * @type {string}
-   * @memberof Recruitment
-   */
-  creatorName?: string | null;
-  /**
-   *
    * @type {Date}
    * @memberof Recruitment
    */
@@ -141,7 +129,7 @@ export interface Recruitment {
    */
   currentUserIsMember: boolean;
   /**
-   * 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
+   * 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
    * @type {boolean}
    * @memberof Recruitment
    */
@@ -227,8 +215,6 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
     requirements: json["requirements"] == null ? undefined : json["requirements"],
     recruitStatus: json["recruitStatus"],
     recruitStatusText: json["recruitStatusText"],
-    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
-    creatorName: json["creatorName"] == null ? undefined : json["creatorName"],
     createdAt: new Date(json["createdAt"]),
     applicationCount: json["applicationCount"],
     acceptedCount: json["acceptedCount"],
@@ -275,8 +261,6 @@ export function RecruitmentToJSONTyped(
     requirements: value["requirements"],
     recruitStatus: value["recruitStatus"],
     recruitStatusText: value["recruitStatusText"],
-    creatorUserId: value["creatorUserId"],
-    creatorName: value["creatorName"],
     createdAt: value["createdAt"].toISOString(),
     applicationCount: value["applicationCount"],
     acceptedCount: value["acceptedCount"],

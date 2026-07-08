@@ -137,18 +137,6 @@ namespace Org.OpenAPITools.Models
         public string RecruitStatusText { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatorUserId
-        /// </summary>
-        [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
-        public int? CreatorUserId { get; set; }
-
-        /// <summary>
-        /// Gets or Sets CreatorName
-        /// </summary>
-        [DataMember(Name="creatorName", EmitDefaultValue=true)]
-        public string? CreatorName { get; set; }
-
-        /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
@@ -196,9 +184,9 @@ namespace Org.OpenAPITools.Models
         public bool CurrentUserIsMember { get; set; }
 
         /// <summary>
-        /// 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
+        /// 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
         /// </summary>
-        /// <value>当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。</value>
+        /// <value>当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。</value>
         [Required]
         [DataMember(Name="isOwnProposal", EmitDefaultValue=true)]
         public bool IsOwnProposal { get; set; }
