@@ -137,8 +137,27 @@ paths:
         - name: clubId
           in: query
           required: false
+          description: Optional club id filter.
           schema:
             type: integer
+            minimum: 1
+        - name: page
+          in: query
+          required: false
+          description: Page number for project list pagination.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of projects returned per page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
       responses:
         "200":
           description: 权限判断结果
@@ -1696,68 +1715,105 @@ components:
         - currentParticipants
     Project:
       type: object
+      description: Project initiation application and review result.
       properties:
         id:
           type: integer
+          description: Project id in PROJECTS.PROJECT_ID.
+          example: 1001
         clubId:
           type: integer
+          description: Club that owns the project application.
+          example: 1
         projectName:
           type: string
+          description: Project name submitted by the club.
+          example: 校园公益服务项目
         description:
           type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
           nullable: true
         leaderUserId:
           type: integer
+          description: Optional project leader user id.
+          example: 12
           nullable: true
         startDate:
           type: string
           format: date-time
-          nullable: true
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
         endDate:
           type: string
           format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
           nullable: true
         projectStatus:
           type: string
           enum: [pending, running, finished, delayed, closed]
-          nullable: true
+          description: Current project status.
+          example: pending
         reviewerUserId:
           type: integer
+          description: User id of the reviewer after approval or rejection.
+          example: 3
           nullable: true
         reviewComment:
           type: string
+          description: Optional reviewer comment.
+          example: 立项材料完整，同意执行。
           nullable: true
         createdAt:
           type: string
           format: date-time
+          description: Project application creation time.
+          example: "2026-07-08T12:00:00Z"
       required:
         - id
         - clubId
         - projectName
+        - startDate
+        - projectStatus
         - createdAt
 
     CreateProjectRequest:
       type: object
+      description: Request body for creating a project initiation application.
       properties:
         clubId:
           type: integer
+          description: Club that submits the project application.
           minimum: 1
+          example: 1
         projectName:
           type: string
+          description: Project name.
           minLength: 1
           maxLength: 100
+          example: 校园公益服务项目
         description:
           type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
           nullable: true
         leaderUserId:
           type: integer
+          description: Optional project leader user id.
+          minimum: 1
+          example: 12
           nullable: true
         startDate:
           type: string
           format: date-time
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
         endDate:
           type: string
           format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
           nullable: true
       required:
         - clubId
@@ -1766,24 +1822,34 @@ components:
 
     AssignProjectLeaderRequest:
       type: object
+      description: Request body for assigning or changing a project leader.
       properties:
         leaderUserId:
           type: integer
+          description: User id of an active club member.
           minimum: 1
+          example: 12
       required:
         - leaderUserId
 
     ReviewProjectRequest:
       type: object
+      description: Request body for reviewing a project initiation application.
       properties:
         projectStatus:
           type: string
           enum: [running, closed]
+          description: Review result. running means approved; closed means rejected or closed.
+          example: running
         reviewerUserId:
           type: integer
+          description: User id of the reviewer.
           minimum: 1
+          example: 3
         reviewComment:
           type: string
+          description: Optional review comment.
+          example: 立项材料完整，同意执行。
           nullable: true
       required:
         - projectStatus

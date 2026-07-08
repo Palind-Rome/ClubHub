@@ -1,4 +1,4 @@
-using ClubHub.Api.Data;
+﻿using ClubHub.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiProject = Org.OpenAPITools.Models.Project;
@@ -34,17 +34,29 @@ public class ProjectsController : ControllerBase
     public ProjectsController(ClubHubDbContext db) => _db = db;
 
     /// <summary>
-    /// Gets project applications, optionally filtered by club.
+    /// Gets project applications, optionally filtered by club, with bounded pagination.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? clubId)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int? clubId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        if (clubId is not null and <= 0) return BadRequest("Club id must be greater than 0.");
+        if (page <= 0) return BadRequest("Page must be greater than 0.");
+        if (pageSize <= 0 || pageSize > 100) return BadRequest("Page size must be between 1 and 100.");
+
+        var skip = ((long)page - 1) * pageSize;
+        if (skip > int.MaxValue) return BadRequest("Pagination parameters are too large.");
+
         var query = _db.Projects.AsNoTracking();
         if (clubId is not null) query = query.Where(p => p.ClubId == clubId);
 
         var projects = await query
             .OrderByDescending(p => p.CreatedAt)
             .ThenBy(p => p.ProjectId)
+            .Skip((int)skip)
+            .Take(pageSize)
             .Select(p => ToProjectDto(p))
             .ToListAsync();
 
@@ -63,7 +75,7 @@ public class ProjectsController : ControllerBase
             .Select(p => ToProjectDto(p))
             .FirstOrDefaultAsync();
 
-        return project is null ? NotFound("项目不存在。") : Ok(project);
+        return project is null ? NotFound("Project does not exist.") : Ok(project);
     }
 
     /// <summary>
@@ -72,7 +84,7 @@ public class ProjectsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest? req)
     {
-        if (req is null) return BadRequest("请求体不能为空。");
+        if (req is null) return BadRequest("Request body is required.");
 
         var validation = await ValidateProjectInput(
             req.ClubId,
@@ -114,7 +126,7 @@ public class ProjectsController : ControllerBase
             }
         }
 
-        return Conflict("项目编号生成冲突，请重试。");
+        return Conflict("Project id generation conflicted. Please retry.");
     }
 
     /// <summary>
@@ -123,10 +135,10 @@ public class ProjectsController : ControllerBase
     [HttpPut("{projectId:int}/leader")]
     public async Task<IActionResult> AssignLeader(int projectId, [FromBody] AssignProjectLeaderRequest? req)
     {
-        if (req is null) return BadRequest("请求体不能为空。");
+        if (req is null) return BadRequest("Request body is required.");
 
         var project = await _db.Projects.FindAsync(projectId);
-        if (project is null) return NotFound("项目不存在。");
+        if (project is null) return NotFound("Project does not exist.");
 
         var validation = await ValidateProjectLeader(project.ClubId, req.LeaderUserId);
         if (validation is not null) return validation;
@@ -143,19 +155,16 @@ public class ProjectsController : ControllerBase
     [HttpPost("{projectId:int}/review")]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
     {
-        if (req is null) return BadRequest("请求体不能为空。");
+        if (req is null) return BadRequest("Request body is required.");
 
         var normalizedStatus = ToReviewStatusValue(req.ProjectStatus);
         if (!ReviewStatuses.Contains(normalizedStatus))
         {
-            return BadRequest("项目审核状态只能为 running 或 closed。");
+            return BadRequest("Project review status must be running or closed.");
         }
 
         var project = await _db.Projects.FindAsync(projectId);
-        if (project is null) return NotFound("项目不存在。");
-
-        var reviewerExists = await ActiveUserExists(req.ReviewerUserId);
-        if (!reviewerExists) return BadRequest("审核人不存在或账号不可用。");
+        if (project is null) return NotFound("Project does not exist.");
 
         if (string.Equals(project.ProjectStatus, normalizedStatus, StringComparison.OrdinalIgnoreCase))
         {
@@ -164,8 +173,11 @@ public class ProjectsController : ControllerBase
 
         if (!string.Equals(project.ProjectStatus, PendingStatus, StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest("只有待审核项目可以变更审核结果。");
+            return BadRequest("Only pending projects can be reviewed.");
         }
+
+        var reviewerExists = await ActiveUserExists(req.ReviewerUserId);
+        if (!reviewerExists) return BadRequest("Reviewer does not exist or is disabled.");
 
         project.ProjectStatus = normalizedStatus;
         project.ReviewerUserId = req.ReviewerUserId;
@@ -183,13 +195,13 @@ public class ProjectsController : ControllerBase
         DateTime? endDate)
     {
         // Keep all create-time checks together so later project fields can be added without scattering validation.
-        if (clubId <= 0) return BadRequest("所属社团不能为空。");
-        if (string.IsNullOrWhiteSpace(projectName)) return BadRequest("项目名称不能为空。");
-        if (projectName.Trim().Length > 100) return BadRequest("项目名称不能超过 100 个字符。");
-        if (endDate is not null && endDate < startDate) return BadRequest("项目结束日期不能早于开始日期。");
+        if (clubId <= 0) return BadRequest("Club id must be greater than 0.");
+        if (string.IsNullOrWhiteSpace(projectName)) return BadRequest("Project name is required.");
+        if (projectName.Trim().Length > 100) return BadRequest("Project name cannot exceed 100 characters.");
+        if (endDate is not null && endDate < startDate) return BadRequest("Project end date cannot be earlier than start date.");
 
         var clubExists = await _db.Clubs.AnyAsync(c => c.ClubId == clubId);
-        if (!clubExists) return BadRequest("所属社团不存在。");
+        if (!clubExists) return BadRequest("Club does not exist.");
 
         if (leaderUserId is not null)
         {
@@ -205,17 +217,17 @@ public class ProjectsController : ControllerBase
     /// </summary>
     private async Task<IActionResult?> ValidateProjectLeader(int clubId, int leaderUserId)
     {
-        if (leaderUserId <= 0) return BadRequest("项目负责人不能为空。");
+        if (leaderUserId <= 0) return BadRequest("Leader user id must be greater than 0.");
 
         var userExists = await ActiveUserExists(leaderUserId);
-        if (!userExists) return BadRequest("项目负责人不存在或账号不可用。");
+        if (!userExists) return BadRequest("Leader user does not exist or is disabled.");
 
         var isClubMember = await _db.ClubMembers.AnyAsync(m =>
             m.ClubId == clubId
             && m.UserId == leaderUserId
             && (m.MemberStatus == null || m.MemberStatus.ToLower() == ActiveMemberStatus));
 
-        if (!isClubMember) return BadRequest("项目负责人必须是该社团的有效成员。");
+        if (!isClubMember) return BadRequest("Project leader must be an active member of the club.");
 
         return null;
     }
@@ -251,13 +263,13 @@ public class ProjectsController : ControllerBase
         Id = project.ProjectId,
         ClubId = project.ClubId,
         ProjectName = project.ProjectName,
-        Description = project.Description!,
+        Description = project.Description,
         LeaderUserId = project.LeaderUserId,
-        StartDate = project.StartDate,
+        StartDate = project.StartDate ?? default,
         EndDate = project.EndDate,
         ProjectStatus = ToProjectStatusEnum(project.ProjectStatus),
         ReviewerUserId = project.ReviewerUserId,
-        ReviewComment = project.ReviewComment!,
+        ReviewComment = project.ReviewComment,
         CreatedAt = project.CreatedAt
     };
 
@@ -271,7 +283,7 @@ public class ProjectsController : ControllerBase
         };
     }
 
-    private static ApiProject.ProjectStatusEnum? ToProjectStatusEnum(string? status)
+    private static ApiProject.ProjectStatusEnum ToProjectStatusEnum(string? status)
     {
         return status?.Trim().ToLowerInvariant() switch
         {
@@ -280,7 +292,7 @@ public class ProjectsController : ControllerBase
             "finished" => ApiProject.ProjectStatusEnum.FinishedEnum,
             "delayed" => ApiProject.ProjectStatusEnum.DelayedEnum,
             ClosedStatus => ApiProject.ProjectStatusEnum.ClosedEnum,
-            _ => null
+            _ => ApiProject.ProjectStatusEnum.PendingEnum
         };
     }
 }

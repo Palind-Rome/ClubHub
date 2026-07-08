@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ClubHub API
  *
  * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
@@ -55,3 +55,4 @@ namespace Org.OpenAPITools.Models
 
     }
 }
+
