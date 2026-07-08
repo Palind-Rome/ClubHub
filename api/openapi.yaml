@@ -25,10 +25,187 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /api/auth/register:
+    post:
+      summary: 用户注册
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: 注册信息不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 用户名或学工号已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/login:
+    post:
+      summary: 用户登录
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: 登录成功，返回用户和角色信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: 登录信息不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 用户名/学工号或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 账号已被禁用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/roles:
+    get:
+      summary: 获取基础角色定义
+      operationId: getRoleDefinitions
+      responses:
+        "200":
+          description: 基础角色列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleDefinition"
+
+  /api/auth/permissions:
+    get:
+      summary: 获取权限目录
+      operationId: getPermissionCatalog
+      responses:
+        "200":
+          description: 权限目录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PermissionDefinition"
+
+  /api/auth/permissions/check:
+    get:
+      summary: 检查用户是否拥有指定权限
+      operationId: checkPermission
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: permission
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 权限判断结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionCheckResult"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/roles/assign:
+    post:
+      summary: 分配用户角色
+      operationId: assignUserRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignRoleRequest"
+      responses:
+        "200":
+          description: 角色分配成功或已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleAssignmentResult"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 操作人没有角色分配权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户或角色不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/clubs:
     get:
       summary: 获取社团列表
       operationId: getClubs
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: false
+          description: 当前查看用户，用于返回与角色相关的社团视图。
+          schema:
+            type: integer
       responses:
         "200":
           description: 社团列表
@@ -54,6 +231,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
+        "400":
+          description: 当前用户缺失、账号不可用或请求内容不合法
+        "403":
+          description: 仅平台管理员可以直接创建社团
+        "404":
+          description: 当前操作用户不存在
+        "409":
+          description: 社团名称已存在或已有有效注册申请
+
+  /api/clubs/applications:
+    get:
+      summary: 按当前用户权限查询社团注册申请
+      operationId: getClubApplications
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前用户。学生只能查看自己的申请，平台管理员可以查看全部申请。
+          schema:
+            type: integer
+        - name: auditStatus
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        "200":
+          description: 社团注册申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 当前用户缺失或审核状态不合法
+        "404":
+          description: 当前用户不存在
+    post:
+      summary: 提交社团注册申请
+      description: 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
+      operationId: createClubApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubApplicationRequest"
+      responses:
+        "201":
+          description: 社团注册申请已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "404":
+          description: 当前用户不存在
+        "403":
+          description: 当前用户不是学生申请人或无权提交申请
+        "409":
+          description: 社团名称已存在或已有待审核申请
+
+  /api/clubs/applications/{clubId}/review:
+    patch:
+      summary: 平台管理员审核社团注册申请
+      operationId: reviewClubApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewClubApplicationRequest"
+      responses:
+        "200":
+          description: 审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 审核内容不符合业务规则
+        "404":
+          description: 当前用户或申请不存在
+        "409":
+          description: 当前申请状态不允许审核
+        "403":
+          description: 当前用户没有审核权限
 
   /api/clubs/{clubId}:
     get:
@@ -94,18 +367,175 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
-    delete:
-      summary: 删除社团
-      operationId: deleteClub
+  /api/clubs/{clubId}/dissolve:
+    patch:
+      summary: 解散社团
+      description: 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+      operationId: dissolveClub
       parameters:
         - name: clubId
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DissolveClubRequest"
       responses:
         "204":
-          description: 社团已删除
+          description: 社团已解散
+        "400":
+          description: 当前用户或社团状态不符合业务规则
+        "403":
+          description: 当前用户没有解散社团权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团已解散或当前状态不允许解散
+
+  /api/clubs/{clubId}/profile:
+    patch:
+      summary: 维护社团基础信息
+      description: 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+      operationId: updateClubProfile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubProfileRequest"
+      responses:
+        "200":
+          description: 社团基础信息已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团的权限
+        "404":
+          description: 当前用户、社团或负责人不存在
+        "409":
+          description: 社团状态不允许维护或社团名称冲突
+
+  /api/clubs/{clubId}/members:
+    get:
+      summary: 查询社团成员与干部任期记录
+      description: 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+      operationId: getClubMembers
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: includeHistory
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 社团成员与任期记录列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubMemberRecord"
+        "403":
+          description: 当前用户没有查看该社团成员的权限
+        "404":
+          description: 当前用户或社团不存在
+
+  /api/clubs/{clubId}/members/terms:
+    post:
+      summary: 新增社团成员或干部任期
+      description: 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+      operationId: createClubMemberTerm
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubMemberTermRequest"
+      responses:
+        "201":
+          description: 社团成员或干部任期已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubMemberRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团成员的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/members/{memberId}:
+    patch:
+      summary: 更新社团成员或干部任期
+      description: 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+      operationId: updateClubMemberTerm
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubMemberTermRequest"
+      responses:
+        "200":
+          description: 社团成员或干部任期已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubMemberRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团成员的权限
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态不允许维护
 
   /api/activities:
     get:
@@ -139,8 +569,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/Activity"
 
+  /api/users:
+    get:
+      summary: 获取当前账号可查看或可分配的用户列表
+      operationId: getUsers
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: 当前登录用户 ID，用于按角色限制可见用户范围。
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 当用于维护指定社团成员任期时传入；仅社团负责人或平台管理员可获取可分配用户。
+      responses:
+        "200":
+          description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+        "400":
+          description: 缺少当前登录用户 ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前账号无权查看该范围的用户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   schemas:
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+          example: venue_reservation_conflict
+        message:
+          type: string
+          example: 该场地在所选时间段已有已通过预约。
+        detail:
+          type: string
+          nullable: true
+      required:
+        - message
+
     HealthStatus:
       type: object
       properties:
@@ -154,6 +639,390 @@ components:
         - status
         - timestamp
 
+    RegisterRequest:
+      type: object
+      description: 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
+      properties:
+        username:
+          type: string
+          description: 登录用户名，注册后必须唯一。
+          minLength: 3
+          maxLength: 50
+          example: stu_public
+        password:
+          type: string
+          description: 登录密码，服务端仅保存密码摘要。
+          minLength: 6
+          maxLength: 128
+          example: ClubHub123
+        realName:
+          type: string
+          description: 用户真实姓名。
+          minLength: 1
+          maxLength: 50
+          example: 张三
+        studentNo:
+          type: string
+          description: 学工号；学生 7 位，教师 5 位。
+          minLength: 5
+          maxLength: 7
+          pattern: "^([0-9]{7}|[0-9]{5})$"
+          example: "2450001"
+        gender:
+          type: string
+          description: 性别，可为空；当前支持男、女。
+          nullable: true
+          maxLength: 10
+          pattern: "^(男|女)$"
+          example: 男
+        phone:
+          type: string
+          description: 联系电话，可为空。
+          nullable: true
+          maxLength: 20
+          pattern: "^[0-9+\\-\\s()]{0,20}$"
+          example: "13800138000"
+        email:
+          type: string
+          description: 邮箱地址，可为空。
+          nullable: true
+          format: email
+          maxLength: 100
+          example: zhangsan@example.com
+        college:
+          type: string
+          description: 所属学院，可为空。
+          nullable: true
+          maxLength: 100
+          example: 软件学院
+        major:
+          type: string
+          description: 所属专业，可为空。
+          nullable: true
+          maxLength: 100
+          example: 软件工程
+        grade:
+          type: string
+          description: 年级，可为空。
+          nullable: true
+          maxLength: 20
+          example: "2024"
+      required:
+        - username
+        - password
+        - realName
+        - studentNo
+
+    LoginRequest:
+      type: object
+      description: 用户登录请求，username 可填写用户名或学工号。
+      properties:
+        username:
+          type: string
+          description: 用户名或学工号。
+          minLength: 1
+          maxLength: 50
+          example: stu_public
+        password:
+          type: string
+          description: 登录密码。
+          minLength: 1
+          maxLength: 128
+          example: ClubHub123
+      required:
+        - username
+        - password
+
+    AssignRoleRequest:
+      type: object
+      description: 为目标用户分配系统级或社团级角色。
+      properties:
+        operatorUserId:
+          type: integer
+          description: 发起分配操作的用户 ID。
+          example: 1
+        targetUserId:
+          type: integer
+          description: 被分配角色的用户 ID。
+          example: 2
+        roleCode:
+          type: string
+          description: 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+          maxLength: 50
+          example: CLUB_MEMBER
+        clubId:
+          type: integer
+          description: 社团级角色所属社团 ID；系统级角色可为空。
+          nullable: true
+          example: 1
+      required:
+        - operatorUserId
+        - targetUserId
+        - roleCode
+
+    AuthResponse:
+      type: object
+      description: 注册或登录成功后的认证响应。
+      properties:
+        token:
+          type: string
+          description: 登录演示令牌
+          example: demo-token
+        user:
+          description: 当前登录用户信息。
+          $ref: "#/components/schemas/AuthUser"
+        roles:
+          type: array
+          description: 当前用户拥有的角色列表。
+          items:
+            $ref: "#/components/schemas/AuthRole"
+        permissions:
+          type: array
+          description: 当前用户角色权限的并集。
+          items:
+            type: string
+          example: ["profile:view", "public:view"]
+      required:
+        - token
+        - user
+        - roles
+        - permissions
+
+    AuthUser:
+      type: object
+      description: 认证上下文中的用户基础信息。
+      properties:
+        id:
+          type: integer
+          description: 用户 ID。
+          example: 1
+        username:
+          type: string
+          description: 登录用户名。
+          example: stu_public
+        realName:
+          type: string
+          description: 用户真实姓名。
+          example: 张三
+        studentNo:
+          type: string
+          description: 学工号；学生 7 位，教师 5 位。
+          nullable: true
+          example: "2450001"
+        gender:
+          type: string
+          description: 性别。
+          nullable: true
+          example: 男
+        phone:
+          type: string
+          description: 联系电话。
+          nullable: true
+          example: "13800138000"
+        email:
+          type: string
+          description: 邮箱地址。
+          nullable: true
+          format: email
+          example: zhangsan@example.com
+        college:
+          type: string
+          description: 所属学院。
+          nullable: true
+          example: 软件学院
+        major:
+          type: string
+          description: 所属专业。
+          nullable: true
+          example: 软件工程
+        grade:
+          type: string
+          description: 年级。
+          nullable: true
+          example: "2024"
+        accountStatus:
+          type: string
+          description: 账号状态，例如 normal 或 disabled。
+          example: normal
+      required:
+        - id
+        - username
+        - realName
+        - accountStatus
+
+    AuthRole:
+      type: object
+      description: 用户在认证上下文中的角色及其权限。
+      properties:
+        id:
+          type: integer
+          description: 角色 ID。
+          example: 3
+        code:
+          type: string
+          description: 角色编码。
+          example: CLUB_MEMBER
+        name:
+          type: string
+          description: 角色名称。
+          example: 社团成员
+        displayName:
+          type: string
+          description: 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
+          example: 计算机协会成员
+        scope:
+          type: string
+          description: 角色作用域，system 表示全局，club 表示社团范围。
+          enum: [system, club]
+          example: club
+        clubId:
+          type: integer
+          description: 当前角色对应的单个社团 ID；全局角色为空。
+          nullable: true
+          example: 1
+        clubIds:
+          type: array
+          description: 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
+          items:
+            type: integer
+          example: [1]
+        permissions:
+          type: array
+          description: 该角色授予的权限编码列表。
+          items:
+            type: string
+          example: ["club:internal:view", "activity:checkin"]
+        permissionDesc:
+          type: string
+          description: 角色权限说明。
+          nullable: true
+          example: 可查看社团内部信息并参与活动签到。
+      required:
+        - id
+        - code
+        - name
+        - displayName
+        - scope
+        - clubIds
+        - permissions
+
+    RoleDefinition:
+      type: object
+      description: 系统预置角色定义。
+      properties:
+        code:
+          type: string
+          description: 角色编码。
+          example: STUDENT
+        name:
+          type: string
+          description: 角色名称。
+          example: 普通学生
+        scope:
+          type: string
+          description: 角色作用域。
+          enum: [system, club]
+          example: system
+        description:
+          type: string
+          description: 角色业务说明。
+          example: 注册后默认角色，可维护个人信息并浏览公开内容。
+        permissions:
+          type: array
+          description: 角色拥有的权限编码列表。
+          items:
+            type: string
+          example: ["profile:view", "public:view"]
+      required:
+        - code
+        - name
+        - scope
+        - description
+        - permissions
+
+    PermissionDefinition:
+      type: object
+      description: 权限目录项。
+      properties:
+        code:
+          type: string
+          description: 权限编码。
+          example: profile:view
+        name:
+          type: string
+          description: 权限展示名称。
+          example: 查看个人信息
+        description:
+          type: string
+          description: 权限说明。
+          example: 查看自己的账号、学工号和联系方式。
+      required:
+        - code
+        - name
+        - description
+
+    PermissionCheckResult:
+      type: object
+      description: 权限检查结果。
+      properties:
+        userId:
+          type: integer
+          description: 被检查的用户 ID。
+          example: 1
+        permission:
+          type: string
+          description: 被检查的权限编码。
+          example: club:internal:view
+        clubId:
+          type: integer
+          description: 权限检查涉及的社团 ID；全局权限可为空。
+          nullable: true
+          example: 1
+        allowed:
+          type: boolean
+          description: 是否允许访问。
+          example: true
+        matchedRoles:
+          type: array
+          description: 命中该权限的角色列表。
+          items:
+            $ref: "#/components/schemas/AuthRole"
+        message:
+          type: string
+          description: 面向调用方的判定说明。
+          example: 允许访问。
+      required:
+        - userId
+        - permission
+        - allowed
+        - matchedRoles
+        - message
+
+    RoleAssignmentResult:
+      type: object
+      description: 角色分配结果。
+      properties:
+        targetUserId:
+          type: integer
+          description: 被分配角色的用户 ID。
+          example: 2
+        role:
+          description: 已分配或已存在的角色。
+          $ref: "#/components/schemas/AuthRole"
+        alreadyExists:
+          type: boolean
+          description: 该角色分配是否原本已存在。
+          example: false
+        message:
+          type: string
+          description: 角色分配结果说明。
+          example: 角色分配成功。
+      required:
+        - targetUserId
+        - role
+        - alreadyExists
+        - message
+
     Club:
       type: object
       properties:
@@ -166,23 +1035,82 @@ components:
           nullable: true
         category:
           type: string
-        memberCount:
-          type: integer
-        presidentName:
-          type: string
-        establishedAt:
+          nullable: true
+        foundedAt:
           type: string
           format: date-time
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        statusText:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        presidentUserId:
+          type: integer
+          nullable: true
+        presidentName:
+          type: string
+          nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
+        advisorName:
+          type: string
+          nullable: true
+          description: 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
+        contactPhone:
+          type: string
+          nullable: true
+        auditStatus:
+          type: string
+          nullable: true
+        auditStatusText:
+          type: string
+        applicantUserId:
+          type: integer
+          nullable: true
+        applicantName:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+          nullable: true
+        materialUrl:
+          type: string
+          nullable: true
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
       required:
         - id
         - name
-        - category
-        - memberCount
-        - presidentName
+        - statusText
+        - auditStatusText
+        - createdAt
 
     CreateClubRequest:
       type: object
       properties:
+        currentUserId:
+          type: integer
+          minimum: 1
         name:
           type: string
           minLength: 1
@@ -192,6 +1120,7 @@ components:
           type: string
           nullable: true
       required:
+        - currentUserId
         - name
         - category
 
@@ -206,6 +1135,397 @@ components:
         description:
           type: string
           nullable: true
+
+    UpdateClubProfileRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        logoUrl:
+          type: string
+          nullable: true
+        presidentUserId:
+          type: integer
+          nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。
+        advisorName:
+          type: string
+          nullable: true
+          deprecated: true
+          description: 历史兼容字段；新流程请使用 advisorUserId。
+        contactPhone:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - name
+        - category
+
+    DissolveClubRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+      required:
+        - currentUserId
+
+    ClubMemberRecord:
+      type: object
+      properties:
+        memberId:
+          type: integer
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        userId:
+          type: integer
+        userName:
+          type: string
+        studentNo:
+          type: string
+          nullable: true
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        termName:
+          type: string
+          nullable: true
+        termStart:
+          type: string
+          format: date-time
+          nullable: true
+        termEnd:
+          type: string
+          format: date-time
+          nullable: true
+        memberStatus:
+          type: string
+          nullable: true
+        joinAt:
+          type: string
+          format: date-time
+          nullable: true
+        contributionScore:
+          type: number
+          format: decimal
+          nullable: true
+        isCurrent:
+          type: boolean
+      required:
+        - memberId
+        - clubId
+        - clubName
+        - userId
+        - userName
+        - isCurrent
+
+    CreateClubMemberTermRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        userId:
+          type: integer
+          minimum: 1
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          minLength: 1
+        termName:
+          type: string
+          minLength: 1
+        termStart:
+          type: string
+          format: date-time
+        termEnd:
+          type: string
+          format: date-time
+          nullable: true
+        memberStatus:
+          type: string
+          enum: [active, ended, suspended]
+          default: active
+        contributionScore:
+          type: number
+          format: decimal
+          nullable: true
+        closeCurrentTerm:
+          type: boolean
+          default: true
+      required:
+        - currentUserId
+        - userId
+        - positionName
+        - termName
+        - termStart
+
+    UpdateClubMemberTermRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          minLength: 1
+        termName:
+          type: string
+          minLength: 1
+        termStart:
+          type: string
+          format: date-time
+          nullable: true
+        termEnd:
+          type: string
+          format: date-time
+          nullable: true
+        memberStatus:
+          type: string
+          enum: [active, ended, suspended]
+        contributionScore:
+          type: number
+          format: decimal
+          nullable: true
+      required:
+        - currentUserId
+
+    ClubApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        applicantUserId:
+          type: integer
+          nullable: true
+        applicantName:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+        materialUrl:
+          type: string
+        auditStatus:
+          type: string
+          enum: [pending, approved, rejected]
+        auditStatusText:
+          type: string
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        clubStatus:
+          type: string
+          nullable: true
+        clubStatusText:
+          type: string
+        foundedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - applyReason
+        - materialUrl
+        - auditStatus
+        - auditStatusText
+        - clubStatusText
+        - createdAt
+
+    CreateClubApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: 当前学生用户 ID，后端据此写入申请人并校验角色权限。
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+          minLength: 1
+        materialUrl:
+          type: string
+          minLength: 1
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
+        advisorName:
+          type: string
+          nullable: true
+          deprecated: true
+          description: 历史兼容字段；新流程请使用 advisorUserId。
+        contactPhone:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - name
+        - category
+        - applyReason
+        - materialUrl
+
+    ReviewClubApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reviewComment:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - decision
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+          nullable: true
+        realName:
+          type: string
+          nullable: true
+        studentNo:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+        accountStatus:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRoleSummary"
+        memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserMembershipSummary"
+        canSubmitClubApplication:
+          type: boolean
+        canReviewClubApplication:
+          type: boolean
+      required:
+        - id
+        - displayName
+        - roles
+        - memberships
+        - canSubmitClubApplication
+        - canReviewClubApplication
+
+    UserRoleSummary:
+      type: object
+      properties:
+        roleCode:
+          type: string
+        roleName:
+          type: string
+        roleScope:
+          type: string
+          nullable: true
+        clubId:
+          type: integer
+          nullable: true
+        clubName:
+          type: string
+          nullable: true
+      required:
+        - roleCode
+        - roleName
+
+    UserMembershipSummary:
+      type: object
+      properties:
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        termName:
+          type: string
+          nullable: true
+        memberStatus:
+          type: string
+          nullable: true
+      required:
+        - clubId
+        - clubName
 
     Activity:
       type: object

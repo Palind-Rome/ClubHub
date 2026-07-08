@@ -1,7 +1,28 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
 
 const healthOk = ref(false);
+const router = useRouter();
+const auth = ref<AuthResponse | null>(null);
+let stopSessionListener: (() => void) | null = null;
+
+const hasSession = computed(() => Boolean(auth.value));
+const accountLabel = computed(() => {
+  const user = auth.value?.user;
+  if (!user) return "账号与权限";
+  return user.studentNo ? `${user.realName} / ${user.studentNo}` : user.realName;
+});
+const roleSummary = computed(() => {
+  const roles = auth.value?.roles ?? [];
+  if (roles.length === 0) return "暂无角色";
+  return roles.map((role) => role.displayName || role.name).join("、");
+});
+
+function refreshSession() {
+  auth.value = readAuth();
+}
 
 async function checkHealth() {
   try {
@@ -11,15 +32,37 @@ async function checkHealth() {
     healthOk.value = false;
   }
 }
+
+function logout() {
+  clearSession();
+  refreshSession();
+  router.push("/auth");
+}
+
+onMounted(() => {
+  refreshSession();
+  stopSessionListener = onSessionChange(refreshSession);
+});
+
+onUnmounted(() => {
+  stopSessionListener?.();
+});
 </script>
 
 <template>
   <el-container>
-    <el-header>
+    <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
       <el-menu mode="horizontal" router :default-active="$route.path" class="nav">
+        <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
+        <div class="session">
+          <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
+            roleSummary
+          }}</el-tag>
+          <el-button link type="danger" @click="logout">退出</el-button>
+        </div>
         <div class="health">
           <el-tag :type="healthOk ? 'success' : 'danger'" size="small" @click="checkHealth">
             {{ healthOk ? "后端已连接" : "点击检测" }}
@@ -53,7 +96,18 @@ async function checkHealth() {
 .health {
   display: flex;
   align-items: center;
-  margin-left: auto;
   cursor: pointer;
+}
+.session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.role-tag {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

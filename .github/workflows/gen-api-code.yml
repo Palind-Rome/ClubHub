@@ -1,6 +1,6 @@
 name: 生成 API 代码
 
-# 从 api/openapi.yaml 自动生成前端 TypeScript Axios 客户端和后端 ASP.NET Core 数据模型。
+# 从 api/openapi.yaml 自动生成前端 TypeScript Fetch 客户端和后端 ASP.NET Core 数据模型。
 # 开发者修改 API 契约后 push，本 workflow 自动生成代码并提交回分支。
 
 on:
@@ -64,9 +64,9 @@ jobs:
           echo "OpenAPI 规范语法检查通过。"
 
       # ============================================================
-      # 前端生成：TypeScript Axios 客户端
+      # 前端生成：TypeScript Fetch 客户端
       # ============================================================
-      - name: 生成前端 TypeScript Axios 客户端
+      - name: 生成前端 TypeScript Fetch 客户端
         if: steps.detect.outputs.has_frontend == 'true'
         shell: bash
         run: |
@@ -75,12 +75,34 @@ jobs:
 
           npx --yes @openapitools/openapi-generator-cli@2.39.1 generate \
             -i api/openapi.yaml \
-            -g typescript-axios \
+            -g typescript-fetch \
             -o frontend/src/api \
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
-          npx --yes prettier@3.9.4 --write frontend/src/api
-          echo "前端 TypeScript Axios 客户端已生成。"
+          # 生成代码由 OpenAPI Generator 维护，不按业务源码规则做逐行类型检查。
+          find frontend/src/api -type f -name "*.ts" -exec sed -i '1i// @ts-nocheck' {} +
+
+          npx --yes prettier@3.9.4 --no-ignore --write "frontend/src/api"
+
+          # 清理生成器自带文件（模板脚本、忽略文件、元数据、文档）
+          rm -f frontend/src/api/git_push.sh
+          rm -f frontend/src/api/.gitignore
+          rm -f frontend/src/api/.npmignore
+          rm -f frontend/src/api/.openapi-generator-ignore
+          rm -rf frontend/src/api/.openapi-generator
+          rm -rf frontend/src/api/docs
+
+          # 删除与 PascalCase 同名的小写文件（Windows 大小写冲突）
+          # 逻辑：小写 + 无连字符 → 猜测有 PascalCase 对应文件 → 有则删除
+          for f in frontend/src/api/models/[a-z]*.ts; do
+            [[ ! -f "$f" ]] && continue
+            base=$(basename "$f")
+            [[ "$base" == *-* ]] && continue  # 连字符文件不冲突（如 api-error.ts ≠ ApiError.ts）
+            pascal="${base^}"                   # bash: 首字母大写
+            [[ -f "$(dirname "$f")/${pascal}" ]] && rm -f "$f"
+          done
+
+          echo "前端 TypeScript Fetch 客户端已生成。"
 
       - name: Setup .NET
         if: steps.detect.outputs.has_backend == 'true'
@@ -114,8 +136,18 @@ jobs:
           fi
           rm -rf backend/Generated
 
-          find backend/Models -type f -name "*.cs" -print0 \
-            | xargs -0 sed -i '/^using Org\.OpenAPITools\.Converters;$/d'
+          # 移除生成代码中对不存在命名空间和类型的引用
+          find backend/Models -type f -name "*.cs" -exec sed -i \
+            -e '/^using Org\.OpenAPITools\.Converters;$/d' \
+            -e '/\[TypeConverter(typeof(CustomEnumConverter<.*>))\]/d' \
+            {} +
+
+          # 生成模型依赖 Newtonsoft.Json。项目文件不在自动提交范围内，
+          # 缺依赖时直接失败，提醒开发者用独立提交修复。
+          if ! grep -q 'Newtonsoft\.Json' backend/ClubHub.Api.csproj; then
+            echo "::error::backend/ClubHub.Api.csproj 缺少 Newtonsoft.Json 包引用。请先手动添加并提交。"
+            exit 1
+          fi
 
           dotnet format backend/ClubHub.Api.csproj --include backend/Models --verbosity minimal
           echo "后端 ASP.NET Core 模型已生成。"
@@ -129,5 +161,6 @@ jobs:
           commit_message: "chore(api): 从 openapi.yaml 自动生成 API 代码"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
-          file_pattern: "frontend/src/api/* backend/Models/*"
+          # 只提交生成代码目录；前面的清理步骤会移除 docs、git_push.sh 和生成器元数据。
+          file_pattern: "frontend/src/api/** backend/Models/**"
           commit_options: "--no-verify"

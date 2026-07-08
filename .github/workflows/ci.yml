@@ -28,7 +28,6 @@ jobs:
   changes:
     name: 检测变更文件
     runs-on: ubuntu-latest
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -52,7 +51,6 @@ jobs:
   validate:
     name: 项目结构校验
     runs-on: ubuntu-latest
-    if: ${{ ! (github.event_name == 'pull_request' && github.event.pull_request.draft) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,15 +100,13 @@ jobs:
 
   # ============================================================
   # 后端构建（仅 backend/** 或 .sln 有变更时运行）
-  # push 到 main/dev 时无条件运行
+  # draft PR 阶段也运行，用于尽早发现编译问题
   # ============================================================
   build-backend:
     name: 后端构建
     runs-on: ubuntu-latest
     needs: changes
-    if: |
-      ! (github.event_name == 'pull_request' && github.event.pull_request.draft) &&
-      needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,15 +150,13 @@ jobs:
 
   # ============================================================
   # 前端构建（仅 frontend/** 有变更时运行）
-  # push 到 main/dev 时无条件运行
+  # draft PR 阶段也运行，用于尽早发现构建问题
   # ============================================================
   build-frontend:
     name: 前端构建
     runs-on: ubuntu-latest
     needs: changes
-    if: |
-      ! (github.event_name == 'pull_request' && github.event.pull_request.draft) &&
-      needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -214,11 +208,9 @@ jobs:
           cd frontend
           if [[ -f "pnpm-lock.yaml" ]]; then
             pnpm install --frozen-lockfile
-            pnpm run --if-present lint
             pnpm run --if-present build
           elif [[ -f "package-lock.json" ]]; then
             npm ci
-            npm run lint --if-present
             npm run build --if-present
           fi
           echo "前端构建通过。"

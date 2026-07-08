@@ -55,5 +55,13 @@ reviews:
         - 条件触发是否合理（paths、branches）。
         - Action 版本是否明确。
         - Docker 镜像标签策略。
+    - path: "frontend/src/api/**"
+      instructions: |
+        这些文件由 OpenAPI Generator（typescript-axios）自动生成，修改 API 契约后会重新生成。
+        请跳过对此路径的所有审查，不要提出任何修改建议。
+    - path: "backend/Models/**"
+      instructions: |
+        这些文件由 OpenAPI Generator（aspnetcore）自动生成，修改 API 契约后会重新生成。
+        请跳过对此路径的所有审查，不要提出任何修改建议。
 chat:
   auto_reply: true
