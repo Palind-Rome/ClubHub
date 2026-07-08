@@ -14,9 +14,24 @@ public class UsersController : ControllerBase
     public UsersController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int? viewerUserId, [FromQuery] int? clubId)
     {
-        var users = await _db.Users
+        if (viewerUserId is null or <= 0)
+        {
+            return BadRequest(new { message = "请提供当前登录用户。" });
+        }
+
+        var viewer = await _db.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Include(u => u.ClubMemberships)
+            .FirstOrDefaultAsync(u => u.UserId == viewerUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前登录用户不存在。" });
+        }
+
+        var query = _db.Users
             .AsNoTracking()
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
@@ -24,6 +39,34 @@ public class UsersController : ControllerBase
                 .ThenInclude(ur => ur.Club)
             .Include(u => u.ClubMemberships)
                 .ThenInclude(cm => cm.Club)
+            .AsQueryable();
+
+        if (clubId is not null)
+        {
+            var clubExists = await _db.Clubs.AnyAsync(club => club.ClubId == clubId.Value);
+            if (!clubExists)
+            {
+                return NotFound(new { message = "社团不存在。" });
+            }
+
+            if (!IsPlatformAdmin(viewer) && !IsClubPrincipal(viewer, clubId.Value))
+            {
+                return StatusCode(403, new { message = "只有平台管理员或本社团负责人可以查看可分配成员。" });
+            }
+
+            query = query.Where(u =>
+                u.AccountStatus == null ||
+                u.AccountStatus == "" ||
+                u.AccountStatus.ToLower() == "active" ||
+                u.AccountStatus.ToLower() == "normal" ||
+                u.AccountStatus.ToLower() == "enabled");
+        }
+        else if (!IsPlatformAdmin(viewer))
+        {
+            query = query.Where(u => u.UserId == viewer.UserId);
+        }
+
+        var users = await query
             .OrderBy(u => u.UserId)
             .ToListAsync();
 
@@ -128,6 +171,7 @@ public class UsersController : ControllerBase
     private static readonly HashSet<string> KnownPlatformAdminRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         "platform_admin",
+        "club_admin",
         "system_admin",
         "admin",
         "club_reviewer"

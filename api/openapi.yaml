@@ -547,17 +547,42 @@ paths:
 
   /api/users:
     get:
-      summary: 获取可切换的当前用户列表
+      summary: 获取当前账号可查看或可分配的用户列表
       operationId: getUsers
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: 当前登录用户 ID，用于按角色限制可见用户范围。
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 当用于维护指定社团成员任期时传入；仅社团负责人或平台管理员可获取可分配用户。
       responses:
         "200":
-          description: 用户、角色和社团成员身份列表
+          description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserSummary"
+        "400":
+          description: 缺少当前登录用户 ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前账号无权查看该范围的用户
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
 components:
   schemas:
@@ -1005,9 +1030,14 @@ components:
         presidentName:
           type: string
           nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
         advisorName:
           type: string
           nullable: true
+          description: 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
         contactPhone:
           type: string
           nullable: true
@@ -1099,9 +1129,15 @@ components:
         presidentUserId:
           type: integer
           nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。
         advisorName:
           type: string
           nullable: true
+          deprecated: true
+          description: 历史兼容字段；新流程请使用 advisorUserId。
         contactPhone:
           type: string
           nullable: true
@@ -1334,9 +1370,15 @@ components:
         materialUrl:
           type: string
           minLength: 1
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
         advisorName:
           type: string
           nullable: true
+          deprecated: true
+          description: 历史兼容字段；新流程请使用 advisorUserId。
         contactPhone:
           type: string
           nullable: true

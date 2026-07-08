@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { Check, Close, Edit, Plus, Refresh, Search, User } from "@element-plus/icons-vue";
+import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
 
 type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
@@ -13,6 +14,7 @@ interface UserRoleSummary {
   roleName: string;
   roleScope: string | null;
   clubId: number | null;
+  clubIds?: number[];
   clubName: string | null;
 }
 
@@ -49,6 +51,7 @@ interface Club {
   logoUrl: string | null;
   presidentUserId: number | null;
   presidentName: string | null;
+  advisorUserId: number | null;
   advisorName: string | null;
   contactPhone: string | null;
   auditStatus: string | null;
@@ -117,18 +120,16 @@ const principalRoleCodes = new Set([
   "club_manager",
   "president",
 ]);
-const clubParticipantRoleCodes = new Set([
-  "club_member",
-  "club_officer",
-  "club_leader",
-  "club_president",
-  "club_admin",
-  "club_manager",
-  "advisor",
-]);
+const clubApplyPermission = "club:apply";
+const clubReviewPermission = "club:review";
+const clubInfoManagePermission = "club:info:manage";
+const clubMemberManagePermission = "club:member:manage";
+const clubOperationViewPermission = "club:operation:view";
+const clubStatusManagePermission = "club:status:manage";
 
+const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
-const currentUserId = ref<number>();
+const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
@@ -156,7 +157,6 @@ const applicationForm = reactive({
   description: "",
   applyReason: "",
   materialUrl: "",
-  advisorName: "",
   contactPhone: "",
 });
 
@@ -177,7 +177,7 @@ const profileForm = reactive({
   description: "",
   logoUrl: "",
   presidentUserId: null as number | null,
-  advisorName: "",
+  advisorUserId: null as number | null,
   contactPhone: "",
 });
 
@@ -221,31 +221,66 @@ const memberTermRules: FormRules = {
   termStart: [{ required: true, message: "请选择任期开始时间", trigger: "change" }],
 };
 
-const currentUser = computed(
-  () => users.value.find((user) => user.id === currentUserId.value) ?? null,
-);
+let stopSessionListener: (() => void) | null = null;
+
+const currentUser = computed<UserSummary | null>(() => {
+  const session = auth.value;
+  if (!session) return null;
+
+  const summary = users.value.find((user) => user.id === session.user.id);
+  const roles = session.roles ?? [];
+
+  return {
+    id: session.user.id,
+    username: session.user.username,
+    realName: session.user.realName,
+    studentNo: session.user.studentNo ?? null,
+    displayName: buildSessionDisplayName(session),
+    accountStatus: session.user.accountStatus,
+    roles: roles.map(toUserRoleSummary),
+    memberships: summary?.memberships ?? [],
+    canSubmitClubApplication: hasPermission(clubApplyPermission),
+    canReviewClubApplication: hasPermission(clubReviewPermission),
+  };
+});
 const isReviewer = computed(() => currentUser.value?.canReviewClubApplication ?? false);
 const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubApplication ?? false);
+const canManageClubProfiles = computed(
+  () =>
+    isReviewer.value ||
+    hasPermission(clubInfoManagePermission) ||
+    hasPermission(clubStatusManagePermission),
+);
+const canManageMemberTerms = computed(
+  () => isReviewer.value || hasPermission(clubMemberManagePermission),
+);
+const canViewMemberDirectory = computed(
+  () => canManageMemberTerms.value || hasPermission(clubOperationViewPermission),
+);
 const myApplications = computed(() =>
   applications.value.filter((item) => item.applicantUserId === currentUserId.value),
 );
 const reviewApplications = computed(() =>
   isReviewer.value ? applications.value : myApplications.value,
 );
+const applicationRows = computed(() => reviewApplications.value);
 const pendingCount = computed(
-  () => applications.value.filter((item) => item.auditStatus === "pending").length,
+  () => applicationRows.value.filter((item) => item.auditStatus === "pending").length,
 );
 const approvedCount = computed(
-  () => applications.value.filter((item) => item.auditStatus === "approved").length,
+  () => applicationRows.value.filter((item) => item.auditStatus === "approved").length,
 );
 const rejectedCount = computed(
-  () => applications.value.filter((item) => item.auditStatus === "rejected").length,
+  () => applicationRows.value.filter((item) => item.auditStatus === "rejected").length,
 );
 const selectedClub = computed(
   () => clubs.value.find((club) => club.id === selectedClubId.value) ?? null,
 );
 const manageableClubs = computed(() => clubs.value.filter((club) => canManageClub(club)));
-const memberViewClubs = computed(() => clubs.value.filter((club) => canViewClubMembers(club)));
+const profileRows = computed(() => (canManageClubProfiles.value ? manageableClubs.value : []));
+const memberViewClubs = computed(() =>
+  canViewMemberDirectory.value ? clubs.value.filter((club) => canViewClubDirectory(club)) : [],
+);
 const canManageSelectedClub = computed(
   () => selectedClub.value !== null && canManageClub(selectedClub.value),
 );
@@ -265,25 +300,62 @@ const identityRows = computed(() => {
   }));
   const existingClubIds = new Set(rows.map((row) => row.clubId));
 
-  user.roles
-    .filter((role) => role.clubId !== null && !existingClubIds.has(role.clubId))
-    .forEach((role) => {
-      rows.push({
-        clubId: role.clubId!,
-        clubName: role.clubName ?? `社团 ${role.clubId}`,
-        departmentName: null,
-        groupName: null,
-        positionName: role.roleName,
-        termName: "未登记任期",
-        memberStatus: "role_only",
+  user.roles.forEach((role) => {
+    const clubIds = role.clubIds?.length ? role.clubIds : role.clubId !== null ? [role.clubId] : [];
+
+    clubIds
+      .filter((clubId) => !existingClubIds.has(clubId))
+      .forEach((clubId) => {
+        existingClubIds.add(clubId);
+
+        rows.push({
+          clubId,
+          clubName: role.clubName ?? `社团 ${clubId}`,
+          departmentName: null,
+          groupName: null,
+          positionName: role.roleName,
+          termName: "未登记任期",
+          memberStatus: "role_only",
+        });
       });
-    });
+  });
 
   return rows;
 });
 const activePresidentOptions = computed(() =>
   clubMembers.value.filter((member) => member.isCurrent && isActiveStatus(member.memberStatus)),
 );
+const advisorOptions = computed(() => users.value.filter((user) => isAdvisorCandidate(user)));
+const visibleTabs = computed(() => {
+  const tabs: string[] = [];
+  if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
+  if (profileRows.value.length > 0) tabs.push("profile");
+  if (memberViewClubs.value.length > 0) tabs.push("members");
+  if (identityRows.value.length > 0) tabs.push("identity");
+  return tabs;
+});
+const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
+const metricCards = computed(() => {
+  const cards: Array<{ label: string; value: number }> = [];
+
+  if (canSubmitApplication.value || isReviewer.value) {
+    cards.push(
+      { label: "待审核", value: pendingCount.value },
+      { label: "已通过", value: approvedCount.value },
+      { label: "已退回", value: rejectedCount.value },
+    );
+  }
+
+  if (profileRows.value.length > 0) {
+    cards.push({ label: "可维护社团", value: profileRows.value.length });
+  }
+
+  if (identityRows.value.length > 0) {
+    cards.push({ label: "我的社团身份", value: identityRows.value.length });
+  }
+
+  return cards;
+});
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -302,13 +374,18 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function loadUsers() {
+async function loadUsers(options: { clubId?: number } = {}) {
+  if (!currentUserId.value) {
+    users.value = [];
+    usersLoading.value = false;
+    return;
+  }
+
   usersLoading.value = true;
   try {
-    users.value = await requestJson<UserSummary[]>("/api/users");
-    if (!currentUserId.value && users.value.length > 0) {
-      currentUserId.value = users.value[0].id;
-    }
+    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    if (options.clubId) query.set("clubId", String(options.clubId));
+    users.value = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
   } catch (e) {
     error.value = e instanceof Error ? e.message : "用户加载失败";
   } finally {
@@ -317,17 +394,29 @@ async function loadUsers() {
 }
 
 async function loadData() {
-  if (!currentUserId.value) return;
+  if (!currentUserId.value) {
+    loading.value = false;
+    applications.value = [];
+    clubs.value = [];
+    clubMembers.value = [];
+    return;
+  }
 
   loading.value = true;
   error.value = "";
   try {
     const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
+    const shouldLoadApplications = canSubmitApplication.value || isReviewer.value;
+    const shouldLoadClubs = canManageClubProfiles.value || canViewMemberDirectory.value;
 
     const [applicationData, clubData] = await Promise.all([
-      requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`),
-      requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`),
+      shouldLoadApplications
+        ? requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`)
+        : Promise.resolve([]),
+      shouldLoadClubs
+        ? requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`)
+        : Promise.resolve([]),
     ]);
     applications.value = applicationData;
     clubs.value = clubData;
@@ -377,7 +466,7 @@ function canManageClub(club: Club) {
 
   const hasRole = user.roles.some(
     (role) =>
-      role.clubId === club.id && principalRoleCodes.has((role.roleCode ?? "").toLowerCase()),
+      roleCoversClub(role, club.id) && principalRoleCodes.has((role.roleCode ?? "").toLowerCase()),
   );
   const hasPrincipalMembership = user.memberships.some(
     (membership) =>
@@ -389,23 +478,20 @@ function canManageClub(club: Club) {
   return hasRole || hasPrincipalMembership;
 }
 
-function canViewClubMembers(club: Club) {
+function canViewClubDirectory(club: Club) {
+  if (isReviewer.value) return true;
+  if (canManageClub(club)) return true;
+
   const user = currentUser.value;
   if (!user) return false;
-  if (canManageClub(club)) return true;
-  const hasClubRole = user.roles.some(
-    (role) =>
-      role.clubId === club.id && clubParticipantRoleCodes.has((role.roleCode ?? "").toLowerCase()),
-  );
-  if (hasClubRole) return true;
 
-  return user.memberships.some(
-    (membership) => membership.clubId === club.id && isActiveStatus(membership.memberStatus),
+  return user.roles.some(
+    (role) => roleCoversClub(role, club.id) && (role.roleCode ?? "").toLowerCase() === "advisor",
   );
 }
 
 function canViewSelectedClub() {
-  return selectedClub.value !== null && canViewClubMembers(selectedClub.value);
+  return selectedClub.value !== null && canViewClubDirectory(selectedClub.value);
 }
 
 function resetApplicationForm() {
@@ -414,7 +500,6 @@ function resetApplicationForm() {
   applicationForm.description = "";
   applicationForm.applyReason = "";
   applicationForm.materialUrl = "";
-  applicationForm.advisorName = "";
   applicationForm.contactPhone = "";
   applicationFormRef.value?.clearValidate();
 }
@@ -515,14 +600,14 @@ async function openProfileDialog(row: Club) {
   }
 
   selectedClubId.value = row.id;
-  await loadMembers();
+  await Promise.all([loadMembers(), loadUsers({ clubId: row.id })]);
   profileTarget.value = row;
   profileForm.name = row.name;
   profileForm.category = row.category ?? "";
   profileForm.description = row.description ?? "";
   profileForm.logoUrl = row.logoUrl ?? "";
   profileForm.presidentUserId = row.presidentUserId;
-  profileForm.advisorName = row.advisorName ?? "";
+  profileForm.advisorUserId = row.advisorUserId;
   profileForm.contactPhone = row.contactPhone ?? "";
   profileFormRef.value?.clearValidate();
   profileDialogVisible.value = true;
@@ -544,7 +629,7 @@ async function submitProfile() {
         description: emptyToNull(profileForm.description),
         logoUrl: emptyToNull(profileForm.logoUrl),
         presidentUserId: profileForm.presidentUserId,
-        advisorName: emptyToNull(profileForm.advisorName),
+        advisorUserId: profileForm.advisorUserId,
         contactPhone: emptyToNull(profileForm.contactPhone),
       }),
     });
@@ -572,7 +657,7 @@ function resetMemberTermForm() {
   memberTermFormRef.value?.clearValidate();
 }
 
-function openCreateMemberTermDialog() {
+async function openCreateMemberTermDialog() {
   if (!selectedClub.value || !canManageSelectedClub.value) {
     ElMessage.warning("当前身份不能维护该社团成员任期。");
     return;
@@ -581,6 +666,7 @@ function openCreateMemberTermDialog() {
   memberTermMode.value = "create";
   memberTermTarget.value = null;
   resetMemberTermForm();
+  await loadUsers({ clubId: selectedClub.value.id });
   memberTermDialogVisible.value = true;
 }
 
@@ -738,12 +824,51 @@ function roleLabel(user: UserSummary | null) {
   return labels.length > 0 ? labels.join(" / ") : "未分配角色";
 }
 
-function userOptionLabel(user: UserSummary) {
+function roleDisplayName(role: UserRoleSummary) {
+  return role.clubName ? `${role.roleName} / ${role.clubName}` : role.roleName;
+}
+
+function roleCoversClub(role: UserRoleSummary, clubId: number) {
+  return role.clubId === clubId || Boolean(role.clubIds?.includes(clubId));
+}
+
+function isAdvisorCandidate(user: UserSummary) {
+  const studentNo = user.studentNo?.trim() ?? "";
+  if (/^\d{5}$/.test(studentNo)) return true;
+
+  return user.roles.some((role) => {
+    const code = (role.roleCode ?? "").toLowerCase();
+    const name = role.roleName ?? "";
+    return (
+      code === "teacher" || code === "advisor" || name.includes("教师") || name.includes("老师")
+    );
+  });
+}
+
+function advisorOptionLabel(user: UserSummary) {
   return `${user.displayName} - ${roleLabel(user)}`;
 }
 
-function roleDisplayName(role: UserRoleSummary) {
-  return role.clubName ? `${role.roleName} / ${role.clubName}` : role.roleName;
+function hasPermission(permission: string) {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes(permission);
+}
+
+function buildSessionDisplayName(session: AuthResponse) {
+  const name = session.user.realName || session.user.username;
+  return session.user.studentNo ? `${name}（${session.user.studentNo}）` : name;
+}
+
+function toUserRoleSummary(role: AuthRole): UserRoleSummary {
+  const clubIds = role.clubIds ?? [];
+  return {
+    roleCode: role.code,
+    roleName: role.displayName || role.name,
+    roleScope: role.scope,
+    clubId: role.clubId ?? (clubIds.length === 1 ? clubIds[0] : null),
+    clubIds,
+    clubName: null,
+  };
 }
 
 function goProfile() {
@@ -795,9 +920,32 @@ watch([selectedClubId, includeHistory], () => {
   void loadMembers();
 });
 
+watch(
+  visibleTabs,
+  (tabs) => {
+    if (tabs.length === 0) {
+      activeTab.value = "";
+      return;
+    }
+
+    if (!tabs.includes(activeTab.value)) {
+      activeTab.value = tabs[0];
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(async () => {
+  stopSessionListener = onSessionChange(() => {
+    auth.value = readAuth();
+    void Promise.all([loadUsers(), loadData()]);
+  });
   await loadUsers();
   await loadData();
+});
+
+onUnmounted(() => {
+  stopSessionListener?.();
 });
 </script>
 
@@ -809,20 +957,6 @@ onMounted(async () => {
         <div class="subtitle">社团注册审核、档案维护、成员任期与干部换届</div>
       </div>
       <div class="toolbar-actions">
-        <el-select
-          v-model="currentUserId"
-          :loading="usersLoading"
-          class="user-switcher"
-          filterable
-          placeholder="选择当前用户"
-        >
-          <el-option
-            v-for="user in users"
-            :key="user.id"
-            :label="userOptionLabel(user)"
-            :value="user.id"
-          />
-        </el-select>
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
       </div>
     </section>
@@ -845,13 +979,14 @@ onMounted(async () => {
           <el-tag v-if="currentUser.canReviewClubApplication" type="warning" effect="plain">
             可审核注册申请
           </el-tag>
-          <el-tag v-if="manageableClubs.length > 0" type="primary" effect="plain">
+          <el-tag v-if="profileRows.length > 0" type="primary" effect="plain">
             可维护社团档案
           </el-tag>
           <el-tag v-if="memberViewClubs.length > 0" effect="plain">可查看成员任期</el-tag>
+          <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
         </div>
         <div class="identity-actions">
-          <el-button v-if="manageableClubs.length > 0" type="primary" plain @click="goProfile">
+          <el-button v-if="profileRows.length > 0" type="primary" plain @click="goProfile">
             维护档案
           </el-button>
           <el-button v-if="memberViewClubs.length > 0" plain @click="goMembers">
@@ -861,27 +996,21 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="metrics">
-      <div class="metric">
-        <span>待审核</span>
-        <strong>{{ pendingCount }}</strong>
-      </div>
-      <div class="metric">
-        <span>已通过</span>
-        <strong>{{ approvedCount }}</strong>
-      </div>
-      <div class="metric">
-        <span>已退回</span>
-        <strong>{{ rejectedCount }}</strong>
-      </div>
-      <div class="metric">
-        <span>可维护社团</span>
-        <strong>{{ manageableClubs.length }}</strong>
+    <section v-if="metricCards.length > 0" class="metrics">
+      <div v-for="card in metricCards" :key="card.label" class="metric">
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
       </div>
     </section>
 
-    <el-tabs v-model="activeTab" class="workspace-tabs">
-      <el-tab-pane label="当前工作台" name="workspace">
+    <el-empty
+      v-if="!hasClubWorkspace"
+      description="当前账号暂无社团相关任务"
+      class="empty-workspace"
+    />
+
+    <el-tabs v-else v-model="activeTab" class="workspace-tabs">
+      <el-tab-pane v-if="canSubmitApplication || isReviewer" label="当前工作台" name="workspace">
         <div class="workspace-head">
           <div>
             <h3>{{ isReviewer ? "申请审核池" : "我的注册申请" }}</h3>
@@ -920,7 +1049,7 @@ onMounted(async () => {
 
         <el-table
           v-loading="loading"
-          :data="reviewApplications"
+          :data="applicationRows"
           border
           stripe
           empty-text="暂无社团注册申请"
@@ -996,7 +1125,7 @@ onMounted(async () => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane label="社团档案维护" name="profile">
+      <el-tab-pane v-if="profileRows.length > 0" label="社团档案维护" name="profile">
         <div class="workspace-head">
           <div>
             <h3>社团档案</h3>
@@ -1007,7 +1136,7 @@ onMounted(async () => {
 
         <el-table
           v-loading="loading"
-          :data="clubs"
+          :data="profileRows"
           border
           stripe
           empty-text="暂无可见社团"
@@ -1042,7 +1171,7 @@ onMounted(async () => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane label="成员与任期" name="members">
+      <el-tab-pane v-if="memberViewClubs.length > 0" label="成员与任期" name="members">
         <el-empty v-if="memberViewClubs.length === 0" description="当前账号暂无可查看的社团任期" />
 
         <div v-else class="member-head">
@@ -1118,7 +1247,7 @@ onMounted(async () => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane label="我的社团身份" name="identity">
+      <el-tab-pane v-if="identityRows.length > 0" label="我的社团身份" name="identity">
         <el-table :data="identityRows" border stripe empty-text="暂无社团成员身份">
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
@@ -1172,9 +1301,6 @@ onMounted(async () => {
             v-model="applicationForm.materialUrl"
             placeholder="线上材料链接或校内存档地址"
           />
-        </el-form-item>
-        <el-form-item label="指导老师">
-          <el-input v-model="applicationForm.advisorName" maxlength="40" />
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="applicationForm.contactPhone" maxlength="30" />
@@ -1258,7 +1384,20 @@ onMounted(async () => {
           </el-select>
         </el-form-item>
         <el-form-item label="指导老师">
-          <el-input v-model="profileForm.advisorName" maxlength="40" />
+          <el-select
+            v-model="profileForm.advisorUserId"
+            :loading="usersLoading"
+            clearable
+            filterable
+            placeholder="选择教师账号"
+          >
+            <el-option
+              v-for="user in advisorOptions"
+              :key="user.id"
+              :label="advisorOptionLabel(user)"
+              :value="user.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="profileForm.contactPhone" maxlength="30" />
@@ -1287,7 +1426,12 @@ onMounted(async () => {
           <el-input :model-value="selectedClub?.name" disabled />
         </el-form-item>
         <el-form-item v-if="memberTermMode === 'create'" label="成员" prop="userId">
-          <el-select v-model="memberTermForm.userId" filterable placeholder="选择用户">
+          <el-select
+            v-model="memberTermForm.userId"
+            :loading="usersLoading"
+            filterable
+            placeholder="选择用户"
+          >
             <el-option
               v-for="user in users"
               :key="user.id"
@@ -1406,10 +1550,6 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.user-switcher {
-  width: min(460px, 48vw);
-}
-
 .identity-band {
   display: flex;
   align-items: center;
@@ -1482,6 +1622,12 @@ onMounted(async () => {
   padding: 0 18px 18px;
 }
 
+.empty-workspace {
+  border: 1px solid #d9e1ea;
+  background: #fff;
+  padding: 48px 0;
+}
+
 .workspace-head {
   display: flex;
   align-items: center;
@@ -1549,7 +1695,6 @@ onMounted(async () => {
     justify-content: flex-start;
   }
 
-  .user-switcher,
   .club-selector,
   .filter-item {
     width: 100%;

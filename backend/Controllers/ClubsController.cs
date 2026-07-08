@@ -18,7 +18,8 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
-    private const string ClubPresidentRoleCode = "club_president";
+    private const string ClubLeaderRoleCode = "CLUB_LEADER";
+    private const string ClubAdvisorRoleCode = "ADVISOR";
 
     private readonly ClubHubDbContext _db;
 
@@ -37,9 +38,10 @@ public class ClubsController : ControllerBase
             if (!UsersController.IsPlatformAdmin(viewer))
             {
                 query = query.Where(c =>
-                    c.ClubStatus == ClubActive ||
                     c.ApplicantUserId == viewer.UserId ||
-                    c.Members.Any(m => m.UserId == viewer.UserId));
+                    c.PresidentUserId == viewer.UserId ||
+                    c.Members.Any(m => m.UserId == viewer.UserId) ||
+                    c.UserRoles.Any(ur => ur.UserId == viewer.UserId));
             }
         }
 
@@ -138,7 +140,7 @@ public class ClubsController : ControllerBase
             Category = category,
             Description = EmptyToNull(req.Description),
             ApplicantUserId = applicant.UserId,
-            AdvisorName = EmptyToNull(req.AdvisorName),
+            AdvisorName = null,
             ContactPhone = EmptyToNull(req.ContactPhone),
             ApplyReason = req.ApplyReason.Trim(),
             MaterialUrl = req.MaterialUrl.Trim(),
@@ -149,7 +151,19 @@ public class ClubsController : ControllerBase
             Applicant = applicant
         };
 
+        var advisor = await ValidateAdvisorAsync(req.AdvisorUserId);
+        if (advisor.Result is not null) return advisor.Result;
+        if (advisor.User is not null)
+        {
+            club.AdvisorName = DisplayUser(advisor.User);
+        }
+
         _db.Clubs.Add(club);
+        if (advisor.User is not null)
+        {
+            await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+        }
+
         await _db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { clubId = club.ClubId }, ToApplicationDto(club));
@@ -218,6 +232,7 @@ public class ClubsController : ControllerBase
             club.ClubStatus = ClubRejected;
             club.PresidentUserId = null;
             club.FoundedAt = null;
+            await RemoveClubAdvisorRolesExceptAsync(club.ClubId, null);
         }
 
         await _db.SaveChangesAsync();
@@ -336,13 +351,16 @@ public class ClubsController : ControllerBase
             }
         }
 
+        var advisor = await ValidateAdvisorAsync(req.AdvisorUserId);
+        if (advisor.Result is not null) return advisor.Result;
+
         var now = DateTime.UtcNow;
         club.ClubName = name;
         club.Category = category;
         club.Description = EmptyToNull(req.Description);
         club.LogoUrl = EmptyToNull(req.LogoUrl);
         club.PresidentUserId = req.PresidentUserId;
-        club.AdvisorName = EmptyToNull(req.AdvisorName);
+        club.AdvisorName = advisor.User is null ? null : DisplayUser(advisor.User);
         club.ContactPhone = EmptyToNull(req.ContactPhone);
         club.UpdatedAt = now;
 
@@ -353,6 +371,15 @@ public class ClubsController : ControllerBase
         else
         {
             await RemoveClubPresidentRolesExceptAsync(club.ClubId, null);
+        }
+
+        if (advisor.User is not null)
+        {
+            await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+        }
+        else
+        {
+            await RemoveClubAdvisorRolesExceptAsync(club.ClubId, null);
         }
 
         await _db.SaveChangesAsync();
@@ -640,6 +667,10 @@ public class ClubsController : ControllerBase
             .Include(c => c.Applicant)
             .Include(c => c.Reviewer)
             .Include(c => c.President)
+            .Include(c => c.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Include(c => c.UserRoles)
+                .ThenInclude(ur => ur.User)
             .Include(c => c.Members);
 
     private IQueryable<ClubMember> MemberQuery() =>
@@ -661,31 +692,46 @@ public class ClubsController : ControllerBase
             .Include(u => u.ClubMemberships)
             .FirstOrDefaultAsync(u => u.UserId == userId);
 
-    private async Task EnsureSingleClubPresidentRoleAsync(int clubId, int userId, DateTime now)
+    private async Task<(IActionResult? Result, User? User)> ValidateAdvisorAsync(int? advisorUserId)
     {
-        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode == ClubPresidentRoleCode);
-        if (role is null)
+        if (advisorUserId is null) return (null, null);
+
+        var advisor = await _db.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.UserId == advisorUserId.Value);
+        if (advisor is null)
         {
-            var nextRoleId = (await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0) + 1;
-            role = new Role
-            {
-                RoleId = nextRoleId,
-                RoleCode = ClubPresidentRoleCode,
-                RoleName = "社团负责人",
-                RoleScope = "club",
-                PermissionDesc = "维护本社团基础信息、成员与干部任期。",
-                CreatedAt = now
-            };
-            _db.Roles.Add(role);
+            return (NotFound(new { message = "指定的指导老师不存在。" }), null);
         }
 
+        if (!UsersController.IsActive(advisor.AccountStatus))
+        {
+            return (BadRequest(new { message = "指导老师账号不可用，不能关联到社团。" }), null);
+        }
+
+        if (!IsTeacherCandidate(advisor))
+        {
+            return (BadRequest(new { message = "指导老师必须选择教师账号。" }), null);
+        }
+
+        return (null, advisor);
+    }
+
+    private async Task EnsureSingleClubPresidentRoleAsync(int clubId, int userId, DateTime now)
+    {
+        var role = await EnsureClubRoleAsync(
+            ClubLeaderRoleCode,
+            "社团负责人",
+            "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
+            now);
         await RemoveClubPresidentRolesExceptAsync(clubId, userId);
 
         var hasRole = await _db.UserRoles.AnyAsync(ur =>
             ur.UserId == userId &&
             ur.ClubId == clubId &&
             ur.Role != null &&
-            ur.Role.RoleCode == ClubPresidentRoleCode);
+            ur.Role.RoleCode.ToUpper() == ClubLeaderRoleCode);
         if (hasRole) return;
 
         var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
@@ -707,10 +753,71 @@ public class ClubsController : ControllerBase
                 ur.ClubId == clubId &&
                 (userId == null || ur.UserId != userId.Value) &&
                 ur.Role != null &&
-                ur.Role.RoleCode == ClubPresidentRoleCode)
+                (ur.Role.RoleCode.ToUpper() == ClubLeaderRoleCode ||
+                 ur.Role.RoleCode.ToLower() == "club_president"))
             .ToListAsync();
 
         _db.UserRoles.RemoveRange(staleRoles);
+    }
+
+    private async Task EnsureSingleClubAdvisorRoleAsync(int clubId, int userId, DateTime now)
+    {
+        var role = await EnsureClubRoleAsync(
+            ClubAdvisorRoleCode,
+            "指导老师",
+            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价。",
+            now);
+        await RemoveClubAdvisorRolesExceptAsync(clubId, userId);
+
+        var hasRole = await _db.UserRoles.AnyAsync(ur =>
+            ur.UserId == userId &&
+            ur.ClubId == clubId &&
+            ur.Role != null &&
+            ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode);
+        if (hasRole) return;
+
+        var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
+        _db.UserRoles.Add(new UserRole
+        {
+            UserRoleId = nextUserRoleId,
+            UserId = userId,
+            RoleId = role.RoleId,
+            ClubId = clubId,
+            AssignedAt = now
+        });
+    }
+
+    private async Task RemoveClubAdvisorRolesExceptAsync(int clubId, int? userId)
+    {
+        var staleRoles = await _db.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur =>
+                ur.ClubId == clubId &&
+                (userId == null || ur.UserId != userId.Value) &&
+                ur.Role != null &&
+                ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode)
+            .ToListAsync();
+
+        _db.UserRoles.RemoveRange(staleRoles);
+    }
+
+    private async Task<Role> EnsureClubRoleAsync(string roleCode, string roleName, string permissionDesc, DateTime now)
+    {
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
+        if (role is not null) return role;
+
+        var nextRoleId = (await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0) + 1;
+        role = new Role
+        {
+            RoleId = nextRoleId,
+            RoleCode = roleCode,
+            RoleName = roleName,
+            RoleScope = "club",
+            PermissionDesc = permissionDesc,
+            CreatedAt = now
+        };
+        _db.Roles.Add(role);
+        return role;
     }
 
     private async Task RefreshClubPresidentAsync(Club club, int ignoredMemberId, DateTime now)
@@ -744,27 +851,17 @@ public class ClubsController : ControllerBase
     {
         if (club.ApplicantUserId is null) return;
 
-        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode == ClubPresidentRoleCode);
-        if (role is null)
-        {
-            var nextRoleId = (await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0) + 1;
-            role = new Role
-            {
-                RoleId = nextRoleId,
-                RoleCode = ClubPresidentRoleCode,
-                RoleName = "社团负责人",
-                RoleScope = "club",
-                PermissionDesc = "维护本社团基础信息、成员与干部任期。",
-                CreatedAt = now
-            };
-            _db.Roles.Add(role);
-        }
+        var role = await EnsureClubRoleAsync(
+            ClubLeaderRoleCode,
+            "社团负责人",
+            "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
+            now);
 
         var hasRole = await _db.UserRoles.AnyAsync(ur =>
             ur.UserId == club.ApplicantUserId.Value &&
             ur.ClubId == club.ClubId &&
             ur.Role != null &&
-            ur.Role.RoleCode == ClubPresidentRoleCode);
+            ur.Role.RoleCode.ToUpper() == ClubLeaderRoleCode);
         if (!hasRole)
         {
             var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
@@ -800,30 +897,36 @@ public class ClubsController : ControllerBase
         }
     }
 
-    private static ClubDto ToClubDto(Club club) => new(
-        club.ClubId,
-        club.ClubName,
-        club.Description,
-        club.Category,
-        club.ClubStatus,
-        ClubStatusText(club.ClubStatus),
-        club.LogoUrl,
-        club.PresidentUserId,
-        DisplayUser(club.President),
-        club.AdvisorName,
-        club.ContactPhone,
-        club.AuditStatus,
-        AuditStatusText(club.AuditStatus),
-        club.ApplicantUserId,
-        DisplayUser(club.Applicant),
-        club.ApplyReason,
-        club.MaterialUrl,
-        club.ReviewerUserId,
-        DisplayUser(club.Reviewer),
-        club.ReviewComment,
-        club.FoundedAt,
-        club.CreatedAt,
-        club.UpdatedAt);
+    private static ClubDto ToClubDto(Club club)
+    {
+        var advisor = CurrentAdvisorAssignment(club);
+
+        return new ClubDto(
+            club.ClubId,
+            club.ClubName,
+            club.Description,
+            club.Category,
+            club.ClubStatus,
+            ClubStatusText(club.ClubStatus),
+            club.LogoUrl,
+            club.PresidentUserId,
+            DisplayUser(club.President),
+            advisor?.UserId,
+            advisor is null ? club.AdvisorName : DisplayUser(advisor.User),
+            club.ContactPhone,
+            club.AuditStatus,
+            AuditStatusText(club.AuditStatus),
+            club.ApplicantUserId,
+            DisplayUser(club.Applicant),
+            club.ApplyReason,
+            club.MaterialUrl,
+            club.ReviewerUserId,
+            DisplayUser(club.Reviewer),
+            club.ReviewComment,
+            club.FoundedAt,
+            club.CreatedAt,
+            club.UpdatedAt);
+    }
 
     private static ClubApplicationDto ToApplicationDto(Club club) => new(
         club.ClubId,
@@ -921,6 +1024,32 @@ public class ClubsController : ControllerBase
                positionName.Contains("leader", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsTeacherCandidate(User user)
+    {
+        if (IsStaffNumber(user.StudentNo)) return true;
+
+        return user.UserRoles.Any(ur =>
+            ur.Role is not null &&
+            ((ur.Role.RoleCode ?? string.Empty).Equals("TEACHER", StringComparison.OrdinalIgnoreCase) ||
+             (ur.Role.RoleCode ?? string.Empty).Equals(ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase) ||
+             (ur.Role.RoleName ?? string.Empty).Contains("教师", StringComparison.Ordinal) ||
+             (ur.Role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal)));
+    }
+
+    private static bool IsStaffNumber(string? studentNo) =>
+        !string.IsNullOrWhiteSpace(studentNo) &&
+        studentNo.Trim().Length == 5 &&
+        studentNo.Trim().All(char.IsDigit);
+
+    private static UserRole? CurrentAdvisorAssignment(Club club) =>
+        club.UserRoles
+            .Where(ur =>
+                ur.Role is not null &&
+                (ur.Role.RoleCode ?? string.Empty).Equals(ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(ur => ur.AssignedAt)
+            .ThenBy(ur => ur.UserRoleId)
+            .FirstOrDefault();
+
     private static string? NormalizeMemberStatus(string? status)
     {
         if (string.IsNullOrWhiteSpace(status)) return MemberActive;
@@ -987,6 +1116,7 @@ public record ClubDto(
     string? LogoUrl,
     int? PresidentUserId,
     string? PresidentName,
+    int? AdvisorUserId,
     string? AdvisorName,
     string? ContactPhone,
     string? AuditStatus,
@@ -1044,6 +1174,7 @@ public class UpdateClubProfileRequest
     public string? Description { get; set; }
     public string? LogoUrl { get; set; }
     public int? PresidentUserId { get; set; }
+    public int? AdvisorUserId { get; set; }
     public string? AdvisorName { get; set; }
     public string? ContactPhone { get; set; }
 }
@@ -1102,6 +1233,7 @@ public class CreateClubApplicationRequest
     public string? Description { get; set; }
     public string ApplyReason { get; set; } = string.Empty;
     public string MaterialUrl { get; set; } = string.Empty;
+    public int? AdvisorUserId { get; set; }
     public string? AdvisorName { get; set; }
     public string? ContactPhone { get; set; }
 }

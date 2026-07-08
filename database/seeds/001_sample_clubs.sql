@@ -77,9 +77,39 @@ WHEN NOT MATCHED THEN
 
 MERGE INTO USER_ROLES target
 USING (
-  SELECT 101 AS user_role_id, 3 AS user_id, 3 AS role_id, 1 AS club_id FROM dual
+  SELECT 101 AS user_role_id, 3 AS user_id, 5 AS role_id, 1 AS club_id FROM dual
 ) source
 ON (target.user_role_id = source.user_role_id)
+WHEN MATCHED THEN UPDATE SET
+  target.user_id = source.user_id,
+  target.role_id = source.role_id,
+  target.club_id = source.club_id
+WHEN NOT MATCHED THEN
+  INSERT (user_role_id, user_id, role_id, club_id, assigned_at)
+  VALUES (source.user_role_id, source.user_id, source.role_id, source.club_id, SYSDATE);
+
+MERGE INTO USER_ROLES target
+USING (
+  SELECT 102 AS user_role_id, 4 AS user_id, 3 AS role_id, 1 AS club_id FROM dual
+) source
+ON (target.user_role_id = source.user_role_id)
+WHEN MATCHED THEN UPDATE SET
+  target.user_id = source.user_id,
+  target.role_id = source.role_id,
+  target.club_id = source.club_id
+WHEN NOT MATCHED THEN
+  INSERT (user_role_id, user_id, role_id, club_id, assigned_at)
+  VALUES (source.user_role_id, source.user_id, source.role_id, source.club_id, SYSDATE);
+
+MERGE INTO USER_ROLES target
+USING (
+  SELECT 103 AS user_role_id, 5 AS user_id, 6 AS role_id, 1 AS club_id FROM dual
+) source
+ON (target.user_role_id = source.user_role_id)
+WHEN MATCHED THEN UPDATE SET
+  target.user_id = source.user_id,
+  target.role_id = source.role_id,
+  target.club_id = source.club_id
 WHEN NOT MATCHED THEN
   INSERT (user_role_id, user_id, role_id, club_id, assigned_at)
   VALUES (source.user_role_id, source.user_id, source.role_id, source.club_id, SYSDATE);
@@ -94,6 +124,32 @@ USING (
   FROM dual
 ) source
 ON (target.member_id = source.member_id)
+WHEN NOT MATCHED THEN
+  INSERT (member_id, club_id, user_id, department_name, group_name, position_name, term_name, term_start, term_end, member_status, join_at, contribution_score)
+  VALUES (source.member_id, source.club_id, source.user_id, source.department_name, source.group_name, source.position_name, source.term_name, source.term_start, source.term_end, source.member_status, source.join_at, source.contribution_score);
+
+MERGE INTO CLUB_MEMBERS target
+USING (
+  SELECT 2 AS member_id, 1 AS club_id, 4 AS user_id, '技术部' AS department_name,
+         '开发组' AS group_name, '社员' AS position_name,
+         '2024-2025 学年' AS term_name, DATE '2024-09-10' AS term_start,
+         DATE '2025-08-31' AS term_end, 'active' AS member_status,
+         DATE '2024-09-10' AS join_at, 72 AS contribution_score
+  FROM dual
+) source
+ON (target.member_id = source.member_id)
+WHEN MATCHED THEN UPDATE SET
+  target.club_id = source.club_id,
+  target.user_id = source.user_id,
+  target.department_name = source.department_name,
+  target.group_name = source.group_name,
+  target.position_name = source.position_name,
+  target.term_name = source.term_name,
+  target.term_start = source.term_start,
+  target.term_end = source.term_end,
+  target.member_status = source.member_status,
+  target.join_at = source.join_at,
+  target.contribution_score = source.contribution_score
 WHEN NOT MATCHED THEN
   INSERT (member_id, club_id, user_id, department_name, group_name, position_name, term_name, term_start, term_end, member_status, join_at, contribution_score)
   VALUES (source.member_id, source.club_id, source.user_id, source.department_name, source.group_name, source.position_name, source.term_name, source.term_start, source.term_end, source.member_status, source.join_at, source.contribution_score);
