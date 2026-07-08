@@ -1,7 +1,7 @@
-﻿/*
+/*
  * ClubHub API
  *
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -69,11 +69,14 @@ namespace Org.OpenAPITools.Models
         /// Optional review comment.
         /// </summary>
         /// <value>Optional review comment.</value>
-        /* <example>绔嬮」鏉愭枡瀹屾暣锛屽悓鎰忔墽琛屻€?/example> */
+        /* <example>立项材料完整，同意执行。</example> */
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
 
     }
 }
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)
