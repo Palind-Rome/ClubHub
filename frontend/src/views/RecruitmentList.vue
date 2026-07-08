@@ -13,7 +13,7 @@ import {
   Search,
   User,
 } from "@element-plus/icons-vue";
-import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
+import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 
 type RecruitmentStatus = "draft" | "pending_review" | "not_started" | "accepting" | "ended";
 type RecruitmentWorkflowStatus = "draft" | "pending_review";
@@ -161,15 +161,13 @@ const isStudent = computed(() =>
 const canApply = computed(
   () => isStudent.value && hasPermission(recruitmentApplyPermission) && !hasPermission("*"),
 );
-const hasManageAccess = computed(
-  () => hasPermission("*") || hasPermission(recruitmentManagePermission),
+const hasManageAccess = computed(() =>
+  (auth.value?.roles ?? []).some((role) => role.permissions?.includes(recruitmentManagePermission)),
 );
 const manageableClubIdSet = computed(() => {
-  if (hasPermission("*")) return null;
-
   const clubIds = new Set<number>();
   (auth.value?.roles ?? [])
-    .filter((role) => roleHasPermission(role, recruitmentManagePermission))
+    .filter((role) => role.permissions?.includes(recruitmentManagePermission))
     .forEach((role) => {
       const ids = role.clubIds?.length ? role.clubIds : role.clubId ? [role.clubId] : [];
       ids.forEach((clubId) => clubIds.add(clubId));
@@ -180,7 +178,7 @@ const manageableClubs = computed(() => {
   const clubIds = manageableClubIdSet.value;
   return clubs.value.filter((club) => {
     if (club.status !== "active") return false;
-    return clubIds === null || clubIds.has(club.id);
+    return clubIds.has(club.id);
   });
 });
 const canCreateRecruitment = computed(() => manageableClubs.value.length > 0);
@@ -659,10 +657,6 @@ function dateValue(value: string) {
 function hasPermission(permission: string) {
   const permissions = auth.value?.permissions ?? [];
   return permissions.includes("*") || permissions.includes(permission);
-}
-
-function roleHasPermission(role: AuthRole, permission: string) {
-  return role.permissions?.includes("*") || role.permissions?.includes(permission);
 }
 
 function statusTagType(status: RecruitmentStatus) {
