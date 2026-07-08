@@ -81,8 +81,7 @@ export interface CreateRecruitmentRequest {
  */
 export const CreateRecruitmentRequestRecruitStatusEnum = {
   Draft: "draft",
-  Published: "published",
-  Closed: "closed",
+  PendingReview: "pending_review",
 } as const;
 export type CreateRecruitmentRequestRecruitStatusEnum =
   (typeof CreateRecruitmentRequestRecruitStatusEnum)[keyof typeof CreateRecruitmentRequestRecruitStatusEnum];

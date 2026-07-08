@@ -171,6 +171,11 @@ import {
   ReviewRecruitmentApplicationRequestToJSON,
 } from "../models/ReviewRecruitmentApplicationRequest";
 import {
+  type ReviewRecruitmentRequest,
+  ReviewRecruitmentRequestFromJSON,
+  ReviewRecruitmentRequestToJSON,
+} from "../models/ReviewRecruitmentRequest";
+import {
   type RoleAssignmentResult,
   RoleAssignmentResultFromJSON,
   RoleAssignmentResultToJSON,
@@ -269,6 +274,11 @@ export interface CreateRecruitmentOperationRequest {
 export interface CreateRecruitmentApplicationOperationRequest {
   recruitId: number;
   createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
+}
+
+export interface DeleteRecruitmentRequest {
+  recruitId: number;
+  currentUserId: number;
 }
 
 export interface DissolveClubOperationRequest {
@@ -378,6 +388,11 @@ export interface ReviewClubApplicationOperationRequest {
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
+}
+
+export interface ReviewRecruitmentOperationRequest {
+  recruitId: number;
+  reviewRecruitmentRequest: ReviewRecruitmentRequest;
 }
 
 export interface ReviewRecruitmentApplicationOperationRequest {
@@ -1180,8 +1195,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或目标社团的社团干部、负责人可以发布招募。
-   * 发布社团招募
+   * 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
+   * 创建社团招募
    */
   async createRecruitmentRaw(
     requestParameters: CreateRecruitmentOperationRequest,
@@ -1194,8 +1209,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或目标社团的社团干部、负责人可以发布招募。
-   * 发布社团招募
+   * 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
+   * 创建社团招募
    */
   async createRecruitment(
     requestParameters: CreateRecruitmentOperationRequest,
@@ -1274,6 +1289,73 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<RecruitmentApplication> {
     const response = await this.createRecruitmentApplicationRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for deleteRecruitment without sending the request
+   */
+  async deleteRecruitmentRequestOpts(
+    requestParameters: DeleteRecruitmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments/{recruitId}`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 招募创建人可以删除自己创建的草稿招募。
+   * 删除草稿招募
+   */
+  async deleteRecruitmentRaw(
+    requestParameters: DeleteRecruitmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 招募创建人可以删除自己创建的草稿招募。
+   * 删除草稿招募
+   */
+  async deleteRecruitment(
+    requestParameters: DeleteRecruitmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteRecruitmentRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -2118,7 +2200,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+   * 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
    * 查询社团招募列表
    */
   async getRecruitmentsRaw(
@@ -2132,7 +2214,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+   * 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
    * 查询社团招募列表
    */
   async getRecruitments(
@@ -2783,6 +2865,73 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewRecruitment without sending the request
+   */
+  async reviewRecruitmentRequestOpts(
+    requestParameters: ReviewRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling reviewRecruitment().',
+      );
+    }
+
+    if (requestParameters["reviewRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewRecruitmentRequest",
+        'Required parameter "reviewRecruitmentRequest" was null or undefined when calling reviewRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}/review`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewRecruitmentRequestToJSON(requestParameters["reviewRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+   * 审核社团招募
+   */
+  async reviewRecruitmentRaw(
+    requestParameters: ReviewRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.reviewRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+   * 审核社团招募
+   */
+  async reviewRecruitment(
+    requestParameters: ReviewRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.reviewRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewRecruitmentApplication without sending the request
    */
   async reviewRecruitmentApplicationRequestOpts(
@@ -3163,7 +3312,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+   * 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
    * 更新社团招募
    */
   async updateRecruitmentRaw(
@@ -3177,7 +3326,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+   * 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
    * 更新社团招募
    */
   async updateRecruitment(
@@ -3225,8 +3374,10 @@ export type GetNoticesTargetTypeEnum =
  */
 export const GetRecruitmentsStatusEnum = {
   Draft: "draft",
-  Published: "published",
-  Closed: "closed",
+  PendingReview: "pending_review",
+  NotStarted: "not_started",
+  Accepting: "accepting",
+  Ended: "ended",
 } as const;
 export type GetRecruitmentsStatusEnum =
   (typeof GetRecruitmentsStatusEnum)[keyof typeof GetRecruitmentsStatusEnum];

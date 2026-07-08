@@ -98,16 +98,28 @@ namespace Org.OpenAPITools.Models
             DraftEnum = 1,
             
             /// <summary>
-            /// Enum PublishedEnum for published
+            /// Enum PendingReviewEnum for pending_review
             /// </summary>
-            [EnumMember(Value = "published")]
-            PublishedEnum = 2,
+            [EnumMember(Value = "pending_review")]
+            PendingReviewEnum = 2,
             
             /// <summary>
-            /// Enum ClosedEnum for closed
+            /// Enum NotStartedEnum for not_started
             /// </summary>
-            [EnumMember(Value = "closed")]
-            ClosedEnum = 3
+            [EnumMember(Value = "not_started")]
+            NotStartedEnum = 3,
+            
+            /// <summary>
+            /// Enum AcceptingEnum for accepting
+            /// </summary>
+            [EnumMember(Value = "accepting")]
+            AcceptingEnum = 4,
+            
+            /// <summary>
+            /// Enum EndedEnum for ended
+            /// </summary>
+            [EnumMember(Value = "ended")]
+            EndedEnum = 5
         }
 
         /// <summary>
@@ -123,6 +135,18 @@ namespace Org.OpenAPITools.Models
         [Required]
         [DataMember(Name="recruitStatusText", EmitDefaultValue=false)]
         public string RecruitStatusText { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CreatorUserId
+        /// </summary>
+        [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
+        public int? CreatorUserId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CreatorName
+        /// </summary>
+        [DataMember(Name="creatorName", EmitDefaultValue=true)]
+        public string? CreatorName { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
@@ -172,11 +196,40 @@ namespace Org.OpenAPITools.Models
         public bool CurrentUserIsMember { get; set; }
 
         /// <summary>
+        /// 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
+        /// </summary>
+        /// <value>当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。</value>
+        [Required]
+        [DataMember(Name="isOwnProposal", EmitDefaultValue=true)]
+        public bool IsOwnProposal { get; set; }
+
+        /// <summary>
         /// Gets or Sets CanManage
         /// </summary>
         [Required]
         [DataMember(Name="canManage", EmitDefaultValue=true)]
         public bool CanManage { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CanEdit
+        /// </summary>
+        [Required]
+        [DataMember(Name="canEdit", EmitDefaultValue=true)]
+        public bool CanEdit { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CanDelete
+        /// </summary>
+        [Required]
+        [DataMember(Name="canDelete", EmitDefaultValue=true)]
+        public bool CanDelete { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CanReview
+        /// </summary>
+        [Required]
+        [DataMember(Name="canReview", EmitDefaultValue=true)]
+        public bool CanReview { get; set; }
 
     }
 }

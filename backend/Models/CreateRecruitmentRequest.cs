@@ -97,23 +97,17 @@ namespace Org.OpenAPITools.Models
             DraftEnum = 1,
             
             /// <summary>
-            /// Enum PublishedEnum for published
+            /// Enum PendingReviewEnum for pending_review
             /// </summary>
-            [EnumMember(Value = "published")]
-            PublishedEnum = 2,
-            
-            /// <summary>
-            /// Enum ClosedEnum for closed
-            /// </summary>
-            [EnumMember(Value = "closed")]
-            ClosedEnum = 3
+            [EnumMember(Value = "pending_review")]
+            PendingReviewEnum = 2
         }
 
         /// <summary>
         /// Gets or Sets RecruitStatus
         /// </summary>
         [DataMember(Name="recruitStatus", EmitDefaultValue=true)]
-        public RecruitStatusEnum RecruitStatus { get; set; } = RecruitStatusEnum.PublishedEnum;
+        public RecruitStatusEnum RecruitStatus { get; set; } = RecruitStatusEnum.DraftEnum;
 
     }
 }

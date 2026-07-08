@@ -88,6 +88,18 @@ export interface Recruitment {
   recruitStatusText: string;
   /**
    *
+   * @type {number}
+   * @memberof Recruitment
+   */
+  creatorUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Recruitment
+   */
+  creatorName?: string | null;
+  /**
+   *
    * @type {Date}
    * @memberof Recruitment
    */
@@ -129,11 +141,35 @@ export interface Recruitment {
    */
   currentUserIsMember: boolean;
   /**
+   * 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
+   * @type {boolean}
+   * @memberof Recruitment
+   */
+  isOwnProposal: boolean;
+  /**
    *
    * @type {boolean}
    * @memberof Recruitment
    */
   canManage: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof Recruitment
+   */
+  canEdit: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof Recruitment
+   */
+  canDelete: boolean;
+  /**
+   *
+   * @type {boolean}
+   * @memberof Recruitment
+   */
+  canReview: boolean;
 }
 
 /**
@@ -141,8 +177,10 @@ export interface Recruitment {
  */
 export const RecruitmentRecruitStatusEnum = {
   Draft: "draft",
-  Published: "published",
-  Closed: "closed",
+  PendingReview: "pending_review",
+  NotStarted: "not_started",
+  Accepting: "accepting",
+  Ended: "ended",
 } as const;
 export type RecruitmentRecruitStatusEnum =
   (typeof RecruitmentRecruitStatusEnum)[keyof typeof RecruitmentRecruitStatusEnum];
@@ -161,7 +199,11 @@ export function instanceOfRecruitment(value: object): value is Recruitment {
   if (!("applicationCount" in value) || value["applicationCount"] === undefined) return false;
   if (!("acceptedCount" in value) || value["acceptedCount"] === undefined) return false;
   if (!("currentUserIsMember" in value) || value["currentUserIsMember"] === undefined) return false;
+  if (!("isOwnProposal" in value) || value["isOwnProposal"] === undefined) return false;
   if (!("canManage" in value) || value["canManage"] === undefined) return false;
+  if (!("canEdit" in value) || value["canEdit"] === undefined) return false;
+  if (!("canDelete" in value) || value["canDelete"] === undefined) return false;
+  if (!("canReview" in value) || value["canReview"] === undefined) return false;
   return true;
 }
 
@@ -185,6 +227,8 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
     requirements: json["requirements"] == null ? undefined : json["requirements"],
     recruitStatus: json["recruitStatus"],
     recruitStatusText: json["recruitStatusText"],
+    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
+    creatorName: json["creatorName"] == null ? undefined : json["creatorName"],
     createdAt: new Date(json["createdAt"]),
     applicationCount: json["applicationCount"],
     acceptedCount: json["acceptedCount"],
@@ -199,7 +243,11 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
         ? undefined
         : json["currentUserApplicationStatusText"],
     currentUserIsMember: json["currentUserIsMember"],
+    isOwnProposal: json["isOwnProposal"],
     canManage: json["canManage"],
+    canEdit: json["canEdit"],
+    canDelete: json["canDelete"],
+    canReview: json["canReview"],
   };
 }
 
@@ -227,6 +275,8 @@ export function RecruitmentToJSONTyped(
     requirements: value["requirements"],
     recruitStatus: value["recruitStatus"],
     recruitStatusText: value["recruitStatusText"],
+    creatorUserId: value["creatorUserId"],
+    creatorName: value["creatorName"],
     createdAt: value["createdAt"].toISOString(),
     applicationCount: value["applicationCount"],
     acceptedCount: value["acceptedCount"],
@@ -234,6 +284,10 @@ export function RecruitmentToJSONTyped(
     currentUserApplicationStatus: value["currentUserApplicationStatus"],
     currentUserApplicationStatusText: value["currentUserApplicationStatusText"],
     currentUserIsMember: value["currentUserIsMember"],
+    isOwnProposal: value["isOwnProposal"],
     canManage: value["canManage"],
+    canEdit: value["canEdit"],
+    canDelete: value["canDelete"],
+    canReview: value["canReview"],
   };
 }

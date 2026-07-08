@@ -39,6 +39,7 @@ export * from "./ReviewActivityRequest";
 export * from "./ReviewClubApplicationRequest";
 export * from "./ReviewProjectRequest";
 export * from "./ReviewRecruitmentApplicationRequest";
+export * from "./ReviewRecruitmentRequest";
 export * from "./RoleAssignmentResult";
 export * from "./RoleDefinition";
 export * from "./UpdateCheckinSettingsRequest";

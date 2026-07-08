@@ -64,11 +64,21 @@ export interface UpdateRecruitmentRequest {
   requirements?: string | null;
   /**
    *
-   * @type {string}
+   * @type {UpdateRecruitmentRequestRecruitStatusEnum}
    * @memberof UpdateRecruitmentRequest
    */
-  recruitStatus?: string | null;
+  recruitStatus?: UpdateRecruitmentRequestRecruitStatusEnum | null;
 }
+
+/**
+ * @export
+ */
+export const UpdateRecruitmentRequestRecruitStatusEnum = {
+  Draft: "draft",
+  PendingReview: "pending_review",
+} as const;
+export type UpdateRecruitmentRequestRecruitStatusEnum =
+  (typeof UpdateRecruitmentRequestRecruitStatusEnum)[keyof typeof UpdateRecruitmentRequestRecruitStatusEnum];
 
 /**
  * Check if a given object implements the UpdateRecruitmentRequest interface.

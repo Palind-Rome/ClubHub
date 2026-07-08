@@ -72,7 +72,7 @@ namespace Org.OpenAPITools.Models
         /// Gets or Sets RecruitStatus
         /// </summary>
         [DataMember(Name="recruitStatus", EmitDefaultValue=true)]
-        public string? RecruitStatus { get; set; }
+        public RecruitStatusEnum? RecruitStatus { get; set; }
 
     }
 }
