@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   Close,
+  Delete,
   Edit,
   Plus,
   Refresh,
@@ -14,9 +15,11 @@ import {
 } from "@element-plus/icons-vue";
 import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
 
-type RecruitmentStatus = "draft" | "published" | "closed";
+type RecruitmentStatus = "draft" | "pending_review" | "not_started" | "accepting" | "ended";
+type RecruitmentWorkflowStatus = "draft" | "pending_review";
 type ApplicationStatus = "pending" | "accepted" | "rejected";
 type ReviewDecision = "accepted" | "rejected";
+type RecruitmentReviewDecision = "approved" | "rejected";
 type RecruitmentFormMode = "create" | "edit";
 
 interface Club {
@@ -38,6 +41,8 @@ interface Recruitment {
   requirements: string | null;
   recruitStatus: RecruitmentStatus;
   recruitStatusText: string;
+  creatorUserId: number | null;
+  creatorName: string | null;
   createdAt: string;
   applicationCount: number;
   acceptedCount: number;
@@ -45,7 +50,11 @@ interface Recruitment {
   currentUserApplicationStatus: ApplicationStatus | null;
   currentUserApplicationStatusText: string | null;
   currentUserIsMember: boolean;
+  isOwnProposal: boolean;
   canManage: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canReview: boolean;
 }
 
 interface RecruitmentApplication {
@@ -87,8 +96,10 @@ const applicationLoading = ref(false);
 const saving = ref(false);
 const applying = ref(false);
 const reviewing = ref(false);
+const recruitmentReviewing = ref(false);
 const error = ref("");
 const selectedRecruitment = ref<Recruitment | null>(null);
+const activeRecruitmentTab = ref<"own" | "other">("own");
 
 const filters = reactive({
   status: "",
@@ -107,7 +118,6 @@ const recruitmentForm = reactive({
   endAt: "",
   quota: 10,
   requirements: "",
-  recruitStatus: "published" as RecruitmentStatus,
 });
 
 const applicationDialogVisible = ref(false);
@@ -132,7 +142,6 @@ const recruitmentRules: FormRules = {
   endAt: [{ required: true, message: "请选择结束时间", trigger: "change" }],
   quota: [{ required: true, message: "请填写计划人数", trigger: "blur" }],
   requirements: [{ required: true, message: "请填写纳新要求", trigger: "blur" }],
-  recruitStatus: [{ required: true, message: "请选择纳新状态", trigger: "change" }],
 };
 
 const applicationRules: FormRules = {
@@ -185,6 +194,16 @@ const activeRecruitmentId = computed(() => {
 });
 const isApplicationWorkbench = computed(() => activeRecruitmentId.value !== null);
 const sortedRecruitments = computed(() => [...recruitments.value].sort(compareRecruitments));
+const ownRecruitments = computed(() =>
+  sortedRecruitments.value.filter((item) => item.isOwnProposal),
+);
+const otherRecruitments = computed(() =>
+  sortedRecruitments.value.filter((item) => !item.isOwnProposal),
+);
+const displayedRecruitments = computed(() => {
+  if (!hasManageAccess.value) return sortedRecruitments.value;
+  return activeRecruitmentTab.value === "own" ? ownRecruitments.value : otherRecruitments.value;
+});
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -338,7 +357,6 @@ function resetRecruitmentForm() {
   recruitmentForm.endAt = dateTimeInput(end);
   recruitmentForm.quota = 10;
   recruitmentForm.requirements = "";
-  recruitmentForm.recruitStatus = "published";
   recruitmentFormRef.value?.clearValidate();
 }
 
@@ -355,8 +373,8 @@ function openCreateDialog() {
 }
 
 function openEditDialog(row: Recruitment) {
-  if (!row.canManage) {
-    ElMessage.warning("当前账号不能维护该纳新项目。");
+  if (!row.canEdit) {
+    ElMessage.warning("只有草稿创建人可以维护该纳新。");
     return;
   }
 
@@ -369,12 +387,11 @@ function openEditDialog(row: Recruitment) {
   recruitmentForm.endAt = dateTimeInput(row.endAt);
   recruitmentForm.quota = row.quota ?? 1;
   recruitmentForm.requirements = row.requirements ?? "";
-  recruitmentForm.recruitStatus = row.recruitStatus;
   recruitmentFormRef.value?.clearValidate();
   recruitmentDialogVisible.value = true;
 }
 
-async function submitRecruitment() {
+async function submitRecruitment(action: RecruitmentWorkflowStatus) {
   if (!recruitmentFormRef.value || !currentUserId.value) return;
   if (!(await validateForm(recruitmentFormRef.value))) return;
   if (!recruitmentForm.clubId) {
@@ -393,7 +410,7 @@ async function submitRecruitment() {
       endAt: recruitmentForm.endAt,
       quota: recruitmentForm.quota,
       requirements: recruitmentForm.requirements,
-      recruitStatus: recruitmentForm.recruitStatus,
+      recruitStatus: action,
     };
 
     if (recruitmentFormMode.value === "create") {
@@ -402,7 +419,7 @@ async function submitRecruitment() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      ElMessage.success("纳新已发布");
+      ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
     } else if (recruitmentTarget.value) {
       await requestJson<Recruitment>(`/api/recruitments/${recruitmentTarget.value.id}`, {
         method: "PATCH",
@@ -412,7 +429,7 @@ async function submitRecruitment() {
           clubId: undefined,
         }),
       });
-      ElMessage.success("纳新已保存");
+      ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
     }
 
     recruitmentDialogVisible.value = false;
@@ -477,6 +494,72 @@ async function backToRecruitments() {
   await router.push("/recruitments");
 }
 
+async function deleteDraftRecruitment(row: Recruitment) {
+  if (!row.canDelete || !currentUserId.value) {
+    ElMessage.warning("只有草稿创建人可以删除该纳新。");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(`确认删除草稿“${row.title}”？`, "删除草稿", {
+      type: "warning",
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
+
+  saving.value = true;
+  try {
+    await requestJson<void>(`/api/recruitments/${row.id}?currentUserId=${currentUserId.value}`, {
+      method: "DELETE",
+    });
+    ElMessage.success("草稿已删除");
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "删除失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function reviewRecruitment(row: Recruitment, decision: RecruitmentReviewDecision) {
+  if (!row.canReview || !currentUserId.value) {
+    ElMessage.warning("当前账号不能审核纳新。");
+    return;
+  }
+
+  const actionText = decision === "approved" ? "通过" : "驳回";
+  try {
+    await ElMessageBox.confirm(`确认${actionText}“${row.title}”？`, "纳新审核", {
+      type: decision === "approved" ? "success" : "warning",
+      confirmButtonText: `确认${actionText}`,
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
+
+  recruitmentReviewing.value = true;
+  try {
+    await requestJson<Recruitment>(`/api/recruitments/${row.id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentUserId: currentUserId.value,
+        decision,
+      }),
+    });
+    ElMessage.success(`纳新已${actionText}`);
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "审核失败");
+  } finally {
+    recruitmentReviewing.value = false;
+  }
+}
+
 function openReviewDialog(row: RecruitmentApplication, decision: ReviewDecision) {
   if (row.applicationStatus !== "pending") {
     ElMessage.warning("只有待筛选申请可以录入结果。");
@@ -537,11 +620,8 @@ function applyDisabledReason(row: Recruitment) {
   if (!canApply.value) return "当前账号不能提交入社申请，请切换到普通学生账号。";
   if (row.currentUserIsMember) return "你已经是该社团成员。";
   if (row.currentUserApplicationId) return "你已经提交过该纳新申请。";
-  if (row.recruitStatus !== "published") return "该纳新当前不接受申请。";
+  if (row.recruitStatus !== "accepting") return "该纳新当前不接受申请。";
   if (row.quota !== null && row.acceptedCount >= row.quota) return "纳新名额已满。";
-  const now = Date.now();
-  if (row.startAt && new Date(row.startAt).getTime() > now) return "纳新尚未开始。";
-  if (row.endAt && new Date(row.endAt).getTime() < now) return "纳新已结束。";
   return "";
 }
 
@@ -554,21 +634,23 @@ function compareRecruitments(a: Recruitment, b: Recruitment) {
   if (rankDiff !== 0) return rankDiff;
 
   const rank = recruitmentPhaseRank(a);
-  if (rank === 2) {
+  if (rank === 4) {
     return dateValue(b.endAt ?? b.createdAt) - dateValue(a.endAt ?? a.createdAt);
+  }
+
+  if (rank < 2) {
+    return dateValue(b.createdAt) - dateValue(a.createdAt);
   }
 
   return dateValue(a.startAt ?? a.createdAt) - dateValue(b.startAt ?? b.createdAt);
 }
 
 function recruitmentPhaseRank(row: Recruitment) {
-  const now = Date.now();
-  const start = row.startAt ? new Date(row.startAt).getTime() : Number.NEGATIVE_INFINITY;
-  const end = row.endAt ? new Date(row.endAt).getTime() : Number.POSITIVE_INFINITY;
-
-  if (row.recruitStatus === "closed" || end < now) return 2;
-  if (row.recruitStatus === "published" && start <= now) return 0;
-  return 1;
+  if (row.recruitStatus === "draft") return 0;
+  if (row.recruitStatus === "pending_review") return 1;
+  if (row.recruitStatus === "accepting") return 2;
+  if (row.recruitStatus === "not_started") return 3;
+  return 4;
 }
 
 function dateValue(value: string) {
@@ -586,14 +668,17 @@ function roleHasPermission(role: AuthRole, permission: string) {
 }
 
 function statusTagType(status: RecruitmentStatus) {
-  if (status === "published") return "success";
-  if (status === "closed") return "info";
-  return "warning";
+  if (status === "accepting") return "success";
+  if (status === "pending_review" || status === "not_started") return "warning";
+  if (status === "ended") return "info";
+  return "primary";
 }
 
 function recruitmentStatusText(status: RecruitmentStatus) {
   if (status === "draft") return "草稿";
-  if (status === "published") return "申请中";
+  if (status === "pending_review") return "审核中";
+  if (status === "not_started") return "未开始";
+  if (status === "accepting") return "申请中";
   return "已结束";
 }
 
@@ -647,6 +732,14 @@ watch(activeRecruitmentId, () => {
   void syncApplicationWorkbench();
 });
 
+watch(
+  hasManageAccess,
+  (canManage) => {
+    activeRecruitmentTab.value = canManage ? "own" : "other";
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   stopSessionListener = onSessionChange(refreshSession);
   void refreshAll();
@@ -681,7 +774,7 @@ onUnmounted(() => {
             :disabled="!canCreateRecruitment"
             @click="openCreateDialog"
           >
-            发布纳新
+            新建纳新
           </el-button>
         </template>
       </div>
@@ -699,8 +792,10 @@ onUnmounted(() => {
           @change="loadRecruitments"
         >
           <el-option label="草稿" value="draft" />
-          <el-option label="申请中" value="published" />
-          <el-option label="已结束" value="closed" />
+          <el-option label="审核中" value="pending_review" />
+          <el-option label="申请中" value="accepting" />
+          <el-option label="未开始" value="not_started" />
+          <el-option label="已结束" value="ended" />
         </el-select>
         <el-select
           v-if="hasManageAccess"
@@ -722,7 +817,12 @@ onUnmounted(() => {
         <el-button @click="resetFilters">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="sortedRecruitments" stripe empty-text="暂无纳新数据">
+      <el-tabs v-if="hasManageAccess" v-model="activeRecruitmentTab" class="recruitment-tabs">
+        <el-tab-pane :label="`本社团提出 ${ownRecruitments.length}`" name="own" />
+        <el-tab-pane :label="`其他社团 ${otherRecruitments.length}`" name="other" />
+      </el-tabs>
+
+      <el-table v-loading="loading" :data="displayedRecruitments" stripe empty-text="暂无纳新数据">
         <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">
             <div class="title-line">{{ row.title }}</div>
@@ -744,8 +844,9 @@ onUnmounted(() => {
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.recruitStatus)" size="small">
-              {{ recruitmentStatusText(row.recruitStatus) }}
+              {{ row.recruitStatusText || recruitmentStatusText(row.recruitStatus) }}
             </el-tag>
+            <div v-if="row.creatorName" class="muted tiny">提出：{{ row.creatorName }}</div>
           </template>
         </el-table-column>
         <el-table-column label="我的申请" width="120">
@@ -761,7 +862,7 @@ onUnmounted(() => {
             <span v-else class="muted">未申请</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <template v-if="shouldShowApplyAction(row)">
               <el-button
@@ -780,7 +881,10 @@ onUnmounted(() => {
               </el-tooltip>
             </template>
             <el-button
-              v-if="row.canManage"
+              v-if="
+                row.canManage &&
+                (row.recruitStatus === 'accepting' || row.recruitStatus === 'ended')
+              "
               type="primary"
               link
               :icon="Search"
@@ -789,13 +893,43 @@ onUnmounted(() => {
               申请管理
             </el-button>
             <el-button
-              v-if="row.canManage"
+              v-if="row.canEdit"
               type="primary"
               link
               :icon="Edit"
               @click="openEditDialog(row)"
             >
               编辑
+            </el-button>
+            <el-button
+              v-if="row.canDelete"
+              type="danger"
+              link
+              :icon="Delete"
+              :loading="saving"
+              @click="deleteDraftRecruitment(row)"
+            >
+              删除草稿
+            </el-button>
+            <el-button
+              v-if="row.canReview && row.recruitStatus === 'pending_review'"
+              type="success"
+              link
+              :icon="Check"
+              :loading="recruitmentReviewing"
+              @click="reviewRecruitment(row, 'approved')"
+            >
+              通过
+            </el-button>
+            <el-button
+              v-if="row.canReview && row.recruitStatus === 'pending_review'"
+              type="danger"
+              link
+              :icon="Close"
+              :loading="recruitmentReviewing"
+              @click="reviewRecruitment(row, 'rejected')"
+            >
+              驳回
             </el-button>
           </template>
         </el-table-column>
@@ -880,7 +1014,7 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="recruitmentDialogVisible"
-      :title="recruitmentFormMode === 'create' ? '发布纳新' : '编辑纳新'"
+      :title="recruitmentFormMode === 'create' ? '新建纳新' : '编辑草稿'"
       width="640px"
     >
       <el-form
@@ -948,17 +1082,13 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="纳新状态" prop="recruitStatus">
-          <el-radio-group v-model="recruitmentForm.recruitStatus">
-            <el-radio-button label="draft">草稿</el-radio-button>
-            <el-radio-button label="published">申请中</el-radio-button>
-            <el-radio-button label="closed">已结束</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="recruitmentDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitRecruitment">保存</el-button>
+        <el-button :loading="saving" @click="submitRecruitment('draft')">保存草稿</el-button>
+        <el-button type="primary" :loading="saving" @click="submitRecruitment('pending_review')">
+          提交审核
+        </el-button>
       </template>
     </el-dialog>
 
@@ -1053,6 +1183,10 @@ onUnmounted(() => {
   margin: 16px 0;
 }
 
+.recruitment-tabs {
+  margin-top: 8px;
+}
+
 .filter-control {
   width: 180px;
 }
@@ -1065,6 +1199,11 @@ onUnmounted(() => {
 .muted,
 .description {
   color: var(--el-text-color-secondary);
+}
+
+.tiny {
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 .description {

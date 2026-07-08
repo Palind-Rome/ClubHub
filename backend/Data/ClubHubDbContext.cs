@@ -154,6 +154,10 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Recruitment>(e =>
         {
             e.HasKey(r => r.RecruitId);
+            e.HasOne(r => r.Creator)
+             .WithMany()
+             .HasForeignKey(r => r.CreatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
             e.HasMany(r => r.Applications)
              .WithOne(a => a.Recruitment)
              .HasForeignKey(a => a.RecruitId)

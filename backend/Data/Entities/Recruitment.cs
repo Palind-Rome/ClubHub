@@ -32,10 +32,15 @@ public class Recruitment
     [Column("RECRUIT_STATUS")]
     public string? RecruitStatus { get; set; }
 
+    [Column("CREATOR_USER_ID")]
+    public int? CreatorUserId { get; set; }
+
     [Column("CREATED_AT")]
     public DateTime CreatedAt { get; set; }
 
     public Club? Club { get; set; }
+
+    public User? Creator { get; set; }
 
     public ICollection<RecruitmentApplication> Applications { get; set; } = new List<RecruitmentApplication>();
 }

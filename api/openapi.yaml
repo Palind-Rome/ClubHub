@@ -782,7 +782,7 @@ paths:
   /api/recruitments:
     get:
       summary: 查询社团招募列表
-      description: 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+      description: 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
       operationId: getRecruitments
       parameters:
         - name: viewerUserId
@@ -801,7 +801,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [draft, published, closed]
+            enum: [draft, pending_review, not_started, accepting, ended]
       responses:
         "200":
           description: 招募列表
@@ -816,8 +816,8 @@ paths:
         "404":
           description: 当前用户不存在
     post:
-      summary: 发布社团招募
-      description: 系统管理员或目标社团的社团干部、负责人可以发布招募。
+      summary: 创建社团招募
+      description: 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
       operationId: createRecruitment
       requestBody:
         required: true
@@ -839,12 +839,12 @@ paths:
         "404":
           description: 当前用户或社团不存在
         "409":
-          description: 社团状态不允许发布招募或同一时间已有招募
+          description: 社团状态不允许创建招募
 
   /api/recruitments/{recruitId}:
     patch:
       summary: 更新社团招募
-      description: 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+      description: 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
       operationId: updateRecruitment
       parameters:
         - name: recruitId
@@ -872,7 +872,67 @@ paths:
         "404":
           description: 当前用户或招募不存在
         "409":
-          description: 招募状态不允许维护或同一时间已有招募
+          description: 招募状态不允许维护
+    delete:
+      summary: 删除草稿招募
+      description: 招募创建人可以删除自己创建的草稿招募。
+      operationId: deleteRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 草稿已删除
+        "400":
+          description: 当前用户不合法
+        "403":
+          description: 当前用户不是草稿创建人
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 只有草稿招募可以删除
+
+  /api/recruitments/{recruitId}/review:
+    patch:
+      summary: 审核社团招募
+      description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+      operationId: reviewRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRecruitmentRequest"
+      responses:
+        "200":
+          description: 审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 审核内容不符合业务规则
+        "403":
+          description: 当前用户没有审核招募的权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 招募状态不允许审核或同一社团同时间已有已通过招募
 
   /api/recruitments/{recruitId}/applications:
     get:
@@ -2436,9 +2496,15 @@ components:
           nullable: true
         recruitStatus:
           type: string
-          enum: [draft, published, closed]
+          enum: [draft, pending_review, not_started, accepting, ended]
         recruitStatusText:
           type: string
+        creatorUserId:
+          type: integer
+          nullable: true
+        creatorName:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2458,7 +2524,16 @@ components:
         currentUserIsMember:
           type: boolean
           description: 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
+        isOwnProposal:
+          type: boolean
+          description: 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
         canManage:
+          type: boolean
+        canEdit:
+          type: boolean
+        canDelete:
+          type: boolean
+        canReview:
           type: boolean
       required:
         - id
@@ -2471,7 +2546,11 @@ components:
         - applicationCount
         - acceptedCount
         - currentUserIsMember
+        - isOwnProposal
         - canManage
+        - canEdit
+        - canDelete
+        - canReview
 
     RecruitmentApplication:
       type: object
@@ -2559,8 +2638,8 @@ components:
           minLength: 1
         recruitStatus:
           type: string
-          enum: [draft, published, closed]
-          default: published
+          enum: [draft, pending_review]
+          default: draft
       required:
         - currentUserId
         - clubId
@@ -2599,9 +2678,23 @@ components:
           nullable: true
         recruitStatus:
           type: string
+          enum: [draft, pending_review]
           nullable: true
       required:
         - currentUserId
+
+    ReviewRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected]
+      required:
+        - currentUserId
+        - decision
 
     CreateRecruitmentApplicationRequest:
       type: object
