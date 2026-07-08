@@ -77,6 +77,17 @@ jobs:
             ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.tag }}
             ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.sha_tag }}
 
+      # ---- 必需 Secret 缺失时尽早失败，避免部署出空连接串的坏容器 ----
+      - name: 校验部署 Secret
+        shell: bash
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+        run: |
+          if [ -z "${DB_CONNECTION_STRING:-}" ]; then
+            echo "::error::缺少 GitHub Secret：DB_CONNECTION_STRING。请先在仓库或目标环境的 Secrets 中配置 Oracle 连接串。"
+            exit 1
+          fi
+
       # ---- 准备服务器部署目录和网络 ----
       - name: 准备服务器部署目录
         uses: appleboy/ssh-action@v1
@@ -102,17 +113,20 @@ jobs:
           target: ${{ secrets.DEPLOY_PATH }}
 
       # ---- 服务器上拉取镜像并重启，最多重试 3 次 ----
-      - name: 部署到服务器（第 1 次）
-        id: deploy_attempt_1
-        continue-on-error: true
+      - name: 部署到服务器
         uses: appleboy/ssh-action@v1
-        with: &deploy_server
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           timeout: 60s
           command_timeout: 20m
+          envs: DB_CONNECTION_STRING,GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -134,6 +148,21 @@ jobs:
               done
             }
 
+            write_env_var() {
+              key="$1"
+              value="$2"
+              tmp="$(mktemp)"
+
+              if [ -f .env ]; then
+                grep -v "^${key}=" .env > "$tmp" || true
+              fi
+
+              escaped_value="$(printf "%s" "$value" | sed "s/'/'\\\\''/g")"
+              printf "%s='%s'\n" "$key" "$escaped_value" >> "$tmp"
+              mv "$tmp" .env
+              chmod 600 .env
+            }
+
             wait_for_services() {
               docker compose ps
               if ! docker compose ps --services --status running | grep -q "^backend$"; then
@@ -148,39 +177,47 @@ jobs:
               fi
             }
 
-            echo "=== 写入数据库连接串 ==="
-            echo "DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" >> .env
+            deploy_once() {
+              echo "=== 写入数据库连接串 ==="
+              if [ -z "${DB_CONNECTION_STRING:-}" ]; then
+                echo "!!! DB_CONNECTION_STRING 为空，请检查 GitHub Secret 配置 !!!"
+                return 1
+              fi
+              write_env_var DB_CONNECTION_STRING "$DB_CONNECTION_STRING"
 
-            echo "=== 登录 ghcr.io ==="
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+              echo "=== 登录 ghcr.io ==="
+              printf "%s" "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            echo "=== 拉取新镜像 ==="
-            retry 3 20 docker compose pull
+              echo "=== 拉取新镜像 ==="
+              retry 3 20 docker compose pull
 
-            echo "=== 启动服务 ==="
-            retry 3 20 docker compose up -d
+              echo "=== 启动服务 ==="
+              retry 3 20 docker compose up -d
 
-            echo "=== 等待服务启动 ==="
-            sleep 10
-            retry 6 10 wait_for_services
+              echo "=== 等待服务启动 ==="
+              sleep 10
+              retry 6 10 wait_for_services
 
-            echo "=== 应用健康检查 ==="
-            retry 6 10 curl -fsS http://127.0.0.1/api/health
+              echo "=== 应用健康检查 ==="
+              retry 6 10 curl -fsS http://127.0.0.1/api/health
+            }
+
+            attempt=1
+            until deploy_once; do
+              status=$?
+              if [ "$attempt" -ge 3 ]; then
+                echo "!!! 部署失败，已尝试 ${attempt} 次 !!!"
+                docker compose ps || true
+                docker compose logs --tail 100 || true
+                exit "$status"
+              fi
+              attempt=$((attempt + 1))
+              echo "部署失败（退出码 ${status}），20s 后重试 ${attempt}/3"
+              sleep 20
+            done
 
             echo "=== 部署成功 ==="
             docker compose ps
 
             echo "=== 清理旧镜像 ==="
             docker image prune -af --filter "until=24h"
-
-      - name: 部署到服务器（第 2 次）
-        id: deploy_attempt_2
-        if: steps.deploy_attempt_1.outcome == 'failure'
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1
-        with: *deploy_server
-
-      - name: 部署到服务器（第 3 次）
-        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure'
-        uses: appleboy/ssh-action@v1
-        with: *deploy_server
