@@ -103,6 +103,11 @@ import {
   DissolveClubRequestToJSON,
 } from "../models/DissolveClubRequest";
 import {
+  type ExitClubMemberRequest,
+  ExitClubMemberRequestFromJSON,
+  ExitClubMemberRequestToJSON,
+} from "../models/ExitClubMemberRequest";
+import {
   type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
@@ -271,6 +276,11 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
+export interface ExitCurrentClubMemberRequest {
+  clubId: number;
+  exitClubMemberRequest: ExitClubMemberRequest;
+}
+
 export interface GetActivityByIdRequest {
   activityId: number;
 }
@@ -341,8 +351,18 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
+export interface RefreshAuthSessionRequest {
+  userId: number;
+}
+
 export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
+}
+
+export interface RemoveClubMemberRequest {
+  clubId: number;
+  memberId: number;
+  exitClubMemberRequest: ExitClubMemberRequest;
 }
 
 export interface ReviewActivityOperationRequest {
@@ -1317,6 +1337,69 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.dissolveClubRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for exitCurrentClubMember without sending the request
+   */
+  async exitCurrentClubMemberRequestOpts(
+    requestParameters: ExitCurrentClubMemberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling exitCurrentClubMember().',
+      );
+    }
+
+    if (requestParameters["exitClubMemberRequest"] == null) {
+      throw new runtime.RequiredError(
+        "exitClubMemberRequest",
+        'Required parameter "exitClubMemberRequest" was null or undefined when calling exitCurrentClubMember().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/self/exit`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
+    };
+  }
+
+  /**
+   * 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 学生主动退出社团
+   */
+  async exitCurrentClubMemberRaw(
+    requestParameters: ExitCurrentClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.exitCurrentClubMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 学生主动退出社团
+   */
+  async exitCurrentClubMember(
+    requestParameters: ExitCurrentClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.exitCurrentClubMemberRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -2321,6 +2404,63 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for refreshAuthSession without sending the request
+   */
+  async refreshAuthSessionRequestOpts(
+    requestParameters: RefreshAuthSessionRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling refreshAuthSession().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["userId"] != null) {
+      queryParameters["userId"] = requestParameters["userId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/auth/session`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSessionRaw(
+    requestParameters: RefreshAuthSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.refreshAuthSessionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
+  }
+
+  /**
+   * 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSession(
+    requestParameters: RefreshAuthSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AuthResponse> {
+    const response = await this.refreshAuthSessionRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for registerUser without sending the request
    */
   async registerUserRequestOpts(
@@ -2372,6 +2512,80 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<AuthResponse> {
     const response = await this.registerUserRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for removeClubMember without sending the request
+   */
+  async removeClubMemberRequestOpts(
+    requestParameters: RemoveClubMemberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    if (requestParameters["memberId"] == null) {
+      throw new runtime.RequiredError(
+        "memberId",
+        'Required parameter "memberId" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    if (requestParameters["exitClubMemberRequest"] == null) {
+      throw new runtime.RequiredError(
+        "exitClubMemberRequest",
+        'Required parameter "exitClubMemberRequest" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/{memberId}/exit`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{memberId}",
+      encodeURIComponent(String(requestParameters["memberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 移出社团成员
+   */
+  async removeClubMemberRaw(
+    requestParameters: RemoveClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.removeClubMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 移出社团成员
+   */
+  async removeClubMember(
+    requestParameters: RemoveClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.removeClubMemberRaw(requestParameters, initOverrides);
   }
 
   /**

@@ -23,6 +23,7 @@ export * from "./CreateProjectRequest";
 export * from "./CreateRecruitmentApplicationRequest";
 export * from "./CreateRecruitmentRequest";
 export * from "./DissolveClubRequest";
+export * from "./ExitClubMemberRequest";
 export * from "./HealthStatus";
 export * from "./LoginRequest";
 export * from "./MarkNoticeReadRequest";
