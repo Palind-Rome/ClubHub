@@ -1,4 +1,4 @@
-﻿using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubHub.Api.Data;
