@@ -88,6 +88,16 @@ import {
   CreateProjectRequestToJSON,
 } from "../models/CreateProjectRequest";
 import {
+  type CreateRecruitmentApplicationRequest,
+  CreateRecruitmentApplicationRequestFromJSON,
+  CreateRecruitmentApplicationRequestToJSON,
+} from "../models/CreateRecruitmentApplicationRequest";
+import {
+  type CreateRecruitmentRequest,
+  CreateRecruitmentRequestFromJSON,
+  CreateRecruitmentRequestToJSON,
+} from "../models/CreateRecruitmentRequest";
+import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -124,6 +134,12 @@ import {
   PermissionDefinitionToJSON,
 } from "../models/PermissionDefinition";
 import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
+import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
+import {
+  type RecruitmentApplication,
+  RecruitmentApplicationFromJSON,
+  RecruitmentApplicationToJSON,
+} from "../models/RecruitmentApplication";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -144,6 +160,11 @@ import {
   ReviewProjectRequestFromJSON,
   ReviewProjectRequestToJSON,
 } from "../models/ReviewProjectRequest";
+import {
+  type ReviewRecruitmentApplicationRequest,
+  ReviewRecruitmentApplicationRequestFromJSON,
+  ReviewRecruitmentApplicationRequestToJSON,
+} from "../models/ReviewRecruitmentApplicationRequest";
 import {
   type RoleAssignmentResult,
   RoleAssignmentResultFromJSON,
@@ -174,6 +195,11 @@ import {
   UpdateClubRequestFromJSON,
   UpdateClubRequestToJSON,
 } from "../models/UpdateClubRequest";
+import {
+  type UpdateRecruitmentRequest,
+  UpdateRecruitmentRequestFromJSON,
+  UpdateRecruitmentRequestToJSON,
+} from "../models/UpdateRecruitmentRequest";
 import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
 
 export interface AssignProjectLeaderOperationRequest {
@@ -231,6 +257,15 @@ export interface CreateProjectOperationRequest {
   createProjectRequest: CreateProjectRequest;
 }
 
+export interface CreateRecruitmentOperationRequest {
+  createRecruitmentRequest: CreateRecruitmentRequest;
+}
+
+export interface CreateRecruitmentApplicationOperationRequest {
+  recruitId: number;
+  createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
+}
+
 export interface DissolveClubOperationRequest {
   clubId: number;
   dissolveClubRequest: DissolveClubRequest;
@@ -281,6 +316,17 @@ export interface GetProjectsRequest {
   pageSize?: number;
 }
 
+export interface GetRecruitmentApplicationsRequest {
+  recruitId: number;
+  viewerUserId: number;
+}
+
+export interface GetRecruitmentsRequest {
+  viewerUserId: number;
+  clubId?: number;
+  status?: GetRecruitmentsStatusEnum;
+}
+
 export interface GetUsersRequest {
   viewerUserId: number;
   clubId?: number;
@@ -314,6 +360,11 @@ export interface ReviewProjectOperationRequest {
   reviewProjectRequest: ReviewProjectRequest;
 }
 
+export interface ReviewRecruitmentApplicationOperationRequest {
+  applicationId: number;
+  reviewRecruitmentApplicationRequest: ReviewRecruitmentApplicationRequest;
+}
+
 export interface UpdateActivityCheckinSettingsRequest {
   activityId: number;
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
@@ -333,6 +384,11 @@ export interface UpdateClubMemberTermOperationRequest {
 export interface UpdateClubProfileOperationRequest {
   clubId: number;
   updateClubProfileRequest: UpdateClubProfileRequest;
+}
+
+export interface UpdateRecruitmentOperationRequest {
+  recruitId: number;
+  updateRecruitmentRequest: UpdateRecruitmentRequest;
 }
 
 /**
@@ -1074,6 +1130,133 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createRecruitment without sending the request
+   */
+  async createRecruitmentRequestOpts(
+    requestParameters: CreateRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createRecruitmentRequest",
+        'Required parameter "createRecruitmentRequest" was null or undefined when calling createRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateRecruitmentRequestToJSON(requestParameters["createRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以发布招募。
+   * 发布社团招募
+   */
+  async createRecruitmentRaw(
+    requestParameters: CreateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.createRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以发布招募。
+   * 发布社团招募
+   */
+  async createRecruitment(
+    requestParameters: CreateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.createRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createRecruitmentApplication without sending the request
+   */
+  async createRecruitmentApplicationRequestOpts(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling createRecruitmentApplication().',
+      );
+    }
+
+    if (requestParameters["createRecruitmentApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createRecruitmentApplicationRequest",
+        'Required parameter "createRecruitmentApplicationRequest" was null or undefined when calling createRecruitmentApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateRecruitmentApplicationRequestToJSON(
+        requestParameters["createRecruitmentApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+   * 提交招募报名
+   */
+  async createRecruitmentApplicationRaw(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RecruitmentApplication>> {
+    const requestOptions = await this.createRecruitmentApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RecruitmentApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+   * 提交招募报名
+   */
+  async createRecruitmentApplication(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RecruitmentApplication> {
+    const response = await this.createRecruitmentApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for dissolveClub without sending the request
    */
   async dissolveClubRequestOpts(
@@ -1743,6 +1926,141 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getRecruitmentApplications without sending the request
+   */
+  async getRecruitmentApplicationsRequestOpts(
+    requestParameters: GetRecruitmentApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+   * 查询招募报名列表
+   */
+  async getRecruitmentApplicationsRaw(
+    requestParameters: GetRecruitmentApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<RecruitmentApplication>>> {
+    const requestOptions = await this.getRecruitmentApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(RecruitmentApplicationFromJSON),
+    );
+  }
+
+  /**
+   * 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+   * 查询招募报名列表
+   */
+  async getRecruitmentApplications(
+    requestParameters: GetRecruitmentApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<RecruitmentApplication>> {
+    const response = await this.getRecruitmentApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getRecruitments without sending the request
+   */
+  async getRecruitmentsRequestOpts(
+    requestParameters: GetRecruitmentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getRecruitments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+   * 查询社团招募列表
+   */
+  async getRecruitmentsRaw(
+    requestParameters: GetRecruitmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Recruitment>>> {
+    const requestOptions = await this.getRecruitmentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RecruitmentFromJSON));
+  }
+
+  /**
+   * 学生可查看开放招募和自己的报名状态；系统管理员或社团干部可查看可管理社团的招募。
+   * 查询社团招募列表
+   */
+  async getRecruitments(
+    requestParameters: GetRecruitmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Recruitment>> {
+    const response = await this.getRecruitmentsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getRoleDefinitions without sending the request
    */
   async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -2251,6 +2569,77 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewRecruitmentApplication without sending the request
+   */
+  async reviewRecruitmentApplicationRequestOpts(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling reviewRecruitmentApplication().',
+      );
+    }
+
+    if (requestParameters["reviewRecruitmentApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewRecruitmentApplicationRequest",
+        'Required parameter "reviewRecruitmentApplicationRequest" was null or undefined when calling reviewRecruitmentApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/applications/{applicationId}/review`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewRecruitmentApplicationRequestToJSON(
+        requestParameters["reviewRecruitmentApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+   * 筛选招募报名
+   */
+  async reviewRecruitmentApplicationRaw(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RecruitmentApplication>> {
+    const requestOptions = await this.reviewRecruitmentApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RecruitmentApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+   * 筛选招募报名
+   */
+  async reviewRecruitmentApplication(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RecruitmentApplication> {
+    const response = await this.reviewRecruitmentApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateActivityCheckinSettings without sending the request
    */
   async updateActivityCheckinSettingsRequestOpts(
@@ -2517,6 +2906,73 @@ export class DefaultApi extends runtime.BaseAPI {
     const response = await this.updateClubProfileRaw(requestParameters, initOverrides);
     return await response.value();
   }
+
+  /**
+   * Creates request options for updateRecruitment without sending the request
+   */
+  async updateRecruitmentRequestOpts(
+    requestParameters: UpdateRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling updateRecruitment().',
+      );
+    }
+
+    if (requestParameters["updateRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateRecruitmentRequest",
+        'Required parameter "updateRecruitmentRequest" was null or undefined when calling updateRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateRecruitmentRequestToJSON(requestParameters["updateRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+   * 更新社团招募
+   */
+  async updateRecruitmentRaw(
+    requestParameters: UpdateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.updateRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以维护招募内容和状态。
+   * 更新社团招募
+   */
+  async updateRecruitment(
+    requestParameters: UpdateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.updateRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
 }
 
 /**
@@ -2550,3 +3006,13 @@ export const GetNoticesTargetTypeEnum = {
 } as const;
 export type GetNoticesTargetTypeEnum =
   (typeof GetNoticesTargetTypeEnum)[keyof typeof GetNoticesTargetTypeEnum];
+/**
+ * @export
+ */
+export const GetRecruitmentsStatusEnum = {
+  Draft: "draft",
+  Published: "published",
+  Closed: "closed",
+} as const;
+export type GetRecruitmentsStatusEnum =
+  (typeof GetRecruitmentsStatusEnum)[keyof typeof GetRecruitmentsStatusEnum];
