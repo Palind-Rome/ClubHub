@@ -1650,6 +1650,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有场地预约审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "409":
           description: 审批通过时发现同一场地存在时间重叠的已通过预约
           content:

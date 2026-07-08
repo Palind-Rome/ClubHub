@@ -1,4 +1,5 @@
 using ClubHub.Api.Data;
+using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.OpenAPITools.Models;
@@ -15,6 +16,7 @@ public class VenueReservationsController : ControllerBase
     private const string ReservationStatusPending = "pending";
     private const string ReservationStatusApproved = "approved";
     private const string ReservationStatusRejected = "rejected";
+    private const string ReviewPermission = "venue:review";
 
     private static readonly HashSet<string> AllowedReservationStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -25,8 +27,13 @@ public class VenueReservationsController : ControllerBase
     };
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthService _authService;
 
-    public VenueReservationsController(ClubHubDbContext db) => _db = db;
+    public VenueReservationsController(ClubHubDbContext db, AuthService authService)
+    {
+        _db = db;
+        _authService = authService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -157,11 +164,27 @@ public class VenueReservationsController : ControllerBase
         var reviewer = await _db.Users.FindAsync(req.ReviewerUserId);
         if (reviewer is null) return NotFound(Error("reviewer_not_found", "审批人不存在。"));
 
+        var permission = await _authService.CheckPermissionAsync(req.ReviewerUserId, ReviewPermission, null);
+        if (!permission.Succeeded)
+        {
+            return StatusCode(permission.StatusCode, Error("venue_review_permission_check_failed", permission.ErrorMessage ?? "审批权限校验失败。"));
+        }
+
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(403, Error("venue_review_forbidden", permission.Value?.Message ?? "当前用户没有场地预约审批权限。"));
+        }
+
         if (req.Approved)
         {
             if (reservation.StartAt is null || reservation.EndAt is null)
             {
                 return BadRequest(Error("reservation_time_invalid", "预约时间数据不完整，不能审批通过。"));
+            }
+
+            if (ToUtc(reservation.StartAt.Value) <= DateTime.UtcNow)
+            {
+                return BadRequest(Error("reservation_start_time_not_future", "预约开始时间必须晚于当前时间，不能审批通过。"));
             }
 
             if (await HasApprovedConflictAsync(

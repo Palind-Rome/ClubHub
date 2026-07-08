@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
+import VenueReservationReview from "./VenueReservationReview.vue";
 
 interface Venue {
   id: number;
@@ -16,7 +17,9 @@ interface Venue {
 
 interface VenueReservation {
   id: number;
+  venueId: number;
   venueName: string;
+  clubId?: number;
   startTime: string;
   endTime: string;
   status: string;
@@ -40,8 +43,12 @@ const venues = ref<Venue[]>([]);
 const loading = ref(false);
 const error = ref("");
 const dialogVisible = ref(false);
+const reviewDialogVisible = ref(false);
+const approvedSlotsVisible = ref(false);
 const submitting = ref(false);
 const latestReservation = ref<VenueReservation | null>(null);
+const approvedReservations = ref<VenueReservation[]>([]);
+const approvedSlotsVenue = ref<Venue | null>(null);
 const reservationFormRef = ref<FormInstance>();
 const auth = ref(readAuth());
 
@@ -60,17 +67,27 @@ const form = reactive<ReservationForm>({
 });
 
 const selectedVenue = computed(() => venues.value.find((venue) => venue.id === form.venueId));
+const selectedVenueApprovedSlots = computed(() => {
+  if (!approvedSlotsVenue.value) return [];
+  return approvedReservationsForVenue(approvedSlotsVenue.value.id);
+});
 const applicantName = computed(() => auth.value?.user.realName ?? "未登录");
 const canSubmit = computed(() => Boolean(auth.value?.user.id));
+const canReview = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("venue:review") || permissions.includes("*");
+});
 
 const statusLabel: Record<string, string> = {
   available: "可预约",
+  occupied: "占用中",
   maintenance: "维护中",
   disabled: "停用",
 };
 
-const statusType: Record<string, "success" | "warning" | "info"> = {
+const statusType: Record<string, "success" | "warning" | "info" | "danger"> = {
   available: "success",
+  occupied: "danger",
   maintenance: "warning",
   disabled: "info",
 };
@@ -83,6 +100,14 @@ const rules: FormRules<ReservationForm> = {
       validator: (_rule, value, callback) => {
         if (isBeforeNow(value)) {
           callback(new Error("开始时间不能早于当前时间"));
+          return;
+        }
+        if (
+          form.venueId &&
+          form.endTime &&
+          hasApprovedConflict(form.venueId, value, form.endTime)
+        ) {
+          callback(new Error("申请时段不能覆盖当前已被预约时段"));
           return;
         }
         callback();
@@ -104,6 +129,10 @@ const rules: FormRules<ReservationForm> = {
         }
         if (new Date(value).getTime() <= new Date(form.startTime).getTime()) {
           callback(new Error("结束时间必须晚于开始时间"));
+          return;
+        }
+        if (form.venueId && hasApprovedConflict(form.venueId, form.startTime, value)) {
+          callback(new Error("申请时段不能覆盖当前已被预约时段"));
           return;
         }
         callback();
@@ -150,6 +179,21 @@ async function loadVenues() {
   }
 }
 
+async function loadApprovedReservations() {
+  try {
+    const res = await fetch("/api/venue-reservations?status=approved");
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+    const reservations = (await res.json()) as VenueReservation[];
+    approvedReservations.value = reservations.filter(isActiveApprovedReservation);
+  } catch {
+    approvedReservations.value = [];
+  }
+}
+
+async function refreshVenueData() {
+  await Promise.all([loadVenues(), loadApprovedReservations()]);
+}
+
 function openReservation(venue: Venue) {
   latestReservation.value = null;
   form.venueId = venue.id;
@@ -159,6 +203,11 @@ function openReservation(venue: Venue) {
   form.endTime = "";
   form.purpose = "";
   dialogVisible.value = true;
+}
+
+function openApprovedSlots(venue: Venue) {
+  approvedSlotsVenue.value = venue;
+  approvedSlotsVisible.value = true;
 }
 
 async function submitReservation() {
@@ -174,6 +223,13 @@ async function submitReservation() {
 
   submitting.value = true;
   try {
+    await loadApprovedReservations();
+    if (hasApprovedConflict(form.venueId, form.startTime, form.endTime)) {
+      ElMessage.error("申请时段不能覆盖当前已被预约时段。");
+      submitting.value = false;
+      return;
+    }
+
     const res = await fetch("/api/venue-reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -207,7 +263,83 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString();
 }
 
-onMounted(loadVenues);
+function formatDateOnly(value: string) {
+  return new Date(value).toLocaleDateString();
+}
+
+function formatTimeOnly(value: string) {
+  return new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatSlotRange(slot: VenueReservation) {
+  return `${formatTimeOnly(slot.startTime)} - ${formatTimeOnly(slot.endTime)}`;
+}
+
+function formatSlotDuration(slot: VenueReservation) {
+  const minutes = Math.max(
+    0,
+    Math.round((new Date(slot.endTime).getTime() - new Date(slot.startTime).getTime()) / 60000),
+  );
+  if (minutes < 60) return `${minutes} 分钟`;
+
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return restMinutes === 0 ? `${hours} 小时` : `${hours} 小时 ${restMinutes} 分钟`;
+}
+
+function openReviewDialog() {
+  reviewDialogVisible.value = true;
+}
+
+function findVenueOccupancy(venue: Venue) {
+  return approvedReservationsForVenue(venue.id).sort(
+    (a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime(),
+  )[0];
+}
+
+function approvedReservationsForVenue(venueId: number) {
+  return approvedReservations.value
+    .filter(
+      (reservation) => reservation.venueId === venueId && isActiveApprovedReservation(reservation),
+    )
+    .slice()
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+}
+
+function isActiveApprovedReservation(reservation: VenueReservation) {
+  return reservation.status === "approved" && new Date(reservation.endTime).getTime() > Date.now();
+}
+
+function hasApprovedConflict(venueId: number, startValue?: string, endValue?: string) {
+  if (!startValue || !endValue) return false;
+  const startTime = new Date(startValue).getTime();
+  const endTime = new Date(endValue).getTime();
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return false;
+
+  return approvedReservationsForVenue(venueId).some((reservation) => {
+    const approvedStart = new Date(reservation.startTime).getTime();
+    const approvedEnd = new Date(reservation.endTime).getTime();
+    return approvedStart < endTime && approvedEnd > startTime;
+  });
+}
+
+function venueStatus(venue: Venue) {
+  return findVenueOccupancy(venue) ? "occupied" : venue.status;
+}
+
+function venueStatusLabel(venue: Venue) {
+  const status = venueStatus(venue);
+  return statusLabel[status] || status;
+}
+
+function venueStatusType(venue: Venue) {
+  return statusType[venueStatus(venue)] || "info";
+}
+
+onMounted(refreshVenueData);
 </script>
 
 <template>
@@ -217,7 +349,12 @@ onMounted(loadVenues);
         <h2>场地预约</h2>
         <p class="subtitle">选择可用场地，提交预约申请后等待管理员审批。</p>
       </div>
-      <el-button :loading="loading" @click="loadVenues">刷新场地</el-button>
+      <div class="toolbar-actions">
+        <el-button v-if="canReview" type="primary" plain @click="openReviewDialog">
+          进入预约审批
+        </el-button>
+        <el-button :loading="loading" @click="refreshVenueData">刷新场地</el-button>
+      </div>
     </div>
 
     <el-alert
@@ -256,22 +393,28 @@ onMounted(loadVenues);
       <el-table-column prop="capacity" label="容量" width="90" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag :type="statusType[row.status] || 'info'" size="small">
-            {{ statusLabel[row.status] || row.status }}
+          <el-tag :type="venueStatusType(row)" size="small">
+            {{ venueStatusLabel(row) }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="managerUserId" label="管理员 ID" width="110" />
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
-          <el-button
-            type="primary"
-            size="small"
-            :disabled="row.status !== 'available' || !canSubmit"
-            @click="openReservation(row)"
-          >
-            申请预约
-          </el-button>
+          <div class="row-actions">
+            <el-button size="small" @click="openApprovedSlots(row)">
+              已预约时段
+              <span class="slot-count">{{ approvedReservationsForVenue(row.id).length }}</span>
+            </el-button>
+            <el-button
+              type="primary"
+              size="small"
+              :disabled="row.status !== 'available' || !canSubmit"
+              @click="openReservation(row)"
+            >
+              申请预约
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -336,6 +479,34 @@ onMounted(loadVenues);
         >
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="approvedSlotsVisible"
+      :title="`${approvedSlotsVenue?.name ?? '场地'}已预约时段`"
+      width="760px"
+    >
+      <el-alert
+        title="新申请的开始和结束时间不能覆盖以下任何已预约时段。"
+        type="info"
+        show-icon
+        class="notice"
+      />
+      <el-empty v-if="selectedVenueApprovedSlots.length === 0" description="该场地暂无已预约时段" />
+      <div v-else class="slot-timeline">
+        <div v-for="slot in selectedVenueApprovedSlots" :key="slot.id" class="slot-card">
+          <div class="slot-date">{{ formatDateOnly(slot.startTime) }}</div>
+          <div class="slot-bar">
+            <span class="slot-dot"></span>
+            <div>
+              <div class="slot-range">{{ formatSlotRange(slot) }}</div>
+              <div class="muted">持续 {{ formatSlotDuration(slot) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
+    <VenueReservationReview v-model="reviewDialogVisible" @reviewed="loadApprovedReservations" />
   </div>
 </template>
 
@@ -354,6 +525,10 @@ onMounted(loadVenues);
 .toolbar h2 {
   margin: 0;
 }
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
 .subtitle {
   margin: 6px 0 0;
   color: var(--el-text-color-secondary);
@@ -368,5 +543,73 @@ onMounted(loadVenues);
   margin-left: 10px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.slot-count {
+  margin-left: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.slot-timeline {
+  display: grid;
+  gap: 10px;
+}
+.slot-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: #fff;
+}
+.slot-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  font-weight: 600;
+}
+.slot-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 3px solid var(--el-color-primary-light-5);
+  padding-left: 14px;
+}
+.slot-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--el-color-primary);
+  box-shadow: 0 0 0 4px var(--el-color-primary-light-9);
+}
+.slot-range {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+.muted {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .slot-card {
+    grid-template-columns: 1fr;
+  }
+
+  .slot-date {
+    justify-content: flex-start;
+    min-height: auto;
+    padding: 8px 10px;
+  }
 }
 </style>
