@@ -295,9 +295,11 @@ function openReviewDialog() {
 }
 
 function findVenueOccupancy(venue: Venue) {
-  return approvedReservationsForVenue(venue.id).sort(
-    (a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime(),
-  )[0];
+  return approvedReservations.value
+    .filter(
+      (reservation) => reservation.venueId === venue.id && isCurrentApprovedReservation(reservation),
+    )
+    .sort((a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime())[0];
 }
 
 function approvedReservationsForVenue(venueId: number) {
@@ -311,6 +313,13 @@ function approvedReservationsForVenue(venueId: number) {
 
 function isActiveApprovedReservation(reservation: VenueReservation) {
   return reservation.status === "approved" && new Date(reservation.endTime).getTime() > Date.now();
+}
+
+function isCurrentApprovedReservation(reservation: VenueReservation) {
+  const now = Date.now();
+  const startTime = new Date(reservation.startTime).getTime();
+  const endTime = new Date(reservation.endTime).getTime();
+  return reservation.status === "approved" && startTime <= now && endTime > now;
 }
 
 function hasApprovedConflict(venueId: number, startValue?: string, endValue?: string) {
