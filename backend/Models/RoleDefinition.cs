@@ -1,7 +1,7 @@
 ﻿/*
  * ClubHub API
  *
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,34 +20,30 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 系统预置角色定义。
-    /// </summary>
+    /// 绯荤粺棰勭疆瑙掕壊瀹氫箟銆?    /// </summary>
     [DataContract]
     public partial class RoleDefinition 
     {
         /// <summary>
-        /// 角色编码。
-        /// </summary>
-        /// <value>角色编码。</value>
+        /// 瑙掕壊缂栫爜銆?        /// </summary>
+        /// <value>瑙掕壊缂栫爜銆?/value>
         /* <example>STUDENT</example> */
         [Required]
         [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
-        /// 角色名称。
-        /// </summary>
-        /// <value>角色名称。</value>
-        /* <example>普通学生</example> */
+        /// 瑙掕壊鍚嶇О銆?        /// </summary>
+        /// <value>瑙掕壊鍚嶇О銆?/value>
+        /* <example>鏅€氬鐢?/example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
 
         /// <summary>
-        /// 角色作用域。
-        /// </summary>
-        /// <value>角色作用域。</value>
+        /// 瑙掕壊浣滅敤鍩熴€?        /// </summary>
+        /// <value>瑙掕壊浣滅敤鍩熴€?/value>
         
         public enum ScopeEnum
         {
@@ -66,27 +62,24 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// 角色作用域。
-        /// </summary>
-        /// <value>角色作用域。</value>
+        /// 瑙掕壊浣滅敤鍩熴€?        /// </summary>
+        /// <value>瑙掕壊浣滅敤鍩熴€?/value>
         /* <example>system</example> */
         [Required]
         [DataMember(Name="scope", EmitDefaultValue=true)]
         public ScopeEnum Scope { get; set; }
 
         /// <summary>
-        /// 角色业务说明。
-        /// </summary>
-        /// <value>角色业务说明。</value>
-        /* <example>注册后默认角色，可维护个人信息并浏览公开内容。</example> */
+        /// 瑙掕壊涓氬姟璇存槑銆?        /// </summary>
+        /// <value>瑙掕壊涓氬姟璇存槑銆?/value>
+        /* <example>娉ㄥ唽鍚庨粯璁よ鑹诧紝鍙淮鎶や釜浜轰俊鎭苟娴忚鍏紑鍐呭銆?/example> */
         [Required]
         [DataMember(Name="description", EmitDefaultValue=false)]
         public string Description { get; set; }
 
         /// <summary>
-        /// 角色拥有的权限编码列表。
-        /// </summary>
-        /// <value>角色拥有的权限编码列表。</value>
+        /// 瑙掕壊鎷ユ湁鐨勬潈闄愮紪鐮佸垪琛ㄣ€?        /// </summary>
+        /// <value>瑙掕壊鎷ユ湁鐨勬潈闄愮紪鐮佸垪琛ㄣ€?/value>
         /* <example>[&quot;profile:view&quot;,&quot;public:view&quot;]</example> */
         [Required]
         [DataMember(Name="permissions", EmitDefaultValue=false)]

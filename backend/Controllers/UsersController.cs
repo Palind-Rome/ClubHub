@@ -22,6 +22,17 @@ public class UsersController : ControllerBase
         "club leader"
     };
 
+    private static readonly HashSet<string> OfficerPositionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\u5e72\u90e8",
+        "\u90e8\u957f",
+        "\u526f\u90e8\u957f",
+        "\u793e\u56e2\u5e72\u90e8",
+        "officer",
+        "club officer",
+        "manager"
+    };
+
     public UsersController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
@@ -60,17 +71,24 @@ public class UsersController : ControllerBase
                 return NotFound(new { message = "社团不存在。" });
             }
 
-            if (!IsSystemAdmin(viewer) && !IsClubPrincipal(viewer, clubId.Value))
+            if (!IsSystemAdmin(viewer) && !IsClubPrincipal(viewer, clubId.Value) && !IsClubOfficer(viewer, clubId.Value))
             {
-                return StatusCode(403, new { message = "只有系统管理员或本社团负责人可以查看可分配成员。" });
+                return StatusCode(403, new { message = "只有系统管理员、本社团负责人或干部可以查看可分配成员。" });
             }
 
             query = query.Where(u =>
-                u.AccountStatus == null ||
-                u.AccountStatus == "" ||
-                u.AccountStatus.ToLower() == "active" ||
-                u.AccountStatus.ToLower() == "normal" ||
-                u.AccountStatus.ToLower() == "enabled");
+                (u.AccountStatus == null ||
+                 u.AccountStatus == "" ||
+                 u.AccountStatus.ToLower() == "active" ||
+                 u.AccountStatus.ToLower() == "normal" ||
+                 u.AccountStatus.ToLower() == "enabled") &&
+                u.ClubMemberships.Any(cm =>
+                    cm.ClubId == clubId.Value &&
+                    (cm.MemberStatus == null ||
+                     cm.MemberStatus == "" ||
+                     cm.MemberStatus.ToLower() == "active" ||
+                     cm.MemberStatus.ToLower() == "normal" ||
+                     cm.MemberStatus.ToLower() == "enabled")));
         }
         else if (!IsPlatformAdmin(viewer))
         {
@@ -99,6 +117,16 @@ public class UsersController : ControllerBase
             cm.ClubId == clubId &&
             IsActive(cm.MemberStatus) &&
             IsStrictPrincipalPosition(cm.PositionName));
+
+    internal static bool IsClubOfficer(User user, int clubId) =>
+        user.UserRoles.Any(ur =>
+            ur.ClubId == clubId &&
+            ur.Role is not null &&
+            KnownClubOfficerRoleCodes.Contains(Normalize(ur.Role.RoleCode))) ||
+        user.ClubMemberships.Any(cm =>
+            cm.ClubId == clubId &&
+            IsActive(cm.MemberStatus) &&
+            IsOfficerPosition(cm.PositionName));
 
     internal static bool IsActive(string? accountOrMemberStatus) =>
         string.IsNullOrWhiteSpace(accountOrMemberStatus) ||
@@ -179,6 +207,14 @@ public class UsersController : ControllerBase
         return PrincipalPositionNames.Contains(normalized);
     }
 
+    private static bool IsOfficerPosition(string? positionName)
+    {
+        if (string.IsNullOrWhiteSpace(positionName)) return false;
+
+        var normalized = positionName.Trim();
+        return OfficerPositionNames.Contains(normalized);
+    }
+
     private static string DisplayUser(User user)
     {
         var name = !string.IsNullOrWhiteSpace(user.RealName) ? user.RealName : user.Username;
@@ -204,6 +240,13 @@ public class UsersController : ControllerBase
         "club_leader",
         "club_manager",
         "president"
+    };
+
+    private static readonly HashSet<string> KnownClubOfficerRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "club_officer",
+        "officer",
+        "club_manager"
     };
 }
 

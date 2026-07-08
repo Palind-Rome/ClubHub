@@ -1,7 +1,7 @@
 ﻿/*
  * ClubHub API
  *
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,34 +20,30 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 权限目录项。
-    /// </summary>
+    /// 鏉冮檺鐩綍椤广€?    /// </summary>
     [DataContract]
     public partial class PermissionDefinition 
     {
         /// <summary>
-        /// 权限编码。
-        /// </summary>
-        /// <value>权限编码。</value>
+        /// 鏉冮檺缂栫爜銆?        /// </summary>
+        /// <value>鏉冮檺缂栫爜銆?/value>
         /* <example>profile:view</example> */
         [Required]
         [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
-        /// 权限展示名称。
-        /// </summary>
-        /// <value>权限展示名称。</value>
-        /* <example>查看个人信息</example> */
+        /// 鏉冮檺灞曠ず鍚嶇О銆?        /// </summary>
+        /// <value>鏉冮檺灞曠ず鍚嶇О銆?/value>
+        /* <example>鏌ョ湅涓汉淇℃伅</example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// 权限说明。
-        /// </summary>
-        /// <value>权限说明。</value>
-        /* <example>查看自己的账号、学工号和联系方式。</example> */
+        /// 鏉冮檺璇存槑銆?        /// </summary>
+        /// <value>鏉冮檺璇存槑銆?/value>
+        /* <example>鏌ョ湅鑷繁鐨勮处鍙枫€佸宸ュ彿鍜岃仈绯绘柟寮忋€?/example> */
         [Required]
         [DataMember(Name="description", EmitDefaultValue=false)]
         public string Description { get; set; }

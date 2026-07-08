@@ -1,7 +1,7 @@
 /*
  * ClubHub API
  *
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -26,6 +26,14 @@ namespace Org.OpenAPITools.Models
     public partial class CreateProjectRequest 
     {
         /// <summary>
+        /// 褰撳墠鎻愪氦绔嬮」鐢宠鐨勭敤鎴?ID锛涘悗绔嵁姝ゆ牎楠屽叾鏄惁涓虹郴缁熺鐞嗗憳鎴栨湰绀惧洟璐熻矗浜恒€?        /// </summary>
+        /// <value>褰撳墠鎻愪氦绔嬮」鐢宠鐨勭敤鎴?ID锛涘悗绔嵁姝ゆ牎楠屽叾鏄惁涓虹郴缁熺鐞嗗憳鎴栨湰绀惧洟璐熻矗浜恒€?/value>
+        /* <example>12</example> */
+        [Required]
+        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
+        public int CurrentUserId { get; set; }
+
+        /// <summary>
         /// Club that submits the project application.
         /// </summary>
         /// <value>Club that submits the project application.</value>
@@ -38,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// Project name.
         /// </summary>
         /// <value>Project name.</value>
-        /* <example>校园公益服务项目</example> */
+        /* <example>鏍″洯鍏泭鏈嶅姟椤圭洰</example> */
         [Required]
         [StringLength(100, MinimumLength=1)]
         [DataMember(Name="projectName", EmitDefaultValue=false)]
@@ -48,7 +56,7 @@ namespace Org.OpenAPITools.Models
         /// Optional project description.
         /// </summary>
         /// <value>Optional project description.</value>
-        /* <example>组织社团成员开展校园公益服务。</example> */
+        /* <example>缁勭粐绀惧洟鎴愬憳寮€灞曟牎鍥叕鐩婃湇鍔°€?/example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
@@ -79,8 +87,3 @@ namespace Org.OpenAPITools.Models
 
     }
 }
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 556da23 (chore(api): 从 openapi.yaml 自动生成 API 代码)

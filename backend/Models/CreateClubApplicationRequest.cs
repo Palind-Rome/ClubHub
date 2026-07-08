@@ -1,7 +1,7 @@
 ﻿/*
  * ClubHub API
  *
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class CreateClubApplicationRequest 
     {
         /// <summary>
-        /// 当前学生用户 ID，后端据此写入申请人并校验角色权限。
-        /// </summary>
-        /// <value>当前学生用户 ID，后端据此写入申请人并校验角色权限。</value>
+        /// 褰撳墠瀛︾敓鐢ㄦ埛 ID锛屽悗绔嵁姝ゅ啓鍏ョ敵璇蜂汉骞舵牎楠岃鑹叉潈闄愩€?        /// </summary>
+        /// <value>褰撳墠瀛︾敓鐢ㄦ埛 ID锛屽悗绔嵁姝ゅ啓鍏ョ敵璇蜂汉骞舵牎楠岃鑹叉潈闄愩€?/value>
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
@@ -72,16 +71,14 @@ namespace Org.OpenAPITools.Models
         public string MaterialUrl { get; set; }
 
         /// <summary>
-        /// 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
-        /// </summary>
-        /// <value>拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。</value>
+        /// 鎷熼個璇风殑鎸囧鑰佸笀鐢ㄦ埛 ID锛涘悗绔細鏍￠獙鏁欏笀韬唤骞剁淮鎶?ADVISOR 瑙掕壊鍏崇郴銆?        /// </summary>
+        /// <value>鎷熼個璇风殑鎸囧鑰佸笀鐢ㄦ埛 ID锛涘悗绔細鏍￠獙鏁欏笀韬唤骞剁淮鎶?ADVISOR 瑙掕壊鍏崇郴銆?/value>
         [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
         public int? AdvisorUserId { get; set; }
 
         /// <summary>
-        /// 历史兼容字段；新流程请使用 advisorUserId。
-        /// </summary>
-        /// <value>历史兼容字段；新流程请使用 advisorUserId。</value>
+        /// 鍘嗗彶鍏煎瀛楁锛涙柊娴佺▼璇蜂娇鐢?advisorUserId銆?        /// </summary>
+        /// <value>鍘嗗彶鍏煎瀛楁锛涙柊娴佺▼璇蜂娇鐢?advisorUserId銆?/value>
         [DataMember(Name="advisorName", EmitDefaultValue=true)]
         public string? AdvisorName { get; set; }
 

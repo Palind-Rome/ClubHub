@@ -1,7 +1,7 @@
 ﻿/*
  * ClubHub API
  *
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。 
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  * 
@@ -20,15 +20,13 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 角色分配结果。
-    /// </summary>
+    /// 瑙掕壊鍒嗛厤缁撴灉銆?    /// </summary>
     [DataContract]
     public partial class RoleAssignmentResult 
     {
         /// <summary>
-        /// 被分配角色的用户 ID。
-        /// </summary>
-        /// <value>被分配角色的用户 ID。</value>
+        /// 琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?        /// </summary>
+        /// <value>琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?/value>
         /* <example>2</example> */
         [Required]
         [DataMember(Name="targetUserId", EmitDefaultValue=true)]
@@ -42,19 +40,17 @@ namespace Org.OpenAPITools.Models
         public AuthRole Role { get; set; }
 
         /// <summary>
-        /// 该角色分配是否原本已存在。
-        /// </summary>
-        /// <value>该角色分配是否原本已存在。</value>
+        /// 璇ヨ鑹插垎閰嶆槸鍚﹀師鏈凡瀛樺湪銆?        /// </summary>
+        /// <value>璇ヨ鑹插垎閰嶆槸鍚﹀師鏈凡瀛樺湪銆?/value>
         /* <example>false</example> */
         [Required]
         [DataMember(Name="alreadyExists", EmitDefaultValue=true)]
         public bool AlreadyExists { get; set; }
 
         /// <summary>
-        /// 角色分配结果说明。
-        /// </summary>
-        /// <value>角色分配结果说明。</value>
-        /* <example>角色分配成功。</example> */
+        /// 瑙掕壊鍒嗛厤缁撴灉璇存槑銆?        /// </summary>
+        /// <value>瑙掕壊鍒嗛厤缁撴灉璇存槑銆?/value>
+        /* <example>瑙掕壊鍒嗛厤鎴愬姛銆?/example> */
         [Required]
         [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }
