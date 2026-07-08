@@ -1,4 +1,4 @@
-﻿using ClubHub.Api.Data;
+using ClubHub.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiProject = Org.OpenAPITools.Models.Project;
