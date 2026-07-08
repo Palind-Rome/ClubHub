@@ -19,10 +19,13 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
+    private const string RecruitmentPublished = "published";
+    private const string ApplicationAccepted = "accepted";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
     private const string ClubAdvisorRoleCode = "ADVISOR";
+    private const int MaxStudentClubMemberships = 3;
 
     private readonly ClubHubDbContext _db;
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
@@ -240,7 +243,8 @@ public class ClubsController : ControllerBase
             club.ClubStatus = ClubActive;
             club.PresidentUserId = club.ApplicantUserId;
             club.FoundedAt = now;
-            await EnsurePresidentMembershipAsync(club, now);
+            var membershipError = await EnsurePresidentMembershipAsync(club, now);
+            if (membershipError is not null) return membershipError;
         }
         else
         {
@@ -545,6 +549,12 @@ public class ClubsController : ControllerBase
             JoinAt = now,
             ContributionScore = req.ContributionScore ?? 0
         };
+
+        if (IsCurrentMemberTerm(member) &&
+            await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
+        {
+            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，当前已达到上限。" });
+        }
 
         _db.ClubMembers.Add(member);
 
@@ -864,6 +874,7 @@ public class ClubsController : ControllerBase
                 : today;
         }
 
+        await RemoveOngoingAcceptedRecruitmentApplicationsAsync(clubId, targetUserId);
         await RemoveClubMembershipRolesAsync(clubId, targetUserId);
         await _db.SaveChangesAsync();
         return NoContent();
@@ -916,6 +927,54 @@ public class ClubsController : ControllerBase
             (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
             (cm.TermStart == null || cm.TermStart <= today) &&
             (cm.TermEnd == null || cm.TermEnd >= today));
+    }
+
+    private async Task<int> CountCurrentMembershipClubsAsync(int userId, int? excludingClubId = null)
+    {
+        var today = BusinessToday();
+        var memberClubIds = await _db.ClubMembers
+            .Where(cm =>
+                cm.UserId == userId &&
+                (excludingClubId == null || cm.ClubId != excludingClubId.Value) &&
+                (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
+                (cm.TermStart == null || cm.TermStart <= today) &&
+                (cm.TermEnd == null || cm.TermEnd >= today))
+            .Select(cm => cm.ClubId)
+            .ToListAsync();
+
+        var roleAssignments = await _db.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur =>
+                ur.UserId == userId &&
+                ur.ClubId != null &&
+                (excludingClubId == null || ur.ClubId != excludingClubId.Value))
+            .ToListAsync();
+
+        return memberClubIds
+            .Concat(roleAssignments
+                .Where(ur => ur.Role is not null &&
+                             ClubMembershipRoleCodes.Contains((ur.Role.RoleCode ?? string.Empty).Trim()))
+                .Select(ur => ur.ClubId!.Value))
+            .Distinct()
+            .Count();
+    }
+
+    private async Task RemoveOngoingAcceptedRecruitmentApplicationsAsync(int clubId, int userId)
+    {
+        var now = BusinessNow();
+        var applications = await _db.RecruitmentApplications
+            .Include(a => a.Recruitment)
+            .Where(a =>
+                a.UserId == userId &&
+                a.ApplicationStatus == ApplicationAccepted &&
+                a.Recruitment != null &&
+                a.Recruitment.ClubId == clubId &&
+                a.Recruitment.RecruitStatus == RecruitmentPublished &&
+                (a.Recruitment.StartAt == null || a.Recruitment.StartAt <= now) &&
+                (a.Recruitment.EndAt == null || a.Recruitment.EndAt >= now))
+            .ToListAsync();
+
+        _db.RecruitmentApplications.RemoveRange(applications);
     }
 
     private async Task EnsureClubMemberRoleAsync(int clubId, int userId, DateTime now)
@@ -1133,17 +1192,26 @@ public class ClubsController : ControllerBase
         await EnsureSingleClubPresidentRoleAsync(club.ClubId, club.PresidentUserId.Value, now);
     }
 
-    private async Task EnsurePresidentMembershipAsync(Club club, DateTime now)
+    private async Task<IActionResult?> EnsurePresidentMembershipAsync(Club club, DateTime now)
     {
-        if (club.ApplicantUserId is null) return;
+        if (club.ApplicantUserId is null) return null;
+
+        var today = BusinessDate(now);
+        var hasMember = await _db.ClubMembers.AnyAsync(cm =>
+            cm.UserId == club.ApplicantUserId.Value &&
+            cm.ClubId == club.ClubId &&
+            (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
+            (cm.TermStart == null || cm.TermStart <= today) &&
+            (cm.TermEnd == null || cm.TermEnd >= today));
+        if (!hasMember &&
+            await CountCurrentMembershipClubsAsync(club.ApplicantUserId.Value, club.ClubId) >= MaxStudentClubMemberships)
+        {
+            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，社团申请人已达到上限。" });
+        }
 
         await EnsureClubMemberRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);
         await EnsureSingleClubPresidentRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);
 
-        var hasMember = await _db.ClubMembers.AnyAsync(cm =>
-            cm.UserId == club.ApplicantUserId.Value &&
-            cm.ClubId == club.ClubId &&
-            cm.MemberStatus == "active");
         if (!hasMember)
         {
             var nextMemberId = (await _db.ClubMembers.MaxAsync(cm => (int?)cm.MemberId) ?? 0) + 1;
@@ -1154,12 +1222,14 @@ public class ClubsController : ControllerBase
                 UserId = club.ApplicantUserId.Value,
                 PositionName = "负责人",
                 TermName = $"{now.Year} 创始任期",
-                TermStart = BusinessDate(now),
+                TermStart = today,
                 MemberStatus = "active",
                 JoinAt = now,
                 ContributionScore = 0
             });
         }
+
+        return null;
     }
 
     private static ClubDto ToClubDto(Club club)
@@ -1290,6 +1360,9 @@ public class ClubsController : ControllerBase
 
     private static DateTime BusinessToday() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
+
+    private static DateTime BusinessNow() =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone);
 
     private static DateTime BusinessDate(DateTime utcDateTime)
     {

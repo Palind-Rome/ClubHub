@@ -839,7 +839,7 @@ paths:
         "404":
           description: 当前用户或社团不存在
         "409":
-          description: 社团状态不允许发布招募
+          description: 社团状态不允许发布招募或同一时间已有招募
 
   /api/recruitments/{recruitId}:
     patch:
@@ -872,7 +872,7 @@ paths:
         "404":
           description: 当前用户或招募不存在
         "409":
-          description: 招募状态不允许维护
+          description: 招募状态不允许维护或同一时间已有招募
 
   /api/recruitments/{recruitId}/applications:
     get:
@@ -934,7 +934,7 @@ paths:
         "404":
           description: 当前用户或招募不存在
         "409":
-          description: 已报名、已是成员或招募不接受报名
+          description: 已报名、已是成员、社团数量达到上限或招募不接受报名
 
   /api/recruitments/applications/{applicationId}/review:
     patch:
@@ -967,7 +967,7 @@ paths:
         "404":
           description: 当前用户或报名不存在
         "409":
-          description: 报名状态、名额或成员关系不允许录取
+          description: 报名状态、名额、成员关系或社团数量上限不允许录取
 
   /api/activities:
     get:
@@ -2455,6 +2455,9 @@ components:
         currentUserApplicationStatusText:
           type: string
           nullable: true
+        currentUserIsMember:
+          type: boolean
+          description: 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
         canManage:
           type: boolean
       required:
@@ -2467,6 +2470,7 @@ components:
         - createdAt
         - applicationCount
         - acceptedCount
+        - currentUserIsMember
         - canManage
 
     RecruitmentApplication:

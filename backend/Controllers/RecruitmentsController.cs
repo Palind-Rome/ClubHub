@@ -19,12 +19,20 @@ public class RecruitmentsController : ControllerBase
     private const string ClubActive = "active";
     private const string MemberActive = "active";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
+    private const int MaxStudentClubMemberships = 3;
 
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
     private static readonly HashSet<string> RecruitmentManagerRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         "club_officer",
         "club_leader"
+    };
+    private static readonly HashSet<string> ClubMembershipRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClubMemberRoleCode,
+        "CLUB_OFFICER",
+        "CLUB_LEADER",
+        "club_president"
     };
 
     private readonly ClubHubDbContext _db;
@@ -98,6 +106,13 @@ public class RecruitmentsController : ControllerBase
             return StatusCode(403, new { message = "只有系统管理员或本社团干部可以发布招募。" });
         }
 
+        var recruitStatus = NormalizeRecruitmentStatus(req.RecruitStatus) ?? RecruitmentPublished;
+        if (recruitStatus == RecruitmentPublished &&
+            await HasOverlappingPublishedRecruitmentAsync(club.ClubId, req.StartAt!.Value, req.EndAt!.Value))
+        {
+            return Conflict(new { message = "同一社团同一时间最多只能发布一个招募，请先结束或调整已有招募时间。" });
+        }
+
         var now = DateTime.UtcNow;
         var nextId = (await _db.Recruitments.MaxAsync(r => (int?)r.RecruitId) ?? 0) + 1;
         var recruitment = new Recruitment
@@ -110,7 +125,7 @@ public class RecruitmentsController : ControllerBase
             EndAt = req.EndAt,
             Quota = req.Quota,
             Requirements = req.Requirements.Trim(),
-            RecruitStatus = NormalizeRecruitmentStatus(req.RecruitStatus) ?? RecruitmentPublished,
+            RecruitStatus = recruitStatus,
             CreatedAt = now,
             Club = club
         };
@@ -173,6 +188,16 @@ public class RecruitmentsController : ControllerBase
         if (recruitment.Quota is not null && recruitment.Quota.Value < acceptedCount)
         {
             return Conflict(new { message = "招募名额不能小于已录取人数。" });
+        }
+
+        if (recruitment.RecruitStatus == RecruitmentPublished &&
+            await HasOverlappingPublishedRecruitmentAsync(
+                recruitment.ClubId,
+                recruitment.StartAt!.Value,
+                recruitment.EndAt!.Value,
+                recruitment.RecruitId))
+        {
+            return Conflict(new { message = "同一社团同一时间最多只能发布一个招募，请先结束或调整已有招募时间。" });
         }
 
         await _db.SaveChangesAsync();
@@ -255,11 +280,16 @@ public class RecruitmentsController : ControllerBase
             a.UserId == applicant.UserId);
         if (hasSubmitted) return Conflict(new { message = "你已经提交过该招募报名，请勿重复提交。" });
 
-        var isActiveMember = await _db.ClubMembers.AnyAsync(m =>
-            m.ClubId == recruitment.ClubId &&
-            m.UserId == applicant.UserId &&
-            (m.MemberStatus == null || m.MemberStatus == MemberActive));
-        if (isActiveMember) return Conflict(new { message = "你已经是该社团成员，无需再次报名招募。" });
+        if (await IsCurrentClubMemberAsync(recruitment.ClubId, applicant.UserId))
+        {
+            return Conflict(new { message = "你已经是该社团成员，无需再次报名招募。" });
+        }
+
+        var currentClubCount = await CountCurrentMembershipClubsAsync(applicant.UserId);
+        if (currentClubCount >= MaxStudentClubMemberships)
+        {
+            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，当前已达到上限。" });
+        }
 
         if (recruitment.Quota is not null && recruitment.Applications.Count(a => a.ApplicationStatus == ApplicationAccepted) >= recruitment.Quota.Value)
         {
@@ -321,13 +351,15 @@ public class RecruitmentsController : ControllerBase
 
         if (decision == ApplicationAccepted)
         {
-            var activeMemberExists = await _db.ClubMembers.AnyAsync(m =>
-                m.ClubId == application.Recruitment.ClubId &&
-                m.UserId == application.UserId &&
-                (m.MemberStatus == null || m.MemberStatus == MemberActive));
-            if (activeMemberExists)
+            if (await IsCurrentClubMemberAsync(application.Recruitment.ClubId, application.UserId))
             {
                 return Conflict(new { message = "该学生已经是社团成员，不能重复录取。" });
+            }
+
+            var currentClubCount = await CountCurrentMembershipClubsAsync(application.UserId);
+            if (currentClubCount >= MaxStudentClubMemberships)
+            {
+                return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，该学生已达到上限。" });
             }
 
             var acceptedCount = await _db.RecruitmentApplications.CountAsync(a =>
@@ -371,6 +403,67 @@ public class RecruitmentsController : ControllerBase
                 .ThenInclude(ur => ur.Role)
             .Include(u => u.ClubMemberships)
             .FirstOrDefaultAsync(u => u.UserId == userId);
+
+    private async Task<bool> HasOverlappingPublishedRecruitmentAsync(
+        int clubId,
+        DateTime startAt,
+        DateTime endAt,
+        int? ignoredRecruitId = null) =>
+        await _db.Recruitments.AnyAsync(r =>
+            r.ClubId == clubId &&
+            (ignoredRecruitId == null || r.RecruitId != ignoredRecruitId.Value) &&
+            r.RecruitStatus == RecruitmentPublished &&
+            r.StartAt.HasValue &&
+            r.EndAt.HasValue &&
+            r.StartAt.Value < endAt &&
+            r.EndAt.Value > startAt);
+
+    private async Task<bool> IsCurrentClubMemberAsync(int clubId, int userId)
+    {
+        var today = BusinessToday();
+        var currentMemberRecordExists = await _db.ClubMembers.AnyAsync(m =>
+            m.ClubId == clubId &&
+            m.UserId == userId &&
+            (m.MemberStatus == null || m.MemberStatus == MemberActive) &&
+            (m.TermStart == null || m.TermStart <= today) &&
+            (m.TermEnd == null || m.TermEnd >= today));
+        if (currentMemberRecordExists) return true;
+
+        var roleAssignments = await _db.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur => ur.UserId == userId && ur.ClubId == clubId)
+            .ToListAsync();
+        return roleAssignments.Any(ur => IsClubMembershipRole(ur.Role));
+    }
+
+    private async Task<int> CountCurrentMembershipClubsAsync(int userId, int? excludingClubId = null)
+    {
+        var today = BusinessToday();
+        var memberClubIds = await _db.ClubMembers
+            .Where(m =>
+                m.UserId == userId &&
+                (excludingClubId == null || m.ClubId != excludingClubId.Value) &&
+                (m.MemberStatus == null || m.MemberStatus == MemberActive) &&
+                (m.TermStart == null || m.TermStart <= today) &&
+                (m.TermEnd == null || m.TermEnd >= today))
+            .Select(m => m.ClubId)
+            .ToListAsync();
+
+        var roleAssignments = await _db.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur =>
+                ur.UserId == userId &&
+                ur.ClubId != null &&
+                (excludingClubId == null || ur.ClubId != excludingClubId.Value))
+            .ToListAsync();
+
+        return memberClubIds
+            .Concat(roleAssignments
+                .Where(ur => IsClubMembershipRole(ur.Role))
+                .Select(ur => ur.ClubId!.Value))
+            .Distinct()
+            .Count();
+    }
 
     private async Task AddAcceptedMemberAsync(RecruitmentApplication application, DateTime now)
     {
@@ -470,6 +563,7 @@ public class RecruitmentsController : ControllerBase
 
         var status = NormalizeRecruitmentStatus(recruitment.RecruitStatus) ?? RecruitmentDraft;
         var applicationStatus = NormalizeApplicationStatus(currentApplication?.ApplicationStatus);
+        var currentUserIsMember = CurrentUserIsMemberOfClub(viewer, recruitment.ClubId);
 
         return new RecruitmentDto(
             recruitment.RecruitId,
@@ -489,6 +583,7 @@ public class RecruitmentsController : ControllerBase
             currentApplication?.ApplicationId,
             applicationStatus,
             applicationStatus is null ? null : ApplicationStatusText(applicationStatus),
+            currentUserIsMember,
             CanManageRecruitment(viewer, recruitment.ClubId));
     }
 
@@ -558,6 +653,21 @@ public class RecruitmentsController : ControllerBase
     private static bool IsRecruitmentManagerRole(Role? role) =>
         role is not null && RecruitmentManagerRoleCodes.Contains(Normalize(role.RoleCode));
 
+    private static bool IsClubMembershipRole(Role? role) =>
+        role is not null && ClubMembershipRoleCodes.Contains(Normalize(role.RoleCode));
+
+    private static bool CurrentUserIsMemberOfClub(User viewer, int clubId) =>
+        viewer.ClubMemberships.Any(m => m.ClubId == clubId && IsCurrentMemberRecord(m)) ||
+        viewer.UserRoles.Any(ur => ur.ClubId == clubId && IsClubMembershipRole(ur.Role));
+
+    private static bool IsCurrentMemberRecord(ClubMember member)
+    {
+        var today = BusinessToday();
+        return (member.MemberStatus == null || member.MemberStatus == MemberActive) &&
+               (member.TermStart == null || member.TermStart.Value.Date <= today) &&
+               (member.TermEnd == null || member.TermEnd.Value.Date >= today);
+    }
+
     private static bool IsMaintainableClub(Club club) =>
         club.AuditStatus == ClubApproved && club.ClubStatus == ClubActive;
 
@@ -605,6 +715,9 @@ public class RecruitmentsController : ControllerBase
 
     private static DateTime BusinessNow() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone);
+
+    private static DateTime BusinessToday() =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
 
     private static DateTime BusinessDate(DateTime utcDateTime)
     {
@@ -663,6 +776,7 @@ public record RecruitmentDto(
     int? CurrentUserApplicationId,
     string? CurrentUserApplicationStatus,
     string? CurrentUserApplicationStatusText,
+    bool CurrentUserIsMember,
     bool CanManage);
 
 public record RecruitmentApplicationDto(

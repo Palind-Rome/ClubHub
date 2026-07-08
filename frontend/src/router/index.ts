@@ -14,6 +14,7 @@ const router = createRouter({
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
     { path: "/recruitments", component: RecruitmentList },
+    { path: "/recruitments/:recruitmentId/applications", component: RecruitmentList },
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },

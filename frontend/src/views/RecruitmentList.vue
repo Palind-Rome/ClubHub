@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { Check, Close, Edit, Plus, Refresh, Search, User } from "@element-plus/icons-vue";
+import {
+  ArrowLeft,
+  Check,
+  Close,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+  User,
+} from "@element-plus/icons-vue";
 import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
 
 type RecruitmentStatus = "draft" | "published" | "closed";
@@ -34,6 +44,7 @@ interface Recruitment {
   currentUserApplicationId: number | null;
   currentUserApplicationStatus: ApplicationStatus | null;
   currentUserApplicationStatusText: string | null;
+  currentUserIsMember: boolean;
   canManage: boolean;
 }
 
@@ -64,6 +75,8 @@ interface ApiError {
 const recruitmentManagePermission = "recruitment:manage";
 const recruitmentApplyPermission = "recruitment:apply";
 
+const route = useRoute();
+const router = useRouter();
 const auth = ref<AuthResponse | null>(readAuth());
 const recruitments = ref<Recruitment[]>([]);
 const clubs = ref<Club[]>([]);
@@ -164,6 +177,14 @@ const manageableClubs = computed(() => {
   });
 });
 const canCreateRecruitment = computed(() => manageableClubs.value.length > 0);
+const activeRecruitmentId = computed(() => {
+  const rawId = route.params.recruitmentId;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+});
+const isApplicationWorkbench = computed(() => activeRecruitmentId.value !== null);
+const sortedRecruitments = computed(() => [...recruitments.value].sort(compareRecruitments));
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -228,12 +249,7 @@ async function loadRecruitments() {
     const data = await requestJson<Recruitment[]>(`/api/recruitments?${query.toString()}`);
     if (requestId !== recruitmentRequestId) return;
     recruitments.value = data;
-    if (selectedRecruitment.value) {
-      const refreshed = data.find((item) => item.id === selectedRecruitment.value?.id) ?? null;
-      selectedRecruitment.value = refreshed?.canManage ? refreshed : null;
-      if (selectedRecruitment.value) await loadApplications(selectedRecruitment.value);
-      else applications.value = [];
-    }
+    await syncApplicationWorkbench();
   } catch (e) {
     if (requestId === recruitmentRequestId) {
       error.value = e instanceof Error ? e.message : "纳新信息加载失败";
@@ -243,6 +259,32 @@ async function loadRecruitments() {
   } finally {
     if (requestId === recruitmentRequestId) loading.value = false;
   }
+}
+
+async function syncApplicationWorkbench() {
+  if (!isApplicationWorkbench.value) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    return;
+  }
+
+  const target = recruitments.value.find((item) => item.id === activeRecruitmentId.value) ?? null;
+  if (!target) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    return;
+  }
+
+  if (!target.canManage) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    ElMessage.warning("当前账号不能管理该纳新申请。");
+    await router.replace("/recruitments");
+    return;
+  }
+
+  selectedRecruitment.value = target;
+  await loadApplications(target);
 }
 
 async function loadApplications(row: Recruitment) {
@@ -428,8 +470,11 @@ async function openApplicationWorkbench(row: Recruitment) {
     return;
   }
 
-  selectedRecruitment.value = row;
-  await loadApplications(row);
+  await router.push(`/recruitments/${row.id}/applications`);
+}
+
+async function backToRecruitments() {
+  await router.push("/recruitments");
 }
 
 function openReviewDialog(row: RecruitmentApplication, decision: ReviewDecision) {
@@ -481,7 +526,6 @@ async function submitReview() {
     ElMessage.success(`申请已${actionText}`);
     reviewDialogVisible.value = false;
     await loadRecruitments();
-    if (selectedRecruitment.value) await loadApplications(selectedRecruitment.value);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "筛选失败");
   } finally {
@@ -491,6 +535,7 @@ async function submitReview() {
 
 function applyDisabledReason(row: Recruitment) {
   if (!canApply.value) return "当前账号不能提交入社申请，请切换到普通学生账号。";
+  if (row.currentUserIsMember) return "你已经是该社团成员。";
   if (row.currentUserApplicationId) return "你已经提交过该纳新申请。";
   if (row.recruitStatus !== "published") return "该纳新当前不接受申请。";
   if (row.quota !== null && row.acceptedCount >= row.quota) return "纳新名额已满。";
@@ -498,6 +543,37 @@ function applyDisabledReason(row: Recruitment) {
   if (row.startAt && new Date(row.startAt).getTime() > now) return "纳新尚未开始。";
   if (row.endAt && new Date(row.endAt).getTime() < now) return "纳新已结束。";
   return "";
+}
+
+function shouldShowApplyAction(row: Recruitment) {
+  return canApply.value && !row.currentUserIsMember && !row.currentUserApplicationId;
+}
+
+function compareRecruitments(a: Recruitment, b: Recruitment) {
+  const rankDiff = recruitmentPhaseRank(a) - recruitmentPhaseRank(b);
+  if (rankDiff !== 0) return rankDiff;
+
+  const rank = recruitmentPhaseRank(a);
+  if (rank === 2) {
+    return dateValue(b.endAt ?? b.createdAt) - dateValue(a.endAt ?? a.createdAt);
+  }
+
+  return dateValue(a.startAt ?? a.createdAt) - dateValue(b.startAt ?? b.createdAt);
+}
+
+function recruitmentPhaseRank(row: Recruitment) {
+  const now = Date.now();
+  const start = row.startAt ? new Date(row.startAt).getTime() : Number.NEGATIVE_INFINITY;
+  const end = row.endAt ? new Date(row.endAt).getTime() : Number.POSITIVE_INFINITY;
+
+  if (row.recruitStatus === "closed" || end < now) return 2;
+  if (row.recruitStatus === "published" && start <= now) return 0;
+  return 1;
+}
+
+function dateValue(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function hasPermission(permission: string) {
@@ -567,6 +643,10 @@ watch(
   },
 );
 
+watch(activeRecruitmentId, () => {
+  void syncApplicationWorkbench();
+});
+
 onMounted(() => {
   stopSessionListener = onSessionChange(refreshSession);
   void refreshAll();
@@ -581,207 +661,221 @@ onUnmounted(() => {
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>社团纳新</h2>
-        <p>发布纳新、提交入社申请、筛选录取</p>
+        <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
+        <p>
+          {{
+            isApplicationWorkbench ? "查看申请并录入筛选结果" : "发布纳新、提交入社申请、筛选录取"
+          }}
+        </p>
       </div>
       <div class="header-actions">
-        <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新</el-button>
-        <el-button
-          v-if="hasManageAccess"
-          type="primary"
-          :icon="Plus"
-          :disabled="!canCreateRecruitment"
-          @click="openCreateDialog"
-        >
-          发布纳新
+        <el-button v-if="isApplicationWorkbench" :icon="ArrowLeft" @click="backToRecruitments">
+          返回纳新列表
         </el-button>
+        <template v-else>
+          <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新</el-button>
+          <el-button
+            v-if="hasManageAccess"
+            type="primary"
+            :icon="Plus"
+            :disabled="!canCreateRecruitment"
+            @click="openCreateDialog"
+          >
+            发布纳新
+          </el-button>
+        </template>
       </div>
     </div>
 
     <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
 
-    <div class="filters">
-      <el-select
-        v-model="filters.status"
-        clearable
-        placeholder="纳新状态"
-        class="filter-control"
-        @change="loadRecruitments"
-      >
-        <el-option label="草稿" value="draft" />
-        <el-option label="申请中" value="published" />
-        <el-option label="已结束" value="closed" />
-      </el-select>
-      <el-select
-        v-if="hasManageAccess"
-        v-model="filters.clubId"
-        clearable
-        filterable
-        placeholder="管理社团"
-        class="filter-control"
-        :loading="clubLoading"
-      >
-        <el-option
-          v-for="club in manageableClubs"
-          :key="club.id"
-          :label="club.name"
-          :value="club.id"
-        />
-      </el-select>
-      <el-button :icon="Search" @click="loadRecruitments">查询</el-button>
-      <el-button @click="resetFilters">重置</el-button>
-    </div>
-
-    <el-table v-loading="loading" :data="recruitments" stripe empty-text="暂无纳新数据">
-      <el-table-column label="纳新信息" min-width="260">
-        <template #default="{ row }">
-          <div class="title-line">{{ row.title }}</div>
-          <div class="muted">{{ row.clubName }}</div>
-          <div v-if="row.description" class="description">{{ row.description }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="时间范围" min-width="210">
-        <template #default="{ row }">
-          <div>{{ formatDateTime(row.startAt) }}</div>
-          <div class="muted">至 {{ formatDateTime(row.endAt) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="人数" width="110">
-        <template #default="{ row }">
-          <span>{{ row.acceptedCount }} / {{ row.quota ?? "不限" }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="状态" width="110">
-        <template #default="{ row }">
-          <el-tag :type="statusTagType(row.recruitStatus)" size="small">
-            {{ recruitmentStatusText(row.recruitStatus) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="我的申请" width="120">
-        <template #default="{ row }">
-          <el-tag
-            v-if="row.currentUserApplicationStatus"
-            :type="applicationTagType(row.currentUserApplicationStatus)"
-            size="small"
-          >
-            {{ row.currentUserApplicationStatusText }}
-          </el-tag>
-          <span v-else class="muted">未申请</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right">
-        <template #default="{ row }">
-          <el-button
-            v-if="!applyDisabledReason(row)"
-            type="primary"
-            link
-            :icon="User"
-            @click="openApplicationDialog(row)"
-          >
-            申请加入
-          </el-button>
-          <el-tooltip
-            v-else-if="canApply && !row.currentUserApplicationId"
-            :content="applyDisabledReason(row)"
-          >
-            <span>
-              <el-button link disabled :icon="User">申请加入</el-button>
-            </span>
-          </el-tooltip>
-          <el-button
-            v-if="row.canManage"
-            type="primary"
-            link
-            :icon="Search"
-            @click="openApplicationWorkbench(row)"
-          >
-            申请管理
-          </el-button>
-          <el-button
-            v-if="row.canManage"
-            type="primary"
-            link
-            :icon="Edit"
-            @click="openEditDialog(row)"
-          >
-            编辑
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <div v-if="selectedRecruitment" class="applications-panel">
-      <div class="panel-header">
-        <div>
-          <h3>{{ selectedRecruitment.title }} 申请管理</h3>
-          <p>
-            {{ selectedRecruitment.clubName }} / {{ selectedRecruitment.applicationCount }} 份申请
-          </p>
-        </div>
-        <el-button
-          :icon="Refresh"
-          :loading="applicationLoading"
-          @click="loadApplications(selectedRecruitment)"
+    <template v-if="!isApplicationWorkbench">
+      <div class="filters">
+        <el-select
+          v-model="filters.status"
+          clearable
+          placeholder="纳新状态"
+          class="filter-control"
+          @change="loadRecruitments"
         >
-          刷新申请
-        </el-button>
+          <el-option label="草稿" value="draft" />
+          <el-option label="申请中" value="published" />
+          <el-option label="已结束" value="closed" />
+        </el-select>
+        <el-select
+          v-if="hasManageAccess"
+          v-model="filters.clubId"
+          clearable
+          filterable
+          placeholder="管理社团"
+          class="filter-control"
+          :loading="clubLoading"
+        >
+          <el-option
+            v-for="club in manageableClubs"
+            :key="club.id"
+            :label="club.name"
+            :value="club.id"
+          />
+        </el-select>
+        <el-button :icon="Search" @click="loadRecruitments">查询</el-button>
+        <el-button @click="resetFilters">重置</el-button>
       </div>
 
-      <el-table
-        v-loading="applicationLoading"
-        :data="applications"
-        stripe
-        empty-text="暂无申请数据"
-      >
-        <el-table-column prop="applicantName" label="学生" min-width="130" />
-        <el-table-column prop="studentNo" label="学号" width="110" />
-        <el-table-column
-          prop="applicationReason"
-          label="入社理由"
-          min-width="260"
-          show-overflow-tooltip
-        />
-        <el-table-column label="面试分" width="100">
+      <el-table v-loading="loading" :data="sortedRecruitments" stripe empty-text="暂无纳新数据">
+        <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">
-            {{ row.interviewScore ?? "-" }}
+            <div class="title-line">{{ row.title }}</div>
+            <div class="muted">{{ row.clubName }}</div>
+            <div v-if="row.description" class="description">{{ row.description }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间范围" min-width="210">
+          <template #default="{ row }">
+            <div>{{ formatDateTime(row.startAt) }}</div>
+            <div class="muted">至 {{ formatDateTime(row.endAt) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="人数" width="110">
+          <template #default="{ row }">
+            <span>{{ row.acceptedCount }} / {{ row.quota ?? "不限" }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="applicationTagType(row.applicationStatus)" size="small">
-              {{ row.applicationStatusText }}
+            <el-tag :type="statusTagType(row.recruitStatus)" size="small">
+              {{ recruitmentStatusText(row.recruitStatus) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="提交时间" width="170">
+        <el-table-column label="我的申请" width="120">
           <template #default="{ row }">
-            {{ formatDateTime(row.submittedAt) }}
+            <el-tag v-if="row.currentUserIsMember" type="success" size="small"> 已是成员 </el-tag>
+            <el-tag
+              v-else-if="row.currentUserApplicationStatus"
+              :type="applicationTagType(row.currentUserApplicationStatus)"
+              size="small"
+            >
+              {{ row.currentUserApplicationStatusText }}
+            </el-tag>
+            <span v-else class="muted">未申请</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
+            <template v-if="shouldShowApplyAction(row)">
+              <el-button
+                v-if="!applyDisabledReason(row)"
+                type="primary"
+                link
+                :icon="User"
+                @click="openApplicationDialog(row)"
+              >
+                申请加入
+              </el-button>
+              <el-tooltip v-else :content="applyDisabledReason(row)">
+                <span>
+                  <el-button link disabled :icon="User">申请加入</el-button>
+                </span>
+              </el-tooltip>
+            </template>
             <el-button
-              type="success"
+              v-if="row.canManage"
+              type="primary"
               link
-              :icon="Check"
-              :disabled="row.applicationStatus !== 'pending'"
-              @click="openReviewDialog(row, 'accepted')"
+              :icon="Search"
+              @click="openApplicationWorkbench(row)"
             >
-              录取
+              申请管理
             </el-button>
             <el-button
-              type="danger"
+              v-if="row.canManage"
+              type="primary"
               link
-              :icon="Close"
-              :disabled="row.applicationStatus !== 'pending'"
-              @click="openReviewDialog(row, 'rejected')"
+              :icon="Edit"
+              @click="openEditDialog(row)"
             >
-              拒绝
+              编辑
             </el-button>
           </template>
         </el-table-column>
       </el-table>
+    </template>
+
+    <div v-else class="applications-panel">
+      <template v-if="selectedRecruitment">
+        <div class="panel-header">
+          <div>
+            <h3>{{ selectedRecruitment.title }} 申请管理</h3>
+            <p>
+              {{ selectedRecruitment.clubName }} / {{ selectedRecruitment.applicationCount }} 份申请
+            </p>
+          </div>
+          <el-button
+            :icon="Refresh"
+            :loading="applicationLoading"
+            @click="loadApplications(selectedRecruitment)"
+          >
+            刷新申请
+          </el-button>
+        </div>
+
+        <el-table
+          v-loading="applicationLoading"
+          :data="applications"
+          stripe
+          empty-text="暂无申请数据"
+        >
+          <el-table-column prop="applicantName" label="学生" min-width="130" />
+          <el-table-column prop="studentNo" label="学号" width="110" />
+          <el-table-column
+            prop="applicationReason"
+            label="入社理由"
+            min-width="260"
+            show-overflow-tooltip
+          />
+          <el-table-column label="面试分" width="100">
+            <template #default="{ row }">
+              {{ row.interviewScore ?? "-" }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="applicationTagType(row.applicationStatus)" size="small">
+                {{ row.applicationStatusText }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="提交时间" width="170">
+            <template #default="{ row }">
+              {{ formatDateTime(row.submittedAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                type="success"
+                link
+                :icon="Check"
+                :disabled="row.applicationStatus !== 'pending'"
+                @click="openReviewDialog(row, 'accepted')"
+              >
+                录取
+              </el-button>
+              <el-button
+                type="danger"
+                link
+                :icon="Close"
+                :disabled="row.applicationStatus !== 'pending'"
+                @click="openReviewDialog(row, 'rejected')"
+              >
+                拒绝
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <el-empty v-else description="未找到可管理的纳新申请" />
     </div>
 
     <el-dialog
