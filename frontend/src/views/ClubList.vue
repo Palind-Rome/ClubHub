@@ -427,7 +427,10 @@ async function loadUsers() {
     const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
     if (requestId === usersRequestId) users.value = data;
   } catch (e) {
-    if (requestId === usersRequestId) error.value = e instanceof Error ? e.message : "用户加载失败";
+    if (requestId === usersRequestId) {
+      error.value = e instanceof Error ? e.message : "用户加载失败";
+      users.value = [];
+    }
   } finally {
     if (requestId === usersRequestId) usersLoading.value = false;
   }
@@ -491,7 +494,12 @@ async function loadData() {
     syncSelectedClub();
     await loadMembers();
   } catch (e) {
-    if (requestId === dataRequestId) error.value = e instanceof Error ? e.message : "加载失败";
+    if (requestId === dataRequestId) {
+      error.value = e instanceof Error ? e.message : "加载失败";
+      applications.value = [];
+      clubs.value = [];
+      clubMembers.value = [];
+    }
   } finally {
     if (requestId === dataRequestId) loading.value = false;
   }
@@ -736,7 +744,7 @@ async function openProfileDialog(row: Club) {
   }
 
   selectedClubId.value = row.id;
-  await Promise.all([loadMembers(), loadDialogUsers(row.id)]);
+  await Promise.all([loadMembers(), loadDialogUsers()]);
   profileTarget.value = row;
   profileForm.name = row.name;
   profileForm.category = row.category ?? "";
@@ -987,7 +995,9 @@ function memberStatusText(status: string | null | undefined) {
 }
 
 function statusStep(row: ClubApplication) {
-  return row.auditStatus === "pending" ? 1 : 3;
+  if (row.auditStatus === "pending") return 1;
+  if (row.auditStatus === "rejected") return 2;
+  return 3;
 }
 
 function statusProcess(row: ClubApplication) {
