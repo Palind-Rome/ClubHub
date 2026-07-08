@@ -113,6 +113,9 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
 
+            echo "=== 写入数据库连接串 ==="
+            echo "DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" >> .env
+
             echo "=== 登录 ghcr.io ==="
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
