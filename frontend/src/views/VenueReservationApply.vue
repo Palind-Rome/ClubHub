@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { ElMessage, type FormInstance, type FormRules } from "element-plus";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
 import {
   beijingCalendarDateTimestamp,
@@ -29,6 +29,7 @@ interface Venue {
   status: string;
   managerUserId?: number | null;
   createdAt: string;
+  maintenanceUntil?: string | null;
 }
 
 interface VenueReservation {
@@ -36,9 +37,16 @@ interface VenueReservation {
   venueId: number;
   venueName: string;
   clubId?: number;
+  clubName?: string;
+  activityTitle?: string | null;
+  applicantUserId: number;
+  applicantName?: string | null;
   startTime: string;
   endTime: string;
+  purpose?: string;
   status: string;
+  reviewComment?: string | null;
+  createdAt?: string;
 }
 
 interface VenueRow {
@@ -66,9 +74,14 @@ const error = ref("");
 const dialogVisible = ref(false);
 const reviewDialogVisible = ref(false);
 const approvedSlotsVisible = ref(false);
+const myReservationsVisible = ref(false);
+const showExpiredMyReservations = ref(false);
 const submitting = ref(false);
+const myReservationsLoading = ref(false);
+const deletingReservationId = ref<number>();
 const latestReservation = ref<VenueReservation | null>(null);
 const approvedReservations = ref<VenueReservation[]>([]);
+const myReservations = ref<VenueReservation[]>([]);
 const approvedSlotsVenue = ref<Venue | null>(null);
 const reservationFormRef = ref<FormInstance>();
 const auth = ref(readAuth());
@@ -120,10 +133,10 @@ const filteredVenues = computed(() => {
     .map((row) => row.venue);
 });
 const venueTableEmptyText = computed(() => {
-  return venueSearch.value.trim() ? "未找到匹配场地" : "暂无可预约场地";
+  return venueSearch.value.trim() ? "未找到匹配场地" : "暂无场地";
 });
 const venueSearchSummary = computed(() => {
-  if (!venueSearch.value.trim()) return `共 ${venues.value.length} 个可预约场地`;
+  if (!venueSearch.value.trim()) return `共 ${venues.value.length} 个场地`;
   return `已匹配 ${filteredVenues.value.length} / ${venues.value.length} 个场地`;
 });
 const applicantName = computed(() => auth.value?.user.realName ?? "未登录");
@@ -132,6 +145,24 @@ const canReview = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return permissions.includes("venue:review") || permissions.includes("*");
 });
+const activeMyReservations = computed(() => {
+  return myReservations.value
+    .filter((reservation) => !isExpiredReservation(reservation))
+    .slice()
+    .sort(compareActiveReservationTime);
+});
+const expiredMyReservations = computed(() => {
+  return myReservations.value
+    .filter(isExpiredReservation)
+    .slice()
+    .sort(compareExpiredReservationTime);
+});
+const displayedMyReservations = computed(() =>
+  showExpiredMyReservations.value ? expiredMyReservations.value : activeMyReservations.value,
+);
+const myReservationEmptyText = computed(() =>
+  showExpiredMyReservations.value ? "暂无过期预约记录" : "暂无当前预约记录",
+);
 
 const statusLabel: Record<string, string> = {
   available: "可预约",
@@ -145,6 +176,20 @@ const statusType: Record<string, "success" | "warning" | "info" | "danger"> = {
   occupied: "danger",
   maintenance: "warning",
   disabled: "info",
+};
+
+const reservationStatusLabel: Record<string, string> = {
+  pending: "待审批",
+  approved: "已通过",
+  rejected: "已拒绝",
+  cancelled: "已取消",
+};
+
+const reservationStatusType: Record<string, "success" | "warning" | "info" | "danger"> = {
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
+  cancelled: "info",
 };
 
 const rules: FormRules<ReservationForm> = {
@@ -223,7 +268,7 @@ async function loadVenues() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/venues?status=available");
+    const res = await fetch("/api/venues");
     if (!res.ok) throw new Error(await readErrorMessage(res));
     venues.value = await res.json();
   } catch (e) {
@@ -241,6 +286,26 @@ async function loadApprovedReservations() {
     approvedReservations.value = reservations.filter(isActiveApprovedReservation);
   } catch {
     approvedReservations.value = [];
+  }
+}
+
+async function loadMyReservations() {
+  const applicantUserId = auth.value?.user.id;
+  if (!applicantUserId) {
+    myReservations.value = [];
+    return;
+  }
+
+  myReservationsLoading.value = true;
+  try {
+    const res = await fetch(`/api/venue-reservations?applicantUserId=${applicantUserId}`);
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+    myReservations.value = await res.json();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "加载我的预约失败");
+    myReservations.value = [];
+  } finally {
+    myReservationsLoading.value = false;
   }
 }
 
@@ -263,6 +328,17 @@ function openApprovedSlots(venue: Venue) {
   approvedSlotsVenue.value = venue;
   approvedSlotSearch.value = "";
   approvedSlotsVisible.value = true;
+}
+
+async function openMyReservations() {
+  if (!auth.value?.user.id) {
+    ElMessage.error("当前未读取到登录用户，无法查看我的预约。");
+    return;
+  }
+
+  showExpiredMyReservations.value = false;
+  myReservationsVisible.value = true;
+  await loadMyReservations();
 }
 
 async function submitReservation() {
@@ -301,12 +377,60 @@ async function submitReservation() {
 
     if (!res.ok) throw new Error(await readErrorMessage(res));
     latestReservation.value = await res.json();
+    if (myReservationsVisible.value) await loadMyReservations();
     dialogVisible.value = false;
     ElMessage.success("预约申请已提交，等待管理员审批。");
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "提交预约失败");
   } finally {
     submitting.value = false;
+  }
+}
+
+async function deleteReservation(reservation: VenueReservation) {
+  const operatorUserId = auth.value?.user.id;
+  if (!operatorUserId) {
+    ElMessage.error("当前未读取到登录用户，无法删除预约。");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定删除预约 #${reservation.id} 吗？删除后不可恢复。`,
+      "确认删除预约",
+      {
+        confirmButtonText: "确定删除",
+        cancelButtonText: "取消",
+        type: "warning",
+        confirmButtonClass: "el-button--danger",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  deletingReservationId.value = reservation.id;
+  try {
+    const res = await fetch(`/api/venue-reservations/${reservation.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operatorUserId }),
+    });
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+
+    if (latestReservation.value?.id === reservation.id) {
+      latestReservation.value = null;
+    }
+    approvedReservations.value = approvedReservations.value.filter(
+      (item) => item.id !== reservation.id,
+    );
+    myReservations.value = myReservations.value.filter((item) => item.id !== reservation.id);
+    ElMessage.success("预约已删除。");
+    await loadApprovedReservations();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "删除预约失败");
+  } finally {
+    deletingReservationId.value = undefined;
   }
 }
 
@@ -413,6 +537,7 @@ function hasApprovedConflict(venueId: number, startValue?: string, endValue?: st
 }
 
 function venueStatus(venue: Venue) {
+  if (venue.status !== "available") return venue.status;
   return findVenueOccupancy(venue) ? "occupied" : venue.status;
 }
 
@@ -423,6 +548,78 @@ function venueStatusLabel(venue: Venue) {
 
 function venueStatusType(venue: Venue) {
   return statusType[venueStatus(venue)] || "info";
+}
+
+function maintenanceUntilText(venue: Venue) {
+  if (venue.status !== "maintenance") return "";
+  return venue.maintenanceUntil
+    ? `维护至 ${formatDateTime(venue.maintenanceUntil)}`
+    : "维护至 未知";
+}
+
+function canReserveVenue(venue: Venue) {
+  return venue.status === "available" && canSubmit.value;
+}
+
+function reserveDisabledReason(venue: Venue) {
+  if (!canSubmit.value) return "请先登录后再提交预约";
+  if (venue.status === "maintenance") return maintenanceUntilText(venue) || "场地维护中";
+  if (venue.status === "disabled") return "场地已停用";
+  return "";
+}
+
+function canDeleteReservation(reservation: VenueReservation) {
+  return canOperateReservation(reservation) && !isInProgressApprovedReservation(reservation);
+}
+
+function canOperateReservation(reservation: VenueReservation) {
+  const userId = auth.value?.user.id;
+  return canReview.value || reservation.applicantUserId === userId;
+}
+
+function deleteReservationDisabledReason(reservation: VenueReservation) {
+  return isInProgressApprovedReservation(reservation)
+    ? "已开始且未结束的已通过预约暂时无法删除"
+    : "";
+}
+
+function isInProgressApprovedReservation(reservation: VenueReservation) {
+  if (reservation.status !== "approved") return false;
+
+  const now = Date.now();
+  const startTime = venueReservationTimestamp(reservation.startTime);
+  const endTime = venueReservationTimestamp(reservation.endTime);
+  return startTime <= now && endTime > now;
+}
+
+function isExpiredReservation(reservation: VenueReservation) {
+  return venueReservationTimestamp(reservation.endTime) < Date.now();
+}
+
+function compareActiveReservationTime(a: VenueReservation, b: VenueReservation) {
+  return activeReservationDistance(a) - activeReservationDistance(b) || a.id - b.id;
+}
+
+function compareExpiredReservationTime(a: VenueReservation, b: VenueReservation) {
+  return venueReservationTimestamp(b.endTime) - venueReservationTimestamp(a.endTime) || b.id - a.id;
+}
+
+function activeReservationDistance(reservation: VenueReservation) {
+  const now = Date.now();
+  const startTime = venueReservationTimestamp(reservation.startTime);
+  return startTime <= now ? 0 : startTime - now;
+}
+
+function reservationStatusName(status: string) {
+  return reservationStatusLabel[status] || status;
+}
+
+function reservationStatusTagType(status: string) {
+  return reservationStatusType[status] || "info";
+}
+
+function myReservationRowClass({ row }: { row: VenueReservation }) {
+  return isExpiredReservation(row) ? "expired-reservation-row" : "";
 }
 
 onMounted(refreshVenueData);
@@ -436,6 +633,7 @@ onMounted(refreshVenueData);
         <p class="subtitle">选择可用场地，提交预约申请后等待管理员审批。</p>
       </div>
       <div class="toolbar-actions">
+        <el-button :disabled="!canSubmit" @click="openMyReservations">我的预约</el-button>
         <el-button v-if="canReview" type="primary" plain @click="openReviewDialog">
           进入预约审批
         </el-button>
@@ -461,8 +659,31 @@ onMounted(refreshVenueData);
       @close="latestReservation = null"
     >
       <template #default>
-        {{ formatDateTime(latestReservation.startTime) }} 至
-        {{ formatDateTime(latestReservation.endTime) }}，状态：待审批
+        <div class="alert-content">
+          <span>
+            {{ formatDateTime(latestReservation.startTime) }} 至
+            {{ formatDateTime(latestReservation.endTime) }}，状态：待审批
+          </span>
+          <el-tooltip
+            v-if="canOperateReservation(latestReservation)"
+            :disabled="canDeleteReservation(latestReservation)"
+            :content="deleteReservationDisabledReason(latestReservation)"
+            placement="top"
+          >
+            <span>
+              <el-button
+                type="danger"
+                size="small"
+                plain
+                :disabled="!canDeleteReservation(latestReservation)"
+                :loading="deletingReservationId === latestReservation.id"
+                @click="deleteReservation(latestReservation)"
+              >
+                删除申请
+              </el-button>
+            </span>
+          </el-tooltip>
+        </div>
       </template>
     </el-alert>
 
@@ -487,11 +708,14 @@ onMounted(refreshVenueData);
         </template>
       </el-table-column>
       <el-table-column prop="capacity" label="容量" width="90" />
-      <el-table-column label="状态" width="100">
+      <el-table-column label="状态" width="150">
         <template #default="{ row }">
           <el-tag :type="venueStatusType(row)" size="small">
             {{ venueStatusLabel(row) }}
           </el-tag>
+          <div v-if="maintenanceUntilText(row)" class="muted status-note">
+            {{ maintenanceUntilText(row) }}
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="managerUserId" label="管理员 ID" width="110" />
@@ -502,14 +726,22 @@ onMounted(refreshVenueData);
               已预约时段
               <span class="slot-count">{{ approvedReservationsForVenue(row.id).length }}</span>
             </el-button>
-            <el-button
-              type="primary"
-              size="small"
-              :disabled="row.status !== 'available' || !canSubmit"
-              @click="openReservation(row)"
+            <el-tooltip
+              :disabled="canReserveVenue(row)"
+              :content="reserveDisabledReason(row)"
+              placement="top"
             >
-              申请预约
-            </el-button>
+              <span>
+                <el-button
+                  type="primary"
+                  size="small"
+                  :disabled="!canReserveVenue(row)"
+                  @click="openReservation(row)"
+                >
+                  申请预约
+                </el-button>
+              </span>
+            </el-tooltip>
           </div>
         </template>
       </el-table-column>
@@ -610,8 +842,107 @@ onMounted(refreshVenueData);
               <div class="muted">持续 {{ formatSlotDuration(slot) }}</div>
             </div>
           </div>
+          <el-tooltip
+            v-if="canOperateReservation(slot)"
+            :disabled="canDeleteReservation(slot)"
+            :content="deleteReservationDisabledReason(slot)"
+            placement="top"
+          >
+            <span>
+              <el-button
+                type="danger"
+                size="small"
+                text
+                :disabled="!canDeleteReservation(slot)"
+                :loading="deletingReservationId === slot.id"
+                @click="deleteReservation(slot)"
+              >
+                删除
+              </el-button>
+            </span>
+          </el-tooltip>
         </div>
       </div>
+    </el-dialog>
+
+    <el-dialog v-model="myReservationsVisible" title="我的预约" width="920px">
+      <div class="my-reservation-toolbar">
+        <div>
+          <div class="panel-title">
+            {{ showExpiredMyReservations ? "过期预约记录" : "当前预约记录" }}
+          </div>
+          <div class="muted">
+            {{
+              showExpiredMyReservations
+                ? `共 ${expiredMyReservations.length} 条过期记录`
+                : `共 ${activeMyReservations.length} 条当前记录`
+            }}
+          </div>
+        </div>
+        <div class="toolbar-actions">
+          <el-button @click="showExpiredMyReservations = !showExpiredMyReservations">
+            {{
+              showExpiredMyReservations
+                ? "返回当前预约"
+                : `查看过期记录（${expiredMyReservations.length}）`
+            }}
+          </el-button>
+          <el-button :loading="myReservationsLoading" @click="loadMyReservations">刷新</el-button>
+        </div>
+      </div>
+      <el-table
+        v-loading="myReservationsLoading"
+        :data="displayedMyReservations"
+        stripe
+        :empty-text="myReservationEmptyText"
+        :row-class-name="myReservationRowClass"
+      >
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column label="场地/社团" min-width="180">
+          <template #default="{ row }">
+            <div class="primary-text">{{ row.venueName }}</div>
+            <div class="muted">{{ row.clubName || `社团 ${row.clubId ?? "-"}` }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="预约时间" min-width="220">
+          <template #default="{ row }">
+            <div>{{ formatDateTime(row.startTime) }}</div>
+            <div class="muted">至 {{ formatDateTime(row.endTime) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="reservationStatusTagType(row.status)" size="small">
+              {{ reservationStatusName(row.status) }}
+            </el-tag>
+            <div v-if="isExpiredReservation(row)" class="muted status-note">已过期</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="purpose" label="用途" min-width="180" show-overflow-tooltip />
+        <el-table-column label="操作" width="90" fixed="right">
+          <template #default="{ row }">
+            <el-tooltip
+              v-if="canOperateReservation(row)"
+              :disabled="canDeleteReservation(row)"
+              :content="deleteReservationDisabledReason(row)"
+              placement="top"
+            >
+              <span>
+                <el-button
+                  type="danger"
+                  size="small"
+                  text
+                  :disabled="!canDeleteReservation(row)"
+                  :loading="deletingReservationId === row.id"
+                  @click="deleteReservation(row)"
+                >
+                  删除
+                </el-button>
+              </span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-dialog>
 
     <VenueReservationReview v-model="reviewDialogVisible" @reviewed="loadApprovedReservations" />
@@ -636,6 +967,19 @@ onMounted(refreshVenueData);
 .toolbar-actions {
   display: flex;
   gap: 8px;
+}
+.my-reservation-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.panel-title {
+  font-weight: 600;
+}
+.primary-text {
+  font-weight: 600;
 }
 .subtitle {
   margin: 6px 0 0;
@@ -671,6 +1015,12 @@ onMounted(refreshVenueData);
   flex-wrap: wrap;
   gap: 6px;
 }
+.alert-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .slot-count {
   margin-left: 4px;
   color: var(--el-text-color-secondary);
@@ -682,7 +1032,7 @@ onMounted(refreshVenueData);
 }
 .slot-card {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: 120px 1fr auto;
   gap: 14px;
   align-items: stretch;
   padding: 12px;
@@ -723,8 +1073,21 @@ onMounted(refreshVenueData);
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
+.status-note {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+:deep(.expired-reservation-row) {
+  color: var(--el-text-color-placeholder);
+}
+:deep(.expired-reservation-row .primary-text),
+:deep(.expired-reservation-row .muted) {
+  color: var(--el-text-color-placeholder);
+}
 @media (max-width: 720px) {
-  .search-row {
+  .search-row,
+  .my-reservation-toolbar {
     align-items: stretch;
     flex-direction: column;
   }

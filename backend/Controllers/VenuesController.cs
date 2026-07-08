@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
@@ -14,6 +15,11 @@ public class VenuesController : ControllerBase
     private const string VenueCreatePermission = "venue:create";
     private const string VenueUpdatePermission = "venue:update";
     private const string VenueDisablePermission = "venue:disable";
+    private const string ReservationStatusPending = "pending";
+    private const string ReservationStatusApproved = "approved";
+    private const string ReservationStatusCancelled = "cancelled";
+    private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
+    private static readonly ConcurrentDictionary<int, DateTime> MaintenanceUntilByVenueId = new();
 
     private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,18 +53,9 @@ public class VenuesController : ControllerBase
 
         var venues = await query
             .OrderBy(v => v.VenueId)
-            .Select(v => new VenueDto(
-                v.VenueId,
-                v.VenueName ?? "",
-                v.Building,
-                v.RoomNo,
-                v.Capacity ?? 0,
-                NormalizeVenueStatus(v.VenueStatus),
-                v.ManagerUserId,
-                v.CreatedAt ?? DateTime.MinValue))
             .ToListAsync();
 
-        return Ok(venues);
+        return Ok(venues.Select(ToDto));
     }
 
     [HttpPost]
@@ -105,20 +102,11 @@ public class VenuesController : ControllerBase
         var venue = await _db.Venues
             .AsNoTracking()
             .Where(v => v.VenueId == venueId)
-            .Select(v => new VenueDto(
-                v.VenueId,
-                v.VenueName ?? "",
-                v.Building,
-                v.RoomNo,
-                v.Capacity ?? 0,
-                NormalizeVenueStatus(v.VenueStatus),
-                v.ManagerUserId,
-                v.CreatedAt ?? DateTime.MinValue))
             .FirstOrDefaultAsync();
 
         return venue is null
             ? NotFound(Error("venue_not_found", "场地不存在。"))
-            : Ok(venue);
+            : Ok(ToDto(venue));
     }
 
     [HttpPut("{venueId:int}")]
@@ -162,10 +150,49 @@ public class VenuesController : ControllerBase
         var venue = await _db.Venues.FindAsync(venueId);
         if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
 
+        var conflicts = await StatusConflictQuery(venueId, normalizedStatus, req.MaintenanceUntil)
+            .ToListAsync();
+        if (conflicts.Count > 0 && req.CancelConflictingReservations != true)
+        {
+            return Conflict(Error("venue_status_conflict_reservations", "该场地后续存在与状态变更冲突的预约。"));
+        }
+
+        if (conflicts.Count > 0)
+        {
+            foreach (var reservation in conflicts)
+            {
+                reservation.ReservationStatus = ReservationStatusCancelled;
+                reservation.ReviewComment = NullIfBlank(reservation.ReviewComment) ?? "场地状态变更，预约自动取消。";
+            }
+        }
+
         venue.VenueStatus = normalizedStatus;
+        UpdateMaintenanceUntil(venueId, normalizedStatus, req.MaintenanceUntil);
         await _db.SaveChangesAsync();
 
         return Ok(ToDto(venue));
+    }
+
+    [HttpDelete("{venueId:int}")]
+    public async Task<IActionResult> Delete(int venueId, [FromBody] DeleteVenueRequest req)
+    {
+        var permission = await RequirePermissionAsync(req.OperatorUserId, VenueDisablePermission, "当前用户没有删除场地权限。");
+        if (permission is not null) return permission;
+
+        var venue = await _db.Venues.FindAsync(venueId);
+        if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
+
+        var hasReservations = await _db.VenueReservations.AnyAsync(r => r.VenueId == venueId);
+        if (hasReservations)
+        {
+            return Conflict(Error("venue_has_reservations", "该场地已有预约记录，不能删除。"));
+        }
+
+        _db.Venues.Remove(venue);
+        MaintenanceUntilByVenueId.TryRemove(venueId, out _);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     private static bool IsValidStatus(string? status, HashSet<string> allowed, out string? normalized)
@@ -178,6 +205,71 @@ public class VenuesController : ControllerBase
     {
         var normalized = string.IsNullOrWhiteSpace(status) ? "available" : status.Trim().ToLowerInvariant();
         return AllowedStatuses.Contains(normalized) ? normalized : "available";
+    }
+
+    private IQueryable<ClubHub.Api.Data.Entities.VenueReservation> StatusConflictQuery(
+        int venueId,
+        string status,
+        DateTime? maintenanceUntil)
+    {
+        var now = DateTime.UtcNow;
+        var query = _db.VenueReservations.Where(r =>
+            r.VenueId == venueId &&
+            (r.ReservationStatus == ReservationStatusPending || r.ReservationStatus == ReservationStatusApproved) &&
+            r.EndAt.HasValue &&
+            r.EndAt.Value > now);
+
+        if (status == "maintenance" && maintenanceUntil is not null)
+        {
+            var maintenanceUntilUtc = RequestTimeToUtc(maintenanceUntil.Value);
+            query = query.Where(r => r.StartAt.HasValue && r.StartAt.Value < maintenanceUntilUtc);
+        }
+
+        if (status != "disabled" && status != "maintenance")
+        {
+            query = query.Where(r => false);
+        }
+
+        return query;
+    }
+
+    private static void UpdateMaintenanceUntil(int venueId, string status, DateTime? maintenanceUntil)
+    {
+        if (status != "maintenance" || maintenanceUntil is null)
+        {
+            MaintenanceUntilByVenueId.TryRemove(venueId, out _);
+            return;
+        }
+
+        MaintenanceUntilByVenueId[venueId] = RequestTimeToUtc(maintenanceUntil.Value);
+    }
+
+    private static DateTime RequestTimeToUtc(DateTime value)
+    {
+        if (value == default) return value;
+
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => TimeZoneInfo.ConvertTimeToUtc(value, BeijingTimeZone)
+        };
+    }
+
+    private static TimeZoneInfo ResolveBeijingTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        }
     }
 
     private async Task<IActionResult?> RequirePermissionAsync(int operatorUserId, string permissionCode, string forbiddenMessage)
@@ -237,15 +329,19 @@ public class VenuesController : ControllerBase
 
     private static VenueDto ToDto(Venue venue)
     {
+        var status = NormalizeVenueStatus(venue.VenueStatus);
         return new VenueDto(
             venue.VenueId,
             venue.VenueName ?? "",
             venue.Building,
             venue.RoomNo,
             venue.Capacity ?? 0,
-            NormalizeVenueStatus(venue.VenueStatus),
+            status,
             venue.ManagerUserId,
-            venue.CreatedAt ?? DateTime.MinValue);
+            venue.CreatedAt ?? DateTime.MinValue,
+            status == "maintenance" && MaintenanceUntilByVenueId.TryGetValue(venue.VenueId, out var maintenanceUntil)
+                ? maintenanceUntil
+                : null);
     }
 
     private static string? NullIfBlank(string? value)
@@ -270,7 +366,8 @@ public record VenueDto(
     int Capacity,
     string Status,
     int? ManagerUserId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    DateTime? MaintenanceUntil);
 
 public record CreateVenueRequest(
     int OperatorUserId,
@@ -291,4 +388,9 @@ public record UpdateVenueRequest(
 
 public record UpdateVenueStatusRequest(
     int OperatorUserId,
-    string Status);
+    string Status,
+    DateTime? MaintenanceUntil,
+    bool? CancelConflictingReservations);
+
+public record DeleteVenueRequest(
+    int OperatorUserId);

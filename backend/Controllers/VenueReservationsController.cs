@@ -40,7 +40,8 @@ public class VenueReservationsController : ControllerBase
     public async Task<IActionResult> GetAll(
         [FromQuery] string? status,
         [FromQuery] int? venueId,
-        [FromQuery] int? clubId)
+        [FromQuery] int? clubId,
+        [FromQuery] int? applicantUserId)
     {
         if (!IsValidStatus(status, AllowedReservationStatuses, out var normalizedStatus))
         {
@@ -62,6 +63,11 @@ public class VenueReservationsController : ControllerBase
         if (clubId is not null)
         {
             query = query.Where(r => r.ClubId == clubId);
+        }
+
+        if (applicantUserId is not null)
+        {
+            query = query.Where(r => r.ApplicantUserId == applicantUserId);
         }
 
         var reservations = await query
@@ -216,6 +222,39 @@ public class VenueReservationsController : ControllerBase
         return Ok(ToDto(reservation));
     }
 
+    [HttpDelete("{reservationId:int}")]
+    public async Task<IActionResult> Delete(int reservationId, [FromBody] DeleteVenueReservationRequest req)
+    {
+        var reservation = await ReservationQuery()
+            .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
+
+        if (reservation is null) return NotFound(Error("reservation_not_found", "预约不存在。"));
+
+        if (reservation.ApplicantUserId != req.OperatorUserId)
+        {
+            var permission = await _authService.CheckPermissionAsync(req.OperatorUserId, ReviewPermission, null);
+            if (!permission.Succeeded)
+            {
+                return StatusCode(permission.StatusCode, Error("venue_reservation_delete_permission_check_failed", permission.ErrorMessage ?? "删除预约权限校验失败。"));
+            }
+
+            if (permission.Value?.Allowed != true)
+            {
+                return StatusCode(403, Error("venue_reservation_delete_forbidden", permission.Value?.Message ?? "当前用户没有删除该预约的权限。"));
+            }
+        }
+
+        if (IsInProgressApprovedReservation(reservation))
+        {
+            return Conflict(Error("venue_reservation_in_progress_cannot_delete", "已开始且未结束的已通过预约暂时无法删除。"));
+        }
+
+        _db.VenueReservations.Remove(reservation);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     private IQueryable<VenueReservationEntity> ReservationQuery()
     {
         return _db.VenueReservations
@@ -350,6 +389,22 @@ public class VenueReservationsController : ControllerBase
         return string.IsNullOrWhiteSpace(user.RealName) ? user.Username : user.RealName;
     }
 
+    private static bool IsInProgressApprovedReservation(VenueReservationEntity reservation)
+    {
+        if (!string.Equals(NormalizeReservationStatus(reservation.ReservationStatus), ReservationStatusApproved, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (reservation.StartAt is null || reservation.EndAt is null)
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        return StoredTimeToUtc(reservation.StartAt.Value) <= now && StoredTimeToUtc(reservation.EndAt.Value) > now;
+    }
+
     private static ApiError Error(string code, string message, string? detail = null) => new()
     {
         Code = code,
@@ -376,3 +431,6 @@ public record VenueReservationDto(
     string? ReviewerName,
     string? ReviewComment,
     DateTime CreatedAt);
+
+public record DeleteVenueReservationRequest(
+    int OperatorUserId);

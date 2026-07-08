@@ -1590,6 +1590,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除场地
+      operationId: deleteVenue
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteVenueRequest"
+      responses:
+        "204":
+          description: 场地已删除
+        "403":
+          description: 当前用户没有删除场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 场地已有预约记录，不能删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/venues/{venueId}/status:
     patch:
@@ -1632,6 +1668,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 场地后续存在与状态变更冲突的预约
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/venue-reservations:
     get:
@@ -1655,6 +1697,12 @@ paths:
           in: query
           required: false
           description: 按申请社团筛选。
+          schema:
+            type: integer
+        - name: applicantUserId
+          in: query
+          required: false
+          description: 按申请人用户筛选。
           schema:
             type: integer
       responses:
@@ -1718,6 +1766,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VenueReservation"
+        "404":
+          description: 预约不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 已开始且未结束的已通过预约暂时无法删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除场地预约
+      operationId: deleteVenueReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteVenueReservationRequest"
+      responses:
+        "204":
+          description: 预约已删除
+        "403":
+          description: 当前用户没有删除该预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 预约不存在
           content:
@@ -3502,6 +3586,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        maintenanceUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: 维护结束时间。为空表示维护结束时间未知。
       required:
         - id
         - name
@@ -3578,9 +3667,36 @@ components:
         status:
           type: string
           enum: [available, disabled, maintenance]
+        maintenanceUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: status 为 maintenance 时可选填写的维护结束时间。
+        cancelConflictingReservations:
+          type: boolean
+          nullable: true
+          description: 若状态变更与后续预约冲突，是否自动取消这些冲突预约。
       required:
         - operatorUserId
         - status
+
+    DeleteVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行删除操作的用户 ID，用于校验 venue:disable 权限。
+      required:
+        - operatorUserId
+
+    DeleteVenueReservationRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。
+      required:
+        - operatorUserId
 
     VenueReservation:
       type: object
