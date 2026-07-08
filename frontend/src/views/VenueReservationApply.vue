@@ -297,7 +297,8 @@ function openReviewDialog() {
 function findVenueOccupancy(venue: Venue) {
   return approvedReservations.value
     .filter(
-      (reservation) => reservation.venueId === venue.id && isCurrentApprovedReservation(reservation),
+      (reservation) =>
+        reservation.venueId === venue.id && isCurrentApprovedReservation(reservation),
     )
     .sort((a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime())[0];
 }
