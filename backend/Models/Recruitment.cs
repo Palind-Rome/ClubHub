@@ -164,6 +164,14 @@ namespace Org.OpenAPITools.Models
         public string? CurrentUserApplicationStatusText { get; set; }
 
         /// <summary>
+        /// 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
+        /// </summary>
+        /// <value>当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。</value>
+        [Required]
+        [DataMember(Name="currentUserIsMember", EmitDefaultValue=true)]
+        public bool CurrentUserIsMember { get; set; }
+
+        /// <summary>
         /// Gets or Sets CanManage
         /// </summary>
         [Required]

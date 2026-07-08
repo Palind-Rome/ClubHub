@@ -123,6 +123,12 @@ export interface Recruitment {
    */
   currentUserApplicationStatusText?: string | null;
   /**
+   * 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
+   * @type {boolean}
+   * @memberof Recruitment
+   */
+  currentUserIsMember: boolean;
+  /**
    *
    * @type {boolean}
    * @memberof Recruitment
@@ -154,6 +160,7 @@ export function instanceOfRecruitment(value: object): value is Recruitment {
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   if (!("applicationCount" in value) || value["applicationCount"] === undefined) return false;
   if (!("acceptedCount" in value) || value["acceptedCount"] === undefined) return false;
+  if (!("currentUserIsMember" in value) || value["currentUserIsMember"] === undefined) return false;
   if (!("canManage" in value) || value["canManage"] === undefined) return false;
   return true;
 }
@@ -191,6 +198,7 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
       json["currentUserApplicationStatusText"] == null
         ? undefined
         : json["currentUserApplicationStatusText"],
+    currentUserIsMember: json["currentUserIsMember"],
     canManage: json["canManage"],
   };
 }
@@ -225,6 +233,7 @@ export function RecruitmentToJSONTyped(
     currentUserApplicationId: value["currentUserApplicationId"],
     currentUserApplicationStatus: value["currentUserApplicationStatus"],
     currentUserApplicationStatusText: value["currentUserApplicationStatusText"],
+    currentUserIsMember: value["currentUserIsMember"],
     canManage: value["canManage"],
   };
 }
