@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 权限目录项。
     /// </summary>
     [DataContract]
-    public partial class PermissionDefinition
+    public partial class PermissionDefinition 
     {
         /// <summary>
         /// 权限编码。
@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>权限编码。</value>
         /* <example>profile:view</example> */
         [Required]
-        [DataMember(Name = "code", EmitDefaultValue = false)]
+        [DataMember(Name="code", EmitDefaultValue=false)]
         public string Code { get; set; }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Org.OpenAPITools.Models
         /// <value>权限展示名称。</value>
         /* <example>查看个人信息</example> */
         [Required]
-        [DataMember(Name = "name", EmitDefaultValue = false)]
+        [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace Org.OpenAPITools.Models
         /// <value>权限说明。</value>
         /* <example>查看自己的账号、学工号和联系方式。</example> */
         [Required]
-        [DataMember(Name = "description", EmitDefaultValue = false)]
+        [DataMember(Name="description", EmitDefaultValue=false)]
         public string Description { get; set; }
 
     }

@@ -18,18 +18,18 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class ApiError
+    public partial class ApiError 
     {
         /// <summary>
         /// Gets or Sets Code
         /// </summary>
         /* <example>venue_reservation_conflict</example> */
-        [DataMember(Name = "code", EmitDefaultValue = true)]
+        [DataMember(Name="code", EmitDefaultValue=true)]
         public string? Code { get; set; }
 
         /// <summary>
@@ -37,13 +37,13 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>该场地在所选时间段已有已通过预约。</example> */
         [Required]
-        [DataMember(Name = "message", EmitDefaultValue = false)]
+        [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }
 
         /// <summary>
         /// Gets or Sets Detail
         /// </summary>
-        [DataMember(Name = "detail", EmitDefaultValue = true)]
+        [DataMember(Name="detail", EmitDefaultValue=true)]
         public string? Detail { get; set; }
 
     }

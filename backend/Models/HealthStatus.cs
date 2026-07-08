@@ -18,26 +18,26 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class HealthStatus
+    public partial class HealthStatus 
     {
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
         /* <example>healthy</example> */
         [Required]
-        [DataMember(Name = "status", EmitDefaultValue = false)]
+        [DataMember(Name="status", EmitDefaultValue=false)]
         public string Status { get; set; }
 
         /// <summary>
         /// Gets or Sets Timestamp
         /// </summary>
         [Required]
-        [DataMember(Name = "timestamp", EmitDefaultValue = true)]
+        [DataMember(Name="timestamp", EmitDefaultValue=true)]
         public DateTime Timestamp { get; set; }
 
     }

@@ -18,86 +18,86 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class Activity
+    public partial class Activity 
     {
         /// <summary>
         /// Gets or Sets Id
         /// </summary>
         [Required]
-        [DataMember(Name = "id", EmitDefaultValue = true)]
+        [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
         /// Gets or Sets Title
         /// </summary>
         [Required]
-        [DataMember(Name = "title", EmitDefaultValue = false)]
+        [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
         [Required]
-        [DataMember(Name = "clubName", EmitDefaultValue = false)]
+        [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
         /// Gets or Sets StartTime
         /// </summary>
         [Required]
-        [DataMember(Name = "startTime", EmitDefaultValue = true)]
+        [DataMember(Name="startTime", EmitDefaultValue=true)]
         public DateTime StartTime { get; set; }
 
         /// <summary>
         /// Gets or Sets EndTime
         /// </summary>
         [Required]
-        [DataMember(Name = "endTime", EmitDefaultValue = true)]
+        [DataMember(Name="endTime", EmitDefaultValue=true)]
         public DateTime EndTime { get; set; }
 
         /// <summary>
         /// Gets or Sets Location
         /// </summary>
-        [DataMember(Name = "location", EmitDefaultValue = true)]
+        [DataMember(Name="location", EmitDefaultValue=true)]
         public string? Location { get; set; }
 
 
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
-
+        
         public enum StatusEnum
         {
-
+            
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-
+            
             /// <summary>
             /// Enum PublishedEnum for published
             /// </summary>
             [EnumMember(Value = "published")]
             PublishedEnum = 2,
-
+            
             /// <summary>
             /// Enum OngoingEnum for ongoing
             /// </summary>
             [EnumMember(Value = "ongoing")]
             OngoingEnum = 3,
-
+            
             /// <summary>
             /// Enum FinishedEnum for finished
             /// </summary>
             [EnumMember(Value = "finished")]
             FinishedEnum = 4,
-
+            
             /// <summary>
             /// Enum CancelledEnum for cancelled
             /// </summary>
@@ -109,20 +109,20 @@ namespace Org.OpenAPITools.Models
         /// Gets or Sets Status
         /// </summary>
         [Required]
-        [DataMember(Name = "status", EmitDefaultValue = true)]
+        [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }
 
         /// <summary>
         /// Gets or Sets MaxParticipants
         /// </summary>
-        [DataMember(Name = "maxParticipants", EmitDefaultValue = true)]
+        [DataMember(Name="maxParticipants", EmitDefaultValue=true)]
         public int? MaxParticipants { get; set; }
 
         /// <summary>
         /// Gets or Sets CurrentParticipants
         /// </summary>
         [Required]
-        [DataMember(Name = "currentParticipants", EmitDefaultValue = true)]
+        [DataMember(Name="currentParticipants", EmitDefaultValue=true)]
         public int CurrentParticipants { get; set; }
 
     }

@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 用户登录请求，username 可填写用户名或学工号。
     /// </summary>
     [DataContract]
-    public partial class LoginRequest
+    public partial class LoginRequest 
     {
         /// <summary>
         /// 用户名或学工号。
@@ -31,8 +31,8 @@ namespace Org.OpenAPITools.Models
         /// <value>用户名或学工号。</value>
         /* <example>stu_public</example> */
         [Required]
-        [StringLength(50, MinimumLength = 1)]
-        [DataMember(Name = "username", EmitDefaultValue = false)]
+        [StringLength(50, MinimumLength=1)]
+        [DataMember(Name="username", EmitDefaultValue=false)]
         public string Username { get; set; }
 
         /// <summary>
@@ -41,8 +41,8 @@ namespace Org.OpenAPITools.Models
         /// <value>登录密码。</value>
         /* <example>ClubHub123</example> */
         [Required]
-        [StringLength(128, MinimumLength = 1)]
-        [DataMember(Name = "password", EmitDefaultValue = false)]
+        [StringLength(128, MinimumLength=1)]
+        [DataMember(Name="password", EmitDefaultValue=false)]
         public string Password { get; set; }
 
     }

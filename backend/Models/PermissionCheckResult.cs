@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 权限检查结果。
     /// </summary>
     [DataContract]
-    public partial class PermissionCheckResult
+    public partial class PermissionCheckResult 
     {
         /// <summary>
         /// 被检查的用户 ID。
@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>被检查的用户 ID。</value>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "userId", EmitDefaultValue = true)]
+        [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Org.OpenAPITools.Models
         /// <value>被检查的权限编码。</value>
         /* <example>club:internal:view</example> */
         [Required]
-        [DataMember(Name = "permission", EmitDefaultValue = false)]
+        [DataMember(Name="permission", EmitDefaultValue=false)]
         public string Permission { get; set; }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>权限检查涉及的社团 ID；全局权限可为空。</value>
         /* <example>1</example> */
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Org.OpenAPITools.Models
         /// <value>是否允许访问。</value>
         /* <example>true</example> */
         [Required]
-        [DataMember(Name = "allowed", EmitDefaultValue = true)]
+        [DataMember(Name="allowed", EmitDefaultValue=true)]
         public bool Allowed { get; set; }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>命中该权限的角色列表。</value>
         [Required]
-        [DataMember(Name = "matchedRoles", EmitDefaultValue = false)]
+        [DataMember(Name="matchedRoles", EmitDefaultValue=false)]
         public List<AuthRole> MatchedRoles { get; set; }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Org.OpenAPITools.Models
         /// <value>面向调用方的判定说明。</value>
         /* <example>允许访问。</example> */
         [Required]
-        [DataMember(Name = "message", EmitDefaultValue = false)]
+        [DataMember(Name="message", EmitDefaultValue=false)]
         public string Message { get; set; }
 
     }

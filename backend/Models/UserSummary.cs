@@ -18,77 +18,77 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class UserSummary
+    public partial class UserSummary 
     {
         /// <summary>
         /// Gets or Sets Id
         /// </summary>
         [Required]
-        [DataMember(Name = "id", EmitDefaultValue = true)]
+        [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
         /// Gets or Sets Username
         /// </summary>
-        [DataMember(Name = "username", EmitDefaultValue = true)]
+        [DataMember(Name="username", EmitDefaultValue=true)]
         public string? Username { get; set; }
 
         /// <summary>
         /// Gets or Sets RealName
         /// </summary>
-        [DataMember(Name = "realName", EmitDefaultValue = true)]
+        [DataMember(Name="realName", EmitDefaultValue=true)]
         public string? RealName { get; set; }
 
         /// <summary>
         /// Gets or Sets StudentNo
         /// </summary>
-        [DataMember(Name = "studentNo", EmitDefaultValue = true)]
+        [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
         /// Gets or Sets DisplayName
         /// </summary>
         [Required]
-        [DataMember(Name = "displayName", EmitDefaultValue = false)]
+        [DataMember(Name="displayName", EmitDefaultValue=false)]
         public string DisplayName { get; set; }
 
         /// <summary>
         /// Gets or Sets AccountStatus
         /// </summary>
-        [DataMember(Name = "accountStatus", EmitDefaultValue = true)]
+        [DataMember(Name="accountStatus", EmitDefaultValue=true)]
         public string? AccountStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets Roles
         /// </summary>
         [Required]
-        [DataMember(Name = "roles", EmitDefaultValue = false)]
+        [DataMember(Name="roles", EmitDefaultValue=false)]
         public List<UserRoleSummary> Roles { get; set; }
 
         /// <summary>
         /// Gets or Sets Memberships
         /// </summary>
         [Required]
-        [DataMember(Name = "memberships", EmitDefaultValue = false)]
+        [DataMember(Name="memberships", EmitDefaultValue=false)]
         public List<UserMembershipSummary> Memberships { get; set; }
 
         /// <summary>
         /// Gets or Sets CanSubmitClubApplication
         /// </summary>
         [Required]
-        [DataMember(Name = "canSubmitClubApplication", EmitDefaultValue = true)]
+        [DataMember(Name="canSubmitClubApplication", EmitDefaultValue=true)]
         public bool CanSubmitClubApplication { get; set; }
 
         /// <summary>
         /// Gets or Sets CanReviewClubApplication
         /// </summary>
         [Required]
-        [DataMember(Name = "canReviewClubApplication", EmitDefaultValue = true)]
+        [DataMember(Name="canReviewClubApplication", EmitDefaultValue=true)]
         public bool CanReviewClubApplication { get; set; }
 
     }

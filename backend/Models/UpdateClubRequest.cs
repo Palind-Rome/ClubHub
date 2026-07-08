@@ -18,30 +18,30 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class UpdateClubRequest
+    public partial class UpdateClubRequest 
     {
         /// <summary>
         /// Gets or Sets Name
         /// </summary>
         [MinLength(1)]
-        [DataMember(Name = "name", EmitDefaultValue = false)]
+        [DataMember(Name="name", EmitDefaultValue=false)]
         public string? Name { get; set; }
 
         /// <summary>
         /// Gets or Sets Category
         /// </summary>
-        [DataMember(Name = "category", EmitDefaultValue = false)]
+        [DataMember(Name="category", EmitDefaultValue=false)]
         public string? Category { get; set; }
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name = "description", EmitDefaultValue = true)]
+        [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
     }

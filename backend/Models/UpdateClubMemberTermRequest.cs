@@ -18,78 +18,78 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class UpdateClubMemberTermRequest
+    public partial class UpdateClubMemberTermRequest 
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
         /// </summary>
         [Required]
-        [DataMember(Name = "currentUserId", EmitDefaultValue = true)]
+        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets DepartmentName
         /// </summary>
-        [DataMember(Name = "departmentName", EmitDefaultValue = true)]
+        [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
         /// Gets or Sets GroupName
         /// </summary>
-        [DataMember(Name = "groupName", EmitDefaultValue = true)]
+        [DataMember(Name="groupName", EmitDefaultValue=true)]
         public string? GroupName { get; set; }
 
         /// <summary>
         /// Gets or Sets PositionName
         /// </summary>
         [MinLength(1)]
-        [DataMember(Name = "positionName", EmitDefaultValue = false)]
+        [DataMember(Name="positionName", EmitDefaultValue=false)]
         public string? PositionName { get; set; }
 
         /// <summary>
         /// Gets or Sets TermName
         /// </summary>
         [MinLength(1)]
-        [DataMember(Name = "termName", EmitDefaultValue = false)]
+        [DataMember(Name="termName", EmitDefaultValue=false)]
         public string? TermName { get; set; }
 
         /// <summary>
         /// Gets or Sets TermStart
         /// </summary>
-        [DataMember(Name = "termStart", EmitDefaultValue = true)]
+        [DataMember(Name="termStart", EmitDefaultValue=true)]
         public DateTime? TermStart { get; set; }
 
         /// <summary>
         /// Gets or Sets TermEnd
         /// </summary>
-        [DataMember(Name = "termEnd", EmitDefaultValue = true)]
+        [DataMember(Name="termEnd", EmitDefaultValue=true)]
         public DateTime? TermEnd { get; set; }
 
 
         /// <summary>
         /// Gets or Sets MemberStatus
         /// </summary>
-
+        
         public enum MemberStatusEnum
         {
-
+            
             /// <summary>
             /// Enum ActiveEnum for active
             /// </summary>
             [EnumMember(Value = "active")]
             ActiveEnum = 1,
-
+            
             /// <summary>
             /// Enum EndedEnum for ended
             /// </summary>
             [EnumMember(Value = "ended")]
             EndedEnum = 2,
-
+            
             /// <summary>
             /// Enum SuspendedEnum for suspended
             /// </summary>
@@ -100,13 +100,13 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets MemberStatus
         /// </summary>
-        [DataMember(Name = "memberStatus", EmitDefaultValue = true)]
+        [DataMember(Name="memberStatus", EmitDefaultValue=true)]
         public MemberStatusEnum MemberStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets ContributionScore
         /// </summary>
-        [DataMember(Name = "contributionScore", EmitDefaultValue = true)]
+        [DataMember(Name="contributionScore", EmitDefaultValue=true)]
         public decimal? ContributionScore { get; set; }
 
     }

@@ -18,34 +18,34 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class ReviewClubApplicationRequest
+    public partial class ReviewClubApplicationRequest 
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
         /// </summary>
         [Required]
-        [DataMember(Name = "currentUserId", EmitDefaultValue = true)]
+        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
 
 
         /// <summary>
         /// Gets or Sets Decision
         /// </summary>
-
+        
         public enum DecisionEnum
         {
-
+            
             /// <summary>
             /// Enum ApprovedEnum for approved
             /// </summary>
             [EnumMember(Value = "approved")]
             ApprovedEnum = 1,
-
+            
             /// <summary>
             /// Enum RejectedEnum for rejected
             /// </summary>
@@ -57,13 +57,13 @@ namespace Org.OpenAPITools.Models
         /// Gets or Sets Decision
         /// </summary>
         [Required]
-        [DataMember(Name = "decision", EmitDefaultValue = true)]
+        [DataMember(Name="decision", EmitDefaultValue=true)]
         public DecisionEnum Decision { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewComment
         /// </summary>
-        [DataMember(Name = "reviewComment", EmitDefaultValue = true)]
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
 
     }

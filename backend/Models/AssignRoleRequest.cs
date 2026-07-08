@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 为目标用户分配系统级或社团级角色。
     /// </summary>
     [DataContract]
-    public partial class AssignRoleRequest
+    public partial class AssignRoleRequest 
     {
         /// <summary>
         /// 发起分配操作的用户 ID。
@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>发起分配操作的用户 ID。</value>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "operatorUserId", EmitDefaultValue = true)]
+        [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
         public int OperatorUserId { get; set; }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Org.OpenAPITools.Models
         /// <value>被分配角色的用户 ID。</value>
         /* <example>2</example> */
         [Required]
-        [DataMember(Name = "targetUserId", EmitDefaultValue = true)]
+        [DataMember(Name="targetUserId", EmitDefaultValue=true)]
         public int TargetUserId { get; set; }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Org.OpenAPITools.Models
         /* <example>CLUB_MEMBER</example> */
         [Required]
         [MaxLength(50)]
-        [DataMember(Name = "roleCode", EmitDefaultValue = false)]
+        [DataMember(Name="roleCode", EmitDefaultValue=false)]
         public string RoleCode { get; set; }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>社团级角色所属社团 ID；系统级角色可为空。</value>
         /* <example>1</example> */
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int? ClubId { get; set; }
 
     }

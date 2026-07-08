@@ -18,113 +18,113 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 
     /// </summary>
     [DataContract]
-    public partial class ClubMemberRecord
+    public partial class ClubMemberRecord 
     {
         /// <summary>
         /// Gets or Sets MemberId
         /// </summary>
         [Required]
-        [DataMember(Name = "memberId", EmitDefaultValue = true)]
+        [DataMember(Name="memberId", EmitDefaultValue=true)]
         public int MemberId { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubId
         /// </summary>
         [Required]
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
         [Required]
-        [DataMember(Name = "clubName", EmitDefaultValue = false)]
+        [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
         /// Gets or Sets UserId
         /// </summary>
         [Required]
-        [DataMember(Name = "userId", EmitDefaultValue = true)]
+        [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
         /// Gets or Sets UserName
         /// </summary>
         [Required]
-        [DataMember(Name = "userName", EmitDefaultValue = false)]
+        [DataMember(Name="userName", EmitDefaultValue=false)]
         public string UserName { get; set; }
 
         /// <summary>
         /// Gets or Sets StudentNo
         /// </summary>
-        [DataMember(Name = "studentNo", EmitDefaultValue = true)]
+        [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
         /// Gets or Sets DepartmentName
         /// </summary>
-        [DataMember(Name = "departmentName", EmitDefaultValue = true)]
+        [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
         /// Gets or Sets GroupName
         /// </summary>
-        [DataMember(Name = "groupName", EmitDefaultValue = true)]
+        [DataMember(Name="groupName", EmitDefaultValue=true)]
         public string? GroupName { get; set; }
 
         /// <summary>
         /// Gets or Sets PositionName
         /// </summary>
-        [DataMember(Name = "positionName", EmitDefaultValue = true)]
+        [DataMember(Name="positionName", EmitDefaultValue=true)]
         public string? PositionName { get; set; }
 
         /// <summary>
         /// Gets or Sets TermName
         /// </summary>
-        [DataMember(Name = "termName", EmitDefaultValue = true)]
+        [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
         /// Gets or Sets TermStart
         /// </summary>
-        [DataMember(Name = "termStart", EmitDefaultValue = true)]
+        [DataMember(Name="termStart", EmitDefaultValue=true)]
         public DateTime? TermStart { get; set; }
 
         /// <summary>
         /// Gets or Sets TermEnd
         /// </summary>
-        [DataMember(Name = "termEnd", EmitDefaultValue = true)]
+        [DataMember(Name="termEnd", EmitDefaultValue=true)]
         public DateTime? TermEnd { get; set; }
 
         /// <summary>
         /// Gets or Sets MemberStatus
         /// </summary>
-        [DataMember(Name = "memberStatus", EmitDefaultValue = true)]
+        [DataMember(Name="memberStatus", EmitDefaultValue=true)]
         public string? MemberStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets JoinAt
         /// </summary>
-        [DataMember(Name = "joinAt", EmitDefaultValue = true)]
+        [DataMember(Name="joinAt", EmitDefaultValue=true)]
         public DateTime? JoinAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ContributionScore
         /// </summary>
-        [DataMember(Name = "contributionScore", EmitDefaultValue = true)]
+        [DataMember(Name="contributionScore", EmitDefaultValue=true)]
         public decimal? ContributionScore { get; set; }
 
         /// <summary>
         /// Gets or Sets IsCurrent
         /// </summary>
         [Required]
-        [DataMember(Name = "isCurrent", EmitDefaultValue = true)]
+        [DataMember(Name="isCurrent", EmitDefaultValue=true)]
         public bool IsCurrent { get; set; }
 
     }

@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
     /// </summary>
     [DataContract]
-    public partial class RegisterRequest
+    public partial class RegisterRequest 
     {
         /// <summary>
         /// 登录用户名，注册后必须唯一。
@@ -31,8 +31,8 @@ namespace Org.OpenAPITools.Models
         /// <value>登录用户名，注册后必须唯一。</value>
         /* <example>stu_public</example> */
         [Required]
-        [StringLength(50, MinimumLength = 3)]
-        [DataMember(Name = "username", EmitDefaultValue = false)]
+        [StringLength(50, MinimumLength=3)]
+        [DataMember(Name="username", EmitDefaultValue=false)]
         public string Username { get; set; }
 
         /// <summary>
@@ -41,8 +41,8 @@ namespace Org.OpenAPITools.Models
         /// <value>登录密码，服务端仅保存密码摘要。</value>
         /* <example>ClubHub123</example> */
         [Required]
-        [StringLength(128, MinimumLength = 6)]
-        [DataMember(Name = "password", EmitDefaultValue = false)]
+        [StringLength(128, MinimumLength=6)]
+        [DataMember(Name="password", EmitDefaultValue=false)]
         public string Password { get; set; }
 
         /// <summary>
@@ -51,8 +51,8 @@ namespace Org.OpenAPITools.Models
         /// <value>用户真实姓名。</value>
         /* <example>张三</example> */
         [Required]
-        [StringLength(50, MinimumLength = 1)]
-        [DataMember(Name = "realName", EmitDefaultValue = false)]
+        [StringLength(50, MinimumLength=1)]
+        [DataMember(Name="realName", EmitDefaultValue=false)]
         public string RealName { get; set; }
 
         /// <summary>
@@ -62,8 +62,8 @@ namespace Org.OpenAPITools.Models
         /* <example>2450001</example> */
         [Required]
         [RegularExpression("^([0-9]{7}|[0-9]{5})$")]
-        [StringLength(7, MinimumLength = 5)]
-        [DataMember(Name = "studentNo", EmitDefaultValue = false)]
+        [StringLength(7, MinimumLength=5)]
+        [DataMember(Name="studentNo", EmitDefaultValue=false)]
         public string StudentNo { get; set; }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Org.OpenAPITools.Models
         /* <example>男</example> */
         [RegularExpression("^(男|女)$")]
         [MaxLength(10)]
-        [DataMember(Name = "gender", EmitDefaultValue = true)]
+        [DataMember(Name="gender", EmitDefaultValue=true)]
         public string? Gender { get; set; }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace Org.OpenAPITools.Models
         /* <example>13800138000</example> */
         [RegularExpression("^[0-9+\\-\\s()]{0,20}$")]
         [MaxLength(20)]
-        [DataMember(Name = "phone", EmitDefaultValue = true)]
+        [DataMember(Name="phone", EmitDefaultValue=true)]
         public string? Phone { get; set; }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Org.OpenAPITools.Models
         /// <value>邮箱地址，可为空。</value>
         /* <example>zhangsan@example.com</example> */
         [MaxLength(100)]
-        [DataMember(Name = "email", EmitDefaultValue = true)]
+        [DataMember(Name="email", EmitDefaultValue=true)]
         public string? Email { get; set; }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Org.OpenAPITools.Models
         /// <value>所属学院，可为空。</value>
         /* <example>软件学院</example> */
         [MaxLength(100)]
-        [DataMember(Name = "college", EmitDefaultValue = true)]
+        [DataMember(Name="college", EmitDefaultValue=true)]
         public string? College { get; set; }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Org.OpenAPITools.Models
         /// <value>所属专业，可为空。</value>
         /* <example>软件工程</example> */
         [MaxLength(100)]
-        [DataMember(Name = "major", EmitDefaultValue = true)]
+        [DataMember(Name="major", EmitDefaultValue=true)]
         public string? Major { get; set; }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Org.OpenAPITools.Models
         /// <value>年级，可为空。</value>
         /* <example>2024</example> */
         [MaxLength(20)]
-        [DataMember(Name = "grade", EmitDefaultValue = true)]
+        [DataMember(Name="grade", EmitDefaultValue=true)]
         public string? Grade { get; set; }
 
     }
