@@ -2,6 +2,12 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
+import {
+  createVenueSearchIndex,
+  formatVenueLocation,
+  matchesVenueSearch,
+  type VenueSearchIndex,
+} from "../venueSearch";
 import VenueReservationReview from "./VenueReservationReview.vue";
 
 interface Venue {
@@ -23,6 +29,11 @@ interface VenueReservation {
   startTime: string;
   endTime: string;
   status: string;
+}
+
+interface VenueRow {
+  venue: Venue;
+  searchIndex: VenueSearchIndex;
 }
 
 interface ApiErrorPayload {
@@ -51,6 +62,8 @@ const approvedReservations = ref<VenueReservation[]>([]);
 const approvedSlotsVenue = ref<Venue | null>(null);
 const reservationFormRef = ref<FormInstance>();
 const auth = ref(readAuth());
+const venueSearch = ref("");
+const approvedSlotSearch = ref("");
 
 const firstClubId = computed(() => {
   const roleClubIds = auth.value?.roles.flatMap((role) => role.clubIds ?? []) ?? [];
@@ -70,6 +83,38 @@ const selectedVenue = computed(() => venues.value.find((venue) => venue.id === f
 const selectedVenueApprovedSlots = computed(() => {
   if (!approvedSlotsVenue.value) return [];
   return approvedReservationsForVenue(approvedSlotsVenue.value.id);
+});
+const filteredSelectedVenueApprovedSlots = computed(() => {
+  return selectedVenueApprovedSlots.value.filter((slot) =>
+    matchesVenueSearch(createApprovedSlotIndex(slot), approvedSlotSearch.value),
+  );
+});
+const approvedSlotEmptyText = computed(() => {
+  return approvedSlotSearch.value.trim() ? "未找到匹配时段" : "该场地暂无已预约时段";
+});
+const approvedSlotSearchSummary = computed(() => {
+  if (!approvedSlotSearch.value.trim()) {
+    return `共 ${selectedVenueApprovedSlots.value.length} 个已预约时段`;
+  }
+  return `已匹配 ${filteredSelectedVenueApprovedSlots.value.length} / ${selectedVenueApprovedSlots.value.length} 个时段`;
+});
+const venueRows = computed<VenueRow[]>(() => {
+  return venues.value.map((venue) => ({
+    venue,
+    searchIndex: createVenueIndex(venue),
+  }));
+});
+const filteredVenues = computed(() => {
+  return venueRows.value
+    .filter((row) => matchesVenueSearch(row.searchIndex, venueSearch.value))
+    .map((row) => row.venue);
+});
+const venueTableEmptyText = computed(() => {
+  return venueSearch.value.trim() ? "未找到匹配场地" : "暂无可预约场地";
+});
+const venueSearchSummary = computed(() => {
+  if (!venueSearch.value.trim()) return `共 ${venues.value.length} 个可预约场地`;
+  return `已匹配 ${filteredVenues.value.length} / ${venues.value.length} 个场地`;
 });
 const applicantName = computed(() => auth.value?.user.realName ?? "未登录");
 const canSubmit = computed(() => Boolean(auth.value?.user.id));
@@ -207,6 +252,7 @@ function openReservation(venue: Venue) {
 
 function openApprovedSlots(venue: Venue) {
   approvedSlotsVenue.value = venue;
+  approvedSlotSearch.value = "";
   approvedSlotsVisible.value = true;
 }
 
@@ -256,7 +302,25 @@ async function submitReservation() {
 }
 
 function formatLocation(venue: Venue) {
-  return [venue.building, venue.roomNo].filter(Boolean).join(" / ") || "未填写";
+  return formatVenueLocation(venue.building, venue.roomNo) || "未填写";
+}
+
+function createVenueIndex(venue: Venue) {
+  const location = formatVenueLocation(venue.building, venue.roomNo);
+  return createVenueSearchIndex({
+    ids: [venue.id],
+    texts: [venue.name, venue.building, venue.roomNo, location],
+  });
+}
+
+function createApprovedSlotIndex(slot: VenueReservation) {
+  const venue = approvedSlotsVenue.value;
+  const location = venue ? formatVenueLocation(venue.building, venue.roomNo) : "";
+
+  return createVenueSearchIndex({
+    ids: [slot.id, slot.venueId],
+    texts: [slot.venueName, venue?.name, venue?.building, venue?.roomNo, location],
+  });
 }
 
 function formatDateTime(value: string) {
@@ -392,7 +456,17 @@ onMounted(refreshVenueData);
 
     <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
 
-    <el-table v-loading="loading" :data="venues" stripe empty-text="暂无可预约场地">
+    <div class="search-row">
+      <el-input
+        v-model="venueSearch"
+        clearable
+        placeholder="搜索 ID、场地名称或位置"
+        class="search-input"
+      />
+      <span class="search-summary">{{ venueSearchSummary }}</span>
+    </div>
+
+    <el-table v-loading="loading" :data="filteredVenues" stripe :empty-text="venueTableEmptyText">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="name" label="场地名称" min-width="160" />
       <el-table-column label="位置" min-width="180">
@@ -501,9 +575,21 @@ onMounted(refreshVenueData);
         show-icon
         class="notice"
       />
-      <el-empty v-if="selectedVenueApprovedSlots.length === 0" description="该场地暂无已预约时段" />
+      <div class="search-row">
+        <el-input
+          v-model="approvedSlotSearch"
+          clearable
+          placeholder="搜索预约 ID、场地名称或位置"
+          class="search-input"
+        />
+        <span class="search-summary">{{ approvedSlotSearchSummary }}</span>
+      </div>
+      <el-empty
+        v-if="filteredSelectedVenueApprovedSlots.length === 0"
+        :description="approvedSlotEmptyText"
+      />
       <div v-else class="slot-timeline">
-        <div v-for="slot in selectedVenueApprovedSlots" :key="slot.id" class="slot-card">
+        <div v-for="slot in filteredSelectedVenueApprovedSlots" :key="slot.id" class="slot-card">
           <div class="slot-date">{{ formatDateOnly(slot.startTime) }}</div>
           <div class="slot-bar">
             <span class="slot-dot"></span>
@@ -545,6 +631,20 @@ onMounted(refreshVenueData);
 }
 .notice {
   margin-bottom: 12px;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.search-input {
+  max-width: 360px;
+}
+.search-summary {
+  flex: 1;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 .full-width {
   width: 100%;
@@ -612,6 +712,15 @@ onMounted(refreshVenueData);
   font-size: 13px;
 }
 @media (max-width: 720px) {
+  .search-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-input {
+    max-width: none;
+  }
+
   .slot-card {
     grid-template-columns: 1fr;
   }
