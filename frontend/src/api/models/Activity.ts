@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -37,19 +37,43 @@ export interface Activity {
    * @type {string}
    * @memberof Activity
    */
+  activityType?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
+  description?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
   clubName: string;
   /**
    *
-   * @type {Date}
+   * @type {number}
    * @memberof Activity
    */
-  startTime: Date;
+  clubId: number;
+  /**
+   *
+   * @type {number}
+   * @memberof Activity
+   */
+  creatorUserId?: number | null;
   /**
    *
    * @type {Date}
    * @memberof Activity
    */
-  endTime: Date;
+  startTime: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  endTime: Date | null;
   /**
    *
    * @type {string}
@@ -70,6 +94,54 @@ export interface Activity {
   maxParticipants?: number | null;
   /**
    *
+   * @type {Date}
+   * @memberof Activity
+   */
+  registrationDeadline?: Date | null;
+  /**
+   *
+   * @type {number}
+   * @memberof Activity
+   */
+  reviewerUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
+  reviewComment?: string | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  publishedAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkinStartAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkinEndAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkoutStartAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkoutEndAt?: Date | null;
+  /**
+   *
    * @type {number}
    * @memberof Activity
    */
@@ -81,7 +153,9 @@ export interface Activity {
  */
 export const ActivityStatusEnum = {
   Draft: "draft",
+  PendingReview: "pending_review",
   Published: "published",
+  Rejected: "rejected",
   Ongoing: "ongoing",
   Finished: "finished",
   Cancelled: "cancelled",
@@ -95,6 +169,7 @@ export function instanceOfActivity(value: object): value is Activity {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
   if (!("clubName" in value) || value["clubName"] === undefined) return false;
+  if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("startTime" in value) || value["startTime"] === undefined) return false;
   if (!("endTime" in value) || value["endTime"] === undefined) return false;
   if (!("status" in value) || value["status"] === undefined) return false;
@@ -113,12 +188,26 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
   return {
     id: json["id"],
     title: json["title"],
+    activityType: json["activityType"] == null ? undefined : json["activityType"],
+    description: json["description"] == null ? undefined : json["description"],
     clubName: json["clubName"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    clubId: json["clubId"],
+    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
+    startTime: json["startTime"] == null ? null : new Date(json["startTime"]),
+    endTime: json["endTime"] == null ? null : new Date(json["endTime"]),
     location: json["location"] == null ? undefined : json["location"],
     status: json["status"],
     maxParticipants: json["maxParticipants"] == null ? undefined : json["maxParticipants"],
+    registrationDeadline:
+      json["registrationDeadline"] == null ? undefined : new Date(json["registrationDeadline"]),
+    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
+    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    publishedAt: json["publishedAt"] == null ? undefined : new Date(json["publishedAt"]),
+    checkinStartAt: json["checkinStartAt"] == null ? undefined : new Date(json["checkinStartAt"]),
+    checkinEndAt: json["checkinEndAt"] == null ? undefined : new Date(json["checkinEndAt"]),
+    checkoutStartAt:
+      json["checkoutStartAt"] == null ? undefined : new Date(json["checkoutStartAt"]),
+    checkoutEndAt: json["checkoutEndAt"] == null ? undefined : new Date(json["checkoutEndAt"]),
     currentParticipants: json["currentParticipants"],
   };
 }
@@ -138,12 +227,38 @@ export function ActivityToJSONTyped(
   return {
     id: value["id"],
     title: value["title"],
+    activityType: value["activityType"],
+    description: value["description"],
     clubName: value["clubName"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    clubId: value["clubId"],
+    creatorUserId: value["creatorUserId"],
+    startTime: value["startTime"] == null ? value["startTime"] : value["startTime"].toISOString(),
+    endTime: value["endTime"] == null ? value["endTime"] : value["endTime"].toISOString(),
     location: value["location"],
     status: value["status"],
     maxParticipants: value["maxParticipants"],
+    registrationDeadline:
+      value["registrationDeadline"] == null
+        ? value["registrationDeadline"]
+        : value["registrationDeadline"].toISOString(),
+    reviewerUserId: value["reviewerUserId"],
+    reviewComment: value["reviewComment"],
+    publishedAt:
+      value["publishedAt"] == null ? value["publishedAt"] : value["publishedAt"].toISOString(),
+    checkinStartAt:
+      value["checkinStartAt"] == null
+        ? value["checkinStartAt"]
+        : value["checkinStartAt"].toISOString(),
+    checkinEndAt:
+      value["checkinEndAt"] == null ? value["checkinEndAt"] : value["checkinEndAt"].toISOString(),
+    checkoutStartAt:
+      value["checkoutStartAt"] == null
+        ? value["checkoutStartAt"]
+        : value["checkoutStartAt"].toISOString(),
+    checkoutEndAt:
+      value["checkoutEndAt"] == null
+        ? value["checkoutEndAt"]
+        : value["checkoutEndAt"].toISOString(),
     currentParticipants: value["currentParticipants"],
   };
 }

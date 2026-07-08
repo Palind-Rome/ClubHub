@@ -2214,9 +2214,11 @@ components:
         startTime:
           type: string
           format: date-time
+          nullable: true
         endTime:
           type: string
           format: date-time
+          nullable: true
         location:
           type: string
           nullable: true

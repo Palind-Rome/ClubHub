@@ -65,8 +65,8 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "报名截止时间不能晚于活动开始时间。" });
         }
 
-        var clubExists = await _db.Clubs.AnyAsync(c => c.ClubId == req.ClubId);
-        if (!clubExists)
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == req.ClubId);
+        if (club is null)
         {
             return BadRequest(new { message = "指定社团不存在，不能创建活动。" });
         }
@@ -92,7 +92,8 @@ public class ActivitiesController : ControllerBase
             Capacity = req.MaxParticipants,
             RegistrationDeadline = req.RegistrationDeadline,
             ActivityStatus = "pending_review",
-            CreatedAt = now
+            CreatedAt = now,
+            Club = club
         };
 
         _db.Activities.Add(activity);
@@ -138,11 +139,16 @@ public class ActivitiesController : ControllerBase
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
     {
         var activity = await _db.Activities
-            .Include(a => a.Participations)
+            .Include(a => a.Club)
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
 
         if (activity is null) return NotFound();
-        if (activity.ActivityStatus is "published" or "ongoing" or "finished")
+        if (req.Approved is null)
+        {
+            return BadRequest(new { message = "必须提供审核结果 approved。" });
+        }
+
+        if (activity.ActivityStatus is "published" or "ongoing" or "finished" or "cancelled")
         {
             return BadRequest(new { message = "已发布或已结束的活动不能重复审核。" });
         }
@@ -154,21 +160,27 @@ public class ActivitiesController : ControllerBase
 
         activity.ReviewerUserId = req.ReviewerUserId;
         activity.ReviewComment = req.Comment;
-        activity.ActivityStatus = req.Approved ? "published" : "rejected";
-        activity.PublishedAt = req.Approved ? DateTime.Now : null;
+        activity.ActivityStatus = req.Approved.Value ? "published" : "rejected";
+        activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
 
         await _db.SaveChangesAsync();
-        return Ok(ToDto(activity, activity.Participations.Count));
+        var currentParticipants = await _db.ActivityParticipations.CountAsync(p => p.ActivityId == activityId);
+        return Ok(ToDto(activity, currentParticipants));
     }
 
     [HttpPut("{activityId:int}/checkin-settings")]
     public async Task<IActionResult> UpdateCheckinSettings(int activityId, [FromBody] UpdateCheckinSettingsRequest req)
     {
         var activity = await _db.Activities
-            .Include(a => a.Participations)
+            .Include(a => a.Club)
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
 
         if (activity is null) return NotFound();
+        if (activity.ActivityStatus is not "published" and not "ongoing")
+        {
+            return BadRequest(new { message = "只有已发布或进行中的活动才能设置签到签退规则。" });
+        }
+
         if (string.IsNullOrWhiteSpace(req.CheckinCode) || string.IsNullOrWhiteSpace(req.CheckoutCode))
         {
             return BadRequest(new { message = "签到码和签退码不能为空。" });
@@ -184,6 +196,26 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "签退结束时间必须晚于签退开始时间。" });
         }
 
+        if (activity.StartAt is not null && req.CheckinStartAt < activity.StartAt)
+        {
+            return BadRequest(new { message = "签到开始时间不能早于活动开始时间。" });
+        }
+
+        if (activity.EndAt is not null && req.CheckinEndAt > activity.EndAt)
+        {
+            return BadRequest(new { message = "签到结束时间不能晚于活动结束时间。" });
+        }
+
+        if (activity.StartAt is not null && req.CheckoutStartAt < activity.StartAt)
+        {
+            return BadRequest(new { message = "签退开始时间不能早于活动开始时间。" });
+        }
+
+        if (activity.EndAt is not null && req.CheckoutEndAt > activity.EndAt)
+        {
+            return BadRequest(new { message = "签退结束时间不能晚于活动结束时间。" });
+        }
+
         activity.CheckinCode = req.CheckinCode.Trim();
         activity.CheckinStartAt = req.CheckinStartAt;
         activity.CheckinEndAt = req.CheckinEndAt;
@@ -192,7 +224,8 @@ public class ActivitiesController : ControllerBase
         activity.CheckoutEndAt = req.CheckoutEndAt;
 
         await _db.SaveChangesAsync();
-        return Ok(ToDto(activity, activity.Participations.Count));
+        var currentParticipants = await _db.ActivityParticipations.CountAsync(p => p.ActivityId == activityId);
+        return Ok(ToDto(activity, currentParticipants));
     }
 
     [HttpGet("{activityId:int}/participations")]
@@ -398,10 +431,13 @@ public class CreateActivityRequest
     [Required, StringLength(100, MinimumLength = 1)]
     public string Title { get; set; } = string.Empty;
 
+    [StringLength(255)]
     public string? ActivityType { get; set; }
 
+    [StringLength(4000)]
     public string? Description { get; set; }
 
+    [StringLength(255)]
     public string? Location { get; set; }
 
     [Required]
@@ -418,7 +454,7 @@ public class CreateActivityRequest
 public class ReviewActivityRequest
 {
     [Required]
-    public bool Approved { get; set; }
+    public bool? Approved { get; set; }
 
     public int? ReviewerUserId { get; set; }
 

@@ -172,6 +172,7 @@ function openCreate() {
 async function createActivity() {
   if (!createForm.value.title || !createForm.value.startTime || !createForm.value.endTime) {
     error.value = "请填写活动标题、开始时间和结束时间。";
+    ElMessage.error(error.value);
     return;
   }
 
@@ -199,6 +200,7 @@ async function createActivity() {
     await loadActivities();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "创建活动失败";
+    ElMessage.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -230,6 +232,7 @@ async function reviewActivity() {
     await loadActivities();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "审核活动失败";
+    ElMessage.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -250,6 +253,18 @@ function openSettings(activity: Activity) {
 
 async function saveCheckinSettings() {
   if (!currentActivity.value) return;
+  if (
+    !settingsForm.value.checkinCode ||
+    !settingsForm.value.checkoutCode ||
+    !settingsForm.value.checkinStartAt ||
+    !settingsForm.value.checkinEndAt ||
+    !settingsForm.value.checkoutStartAt ||
+    !settingsForm.value.checkoutEndAt
+  ) {
+    error.value = "请完整填写签到签退码和时间窗口。";
+    ElMessage.error(error.value);
+    return;
+  }
 
   saving.value = true;
   try {
@@ -264,6 +279,7 @@ async function saveCheckinSettings() {
     await loadActivities();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "保存签到设置失败";
+    ElMessage.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -298,6 +314,7 @@ async function submitSign() {
     await loadActivities();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "签到签退失败";
+    ElMessage.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -313,6 +330,7 @@ async function openParticipations(activity: Activity) {
     participations.value = await res.json();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载参与记录失败";
+    ElMessage.error(error.value);
   } finally {
     participationLoading.value = false;
   }
@@ -364,14 +382,36 @@ onMounted(loadActivities);
       <el-table-column label="操作" width="330" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
-            <el-button size="small" type="primary" plain @click="openReview(row)">审核</el-button>
-            <el-button size="small" type="primary" plain @click="openSettings(row)"
+            <el-button
+              v-if="row.status === 'pending_review'"
+              size="small"
+              type="primary"
+              plain
+              @click="openReview(row)"
+              >审核</el-button
+            >
+            <el-button
+              v-if="row.status === 'published' || row.status === 'ongoing'"
+              size="small"
+              type="primary"
+              plain
+              @click="openSettings(row)"
               >签到设置</el-button
             >
-            <el-button size="small" type="success" plain @click="openSign(row, 'checkin')"
+            <el-button
+              v-if="row.status === 'published' || row.status === 'ongoing'"
+              size="small"
+              type="success"
+              plain
+              @click="openSign(row, 'checkin')"
               >签到</el-button
             >
-            <el-button size="small" type="warning" plain @click="openSign(row, 'checkout')"
+            <el-button
+              v-if="row.status === 'published' || row.status === 'ongoing'"
+              size="small"
+              type="warning"
+              plain
+              @click="openSign(row, 'checkout')"
               >签退</el-button
             >
             <el-button size="small" plain @click="openParticipations(row)">记录</el-button>
