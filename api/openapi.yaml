@@ -359,23 +359,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
-    delete:
-      summary: 删除社团
-      operationId: deleteClub
+  /api/clubs/{clubId}/dissolve:
+    patch:
+      summary: 解散社团
+      description: 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+      operationId: dissolveClub
       parameters:
         - name: clubId
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DissolveClubRequest"
       responses:
         "204":
-          description: 社团已删除
+          description: 社团已解散
+        "400":
+          description: 当前用户或社团状态不符合业务规则
+        "403":
+          description: 当前用户没有解散社团权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团已解散或当前状态不允许解散
 
   /api/clubs/{clubId}/profile:
     patch:
       summary: 维护社团基础信息
-      description: 平台管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息。
+      description: 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
       operationId: updateClubProfile
       parameters:
         - name: clubId
@@ -408,7 +424,7 @@ paths:
   /api/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
-      description: 平台管理员、本社团负责人和本社团成员可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。
+      description: 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
       operationId: getClubMembers
       parameters:
         - name: clubId
@@ -445,7 +461,7 @@ paths:
   /api/clubs/{clubId}/members/terms:
     post:
       summary: 新增社团成员或干部任期
-      description: 平台管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+      description: 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
       operationId: createClubMemberTerm
       parameters:
         - name: clubId
@@ -478,7 +494,7 @@ paths:
   /api/clubs/{clubId}/members/{memberId}:
     patch:
       summary: 更新社团成员或干部任期
-      description: 平台管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+      description: 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
       operationId: updateClubMemberTerm
       parameters:
         - name: clubId
@@ -1145,6 +1161,15 @@ components:
         - currentUserId
         - name
         - category
+
+    DissolveClubRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+      required:
+        - currentUserId
 
     ClubMemberRecord:
       type: object

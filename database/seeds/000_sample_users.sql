@@ -121,6 +121,54 @@ WHEN NOT MATCHED THEN
   INSERT (user_id, username, password_hash, real_name, student_no, college, major, grade, account_status, created_at, updated_at)
   VALUES (source.user_id, source.username, source.password_hash, source.real_name, source.student_no, source.college, source.major, source.grade, source.account_status, SYSDATE, SYSDATE);
 
+MERGE INTO USERS target
+USING (
+  SELECT 6 AS user_id, 'officer_sun' AS username,
+         'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
+         '孙干部' AS real_name, '2350006' AS student_no,
+         '计算机科学与技术学院' AS college, '软件工程' AS major,
+         '2023' AS grade, 'active' AS account_status
+  FROM dual
+) source
+ON (target.user_id = source.user_id)
+WHEN MATCHED THEN UPDATE SET
+  target.username = source.username,
+  target.password_hash = source.password_hash,
+  target.real_name = source.real_name,
+  target.student_no = source.student_no,
+  target.college = source.college,
+  target.major = source.major,
+  target.grade = source.grade,
+  target.account_status = source.account_status,
+  target.updated_at = SYSDATE
+WHEN NOT MATCHED THEN
+  INSERT (user_id, username, password_hash, real_name, student_no, college, major, grade, account_status, created_at, updated_at)
+  VALUES (source.user_id, source.username, source.password_hash, source.real_name, source.student_no, source.college, source.major, source.grade, source.account_status, SYSDATE, SYSDATE);
+
+MERGE INTO USERS target
+USING (
+  SELECT 7 AS user_id, 'zhang_guoxiong' AS username,
+         'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
+         '张国雄' AS real_name, '2350007' AS student_no,
+         '经济与管理学院' AS college, '信息管理与信息系统' AS major,
+         '2023' AS grade, 'active' AS account_status
+  FROM dual
+) source
+ON (target.user_id = source.user_id)
+WHEN MATCHED THEN UPDATE SET
+  target.username = source.username,
+  target.password_hash = source.password_hash,
+  target.real_name = source.real_name,
+  target.student_no = source.student_no,
+  target.college = source.college,
+  target.major = source.major,
+  target.grade = source.grade,
+  target.account_status = source.account_status,
+  target.updated_at = SYSDATE
+WHEN NOT MATCHED THEN
+  INSERT (user_id, username, password_hash, real_name, student_no, college, major, grade, account_status, created_at, updated_at)
+  VALUES (source.user_id, source.username, source.password_hash, source.real_name, source.student_no, source.college, source.major, source.grade, source.account_status, SYSDATE, SYSDATE);
+
 MERGE INTO ROLES target
 USING (
   SELECT 1 AS role_id, 'STUDENT' AS role_code, '普通学生' AS role_name,
@@ -220,7 +268,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO ROLES target
 USING (
   SELECT 7 AS role_id, 'CLUB_ADMIN' AS role_code, '社团管理员' AS role_name,
-         'system' AS role_scope, '校级社团管理角色，可审核社团、活动、场地、经费、项目并管理社团状态。' AS permission_desc
+         'system' AS role_scope, '校级社团管理角色，可审核社团注册申请并管理社团状态，不参与社团内部档案、成员任期和干部换届维护。' AS permission_desc
   FROM dual
 ) source
 ON (target.role_id = source.role_id)
@@ -317,6 +365,32 @@ WHEN NOT MATCHED THEN
 MERGE INTO USER_ROLES target
 USING (
   SELECT 6 AS user_role_id, 5 AS user_id, 2 AS role_id, CAST(NULL AS NUMBER) AS club_id FROM dual
+) source
+ON (target.user_role_id = source.user_role_id)
+WHEN MATCHED THEN UPDATE SET
+  target.user_id = source.user_id,
+  target.role_id = source.role_id,
+  target.club_id = source.club_id
+WHEN NOT MATCHED THEN
+  INSERT (user_role_id, user_id, role_id, club_id, assigned_at)
+  VALUES (source.user_role_id, source.user_id, source.role_id, source.club_id, SYSDATE);
+
+MERGE INTO USER_ROLES target
+USING (
+  SELECT 7 AS user_role_id, 6 AS user_id, 1 AS role_id, CAST(NULL AS NUMBER) AS club_id FROM dual
+) source
+ON (target.user_role_id = source.user_role_id)
+WHEN MATCHED THEN UPDATE SET
+  target.user_id = source.user_id,
+  target.role_id = source.role_id,
+  target.club_id = source.club_id
+WHEN NOT MATCHED THEN
+  INSERT (user_role_id, user_id, role_id, club_id, assigned_at)
+  VALUES (source.user_role_id, source.user_id, source.role_id, source.club_id, SYSDATE);
+
+MERGE INTO USER_ROLES target
+USING (
+  SELECT 8 AS user_role_id, 7 AS user_id, 1 AS role_id, CAST(NULL AS NUMBER) AS club_id FROM dual
 ) source
 ON (target.user_role_id = source.user_role_id)
 WHEN MATCHED THEN UPDATE SET

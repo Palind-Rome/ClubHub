@@ -15,6 +15,7 @@ public class ClubsController : ControllerBase
     private const string ClubPending = "pending";
     private const string ClubActive = "active";
     private const string ClubRejected = "rejected";
+    private const string ClubInactive = "inactive";
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
@@ -580,13 +581,48 @@ public class ClubsController : ControllerBase
         return Ok(ToMemberRecordDto(updated));
     }
 
-    [HttpDelete("{clubId:int}")]
-    public async Task<IActionResult> Delete(int clubId)
+    [HttpPatch("{clubId:int}/dissolve")]
+    public async Task<IActionResult> Dissolve(int clubId, [FromBody] DissolveClubRequest req)
     {
-        var club = await _db.Clubs.FindAsync(clubId);
-        if (club is null) return NotFound();
+        if (req.CurrentUserId <= 0)
+        {
+            return BadRequest(new { message = "请选择当前操作用户。" });
+        }
 
-        _db.Clubs.Remove(club);
+        var viewer = await LoadUserAsync(req.CurrentUserId);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能解散社团。" });
+        }
+
+        if (!UsersController.IsPlatformAdmin(viewer))
+        {
+            return StatusCode(403, new { message = "只有社团管理员或系统管理员可以解散社团。" });
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return NotFound(new { message = "社团不存在。" });
+        }
+
+        if (club.ClubStatus == ClubInactive)
+        {
+            return Conflict(new { message = "社团已解散。" });
+        }
+
+        if (club.ClubStatus != ClubActive)
+        {
+            return Conflict(new { message = "只有运营中的社团可以解散。" });
+        }
+
+        club.ClubStatus = ClubInactive;
+        club.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -617,9 +653,9 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "社团不存在。" }), null, viewer);
         }
 
-        if (!UsersController.IsPlatformAdmin(viewer) && !UsersController.IsClubPrincipal(viewer, clubId))
+        if (!UsersController.IsSystemAdmin(viewer) && !UsersController.IsClubPrincipal(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有平台管理员或本社团负责人可以维护该社团。" }), club, viewer);
+            return (StatusCode(403, new { message = "只有系统管理员或本社团负责人可以维护该社团。" }), club, viewer);
         }
 
         return (null, club, viewer);
@@ -647,7 +683,7 @@ public class ClubsController : ControllerBase
         }
 
         var canView =
-            UsersController.IsPlatformAdmin(viewer) ||
+            UsersController.IsSystemAdmin(viewer) ||
             UsersController.IsClubPrincipal(viewer, clubId) ||
             HasClubParticipantRole(viewer, clubId) ||
             viewer.ClubMemberships.Any(cm =>
@@ -655,7 +691,7 @@ public class ClubsController : ControllerBase
                 UsersController.IsActive(cm.MemberStatus));
         if (!canView)
         {
-            return (StatusCode(403, new { message = "只有平台管理员、本社团负责人或本社团成员可以查看成员任期。" }), club, viewer);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人、成员、干部或指导老师可以查看成员任期。" }), club, viewer);
         }
 
         return (null, club, viewer);
@@ -1079,7 +1115,7 @@ public class ClubsController : ControllerBase
         ClubPending => "待生效",
         ClubActive => "运营中",
         ClubRejected => "未通过",
-        "inactive" => "停用",
+        ClubInactive => "已解散",
         _ => "未设置"
     };
 
@@ -1100,8 +1136,6 @@ public class ClubsController : ControllerBase
         "club_officer",
         "club_leader",
         "club_president",
-        "club_admin",
-        "club_manager",
         "advisor"
     };
 }
@@ -1177,6 +1211,11 @@ public class UpdateClubProfileRequest
     public int? AdvisorUserId { get; set; }
     public string? AdvisorName { get; set; }
     public string? ContactPhone { get; set; }
+}
+
+public class DissolveClubRequest
+{
+    public int CurrentUserId { get; set; }
 }
 
 public record ClubMemberRecordDto(

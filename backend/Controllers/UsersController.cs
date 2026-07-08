@@ -49,9 +49,9 @@ public class UsersController : ControllerBase
                 return NotFound(new { message = "社团不存在。" });
             }
 
-            if (!IsPlatformAdmin(viewer) && !IsClubPrincipal(viewer, clubId.Value))
+            if (!IsSystemAdmin(viewer) && !IsClubPrincipal(viewer, clubId.Value))
             {
-                return StatusCode(403, new { message = "只有平台管理员或本社团负责人可以查看可分配成员。" });
+                return StatusCode(403, new { message = "只有系统管理员或本社团负责人可以查看可分配成员。" });
             }
 
             query = query.Where(u =>
@@ -75,6 +75,9 @@ public class UsersController : ControllerBase
 
     internal static bool IsPlatformAdmin(User user) =>
         user.UserRoles.Any(ur => IsPlatformAdminRole(ur.Role));
+
+    internal static bool IsSystemAdmin(User user) =>
+        user.UserRoles.Any(ur => IsSystemAdminRole(ur.Role));
 
     internal static bool IsClubPrincipal(User user, int clubId) =>
         user.UserRoles.Any(ur =>
@@ -147,6 +150,14 @@ public class UsersController : ControllerBase
                 (role.PermissionDesc ?? string.Empty).Contains("审核", StringComparison.Ordinal));
     }
 
+    private static bool IsSystemAdminRole(Role? role)
+    {
+        if (role is null) return false;
+
+        return Normalize(role.RoleCode) is "system_admin" or "sysadmin" ||
+               (role.RoleName ?? string.Empty).Contains("系统管理员", StringComparison.Ordinal);
+    }
+
     private static bool IsPrincipalPosition(string? positionName)
     {
         if (string.IsNullOrWhiteSpace(positionName)) return false;
@@ -181,7 +192,6 @@ public class UsersController : ControllerBase
     {
         "club_president",
         "club_leader",
-        "club_admin",
         "club_manager",
         "president"
     };

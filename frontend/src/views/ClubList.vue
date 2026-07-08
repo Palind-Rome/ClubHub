@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { Check, Close, Edit, Plus, Refresh, Search, User } from "@element-plus/icons-vue";
+import {
+  Check,
+  Close,
+  Delete as DeleteIcon,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+  User,
+} from "@element-plus/icons-vue";
 import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
 
 type AuditStatus = "pending" | "approved" | "rejected";
@@ -113,19 +122,29 @@ interface ApiError {
   title?: string;
 }
 
-const principalRoleCodes = new Set([
-  "club_president",
+interface ClubContextOption {
+  clubId: number;
+  clubName: string;
+  roleText: string;
+  statusText: string;
+  optionLabel: string;
+  canManage: boolean;
+}
+
+const principalRoleCodes = new Set(["club_president", "club_leader", "club_manager", "president"]);
+const clubParticipantRoleCodes = new Set([
+  "club_member",
+  "club_officer",
   "club_leader",
-  "club_admin",
-  "club_manager",
-  "president",
+  "club_president",
 ]);
+const advisorRoleCodes = new Set(["advisor"]);
 const clubApplyPermission = "club:apply";
 const clubReviewPermission = "club:review";
 const clubInfoManagePermission = "club:info:manage";
 const clubMemberManagePermission = "club:member:manage";
+const clubInternalViewPermission = "club:internal:view";
 const clubOperationViewPermission = "club:operation:view";
-const clubStatusManagePermission = "club:status:manage";
 
 const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
@@ -140,6 +159,7 @@ const saving = ref(false);
 const reviewing = ref(false);
 const profileSaving = ref(false);
 const termSaving = ref(false);
+const dissolvingClubId = ref<number | null>(null);
 const error = ref("");
 const activeTab = ref("workspace");
 const selectedClubId = ref<number>();
@@ -239,24 +259,25 @@ const currentUser = computed<UserSummary | null>(() => {
     accountStatus: session.user.accountStatus,
     roles: roles.map(toUserRoleSummary),
     memberships: summary?.memberships ?? [],
-    canSubmitClubApplication: hasPermission(clubApplyPermission),
+    canSubmitClubApplication:
+      isStudentSession(roles) &&
+      !hasPermission(clubReviewPermission) &&
+      hasPermission(clubApplyPermission),
     canReviewClubApplication: hasPermission(clubReviewPermission),
   };
 });
+const hasAllPermissions = computed(() => auth.value?.permissions?.includes("*") ?? false);
 const isReviewer = computed(() => currentUser.value?.canReviewClubApplication ?? false);
 const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubApplication ?? false);
-const canManageClubProfiles = computed(
-  () =>
-    isReviewer.value ||
-    hasPermission(clubInfoManagePermission) ||
-    hasPermission(clubStatusManagePermission),
-);
-const canManageMemberTerms = computed(
-  () => isReviewer.value || hasPermission(clubMemberManagePermission),
-);
+const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermission));
+const canManageMemberTerms = computed(() => hasPermission(clubMemberManagePermission));
 const canViewMemberDirectory = computed(
-  () => canManageMemberTerms.value || hasPermission(clubOperationViewPermission),
+  () =>
+    canManageMemberTerms.value ||
+    hasPermission(clubInternalViewPermission) ||
+    hasPermission(clubOperationViewPermission),
 );
+const canViewClubProfiles = computed(() => isReviewer.value || canViewMemberDirectory.value);
 const myApplications = computed(() =>
   applications.value.filter((item) => item.applicantUserId === currentUserId.value),
 );
@@ -264,22 +285,30 @@ const reviewApplications = computed(() =>
   isReviewer.value ? applications.value : myApplications.value,
 );
 const applicationRows = computed(() => reviewApplications.value);
-const pendingCount = computed(
-  () => applicationRows.value.filter((item) => item.auditStatus === "pending").length,
-);
-const approvedCount = computed(
-  () => applicationRows.value.filter((item) => item.auditStatus === "approved").length,
-);
-const rejectedCount = computed(
-  () => applicationRows.value.filter((item) => item.auditStatus === "rejected").length,
-);
 const selectedClub = computed(
   () => clubs.value.find((club) => club.id === selectedClubId.value) ?? null,
+);
+const clubInfoRows = computed(() =>
+  canViewClubProfiles.value ? clubs.value.filter((club) => canViewClubInfo(club)) : [],
+);
+const isGlobalClubGovernance = computed(() => isReviewer.value || hasAllPermissions.value);
+const focusedClubRows = computed(() => {
+  const club = selectedClub.value;
+  return club && canViewClubInfo(club) ? [club] : [];
+});
+const visibleClubInfoRows = computed(() =>
+  isGlobalClubGovernance.value ? clubInfoRows.value : focusedClubRows.value,
 );
 const manageableClubs = computed(() => clubs.value.filter((club) => canManageClub(club)));
 const profileRows = computed(() => (canManageClubProfiles.value ? manageableClubs.value : []));
 const memberViewClubs = computed(() =>
   canViewMemberDirectory.value ? clubs.value.filter((club) => canViewClubDirectory(club)) : [],
+);
+const clubContextOptions = computed<ClubContextOption[]>(() =>
+  memberViewClubs.value.map((club) => buildClubContextOption(club)),
+);
+const selectedClubContext = computed(
+  () => clubContextOptions.value.find((option) => option.clubId === selectedClubId.value) ?? null,
 );
 const canManageSelectedClub = computed(
   () => selectedClub.value !== null && canManageClub(selectedClub.value),
@@ -326,36 +355,28 @@ const activePresidentOptions = computed(() =>
   clubMembers.value.filter((member) => member.isCurrent && isActiveStatus(member.memberStatus)),
 );
 const advisorOptions = computed(() => users.value.filter((user) => isAdvisorCandidate(user)));
+const visibleIdentityRows = computed(() => {
+  if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
+  return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
+});
 const visibleTabs = computed(() => {
   const tabs: string[] = [];
-  if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
-  if (profileRows.value.length > 0) tabs.push("profile");
+
+  if (isGlobalClubGovernance.value) {
+    if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
+    if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
+    if (memberViewClubs.value.length > 0) tabs.push("members");
+    if (visibleIdentityRows.value.length > 0) tabs.push("identity");
+    return tabs;
+  }
+
+  if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
   if (memberViewClubs.value.length > 0) tabs.push("members");
-  if (identityRows.value.length > 0) tabs.push("identity");
+  if (visibleIdentityRows.value.length > 0) tabs.push("identity");
+  if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
   return tabs;
 });
 const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
-const metricCards = computed(() => {
-  const cards: Array<{ label: string; value: number }> = [];
-
-  if (canSubmitApplication.value || isReviewer.value) {
-    cards.push(
-      { label: "待审核", value: pendingCount.value },
-      { label: "已通过", value: approvedCount.value },
-      { label: "已退回", value: rejectedCount.value },
-    );
-  }
-
-  if (profileRows.value.length > 0) {
-    cards.push({ label: "可维护社团", value: profileRows.value.length });
-  }
-
-  if (identityRows.value.length > 0) {
-    cards.push({ label: "我的社团身份", value: identityRows.value.length });
-  }
-
-  return cards;
-});
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -408,7 +429,7 @@ async function loadData() {
     const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
     const shouldLoadApplications = canSubmitApplication.value || isReviewer.value;
-    const shouldLoadClubs = canManageClubProfiles.value || canViewMemberDirectory.value;
+    const shouldLoadClubs = canViewClubProfiles.value || canManageClubProfiles.value;
 
     const [applicationData, clubData] = await Promise.all([
       shouldLoadApplications
@@ -461,7 +482,7 @@ function syncSelectedClub() {
 function canManageClub(club: Club) {
   const user = currentUser.value;
   if (!user || club.status !== "active") return false;
-  if (user.canReviewClubApplication) return true;
+  if (hasAllPermissions.value) return true;
   if (club.presidentUserId === user.id) return true;
 
   const hasRole = user.roles.some(
@@ -478,16 +499,75 @@ function canManageClub(club: Club) {
   return hasRole || hasPrincipalMembership;
 }
 
+function canDissolveClub(club: Club) {
+  return (hasAllPermissions.value || isReviewer.value) && club.status === "active";
+}
+
+function canViewClubInfo(club: Club) {
+  if (hasAllPermissions.value || isReviewer.value) return true;
+  return canManageClub(club) || canViewClubDirectory(club);
+}
+
 function canViewClubDirectory(club: Club) {
-  if (isReviewer.value) return true;
+  if (hasAllPermissions.value) return true;
   if (canManageClub(club)) return true;
 
   const user = currentUser.value;
   if (!user) return false;
 
-  return user.roles.some(
-    (role) => roleCoversClub(role, club.id) && (role.roleCode ?? "").toLowerCase() === "advisor",
+  const hasParticipantRole = user.roles.some(
+    (role) =>
+      roleCoversClub(role, club.id) &&
+      clubParticipantRoleCodes.has((role.roleCode ?? "").toLowerCase()),
   );
+  const hasAdvisorRole = user.roles.some(
+    (role) =>
+      roleCoversClub(role, club.id) && advisorRoleCodes.has((role.roleCode ?? "").toLowerCase()),
+  );
+  const hasMembership = user.memberships.some(
+    (membership) => membership.clubId === club.id && isActiveStatus(membership.memberStatus),
+  );
+
+  return hasParticipantRole || hasAdvisorRole || hasMembership;
+}
+
+function buildClubContextOption(club: Club): ClubContextOption {
+  const user = currentUser.value;
+  const memberships = user?.memberships.filter((membership) => membership.clubId === club.id) ?? [];
+  const activeMembership =
+    memberships.find((membership) => isActiveStatus(membership.memberStatus)) ?? memberships[0];
+  const scopedRoles =
+    user?.roles
+      .filter((role) => role.roleScope === "club" && roleCoversClub(role, club.id))
+      .map((role) => roleNameInClub(role, club.name)) ?? [];
+  const labels = new Set<string>();
+
+  if (activeMembership?.departmentName) labels.add(activeMembership.departmentName);
+  if (activeMembership?.positionName) labels.add(activeMembership.positionName);
+  scopedRoles.forEach((label) => {
+    if (label) labels.add(label);
+  });
+
+  if (hasAllPermissions.value) labels.add("系统管理员");
+
+  const canManage = canManageClub(club);
+  const roleText = Array.from(labels).join(" / ") || (canManage ? "可维护" : "可查看");
+  const statusText = canManage ? "可维护档案与任期" : "查看成员任期";
+
+  return {
+    clubId: club.id,
+    clubName: club.name,
+    roleText,
+    statusText,
+    optionLabel: `${club.name} / ${roleText}`,
+    canManage,
+  };
+}
+
+function roleNameInClub(role: UserRoleSummary, clubName: string) {
+  const name = role.roleName || "";
+  if (name.startsWith(clubName)) return name.slice(clubName.length) || name;
+  return name;
 }
 
 function canViewSelectedClub() {
@@ -640,6 +720,42 @@ async function submitProfile() {
     ElMessage.error(e instanceof Error ? e.message : "保存失败");
   } finally {
     profileSaving.value = false;
+  }
+}
+
+async function dissolveClub(row: Club) {
+  if (!currentUserId.value || !canDissolveClub(row)) {
+    ElMessage.warning("当前身份不能解散该社团。");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认解散“${row.name}”？解散后社团档案和成员任期会保留，但社团不再处于运营状态。`,
+      "解散社团",
+      {
+        type: "warning",
+        confirmButtonText: "确认解散",
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  dissolvingClubId.value = row.id;
+  try {
+    await requestJson<void>(`/api/clubs/${row.id}/dissolve`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentUserId: currentUserId.value }),
+    });
+    ElMessage.success("社团已解散");
+    await Promise.all([loadUsers(), loadData()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "解散失败");
+  } finally {
+    dissolvingClubId.value = null;
   }
 }
 
@@ -871,6 +987,10 @@ function toUserRoleSummary(role: AuthRole): UserRoleSummary {
   };
 }
 
+function isStudentSession(roles: AuthRole[]) {
+  return roles.some((role) => (role.code ?? "").toLowerCase() === "student");
+}
+
 function goProfile() {
   activeTab.value = "profile";
 }
@@ -878,6 +998,11 @@ function goProfile() {
 function goMembers() {
   activeTab.value = "members";
   syncSelectedClub();
+}
+
+function openClubMembers(clubId: number) {
+  selectedClubId.value = clubId;
+  activeTab.value = "members";
 }
 
 function memberOptionLabel(member: ClubMemberRecord) {
@@ -972,6 +1097,28 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="identity-side">
+        <div v-if="clubContextOptions.length > 0" class="identity-switch">
+          <span>{{ isGlobalClubGovernance ? "快速定位社团" : "当前社团" }}</span>
+          <el-select
+            v-model="selectedClubId"
+            class="context-select"
+            placeholder="选择社团身份"
+            filterable
+          >
+            <el-option
+              v-for="option in clubContextOptions"
+              :key="option.clubId"
+              :label="option.optionLabel"
+              :value="option.clubId"
+            >
+              <div class="context-option">
+                <strong>{{ option.clubName }}</strong>
+                <span>{{ option.roleText }} · {{ option.statusText }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <small v-if="selectedClubContext">{{ selectedClubContext.statusText }}</small>
+        </div>
         <div class="identity-tags">
           <el-tag v-if="currentUser.canSubmitClubApplication" type="success" effect="plain">
             可提交注册申请
@@ -979,6 +1126,7 @@ onUnmounted(() => {
           <el-tag v-if="currentUser.canReviewClubApplication" type="warning" effect="plain">
             可审核注册申请
           </el-tag>
+          <el-tag v-if="clubInfoRows.length > 0" effect="plain">可查看社团信息</el-tag>
           <el-tag v-if="profileRows.length > 0" type="primary" effect="plain">
             可维护社团档案
           </el-tag>
@@ -986,20 +1134,13 @@ onUnmounted(() => {
           <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
         </div>
         <div class="identity-actions">
-          <el-button v-if="profileRows.length > 0" type="primary" plain @click="goProfile">
-            维护档案
+          <el-button v-if="clubInfoRows.length > 0" type="primary" plain @click="goProfile">
+            查看社团
           </el-button>
           <el-button v-if="memberViewClubs.length > 0" plain @click="goMembers">
             查看任期
           </el-button>
         </div>
-      </div>
-    </section>
-
-    <section v-if="metricCards.length > 0" class="metrics">
-      <div v-for="card in metricCards" :key="card.label" class="metric">
-        <span>{{ card.label }}</span>
-        <strong>{{ card.value }}</strong>
       </div>
     </section>
 
@@ -1125,23 +1266,62 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="profileRows.length > 0" label="社团档案维护" name="profile">
+      <el-tab-pane v-if="visibleClubInfoRows.length > 0" label="社团信息" name="profile">
         <div class="workspace-head">
           <div>
-            <h3>社团档案</h3>
-            <p>维护社团名称、类别、简介、负责人、指导老师和联系方式。</p>
+            <h3>{{ isGlobalClubGovernance ? "社团治理" : selectedClub?.name }}</h3>
+            <p>
+              {{
+                isGlobalClubGovernance
+                  ? "查看全校社团档案，处理社团运营状态。"
+                  : "当前社团的基础档案、负责人、指导老师和备案信息。"
+              }}
+            </p>
           </div>
           <el-button :icon="Refresh" @click="loadData">刷新</el-button>
         </div>
 
         <el-table
+          v-if="isGlobalClubGovernance"
           v-loading="loading"
-          :data="profileRows"
+          :data="visibleClubInfoRows"
           border
           stripe
           empty-text="暂无可见社团"
           row-key="id"
         >
+          <el-table-column type="expand">
+            <template #default="{ row }">
+              <div class="club-detail compact">
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="社团简介" :span="2">
+                    {{ row.description || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Logo 地址">
+                    {{ row.logoUrl || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="申请材料">
+                    {{ row.materialUrl || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="申请人">
+                    {{ row.applicantName || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="审核人">
+                    {{ row.reviewerName || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="审核意见" :span="2">
+                    {{ row.reviewComment || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="成立时间">
+                    {{ formatDate(row.foundedAt) }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="创建时间">
+                    {{ formatDate(row.createdAt) }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="社团名称" min-width="160" />
           <el-table-column prop="category" label="类别" width="120" />
           <el-table-column label="社团状态" width="120">
@@ -1155,20 +1335,103 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right">
+          <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
-              <el-button
-                type="primary"
-                plain
-                :icon="Edit"
-                :disabled="!canManageClub(row)"
-                @click="openProfileDialog(row)"
-              >
-                维护
-              </el-button>
+              <div class="row-actions">
+                <el-button
+                  v-if="canManageClub(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openProfileDialog(row)"
+                >
+                  维护
+                </el-button>
+                <el-button
+                  v-if="canDissolveClub(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="dissolvingClubId === row.id"
+                  @click="dissolveClub(row)"
+                >
+                  解散
+                </el-button>
+                <span v-if="!canManageClub(row) && !canDissolveClub(row)" class="muted">
+                  仅查看
+                </span>
+              </div>
             </template>
           </el-table-column>
         </el-table>
+
+        <div v-else-if="selectedClub" class="club-detail">
+          <div class="club-detail-header">
+            <div>
+              <h4>{{ selectedClub.name }}</h4>
+              <div class="club-tags">
+                <el-tag :type="clubTagType(selectedClub.status)" effect="plain">
+                  {{ selectedClub.statusText }}
+                </el-tag>
+                <el-tag effect="plain">{{ selectedClub.category || "未设置类别" }}</el-tag>
+                <el-tag :type="auditTagType(selectedClub.auditStatus)" effect="plain">
+                  {{ selectedClub.auditStatusText }}
+                </el-tag>
+              </div>
+            </div>
+            <el-button
+              v-if="canManageSelectedClub"
+              type="primary"
+              plain
+              :icon="Edit"
+              @click="openProfileDialog(selectedClub)"
+            >
+              维护档案
+            </el-button>
+          </div>
+
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="社团名称">
+              {{ selectedClub.name }}
+            </el-descriptions-item>
+            <el-descriptions-item label="类别">
+              {{ selectedClub.category || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="负责人">
+              {{ selectedClub.presidentName || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="指导老师">
+              {{ selectedClub.advisorName || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="联系电话">
+              {{ selectedClub.contactPhone || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="成立时间">
+              {{ formatDate(selectedClub.foundedAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="社团简介" :span="2">
+              {{ selectedClub.description || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="Logo 地址">
+              {{ selectedClub.logoUrl || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="申请材料">
+              {{ selectedClub.materialUrl || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="申请理由" :span="2">
+              {{ selectedClub.applyReason || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="审核意见" :span="2">
+              {{ selectedClub.reviewComment || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间">
+              {{ formatDate(selectedClub.createdAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="更新时间">
+              {{ formatDate(selectedClub.updatedAt || selectedClub.createdAt) }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane v-if="memberViewClubs.length > 0" label="成员与任期" name="members">
@@ -1247,8 +1510,8 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="identityRows.length > 0" label="我的社团身份" name="identity">
-        <el-table :data="identityRows" border stripe empty-text="暂无社团成员身份">
+      <el-tab-pane v-if="visibleIdentityRows.length > 0" label="我的社团身份" name="identity">
+        <el-table :data="visibleIdentityRows" border stripe empty-text="暂无社团成员身份">
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
           <el-table-column prop="groupName" label="小组" width="120" />
@@ -1259,6 +1522,13 @@ onUnmounted(() => {
               <el-tag :type="memberStatusTagType(row.memberStatus)" effect="plain">
                 {{ memberStatusText(row.memberStatus) }}
               </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
+                查看
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1510,7 +1780,6 @@ onUnmounted(() => {
 
 .toolbar,
 .identity-band,
-.metrics,
 .workspace-tabs {
   border: 1px solid #d9e1ea;
   background: #fff;
@@ -1582,40 +1851,35 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.identity-switch {
+  display: grid;
+  gap: 4px;
+  min-width: 260px;
+}
+
+.identity-switch span,
+.identity-switch small,
+.context-option span {
+  color: #66727f;
+  font-size: 12px;
+}
+
+.context-select {
+  width: 280px;
+}
+
+.context-option {
+  display: grid;
+  gap: 2px;
+  line-height: 1.3;
+}
+
 .identity-tags,
 .identity-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.metric {
-  min-height: 82px;
-  padding: 16px 18px;
-  border-right: 1px solid #e6edf4;
-}
-
-.metric:last-child {
-  border-right: 0;
-}
-
-.metric span {
-  display: block;
-  color: #6a7682;
-  font-size: 13px;
-}
-
-.metric strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 28px;
-  line-height: 1;
 }
 
 .workspace-tabs {
@@ -1653,6 +1917,40 @@ onUnmounted(() => {
   display: grid;
   gap: 16px;
   padding: 12px;
+}
+
+.club-detail {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 10px;
+}
+
+.club-detail.compact {
+  padding: 12px;
+}
+
+.club-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.club-detail-header h4 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.club-tags,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row-actions {
+  align-items: center;
 }
 
 .member-head {
@@ -1696,17 +1994,14 @@ onUnmounted(() => {
   }
 
   .club-selector,
+  .context-select,
   .filter-item {
     width: 100%;
   }
 
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric {
-    border-right: 0;
-    border-bottom: 1px solid #e6edf4;
+  .club-detail-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>
