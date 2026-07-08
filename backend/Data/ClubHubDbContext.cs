@@ -11,8 +11,9 @@ public class ClubHubDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Club> Clubs => Set<Club>();
-    public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
+    public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Notice> Notices => Set<Notice>();
     public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
@@ -77,6 +78,14 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Activity>(e =>
         {
             e.HasKey(a => a.ActivityId);
+            e.HasMany(a => a.Participations)
+             .WithOne(p => p.Activity)
+             .HasForeignKey(p => p.ActivityId);
+        });
+
+        modelBuilder.Entity<ActivityParticipation>(e =>
+        {
+            e.HasKey(p => p.ParticipationId);
         });
 
         modelBuilder.Entity<ClubMember>(e =>
