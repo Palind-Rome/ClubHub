@@ -15,6 +15,17 @@
 
 import * as runtime from "../runtime";
 import { type Activity, ActivityFromJSON, ActivityToJSON } from "../models/Activity";
+import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
+import {
+  type AssignRoleRequest,
+  AssignRoleRequestFromJSON,
+  AssignRoleRequestToJSON,
+} from "../models/AssignRoleRequest";
+import {
+  type AuthResponse,
+  AuthResponseFromJSON,
+  AuthResponseToJSON,
+} from "../models/AuthResponse";
 import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
 import {
   type CreateClubRequest,
@@ -27,10 +38,50 @@ import {
   HealthStatusToJSON,
 } from "../models/HealthStatus";
 import {
+  type LoginRequest,
+  LoginRequestFromJSON,
+  LoginRequestToJSON,
+} from "../models/LoginRequest";
+import {
+  type PermissionCheckResult,
+  PermissionCheckResultFromJSON,
+  PermissionCheckResultToJSON,
+} from "../models/PermissionCheckResult";
+import {
+  type PermissionDefinition,
+  PermissionDefinitionFromJSON,
+  PermissionDefinitionToJSON,
+} from "../models/PermissionDefinition";
+import {
+  type RegisterRequest,
+  RegisterRequestFromJSON,
+  RegisterRequestToJSON,
+} from "../models/RegisterRequest";
+import {
+  type RoleAssignmentResult,
+  RoleAssignmentResultFromJSON,
+  RoleAssignmentResultToJSON,
+} from "../models/RoleAssignmentResult";
+import {
+  type RoleDefinition,
+  RoleDefinitionFromJSON,
+  RoleDefinitionToJSON,
+} from "../models/RoleDefinition";
+import {
   type UpdateClubRequest,
   UpdateClubRequestFromJSON,
   UpdateClubRequestToJSON,
 } from "../models/UpdateClubRequest";
+
+export interface AssignUserRoleRequest {
+  assignRoleRequest: AssignRoleRequest;
+}
+
+export interface CheckPermissionRequest {
+  userId: number;
+  permission: string;
+  clubId?: number;
+}
 
 export interface CreateClubOperationRequest {
   createClubRequest: CreateClubRequest;
@@ -48,6 +99,14 @@ export interface GetClubByIdRequest {
   clubId: number;
 }
 
+export interface LoginUserRequest {
+  loginRequest: LoginRequest;
+}
+
+export interface RegisterUserRequest {
+  registerRequest: RegisterRequest;
+}
+
 export interface UpdateClubOperationRequest {
   clubId: number;
   updateClubRequest: UpdateClubRequest;
@@ -57,6 +116,134 @@ export interface UpdateClubOperationRequest {
  *
  */
 export class DefaultApi extends runtime.BaseAPI {
+  /**
+   * Creates request options for assignUserRole without sending the request
+   */
+  async assignUserRoleRequestOpts(
+    requestParameters: AssignUserRoleRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["assignRoleRequest"] == null) {
+      throw new runtime.RequiredError(
+        "assignRoleRequest",
+        'Required parameter "assignRoleRequest" was null or undefined when calling assignUserRole().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/auth/roles/assign`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: AssignRoleRequestToJSON(requestParameters["assignRoleRequest"]),
+    };
+  }
+
+  /**
+   * 分配用户角色
+   */
+  async assignUserRoleRaw(
+    requestParameters: AssignUserRoleRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RoleAssignmentResult>> {
+    const requestOptions = await this.assignUserRoleRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RoleAssignmentResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 分配用户角色
+   */
+  async assignUserRole(
+    requestParameters: AssignUserRoleRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RoleAssignmentResult> {
+    const response = await this.assignUserRoleRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for checkPermission without sending the request
+   */
+  async checkPermissionRequestOpts(
+    requestParameters: CheckPermissionRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling checkPermission().',
+      );
+    }
+
+    if (requestParameters["permission"] == null) {
+      throw new runtime.RequiredError(
+        "permission",
+        'Required parameter "permission" was null or undefined when calling checkPermission().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["userId"] != null) {
+      queryParameters["userId"] = requestParameters["userId"];
+    }
+
+    if (requestParameters["permission"] != null) {
+      queryParameters["permission"] = requestParameters["permission"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/auth/permissions/check`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 检查用户是否拥有指定权限
+   */
+  async checkPermissionRaw(
+    requestParameters: CheckPermissionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
+    const requestOptions = await this.checkPermissionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PermissionCheckResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 检查用户是否拥有指定权限
+   */
+  async checkPermission(
+    requestParameters: CheckPermissionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PermissionCheckResult> {
+    const response = await this.checkPermissionRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
   /**
    * Creates request options for createClub without sending the request
    */
@@ -346,6 +533,90 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getPermissionCatalog without sending the request
+   */
+  async getPermissionCatalogRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/auth/permissions`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取权限目录
+   */
+  async getPermissionCatalogRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<PermissionDefinition>>> {
+    const requestOptions = await this.getPermissionCatalogRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(PermissionDefinitionFromJSON),
+    );
+  }
+
+  /**
+   * 获取权限目录
+   */
+  async getPermissionCatalog(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<PermissionDefinition>> {
+    const response = await this.getPermissionCatalogRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getRoleDefinitions without sending the request
+   */
+  async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/auth/roles`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取基础角色定义
+   */
+  async getRoleDefinitionsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<RoleDefinition>>> {
+    const requestOptions = await this.getRoleDefinitionsRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(RoleDefinitionFromJSON),
+    );
+  }
+
+  /**
+   * 获取基础角色定义
+   */
+  async getRoleDefinitions(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<RoleDefinition>> {
+    const response = await this.getRoleDefinitionsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for healthCheck without sending the request
    */
   async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
@@ -382,6 +653,112 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<HealthStatus> {
     const response = await this.healthCheckRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for loginUser without sending the request
+   */
+  async loginUserRequestOpts(requestParameters: LoginUserRequest): Promise<runtime.RequestOpts> {
+    if (requestParameters["loginRequest"] == null) {
+      throw new runtime.RequiredError(
+        "loginRequest",
+        'Required parameter "loginRequest" was null or undefined when calling loginUser().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/auth/login`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: LoginRequestToJSON(requestParameters["loginRequest"]),
+    };
+  }
+
+  /**
+   * 用户登录
+   */
+  async loginUserRaw(
+    requestParameters: LoginUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.loginUserRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
+  }
+
+  /**
+   * 用户登录
+   */
+  async loginUser(
+    requestParameters: LoginUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AuthResponse> {
+    const response = await this.loginUserRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for registerUser without sending the request
+   */
+  async registerUserRequestOpts(
+    requestParameters: RegisterUserRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["registerRequest"] == null) {
+      throw new runtime.RequiredError(
+        "registerRequest",
+        'Required parameter "registerRequest" was null or undefined when calling registerUser().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/auth/register`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterRequestToJSON(requestParameters["registerRequest"]),
+    };
+  }
+
+  /**
+   * 用户注册
+   */
+  async registerUserRaw(
+    requestParameters: RegisterUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.registerUserRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
+  }
+
+  /**
+   * 用户注册
+   */
+  async registerUser(
+    requestParameters: RegisterUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AuthResponse> {
+    const response = await this.registerUserRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
