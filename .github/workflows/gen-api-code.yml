@@ -142,9 +142,11 @@ jobs:
             -e '/\[TypeConverter(typeof(CustomEnumConverter<.*>))\]/d' \
             {} +
 
-          # 确保 Newtonsoft.Json 包已在项目中（生成模型依赖此包）
+          # 生成模型依赖 Newtonsoft.Json。项目文件不在自动提交范围内，
+          # 缺依赖时直接失败，提醒开发者用独立提交修复。
           if ! grep -q 'Newtonsoft\.Json' backend/ClubHub.Api.csproj; then
-            dotnet add backend/ClubHub.Api.csproj package Newtonsoft.Json --version 13.0.3
+            echo "::error::backend/ClubHub.Api.csproj 缺少 Newtonsoft.Json 包引用。请先手动添加并提交。"
+            exit 1
           fi
 
           dotnet format backend/ClubHub.Api.csproj --include backend/Models --verbosity minimal
@@ -159,5 +161,6 @@ jobs:
           commit_message: "chore(api): 从 openapi.yaml 自动生成 API 代码"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
+          # 只提交生成代码目录；前面的清理步骤会移除 docs、git_push.sh 和生成器元数据。
           file_pattern: "frontend/src/api/** backend/Models/**"
           commit_options: "--no-verify"

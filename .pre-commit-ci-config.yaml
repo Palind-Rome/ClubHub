@@ -1,6 +1,7 @@
-# CI pre-commit 配置
-# 由 .github/workflows/code-check.yml 调用。
-# 与本地配置的区别：仅检查不修改（prettier --check、dotnet format --verify-no-changes）。
+# CI 通用 pre-commit 配置。
+# 由 .github/workflows/code-check.yml 的 pre-commit-check Job 调用。
+# 与本地配置的区别：仅运行通用检查；前端 Prettier 和后端 dotnet format
+# 由 code-check.yml 的 frontend-check / backend-check Job 独立执行。
 
 exclude: "frontend/src/api/.*|backend/Models/.*|backend/Generated/.*"
 

@@ -9,8 +9,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  code-check:
-    name: 代码质量门禁
+  # ============================================================
+  # 检测变更：前端 / 后端语言检查按路径运行
+  # ============================================================
+  changes:
+    name: 代码质量变更检测
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/code-check.yml'
+            backend:
+              - 'backend/**'
+              - 'ClubHub.sln'
+              - '.editorconfig'
+              - '.github/workflows/code-check.yml'
+
+  pre-commit-check:
+    name: 通用 pre-commit 检查
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,7 +55,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: code-check
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,7 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: code-check
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,3 +103,50 @@ jobs:
 
       - name: dotnet format
         run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes --exclude "backend/Models/**"
+
+  code-check:
+    name: 代码质量门禁
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - pre-commit-check
+      - frontend-check
+      - backend-check
+    if: ${{ always() }}
+    steps:
+      - name: 汇总代码质量检查结果
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          changes="${{ needs.changes.result }}"
+          pre_commit="${{ needs.pre-commit-check.result }}"
+          frontend="${{ needs.frontend-check.result }}"
+          backend="${{ needs.backend-check.result }}"
+
+          echo "changes: $changes"
+          echo "pre-commit-check: $pre_commit"
+          echo "frontend-check: $frontend"
+          echo "backend-check: $backend"
+
+          if [[ "$changes" != "success" ]]; then
+            echo "::error::代码质量变更检测失败。"
+            exit 1
+          fi
+
+          if [[ "$pre_commit" != "success" ]]; then
+            echo "::error::通用 pre-commit 检查失败。"
+            exit 1
+          fi
+
+          if [[ "$frontend" != "success" && "$frontend" != "skipped" ]]; then
+            echo "::error::前端代码检查失败。"
+            exit 1
+          fi
+
+          if [[ "$backend" != "success" && "$backend" != "skipped" ]]; then
+            echo "::error::后端代码检查失败。"
+            exit 1
+          fi
+
+          echo "代码质量门禁通过。"
