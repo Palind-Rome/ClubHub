@@ -76,6 +76,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "创建人用户不存在，请留空或填写有效用户 ID。" });
         }
 
+        // TODO(#81): creatorUserId 目前可手工填写，仅用于 demo；正式版应从认证上下文写入，忽略请求体该字段。
         var maxId = await _db.Activities.MaxAsync(a => (int?)a.ActivityId) ?? 0;
         var now = DateTime.Now;
         var activity = new Activity
@@ -256,6 +257,7 @@ public class ActivitiesController : ControllerBase
     [HttpPost("{activityId:int}/checkin")]
     public async Task<IActionResult> Checkin(int activityId, [FromBody] ActivitySignRequest req)
     {
+        // TODO(#81): userId 目前由请求体传入，仅用于 demo；正式版应从 HttpContext.User 读取，禁止客户端指定。
         return await Sign(activityId, req, isCheckin: true);
     }
 

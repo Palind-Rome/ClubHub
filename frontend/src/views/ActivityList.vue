@@ -103,6 +103,7 @@ const settingsForm = ref({
 
 const signForm = ref({
   type: "checkin",
+  // TODO(#81): 默认 userId 仅为 demo 联调；正式版应由后端根据登录态确定，前端移除该输入。
   userId: 1,
   code: "",
 });
