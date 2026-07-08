@@ -53,6 +53,11 @@ import {
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
 import {
+  type DissolveClubRequest,
+  DissolveClubRequestFromJSON,
+  DissolveClubRequestToJSON,
+} from "../models/DissolveClubRequest";
+import {
   type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
@@ -132,8 +137,9 @@ export interface CreateClubMemberTermOperationRequest {
   createClubMemberTermRequest: CreateClubMemberTermRequest;
 }
 
-export interface DeleteClubRequest {
+export interface DissolveClubOperationRequest {
   clubId: number;
+  dissolveClubRequest: DissolveClubRequest;
 }
 
 export interface GetActivityByIdRequest {
@@ -474,7 +480,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTermRaw(
@@ -490,7 +496,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTerm(
@@ -502,13 +508,22 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for deleteClub without sending the request
+   * Creates request options for dissolveClub without sending the request
    */
-  async deleteClubRequestOpts(requestParameters: DeleteClubRequest): Promise<runtime.RequestOpts> {
+  async dissolveClubRequestOpts(
+    requestParameters: DissolveClubOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
-        'Required parameter "clubId" was null or undefined when calling deleteClub().',
+        'Required parameter "clubId" was null or undefined when calling dissolveClub().',
+      );
+    }
+
+    if (requestParameters["dissolveClubRequest"] == null) {
+      throw new runtime.RequiredError(
+        "dissolveClubRequest",
+        'Required parameter "dissolveClubRequest" was null or undefined when calling dissolveClub().',
       );
     }
 
@@ -516,38 +531,43 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}`;
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/dissolve`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
       path: urlPath,
-      method: "DELETE",
+      method: "PATCH",
       headers: headerParameters,
       query: queryParameters,
+      body: DissolveClubRequestToJSON(requestParameters["dissolveClubRequest"]),
     };
   }
 
   /**
-   * 删除社团
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
-  async deleteClubRaw(
-    requestParameters: DeleteClubRequest,
+  async dissolveClubRaw(
+    requestParameters: DissolveClubOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
-    const requestOptions = await this.deleteClubRequestOpts(requestParameters);
+    const requestOptions = await this.dissolveClubRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.VoidApiResponse(response);
   }
 
   /**
-   * 删除社团
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
-  async deleteClub(
-    requestParameters: DeleteClubRequest,
+  async dissolveClub(
+    requestParameters: DissolveClubOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
-    await this.deleteClubRaw(requestParameters, initOverrides);
+    await this.dissolveClubRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -802,7 +822,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员、本社团负责人和本社团成员可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
    * 查询社团成员与干部任期记录
    */
   async getClubMembersRaw(
@@ -818,7 +838,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员、本社团负责人和本社团成员可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
    * 查询社团成员与干部任期记录
    */
   async getClubMembers(
@@ -1336,7 +1356,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTermRaw(
@@ -1352,7 +1372,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTerm(
@@ -1402,7 +1422,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息。
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfileRaw(
@@ -1416,7 +1436,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息。
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfile(

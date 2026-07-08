@@ -13,6 +13,7 @@ export * from "./ClubMemberRecord";
 export * from "./CreateClubApplicationRequest";
 export * from "./CreateClubMemberTermRequest";
 export * from "./CreateClubRequest";
+export * from "./DissolveClubRequest";
 export * from "./HealthStatus";
 export * from "./LoginRequest";
 export * from "./PermissionCheckResult";
