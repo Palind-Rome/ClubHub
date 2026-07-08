@@ -23,7 +23,7 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class Club 
+    public partial class ClubApplication 
     {
         /// <summary>
         /// Gets or Sets Id
@@ -40,78 +40,16 @@ namespace Org.OpenAPITools.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
-        /// </summary>
-        [DataMember(Name="description", EmitDefaultValue=true)]
-        public string? Description { get; set; }
-
-        /// <summary>
         /// Gets or Sets Category
         /// </summary>
         [DataMember(Name="category", EmitDefaultValue=true)]
         public string? Category { get; set; }
 
         /// <summary>
-        /// Gets or Sets FoundedAt
+        /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name="foundedAt", EmitDefaultValue=true)]
-        public DateTime? FoundedAt { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Status
-        /// </summary>
-        [DataMember(Name="status", EmitDefaultValue=true)]
-        public string? Status { get; set; }
-
-        /// <summary>
-        /// Gets or Sets StatusText
-        /// </summary>
-        [Required]
-        [DataMember(Name="statusText", EmitDefaultValue=false)]
-        public string StatusText { get; set; }
-
-        /// <summary>
-        /// Gets or Sets LogoUrl
-        /// </summary>
-        [DataMember(Name="logoUrl", EmitDefaultValue=true)]
-        public string? LogoUrl { get; set; }
-
-        /// <summary>
-        /// Gets or Sets PresidentUserId
-        /// </summary>
-        [DataMember(Name="presidentUserId", EmitDefaultValue=true)]
-        public int? PresidentUserId { get; set; }
-
-        /// <summary>
-        /// Gets or Sets PresidentName
-        /// </summary>
-        [DataMember(Name="presidentName", EmitDefaultValue=true)]
-        public string? PresidentName { get; set; }
-
-        /// <summary>
-        /// Gets or Sets AdvisorName
-        /// </summary>
-        [DataMember(Name="advisorName", EmitDefaultValue=true)]
-        public string? AdvisorName { get; set; }
-
-        /// <summary>
-        /// Gets or Sets ContactPhone
-        /// </summary>
-        [DataMember(Name="contactPhone", EmitDefaultValue=true)]
-        public string? ContactPhone { get; set; }
-
-        /// <summary>
-        /// Gets or Sets AuditStatus
-        /// </summary>
-        [DataMember(Name="auditStatus", EmitDefaultValue=true)]
-        public string? AuditStatus { get; set; }
-
-        /// <summary>
-        /// Gets or Sets AuditStatusText
-        /// </summary>
-        [Required]
-        [DataMember(Name="auditStatusText", EmitDefaultValue=false)]
-        public string AuditStatusText { get; set; }
+        [DataMember(Name="description", EmitDefaultValue=true)]
+        public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicantUserId
@@ -128,14 +66,57 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ApplyReason
         /// </summary>
-        [DataMember(Name="applyReason", EmitDefaultValue=true)]
-        public string? ApplyReason { get; set; }
+        [Required]
+        [DataMember(Name="applyReason", EmitDefaultValue=false)]
+        public string ApplyReason { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialUrl
         /// </summary>
-        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
-        public string? MaterialUrl { get; set; }
+        [Required]
+        [DataMember(Name="materialUrl", EmitDefaultValue=false)]
+        public string MaterialUrl { get; set; }
+
+
+        /// <summary>
+        /// Gets or Sets AuditStatus
+        /// </summary>
+        
+        public enum AuditStatusEnum
+        {
+            
+            /// <summary>
+            /// Enum PendingEnum for pending
+            /// </summary>
+            [EnumMember(Value = "pending")]
+            PendingEnum = 1,
+            
+            /// <summary>
+            /// Enum ApprovedEnum for approved
+            /// </summary>
+            [EnumMember(Value = "approved")]
+            ApprovedEnum = 2,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 3
+        }
+
+        /// <summary>
+        /// Gets or Sets AuditStatus
+        /// </summary>
+        [Required]
+        [DataMember(Name="auditStatus", EmitDefaultValue=true)]
+        public AuditStatusEnum AuditStatus { get; set; }
+
+        /// <summary>
+        /// Gets or Sets AuditStatusText
+        /// </summary>
+        [Required]
+        [DataMember(Name="auditStatusText", EmitDefaultValue=false)]
+        public string AuditStatusText { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewerUserId
@@ -154,6 +135,25 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ClubStatus
+        /// </summary>
+        [DataMember(Name="clubStatus", EmitDefaultValue=true)]
+        public string? ClubStatus { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ClubStatusText
+        /// </summary>
+        [Required]
+        [DataMember(Name="clubStatusText", EmitDefaultValue=false)]
+        public string ClubStatusText { get; set; }
+
+        /// <summary>
+        /// Gets or Sets FoundedAt
+        /// </summary>
+        [DataMember(Name="foundedAt", EmitDefaultValue=true)]
+        public DateTime? FoundedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt

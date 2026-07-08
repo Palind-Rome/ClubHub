@@ -43,25 +43,121 @@ export interface Club {
    * @type {string}
    * @memberof Club
    */
-  category: string;
-  /**
-   *
-   * @type {number}
-   * @memberof Club
-   */
-  memberCount: number;
-  /**
-   *
-   * @type {string}
-   * @memberof Club
-   */
-  presidentName: string;
+  category?: string | null;
   /**
    *
    * @type {Date}
    * @memberof Club
    */
-  establishedAt?: Date;
+  foundedAt?: Date | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  status?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  statusText: string;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  logoUrl?: string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof Club
+   */
+  presidentUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  presidentName?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  advisorName?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  contactPhone?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  auditStatus?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  auditStatusText: string;
+  /**
+   *
+   * @type {number}
+   * @memberof Club
+   */
+  applicantUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  applicantName?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  applyReason?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  materialUrl?: string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof Club
+   */
+  reviewerUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  reviewerName?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Club
+   */
+  reviewComment?: string | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Club
+   */
+  createdAt: Date;
+  /**
+   *
+   * @type {Date}
+   * @memberof Club
+   */
+  updatedAt?: Date | null;
 }
 
 /**
@@ -70,9 +166,9 @@ export interface Club {
 export function instanceOfClub(value: object): value is Club {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("name" in value) || value["name"] === undefined) return false;
-  if (!("category" in value) || value["category"] === undefined) return false;
-  if (!("memberCount" in value) || value["memberCount"] === undefined) return false;
-  if (!("presidentName" in value) || value["presidentName"] === undefined) return false;
+  if (!("statusText" in value) || value["statusText"] === undefined) return false;
+  if (!("auditStatusText" in value) || value["auditStatusText"] === undefined) return false;
+  if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   return true;
 }
 
@@ -88,10 +184,26 @@ export function ClubFromJSONTyped(json: any, ignoreDiscriminator: boolean): Club
     id: json["id"],
     name: json["name"],
     description: json["description"] == null ? undefined : json["description"],
-    category: json["category"],
-    memberCount: json["memberCount"],
-    presidentName: json["presidentName"],
-    establishedAt: json["establishedAt"] == null ? undefined : new Date(json["establishedAt"]),
+    category: json["category"] == null ? undefined : json["category"],
+    foundedAt: json["foundedAt"] == null ? undefined : new Date(json["foundedAt"]),
+    status: json["status"] == null ? undefined : json["status"],
+    statusText: json["statusText"],
+    logoUrl: json["logoUrl"] == null ? undefined : json["logoUrl"],
+    presidentUserId: json["presidentUserId"] == null ? undefined : json["presidentUserId"],
+    presidentName: json["presidentName"] == null ? undefined : json["presidentName"],
+    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
+    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
+    auditStatus: json["auditStatus"] == null ? undefined : json["auditStatus"],
+    auditStatusText: json["auditStatusText"],
+    applicantUserId: json["applicantUserId"] == null ? undefined : json["applicantUserId"],
+    applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
+    applyReason: json["applyReason"] == null ? undefined : json["applyReason"],
+    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
+    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
+    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
+    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    createdAt: new Date(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? undefined : new Date(json["updatedAt"]),
   };
 }
 
@@ -109,11 +221,24 @@ export function ClubToJSONTyped(value?: Club | null, ignoreDiscriminator: boolea
     name: value["name"],
     description: value["description"],
     category: value["category"],
-    memberCount: value["memberCount"],
+    foundedAt: value["foundedAt"] == null ? value["foundedAt"] : value["foundedAt"].toISOString(),
+    status: value["status"],
+    statusText: value["statusText"],
+    logoUrl: value["logoUrl"],
+    presidentUserId: value["presidentUserId"],
     presidentName: value["presidentName"],
-    establishedAt:
-      value["establishedAt"] == null
-        ? value["establishedAt"]
-        : value["establishedAt"].toISOString(),
+    advisorName: value["advisorName"],
+    contactPhone: value["contactPhone"],
+    auditStatus: value["auditStatus"],
+    auditStatusText: value["auditStatusText"],
+    applicantUserId: value["applicantUserId"],
+    applicantName: value["applicantName"],
+    applyReason: value["applyReason"],
+    materialUrl: value["materialUrl"],
+    reviewerUserId: value["reviewerUserId"],
+    reviewerName: value["reviewerName"],
+    reviewComment: value["reviewComment"],
+    createdAt: value["createdAt"].toISOString(),
+    updatedAt: value["updatedAt"] == null ? value["updatedAt"] : value["updatedAt"].toISOString(),
   };
 }
