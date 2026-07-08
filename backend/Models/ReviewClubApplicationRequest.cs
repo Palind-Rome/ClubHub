@@ -23,7 +23,7 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class CreateClubRequest 
+    public partial class ReviewClubApplicationRequest 
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
@@ -32,26 +32,39 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
 
-        /// <summary>
-        /// Gets or Sets Name
-        /// </summary>
-        [Required]
-        [MinLength(1)]
-        [DataMember(Name="name", EmitDefaultValue=false)]
-        public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Category
+        /// Gets or Sets Decision
         /// </summary>
-        [Required]
-        [DataMember(Name="category", EmitDefaultValue=false)]
-        public string Category { get; set; }
+        
+        public enum DecisionEnum
+        {
+            
+            /// <summary>
+            /// Enum ApprovedEnum for approved
+            /// </summary>
+            [EnumMember(Value = "approved")]
+            ApprovedEnum = 1,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 2
+        }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// Gets or Sets Decision
         /// </summary>
-        [DataMember(Name="description", EmitDefaultValue=true)]
-        public string? Description { get; set; }
+        [Required]
+        [DataMember(Name="decision", EmitDefaultValue=true)]
+        public DecisionEnum Decision { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ReviewComment
+        /// </summary>
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
+        public string? ReviewComment { get; set; }
 
     }
 }

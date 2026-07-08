@@ -23,35 +23,39 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class CreateClubRequest 
+    public partial class UserRoleSummary 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
+        /// Gets or Sets RoleCode
         /// </summary>
         [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
+        [DataMember(Name="roleCode", EmitDefaultValue=false)]
+        public string RoleCode { get; set; }
 
         /// <summary>
-        /// Gets or Sets Name
+        /// Gets or Sets RoleName
         /// </summary>
         [Required]
-        [MinLength(1)]
-        [DataMember(Name="name", EmitDefaultValue=false)]
-        public string Name { get; set; }
+        [DataMember(Name="roleName", EmitDefaultValue=false)]
+        public string RoleName { get; set; }
 
         /// <summary>
-        /// Gets or Sets Category
+        /// Gets or Sets RoleScope
         /// </summary>
-        [Required]
-        [DataMember(Name="category", EmitDefaultValue=false)]
-        public string Category { get; set; }
+        [DataMember(Name="roleScope", EmitDefaultValue=true)]
+        public string? RoleScope { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// Gets or Sets ClubId
         /// </summary>
-        [DataMember(Name="description", EmitDefaultValue=true)]
-        public string? Description { get; set; }
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        public int? ClubId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ClubName
+        /// </summary>
+        [DataMember(Name="clubName", EmitDefaultValue=true)]
+        public string? ClubName { get; set; }
 
     }
 }

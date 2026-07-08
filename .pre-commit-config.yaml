@@ -35,5 +35,5 @@ repos:
     rev: v3.9.4
     hooks:
       - id: prettier
-        types_or: [javascript, jsx, typescript, tsx, vue, json, yaml, css, scss, markdown]
+        types_or: [javascript, jsx, ts, tsx, vue, json, yaml, css, scss, markdown]
         exclude: "pnpm-lock.yaml|package-lock.json"

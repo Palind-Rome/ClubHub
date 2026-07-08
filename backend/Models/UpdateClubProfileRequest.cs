@@ -23,7 +23,7 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class CreateClubRequest 
+    public partial class UpdateClubProfileRequest 
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
@@ -44,6 +44,7 @@ namespace Org.OpenAPITools.Models
         /// Gets or Sets Category
         /// </summary>
         [Required]
+        [MinLength(1)]
         [DataMember(Name="category", EmitDefaultValue=false)]
         public string Category { get; set; }
 
@@ -52,6 +53,38 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
+
+        /// <summary>
+        /// Gets or Sets LogoUrl
+        /// </summary>
+        [DataMember(Name="logoUrl", EmitDefaultValue=true)]
+        public string? LogoUrl { get; set; }
+
+        /// <summary>
+        /// Gets or Sets PresidentUserId
+        /// </summary>
+        [DataMember(Name="presidentUserId", EmitDefaultValue=true)]
+        public int? PresidentUserId { get; set; }
+
+        /// <summary>
+        /// 指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。
+        /// </summary>
+        /// <value>指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。</value>
+        [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
+        public int? AdvisorUserId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程请使用 advisorUserId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程请使用 advisorUserId。</value>
+        [DataMember(Name="advisorName", EmitDefaultValue=true)]
+        public string? AdvisorName { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ContactPhone
+        /// </summary>
+        [DataMember(Name="contactPhone", EmitDefaultValue=true)]
+        public string? ContactPhone { get; set; }
 
     }
 }

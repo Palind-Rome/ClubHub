@@ -113,8 +113,8 @@ public class AuthService
             "CLUB_ADMIN",
             "社团管理员",
             SystemScope,
-            "校级社团管理角色，可审核社团、活动、场地、经费、项目并管理社团状态。",
-            ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view", "role:assign:club"]),
+            "校级社团管理角色，可审核社团注册申请并管理社团状态，不参与社团内部档案、成员任期和干部换届维护。",
+            ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
         new(
             SystemAdminRole,
             "系统管理员",

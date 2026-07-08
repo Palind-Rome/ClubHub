@@ -12,6 +12,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,7 +21,12 @@ public class ClubHubDbContext : DbContext
             e.HasKey(u => u.UserId);
             e.HasMany(u => u.UserRoles)
              .WithOne(ur => ur.User)
-             .HasForeignKey(ur => ur.UserId);
+             .HasForeignKey(ur => ur.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(u => u.ClubMemberships)
+             .WithOne(cm => cm.User)
+             .HasForeignKey(cm => cm.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Role>(e =>
@@ -28,12 +34,17 @@ public class ClubHubDbContext : DbContext
             e.HasKey(r => r.RoleId);
             e.HasMany(r => r.UserRoles)
              .WithOne(ur => ur.Role)
-             .HasForeignKey(ur => ur.RoleId);
+             .HasForeignKey(ur => ur.RoleId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<UserRole>(e =>
         {
             e.HasKey(ur => ur.UserRoleId);
+            e.HasOne(ur => ur.Club)
+             .WithMany(c => c.UserRoles)
+             .HasForeignKey(ur => ur.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Club>(e =>
@@ -42,11 +53,32 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
+            e.HasOne(c => c.Applicant)
+             .WithMany()
+             .HasForeignKey(c => c.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(c => c.Reviewer)
+             .WithMany()
+             .HasForeignKey(c => c.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(c => c.President)
+             .WithMany()
+             .HasForeignKey(c => c.PresidentUserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Activity>(e =>
         {
             e.HasKey(a => a.ActivityId);
+        });
+
+        modelBuilder.Entity<ClubMember>(e =>
+        {
+            e.HasKey(cm => cm.MemberId);
+            e.HasOne(cm => cm.Club)
+             .WithMany(c => c.Members)
+             .HasForeignKey(cm => cm.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

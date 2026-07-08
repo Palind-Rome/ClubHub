@@ -22,6 +22,12 @@ import { mapValues } from "../runtime";
 export interface CreateClubRequest {
   /**
    *
+   * @type {number}
+   * @memberof CreateClubRequest
+   */
+  currentUserId: number;
+  /**
+   *
    * @type {string}
    * @memberof CreateClubRequest
    */
@@ -44,6 +50,7 @@ export interface CreateClubRequest {
  * Check if a given object implements the CreateClubRequest interface.
  */
 export function instanceOfCreateClubRequest(value: object): value is CreateClubRequest {
+  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("name" in value) || value["name"] === undefined) return false;
   if (!("category" in value) || value["category"] === undefined) return false;
   return true;
@@ -61,6 +68,7 @@ export function CreateClubRequestFromJSONTyped(
     return json;
   }
   return {
+    currentUserId: json["currentUserId"],
     name: json["name"],
     category: json["category"],
     description: json["description"] == null ? undefined : json["description"],
@@ -80,6 +88,7 @@ export function CreateClubRequestToJSONTyped(
   }
 
   return {
+    currentUserId: value["currentUserId"],
     name: value["name"],
     category: value["category"],
     description: value["description"],

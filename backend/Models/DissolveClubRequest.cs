@@ -23,7 +23,7 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class CreateClubRequest 
+    public partial class DissolveClubRequest 
     {
         /// <summary>
         /// Gets or Sets CurrentUserId
@@ -31,27 +31,6 @@ namespace Org.OpenAPITools.Models
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Name
-        /// </summary>
-        [Required]
-        [MinLength(1)]
-        [DataMember(Name="name", EmitDefaultValue=false)]
-        public string Name { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Category
-        /// </summary>
-        [Required]
-        [DataMember(Name="category", EmitDefaultValue=false)]
-        public string Category { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Description
-        /// </summary>
-        [DataMember(Name="description", EmitDefaultValue=true)]
-        public string? Description { get; set; }
 
     }
 }
