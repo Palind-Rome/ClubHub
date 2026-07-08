@@ -36,6 +36,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ---- 必需 Secret 缺失时尽早失败，避免部署出空连接串的坏容器 ----
+      - name: 校验部署 Secret
+        shell: bash
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+        run: |
+          if [ -z "${DB_CONNECTION_STRING:-}" ]; then
+            echo "::error::缺少 GitHub Secret：DB_CONNECTION_STRING。请先在仓库或目标环境的 Secrets 中配置 Oracle 连接串。"
+            exit 1
+          fi
+
       # ---- 确定镜像标签 ----
       - name: 确定镜像名称和标签
         id: meta
@@ -76,17 +87,6 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.tag }}
             ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.sha_tag }}
-
-      # ---- 必需 Secret 缺失时尽早失败，避免部署出空连接串的坏容器 ----
-      - name: 校验部署 Secret
-        shell: bash
-        env:
-          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
-        run: |
-          if [ -z "${DB_CONNECTION_STRING:-}" ]; then
-            echo "::error::缺少 GitHub Secret：DB_CONNECTION_STRING。请先在仓库或目标环境的 Secrets 中配置 Oracle 连接串。"
-            exit 1
-          fi
 
       # ---- 准备服务器部署目录和网络 ----
       - name: 准备服务器部署目录
@@ -183,23 +183,23 @@ jobs:
                 echo "!!! DB_CONNECTION_STRING 为空，请检查 GitHub Secret 配置 !!!"
                 return 1
               fi
-              write_env_var DB_CONNECTION_STRING "$DB_CONNECTION_STRING"
+              write_env_var DB_CONNECTION_STRING "$DB_CONNECTION_STRING" || return 1
 
               echo "=== 登录 ghcr.io ==="
-              printf "%s" "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+              printf "%s" "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || return 1
 
               echo "=== 拉取新镜像 ==="
-              retry 3 20 docker compose pull
+              retry 3 20 docker compose pull || return 1
 
               echo "=== 启动服务 ==="
-              retry 3 20 docker compose up -d
+              retry 3 20 docker compose up -d || return 1
 
               echo "=== 等待服务启动 ==="
               sleep 10
-              retry 6 10 wait_for_services
+              retry 6 10 wait_for_services || return 1
 
               echo "=== 应用健康检查 ==="
-              retry 6 10 curl -fsS http://127.0.0.1/api/health
+              retry 6 10 curl -fsS --connect-timeout 5 --max-time 10 http://127.0.0.1/api/health || return 1
             }
 
             attempt=1
