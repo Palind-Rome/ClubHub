@@ -74,7 +74,7 @@
 
 具体的判定标准（极少数的例外场景）见 `AGENTS.md` → Agent 操作约束。
 
-一个功能点的完整路径（11 步）：
+一个功能点的完整路径（12 步）：
 
 ```text
  0. 确认或创建关联 Issue：
@@ -85,24 +85,30 @@
  1. git checkout dev && git pull origin dev
     git checkout -b 类型/编号-简短描述    # 例如 feature/42-activity-checkin
        │
- 2. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
+ 2. 初始提交（`gh pr create` 要求分支至少有一个领先 commit）：
+    创建或修改至少一个文件，然后：
+    git add <具体文件>
+    git commit -m "chore: 初始化功能分支"
+    git push -u origin 类型/编号-简短描述
+       │
+ 3. 立即创建 draft PR（feature/your-task → dev），按标签规范带齐标签：
     gh pr create --draft --base dev \
       --title "feat(scope): 功能名称" \
       --label "课程功能点,优先级:P1,area:activity"
     （未安装 gh CLI 时：winget install GitHub.cli）
     → draft 阶段也会运行 CI 和 code-check，尽早暴露格式与编译问题
        │
- 3. 本地编码（一次性完成）：
+ 4. 本地编码（一次性完成）：
     ├── api/openapi.yaml            ← 新增/修改端点
     ├── backend/Controllers/*.cs    ← API 路由
     ├── backend/Services/*.cs       ← 业务逻辑
     └── frontend/src/...            ← Vue 页面和组件
        │
- 4. 本地验证（必须通过才能 push）：
+ 5. 本地验证（必须通过才能 push）：
     dotnet restore && dotnet build --configuration Release
     cd frontend && pnpm install --frozen-lockfile && pnpm run build
        │
- 5. git add 具体文件名（禁止 git add .）
+ 6. git add 具体文件名（禁止 git add .）
     git commit -m "feat(scope): 中文摘要"
     git push -u origin feature/your-task
 
@@ -110,23 +116,23 @@
     → 推送后，PR 描述可能与实际提交内容不同步。
     → 此时应执行 gh pr edit 更新 PR 描述，确保"改动内容"和"关联 Issue"反映最新状态
        │
- 6. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
+ 7. gen-api-code.yml 自动触发（仅当 api/openapi.yaml 有变更时）
     → CI 生成 backend/Models/* 和 frontend/src/api/*
     → CI 自动 commit 回你的 feature 分支
        │
- 7. git pull 拉取 CI 生成的代码
+ 8. git pull 拉取 CI 生成的代码
        │
- 8. 再次本地验证（确保生成的代码能编译通过）
+ 9. 再次本地验证（确保生成的代码能编译通过）
        │
- 9. 代码准备好后，将 draft PR 标记为 Ready for Review：
+10. 代码准备好后，将 draft PR 标记为 Ready for Review：
     gh pr ready
     → CI / code-check 会继续随提交运行，CodeRabbit 自动 review
        │
-10. 阅读 CodeRabbit 的 review 意见：
+11. 阅读 CodeRabbit 的 review 意见：
     ├── 合理的 → 根据意见修改代码，commit + push
     └── 不合理的 → 在 PR 评论区回复说明原因
        │
-11. CI 全部通过 + CodeRabbit 无阻塞性问题 + CODEOWNERS approve → Merge
+12. CI 全部通过 + CodeRabbit 无阻塞性问题 + CODEOWNERS approve → Merge
 ```
 
 

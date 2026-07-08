@@ -9,6 +9,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__Default: ${DB_CONNECTION_STRING}
     expose:
       - "5000"
     networks:
