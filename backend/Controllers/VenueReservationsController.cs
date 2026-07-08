@@ -17,6 +17,7 @@ public class VenueReservationsController : ControllerBase
     private const string ReservationStatusApproved = "approved";
     private const string ReservationStatusRejected = "rejected";
     private const string ReviewPermission = "venue:review";
+    private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
 
     private static readonly HashSet<string> AllowedReservationStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -86,7 +87,10 @@ public class VenueReservationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVenueReservationRequest req)
     {
-        var validation = ValidateReservationTime(req.StartTime, req.EndTime);
+        var startTime = RequestTimeToUtc(req.StartTime);
+        var endTime = RequestTimeToUtc(req.EndTime);
+
+        var validation = ValidateReservationTime(startTime, endTime);
         if (validation is not null) return validation;
 
         if (string.IsNullOrWhiteSpace(req.Purpose))
@@ -118,7 +122,7 @@ public class VenueReservationsController : ControllerBase
             }
         }
 
-        if (await HasApprovedConflictAsync(req.VenueId, req.StartTime, req.EndTime))
+        if (await HasApprovedConflictAsync(req.VenueId, startTime, endTime))
         {
             return Conflict(Error("venue_reservation_conflict", "该场地在所选时间段已有已通过预约。"));
         }
@@ -131,8 +135,8 @@ public class VenueReservationsController : ControllerBase
             ClubId = req.ClubId,
             ActivityId = req.ActivityId,
             ApplicantUserId = req.ApplicantUserId,
-            StartAt = req.StartTime,
-            EndAt = req.EndTime,
+            StartAt = startTime,
+            EndAt = endTime,
             Purpose = req.Purpose.Trim(),
             ReservationStatus = ReservationStatusPending,
             CreatedAt = DateTime.UtcNow,
@@ -182,15 +186,18 @@ public class VenueReservationsController : ControllerBase
                 return BadRequest(Error("reservation_time_invalid", "预约时间数据不完整，不能审批通过。"));
             }
 
-            if (ToUtc(reservation.StartAt.Value) <= DateTime.UtcNow)
+            var startTime = StoredTimeToUtc(reservation.StartAt.Value);
+            var endTime = StoredTimeToUtc(reservation.EndAt.Value);
+
+            if (startTime <= DateTime.UtcNow)
             {
                 return BadRequest(Error("reservation_start_time_not_future", "预约开始时间必须晚于当前时间，不能审批通过。"));
             }
 
             if (await HasApprovedConflictAsync(
                     reservation.VenueId,
-                    reservation.StartAt.Value,
-                    reservation.EndAt.Value,
+                    startTime,
+                    endTime,
                     reservation.ReservationId))
             {
                 return Conflict(Error("venue_reservation_conflict", "审批通过失败：该场地在所选时间段已有已通过预约。"));
@@ -247,13 +254,12 @@ public class VenueReservationsController : ControllerBase
             return BadRequest(Error("reservation_time_invalid", "预约开始时间必须早于结束时间。"));
         }
 
-        var now = DateTime.UtcNow;
-        if (ToUtc(startTime) < now)
+        if (startTime < DateTime.UtcNow)
         {
             return BadRequest(Error("reservation_start_time_in_past", "预约开始时间不能早于当前时间。"));
         }
 
-        if (ToUtc(endTime) < now)
+        if (endTime < DateTime.UtcNow)
         {
             return BadRequest(Error("reservation_end_time_in_past", "预约结束时间不能早于当前时间。"));
         }
@@ -261,9 +267,42 @@ public class VenueReservationsController : ControllerBase
         return null;
     }
 
-    private static DateTime ToUtc(DateTime value)
+    private static DateTime RequestTimeToUtc(DateTime value)
     {
-        return value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value;
+        if (value == default) return value;
+
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => TimeZoneInfo.ConvertTimeToUtc(value, BeijingTimeZone)
+        };
+    }
+
+    private static DateTime StoredTimeToUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    private static TimeZoneInfo ResolveBeijingTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+        }
     }
 
     private static VenueReservationDto ToDto(VenueReservationEntity reservation)
@@ -278,14 +317,14 @@ public class VenueReservationsController : ControllerBase
             reservation.Activity?.Title,
             reservation.ApplicantUserId,
             DisplayName(reservation.ApplicantUser),
-            reservation.StartAt ?? DateTime.MinValue,
-            reservation.EndAt ?? DateTime.MinValue,
+            StoredTimeToUtc(reservation.StartAt ?? DateTime.MinValue),
+            StoredTimeToUtc(reservation.EndAt ?? DateTime.MinValue),
             reservation.Purpose ?? "",
             NormalizeReservationStatus(reservation.ReservationStatus),
             reservation.ReviewerUserId,
             DisplayName(reservation.ReviewerUser),
             reservation.ReviewComment,
-            reservation.CreatedAt ?? DateTime.MinValue);
+            StoredTimeToUtc(reservation.CreatedAt ?? DateTime.MinValue));
     }
 
     private static bool IsValidStatus(string? status, HashSet<string> allowed, out string? normalized)

@@ -3,6 +3,16 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
 import {
+  beijingCalendarDateTimestamp,
+  beijingDateTimeTimestamp,
+  beijingDateTimeToUtcIso,
+  beijingTodayStartTimestamp,
+  formatVenueReservationDate,
+  formatVenueReservationDateTime,
+  formatVenueReservationTime,
+  venueReservationTimestamp,
+} from "../beijingTime";
+import {
   createVenueSearchIndex,
   formatVenueLocation,
   matchesVenueSearch,
@@ -172,7 +182,7 @@ const rules: FormRules<ReservationForm> = {
           callback();
           return;
         }
-        if (new Date(value).getTime() <= new Date(form.startTime).getTime()) {
+        if (beijingDateTimeTimestamp(value) <= beijingDateTimeTimestamp(form.startTime)) {
           callback(new Error("结束时间必须晚于开始时间"));
           return;
         }
@@ -192,13 +202,12 @@ const rules: FormRules<ReservationForm> = {
 };
 
 function isBeforeNow(value?: string) {
-  return value ? new Date(value).getTime() < Date.now() : false;
+  const timestamp = beijingDateTimeTimestamp(value);
+  return Number.isFinite(timestamp) && timestamp < Date.now();
 }
 
 function disablePastDate(date: Date) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date.getTime() < today.getTime();
+  return beijingCalendarDateTimestamp(date) < beijingTodayStartTimestamp();
 }
 
 async function readErrorMessage(res: Response) {
@@ -284,8 +293,8 @@ async function submitReservation() {
         clubId: form.clubId,
         activityId: form.activityId || null,
         applicantUserId,
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString(),
+        startTime: beijingDateTimeToUtcIso(form.startTime),
+        endTime: beijingDateTimeToUtcIso(form.endTime),
         purpose: form.purpose.trim(),
       }),
     });
@@ -324,18 +333,15 @@ function createApprovedSlotIndex(slot: VenueReservation) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString();
+  return formatVenueReservationDateTime(value);
 }
 
 function formatDateOnly(value: string) {
-  return new Date(value).toLocaleDateString();
+  return formatVenueReservationDate(value);
 }
 
 function formatTimeOnly(value: string) {
-  return new Date(value).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatVenueReservationTime(value);
 }
 
 function formatSlotRange(slot: VenueReservation) {
@@ -345,7 +351,9 @@ function formatSlotRange(slot: VenueReservation) {
 function formatSlotDuration(slot: VenueReservation) {
   const minutes = Math.max(
     0,
-    Math.round((new Date(slot.endTime).getTime() - new Date(slot.startTime).getTime()) / 60000),
+    Math.round(
+      (venueReservationTimestamp(slot.endTime) - venueReservationTimestamp(slot.startTime)) / 60000,
+    ),
   );
   if (minutes < 60) return `${minutes} 分钟`;
 
@@ -364,7 +372,7 @@ function findVenueOccupancy(venue: Venue) {
       (reservation) =>
         reservation.venueId === venue.id && isCurrentApprovedReservation(reservation),
     )
-    .sort((a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime())[0];
+    .sort((a, b) => venueReservationTimestamp(a.endTime) - venueReservationTimestamp(b.endTime))[0];
 }
 
 function approvedReservationsForVenue(venueId: number) {
@@ -373,29 +381,33 @@ function approvedReservationsForVenue(venueId: number) {
       (reservation) => reservation.venueId === venueId && isActiveApprovedReservation(reservation),
     )
     .slice()
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    .sort(
+      (a, b) => venueReservationTimestamp(a.startTime) - venueReservationTimestamp(b.startTime),
+    );
 }
 
 function isActiveApprovedReservation(reservation: VenueReservation) {
-  return reservation.status === "approved" && new Date(reservation.endTime).getTime() > Date.now();
+  return (
+    reservation.status === "approved" && venueReservationTimestamp(reservation.endTime) > Date.now()
+  );
 }
 
 function isCurrentApprovedReservation(reservation: VenueReservation) {
   const now = Date.now();
-  const startTime = new Date(reservation.startTime).getTime();
-  const endTime = new Date(reservation.endTime).getTime();
+  const startTime = venueReservationTimestamp(reservation.startTime);
+  const endTime = venueReservationTimestamp(reservation.endTime);
   return reservation.status === "approved" && startTime <= now && endTime > now;
 }
 
 function hasApprovedConflict(venueId: number, startValue?: string, endValue?: string) {
   if (!startValue || !endValue) return false;
-  const startTime = new Date(startValue).getTime();
-  const endTime = new Date(endValue).getTime();
+  const startTime = beijingDateTimeTimestamp(startValue);
+  const endTime = beijingDateTimeTimestamp(endValue);
   if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return false;
 
   return approvedReservationsForVenue(venueId).some((reservation) => {
-    const approvedStart = new Date(reservation.startTime).getTime();
-    const approvedEnd = new Date(reservation.endTime).getTime();
+    const approvedStart = venueReservationTimestamp(reservation.startTime);
+    const approvedEnd = venueReservationTimestamp(reservation.endTime);
     return approvedStart < endTime && approvedEnd > startTime;
   });
 }

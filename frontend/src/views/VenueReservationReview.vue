@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { readAuth } from "../authSession";
+import { formatVenueReservationDateTime, venueReservationTimestamp } from "../beijingTime";
 import {
   createVenueSearchIndex,
   formatVenueLocation,
@@ -125,13 +126,17 @@ const venueGroups = computed<VenueGroup[]>(() => {
     }
 
     existing.pendingCount += 1;
-    if (new Date(reservation.startTime).getTime() < new Date(existing.nextStartTime).getTime()) {
+    if (
+      venueReservationTimestamp(reservation.startTime) <
+      venueReservationTimestamp(existing.nextStartTime)
+    ) {
       existing.nextStartTime = reservation.startTime;
     }
   }
 
   return Array.from(map.values()).sort((a, b) => {
-    const byStart = new Date(a.nextStartTime).getTime() - new Date(b.nextStartTime).getTime();
+    const byStart =
+      venueReservationTimestamp(a.nextStartTime) - venueReservationTimestamp(b.nextStartTime);
     return byStart || a.venueId - b.venueId;
   });
 });
@@ -165,7 +170,9 @@ const selectedPendingReservations = computed(() => {
   return pendingReservations.value
     .filter((reservation) => reservation.venueId === venueId)
     .slice()
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    .sort(
+      (a, b) => venueReservationTimestamp(a.startTime) - venueReservationTimestamp(b.startTime),
+    );
 });
 
 const selectedPendingReservationRows = computed<VenueReservationRow[]>(() => {
@@ -209,7 +216,9 @@ const filteredHistoryReservations = computed(() => {
     })
     .map((row) => row.reservation)
     .slice()
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort(
+      (a, b) => venueReservationTimestamp(b.createdAt) - venueReservationTimestamp(a.createdAt),
+    );
 });
 
 const historyEmptyText = computed(() => {
@@ -347,7 +356,7 @@ async function openHistory() {
 }
 
 function canApprove(reservation: VenueReservation) {
-  return new Date(reservation.startTime).getTime() > Date.now();
+  return venueReservationTimestamp(reservation.startTime) > Date.now();
 }
 
 function approveDisabledReason(reservation: VenueReservation) {
@@ -376,7 +385,7 @@ function venueLocationText(venueId: number) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString();
+  return formatVenueReservationDateTime(value);
 }
 
 function statusLabel(status: string) {

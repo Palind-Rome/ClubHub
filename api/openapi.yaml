@@ -3609,9 +3609,11 @@ components:
         startTime:
           type: string
           format: date-time
+          description: 预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         endTime:
           type: string
           format: date-time
+          description: 预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         purpose:
           type: string
         status:
@@ -3630,6 +3632,7 @@ components:
         createdAt:
           type: string
           format: date-time
+          description: 创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
       required:
         - id
         - venueId
@@ -3658,9 +3661,11 @@ components:
         startTime:
           type: string
           format: date-time
+          description: 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
         endTime:
           type: string
           format: date-time
+          description: 预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
         purpose:
           type: string
           minLength: 1
