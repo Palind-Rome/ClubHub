@@ -63,22 +63,12 @@ export interface UpdateRecruitmentRequest {
    */
   requirements?: string | null;
   /**
-   *
-   * @type {UpdateRecruitmentRequestRecruitStatusEnum}
+   * 仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。
+   * @type {string}
    * @memberof UpdateRecruitmentRequest
    */
-  recruitStatus?: UpdateRecruitmentRequestRecruitStatusEnum | null;
+  recruitStatus?: string | null;
 }
-
-/**
- * @export
- */
-export const UpdateRecruitmentRequestRecruitStatusEnum = {
-  Draft: "draft",
-  PendingReview: "pending_review",
-} as const;
-export type UpdateRecruitmentRequestRecruitStatusEnum =
-  (typeof UpdateRecruitmentRequestRecruitStatusEnum)[keyof typeof UpdateRecruitmentRequestRecruitStatusEnum];
 
 /**
  * Check if a given object implements the UpdateRecruitmentRequest interface.
