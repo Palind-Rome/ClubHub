@@ -8,12 +8,6 @@
 - `views/`：后续放统计视图。
 - `migrations/`：后续放表结构演进说明或迁移脚本。
 
-### 迁移脚本
-
-已有开发库或测试库如需升级到当前结构，请在确认备份后执行：
-
-1. `migrations/005_add_recruitment_creator.sql`：为 `RECRUITMENTS` 增加 `creator_user_id`，用于纳新草稿归属、草稿删除和审核流程。
-
 ### 演示数据脚本
 
 `seeds/` 下的脚本只用于本地开发库或明确的测试库，不会由 CI 自动执行。当前建议顺序：

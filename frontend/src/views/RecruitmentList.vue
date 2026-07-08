@@ -41,8 +41,6 @@ interface Recruitment {
   requirements: string | null;
   recruitStatus: RecruitmentStatus;
   recruitStatusText: string;
-  creatorUserId: number | null;
-  creatorName: string | null;
   createdAt: string;
   applicationCount: number;
   acceptedCount: number;
@@ -374,7 +372,7 @@ function openCreateDialog() {
 
 function openEditDialog(row: Recruitment) {
   if (!row.canEdit) {
-    ElMessage.warning("只有草稿创建人可以维护该纳新。");
+    ElMessage.warning("只有本社团干部或负责人可以维护草稿纳新。");
     return;
   }
 
@@ -496,7 +494,7 @@ async function backToRecruitments() {
 
 async function deleteDraftRecruitment(row: Recruitment) {
   if (!row.canDelete || !currentUserId.value) {
-    ElMessage.warning("只有草稿创建人可以删除该纳新。");
+    ElMessage.warning("只有本社团干部或负责人可以删除草稿纳新。");
     return;
   }
 
@@ -846,7 +844,6 @@ onUnmounted(() => {
             <el-tag :type="statusTagType(row.recruitStatus)" size="small">
               {{ row.recruitStatusText || recruitmentStatusText(row.recruitStatus) }}
             </el-tag>
-            <div v-if="row.creatorName" class="muted tiny">提出：{{ row.creatorName }}</div>
           </template>
         </el-table-column>
         <el-table-column label="我的申请" width="120">
@@ -1199,11 +1196,6 @@ onUnmounted(() => {
 .muted,
 .description {
   color: var(--el-text-color-secondary);
-}
-
-.tiny {
-  margin-top: 4px;
-  font-size: 12px;
 }
 
 .description {

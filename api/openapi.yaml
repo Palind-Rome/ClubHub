@@ -782,7 +782,7 @@ paths:
   /api/recruitments:
     get:
       summary: 查询社团招募列表
-      description: 学生可查看已审核通过的招募和自己的报名状态；社团干部可查看本社团已提交或已通过的招募，草稿仅创建人可见；社团管理员可查看待审核招募。
+      description: 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
       operationId: getRecruitments
       parameters:
         - name: viewerUserId
@@ -844,7 +844,7 @@ paths:
   /api/recruitments/{recruitId}:
     patch:
       summary: 更新社团招募
-      description: 招募创建人可以维护草稿内容，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+      description: 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
       operationId: updateRecruitment
       parameters:
         - name: recruitId
@@ -875,7 +875,7 @@ paths:
           description: 招募状态不允许维护
     delete:
       summary: 删除草稿招募
-      description: 招募创建人可以删除自己创建的草稿招募。
+      description: 目标社团的社团干部、负责人可以删除本社团草稿招募。
       operationId: deleteRecruitment
       parameters:
         - name: recruitId
@@ -895,7 +895,7 @@ paths:
         "400":
           description: 当前用户不合法
         "403":
-          description: 当前用户不是草稿创建人
+          description: 当前用户没有删除该草稿的权限
         "404":
           description: 当前用户或招募不存在
         "409":
@@ -2499,12 +2499,6 @@ components:
           enum: [draft, pending_review, not_started, accepting, ended]
         recruitStatusText:
           type: string
-        creatorUserId:
-          type: integer
-          nullable: true
-        creatorName:
-          type: string
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2526,7 +2520,7 @@ components:
           description: 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
         isOwnProposal:
           type: boolean
-          description: 当前查看用户是否应将该纳新归入自己或本社团提出的纳新；同社团干部、负责人共享该视角。
+          description: 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
         canManage:
           type: boolean
         canEdit:

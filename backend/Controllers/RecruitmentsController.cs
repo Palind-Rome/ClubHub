@@ -74,12 +74,10 @@ public class RecruitmentsController : ControllerBase
             .ThenByDescending(r => r.RecruitId)
             .ToListAsync();
 
-        var visibleRecruitments = recruitments
+        return Ok(recruitments
             .Where(r => CanViewRecruitment(viewer, r))
             .Where(r => normalizedStatus is null || EffectiveRecruitmentStatus(r, now) == normalizedStatus)
-            .Select(r => ToRecruitmentDto(r, viewer, now));
-
-        return Ok(visibleRecruitments);
+            .Select(r => ToRecruitmentDto(r, viewer, now)));
     }
 
     [HttpPost]
@@ -107,7 +105,7 @@ public class RecruitmentsController : ControllerBase
         var requestedStatus = NormalizeRecruitmentWorkflowStatus(req.RecruitStatus);
         if (!string.IsNullOrWhiteSpace(req.RecruitStatus) && requestedStatus is null)
         {
-            return BadRequest(new { message = "创建纳新时只能保存草稿或提交审核。" });
+            return BadRequest(new { message = "纳新只能保存草稿或提交审核。" });
         }
         var recruitStatus = requestedStatus ?? RecruitmentDraft;
 
@@ -124,10 +122,8 @@ public class RecruitmentsController : ControllerBase
             Quota = req.Quota,
             Requirements = req.Requirements.Trim(),
             RecruitStatus = recruitStatus,
-            CreatorUserId = operatorUser.UserId,
             CreatedAt = now,
-            Club = club,
-            Creator = operatorUser
+            Club = club
         };
 
         _db.Recruitments.Add(recruitment);
@@ -155,7 +151,7 @@ public class RecruitmentsController : ControllerBase
 
         if (!CanEditRecruitment(operatorUser, recruitment))
         {
-            return StatusCode(403, new { message = "只有草稿创建人可以维护该纳新。" });
+            return StatusCode(403, new { message = "只有本社团干部或负责人可以维护草稿纳新。" });
         }
 
         var status = NormalizeRecruitmentWorkflowStatus(req.RecruitStatus);
@@ -214,7 +210,7 @@ public class RecruitmentsController : ControllerBase
 
         if (!CanDeleteDraftRecruitment(operatorUser, recruitment))
         {
-            return StatusCode(403, new { message = "只有草稿创建人可以删除该纳新。" });
+            return StatusCode(403, new { message = "只有本社团干部或负责人可以删除草稿纳新。" });
         }
 
         if (recruitment.Applications.Count > 0)
@@ -240,22 +236,18 @@ public class RecruitmentsController : ControllerBase
 
         var reviewer = await LoadUserAsync(req.CurrentUserId);
         if (reviewer is null) return NotFound(new { message = "当前用户不存在。" });
-        if (!CanReviewRecruitment(reviewer))
-        {
-            return StatusCode(403, new { message = "只有社团管理员可以审核纳新。" });
-        }
 
         var recruitment = await RecruitmentQuery().FirstOrDefaultAsync(r => r.RecruitId == recruitId);
         if (recruitment is null) return NotFound(new { message = "招募不存在。" });
 
+        if (!CanReviewRecruitment(reviewer, recruitment))
+        {
+            return StatusCode(403, new { message = "只有非本社团提出人的社团管理员可以审核纳新。" });
+        }
+
         if (recruitment.Club is null || !IsMaintainableClub(recruitment.Club))
         {
             return Conflict(new { message = "社团状态不允许审核纳新。" });
-        }
-
-        if (IsRecruitmentCreator(reviewer, recruitment))
-        {
-            return StatusCode(403, new { message = "纳新创建人不能审核自己提交的纳新。" });
         }
 
         if (NormalizeRecruitmentStorageStatus(recruitment.RecruitStatus) != RecruitmentPendingReview)
@@ -343,8 +335,7 @@ public class RecruitmentsController : ControllerBase
             return Conflict(new { message = "社团状态不允许接收报名。" });
         }
         var now = BusinessNow();
-        var effectiveStatus = EffectiveRecruitmentStatus(recruitment, now);
-        if (effectiveStatus != RecruitmentAccepting)
+        if (EffectiveRecruitmentStatus(recruitment, now) != RecruitmentAccepting)
         {
             return Conflict(new { message = "只有申请中的纳新可以提交报名。" });
         }
@@ -462,7 +453,6 @@ public class RecruitmentsController : ControllerBase
     private IQueryable<Recruitment> RecruitmentQuery() =>
         _db.Recruitments
             .Include(r => r.Club)
-            .Include(r => r.Creator)
             .Include(r => r.Applications);
 
     private IQueryable<RecruitmentApplication> ApplicationQuery() =>
@@ -640,7 +630,6 @@ public class RecruitmentsController : ControllerBase
         var applicationStatus = NormalizeApplicationStatus(currentApplication?.ApplicationStatus);
         var currentUserIsMember = CurrentUserIsMemberOfClub(viewer, recruitment.ClubId);
         var isOwnProposal = IsOwnRecruitmentProposal(viewer, recruitment);
-        var canManage = CanManageRecruitment(viewer, recruitment.ClubId);
 
         return new RecruitmentDto(
             recruitment.RecruitId,
@@ -654,8 +643,6 @@ public class RecruitmentsController : ControllerBase
             recruitment.Requirements,
             status,
             RecruitmentStatusText(status),
-            recruitment.CreatorUserId,
-            DisplayUser(recruitment.Creator),
             recruitment.CreatedAt,
             recruitment.Applications.Count,
             recruitment.Applications.Count(a => a.ApplicationStatus == ApplicationAccepted),
@@ -664,10 +651,10 @@ public class RecruitmentsController : ControllerBase
             applicationStatus is null ? null : ApplicationStatusText(applicationStatus),
             currentUserIsMember,
             isOwnProposal,
-            canManage,
+            CanManageRecruitment(viewer, recruitment.ClubId),
             CanEditRecruitment(viewer, recruitment),
             CanDeleteDraftRecruitment(viewer, recruitment),
-            CanReviewRecruitment(viewer) && !IsRecruitmentCreator(viewer, recruitment));
+            CanReviewRecruitment(viewer, recruitment));
     }
 
     private static RecruitmentApplicationDto ToApplicationDto(RecruitmentApplication application)
@@ -719,16 +706,10 @@ public class RecruitmentsController : ControllerBase
     private static bool CanViewRecruitment(User viewer, Recruitment recruitment)
     {
         var status = NormalizeRecruitmentStorageStatus(recruitment.RecruitStatus) ?? RecruitmentDraft;
-
-        if (status == RecruitmentDraft)
-        {
-            return IsRecruitmentCreator(viewer, recruitment) ||
-                   (recruitment.CreatorUserId is null && CanManageRecruitment(viewer, recruitment.ClubId));
-        }
-
+        if (status == RecruitmentDraft) return CanManageRecruitment(viewer, recruitment.ClubId);
         if (status == RecruitmentPendingReview)
         {
-            return CanReviewRecruitment(viewer) || IsOwnRecruitmentProposal(viewer, recruitment);
+            return CanManageRecruitment(viewer, recruitment.ClubId) || CanReviewRecruitment(viewer, recruitment);
         }
 
         return true;
@@ -742,22 +723,19 @@ public class RecruitmentsController : ControllerBase
             ur.ClubId == clubId &&
             IsRecruitmentManagerRole(ur.Role));
 
-    private static bool CanReviewRecruitment(User user) =>
-        UsersController.IsPlatformAdmin(user) || UsersController.IsSystemAdmin(user);
-
-    private static bool IsRecruitmentCreator(User user, Recruitment recruitment) =>
-        recruitment.CreatorUserId == user.UserId;
-
     private static bool IsOwnRecruitmentProposal(User user, Recruitment recruitment) =>
-        IsRecruitmentCreator(user, recruitment) || HasClubRecruitmentManagerRole(user, recruitment.ClubId);
+        HasClubRecruitmentManagerRole(user, recruitment.ClubId);
 
     private static bool CanEditRecruitment(User user, Recruitment recruitment) =>
         NormalizeRecruitmentStorageStatus(recruitment.RecruitStatus) == RecruitmentDraft &&
-        (IsRecruitmentCreator(user, recruitment) ||
-         (recruitment.CreatorUserId is null && CanManageRecruitment(user, recruitment.ClubId)));
+        CanManageRecruitment(user, recruitment.ClubId);
 
     private static bool CanDeleteDraftRecruitment(User user, Recruitment recruitment) =>
         CanEditRecruitment(user, recruitment);
+
+    private static bool CanReviewRecruitment(User user, Recruitment recruitment) =>
+        (UsersController.IsPlatformAdmin(user) || UsersController.IsSystemAdmin(user)) &&
+        !HasClubRecruitmentManagerRole(user, recruitment.ClubId);
 
     private static bool IsRecruitmentManagerRole(Role? role) =>
         role is not null && RecruitmentManagerRoleCodes.Contains(Normalize(role.RoleCode));
@@ -933,8 +911,6 @@ public record RecruitmentDto(
     string? Requirements,
     string RecruitStatus,
     string RecruitStatusText,
-    int? CreatorUserId,
-    string? CreatorName,
     DateTime CreatedAt,
     int ApplicationCount,
     int AcceptedCount,

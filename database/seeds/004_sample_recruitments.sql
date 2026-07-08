@@ -10,8 +10,7 @@ USING (
          SYSDATE + 14 AS end_at,
          5 AS quota,
          '请说明技术方向、项目经历或希望参与的活动。' AS requirements,
-         'published' AS recruit_status,
-         3 AS creator_user_id
+         'published' AS recruit_status
   FROM dual
 ) source
 ON (target.recruit_id = source.recruit_id)
@@ -23,11 +22,10 @@ WHEN MATCHED THEN UPDATE SET
   target.end_at = source.end_at,
   target.quota = source.quota,
   target.requirements = source.requirements,
-  target.recruit_status = source.recruit_status,
-  target.creator_user_id = source.creator_user_id
+  target.recruit_status = source.recruit_status
 WHEN NOT MATCHED THEN
-  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, creator_user_id, created_at)
-  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, source.creator_user_id, SYSDATE);
+  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, created_at)
+  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, SYSDATE);
 
 MERGE INTO RECRUITMENTS target
 USING (
@@ -38,8 +36,7 @@ USING (
          SYSDATE + 7 AS end_at,
          3 AS quota,
          '请提交摄影兴趣方向、设备情况或过往作品说明。' AS requirements,
-         'published' AS recruit_status,
-         7 AS creator_user_id
+         'published' AS recruit_status
   FROM dual
 ) source
 ON (target.recruit_id = source.recruit_id)
@@ -51,11 +48,10 @@ WHEN MATCHED THEN UPDATE SET
   target.end_at = source.end_at,
   target.quota = source.quota,
   target.requirements = source.requirements,
-  target.recruit_status = source.recruit_status,
-  target.creator_user_id = source.creator_user_id
+  target.recruit_status = source.recruit_status
 WHEN NOT MATCHED THEN
-  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, creator_user_id, created_at)
-  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, source.creator_user_id, SYSDATE);
+  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, created_at)
+  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, SYSDATE);
 
 MERGE INTO RECRUITMENTS target
 USING (
@@ -66,8 +62,7 @@ USING (
          SYSDATE - 1 AS end_at,
          2 AS quota,
          '需要能参加周末联赛值班，有赛事组织经验优先。' AS requirements,
-         'closed' AS recruit_status,
-         7 AS creator_user_id
+         'closed' AS recruit_status
   FROM dual
 ) source
 ON (target.recruit_id = source.recruit_id)
@@ -79,11 +74,10 @@ WHEN MATCHED THEN UPDATE SET
   target.end_at = source.end_at,
   target.quota = source.quota,
   target.requirements = source.requirements,
-  target.recruit_status = source.recruit_status,
-  target.creator_user_id = source.creator_user_id
+  target.recruit_status = source.recruit_status
 WHEN NOT MATCHED THEN
-  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, creator_user_id, created_at)
-  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, source.creator_user_id, SYSDATE);
+  INSERT (recruit_id, club_id, title, description, start_at, end_at, quota, requirements, recruit_status, created_at)
+  VALUES (source.recruit_id, source.club_id, source.title, source.description, source.start_at, source.end_at, source.quota, source.requirements, source.recruit_status, SYSDATE);
 
 MERGE INTO RECRUITMENT_APPLICATIONS target
 USING (
