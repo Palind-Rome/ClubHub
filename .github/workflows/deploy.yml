@@ -101,17 +101,52 @@ jobs:
           source: docker-compose.yml
           target: ${{ secrets.DEPLOY_PATH }}
 
-      # ---- 服务器上拉取镜像并重启 ----
-      - name: 部署到服务器
+      # ---- 服务器上拉取镜像并重启，最多重试 3 次 ----
+      - name: 部署到服务器（第 1 次）
+        id: deploy_attempt_1
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
-        with:
+        with: &deploy_server
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
+          timeout: 60s
+          command_timeout: 20m
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
+
+            retry() {
+              attempts="$1"
+              delay="$2"
+              shift 2
+              count=1
+              until "$@"; do
+                status=$?
+                if [ "$count" -ge "$attempts" ]; then
+                  echo "!!! 命令失败，已重试 ${attempts} 次: $*"
+                  return "$status"
+                fi
+                count=$((count + 1))
+                echo "命令失败（退出码 ${status}），${delay}s 后重试 ${count}/${attempts}: $*"
+                sleep "$delay"
+              done
+            }
+
+            wait_for_services() {
+              docker compose ps
+              if ! docker compose ps --services --status running | grep -q "^backend$"; then
+                echo "!!! 后端服务未运行 !!!"
+                docker compose logs --tail 50
+                return 1
+              fi
+              if ! docker compose ps --services --status running | grep -q "^frontend$"; then
+                echo "!!! 前端服务未运行 !!!"
+                docker compose logs --tail 50
+                return 1
+              fi
+            }
 
             echo "=== 写入数据库连接串 ==="
             echo "DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" >> .env
@@ -120,30 +155,32 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             echo "=== 拉取新镜像 ==="
-            docker compose pull
+            retry 3 20 docker compose pull
 
             echo "=== 启动服务 ==="
-            docker compose up -d
+            retry 3 20 docker compose up -d
 
             echo "=== 等待服务启动 ==="
             sleep 10
-            docker compose ps
-            if ! docker compose ps --services --status running | grep -q "^backend$"; then
-              echo "!!! 后端服务未运行 !!!"
-              docker compose logs --tail 50
-              exit 1
-            fi
-            if ! docker compose ps --services --status running | grep -q "^frontend$"; then
-              echo "!!! 前端服务未运行 !!!"
-              docker compose logs --tail 50
-              exit 1
-            fi
+            retry 6 10 wait_for_services
 
             echo "=== 应用健康检查 ==="
-            curl -fsS http://127.0.0.1/api/health
+            retry 6 10 curl -fsS http://127.0.0.1/api/health
 
             echo "=== 部署成功 ==="
             docker compose ps
 
             echo "=== 清理旧镜像 ==="
             docker image prune -af --filter "until=24h"
+
+      - name: 部署到服务器（第 2 次）
+        id: deploy_attempt_2
+        if: steps.deploy_attempt_1.outcome == 'failure'
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with: *deploy_server
+
+      - name: 部署到服务器（第 3 次）
+        if: steps.deploy_attempt_1.outcome == 'failure' && steps.deploy_attempt_2.outcome == 'failure'
+        uses: appleboy/ssh-action@v1
+        with: *deploy_server
