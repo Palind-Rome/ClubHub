@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { ElMessage } from "element-plus";
+import { readAuth } from "../authSession";
 
 interface Activity {
   id: number;
@@ -57,6 +58,7 @@ interface ReviewActivityForm {
 }
 
 const activities = ref<Activity[]>([]);
+const statusFilter = ref("all");
 const loading = ref(true);
 const error = ref("");
 const saving = ref(false);
@@ -105,6 +107,21 @@ const signForm = ref({
   code: "",
 });
 
+const statusFilterOptions = [
+  { value: "all", label: "全部状态" },
+  { value: "pending_review", label: "待审核" },
+  { value: "published", label: "报名中" },
+  { value: "ongoing", label: "进行中" },
+  { value: "rejected", label: "已驳回" },
+];
+
+const filteredActivities = computed(() => {
+  if (statusFilter.value === "all") {
+    return activities.value;
+  }
+  return activities.value.filter((activity) => activity.status === statusFilter.value);
+});
+
 const statusLabel: Record<string, string> = {
   draft: "草稿",
   pending_review: "待审核",
@@ -131,8 +148,85 @@ const signStatusLabel: Record<string, string> = {
   checked_out: "已签退",
 };
 
+const CHECKIN_WINDOW_MINUTES = 5;
+const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function formatDateTimeForPicker(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 function formatTime(value: string | null) {
   return value ? new Date(value).toLocaleString() : "-";
+}
+
+function formatActivityTimeRange(activity: Activity) {
+  if (!activity.startTime || !activity.endTime) {
+    return "未设置活动时间";
+  }
+  return `${formatTime(activity.startTime)} ~ ${formatTime(activity.endTime)}`;
+}
+
+function buildDefaultCreateTimes() {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(14, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(17, 0, 0, 0);
+
+  const deadline = new Date(start);
+  deadline.setDate(deadline.getDate() - 1);
+  deadline.setHours(23, 59, 0, 0);
+
+  return {
+    startTime: formatDateTimeForPicker(start),
+    endTime: formatDateTimeForPicker(end),
+    registrationDeadline: formatDateTimeForPicker(deadline),
+  };
+}
+
+function getCurrentUserId() {
+  return readAuth()?.user?.id ?? 1;
+}
+
+function generateSignCode() {
+  return Array.from(
+    { length: 6 },
+    () => SIGN_CODE_CHARS[Math.floor(Math.random() * SIGN_CODE_CHARS.length)],
+  ).join("");
+}
+
+function hasExistingCheckinSettings(activity: Activity) {
+  return Boolean(
+    activity.checkinStartAt ||
+    activity.checkinEndAt ||
+    activity.checkoutStartAt ||
+    activity.checkoutEndAt,
+  );
+}
+
+function buildRecommendedCheckinSettings(activity: Activity) {
+  if (!activity.startTime || !activity.endTime) {
+    return {
+      checkinStartAt: "",
+      checkinEndAt: "",
+      checkoutStartAt: "",
+      checkoutEndAt: "",
+    };
+  }
+
+  const start = new Date(activity.startTime);
+  const end = new Date(activity.endTime);
+  const checkinEnd = new Date(start.getTime() + CHECKIN_WINDOW_MINUTES * 60 * 1000);
+  const effectiveCheckinEnd = checkinEnd > end ? end : checkinEnd;
+
+  return {
+    checkinStartAt: formatDateTimeForPicker(start),
+    checkinEndAt: formatDateTimeForPicker(effectiveCheckinEnd),
+    checkoutStartAt: formatDateTimeForPicker(effectiveCheckinEnd),
+    checkoutEndAt: formatDateTimeForPicker(end),
+  };
 }
 
 function emptyToNull(value: string) {
@@ -154,6 +248,7 @@ async function loadActivities() {
 }
 
 function openCreate() {
+  const defaults = buildDefaultCreateTimes();
   createForm.value = {
     clubId: 1,
     creatorUserId: null,
@@ -161,10 +256,10 @@ function openCreate() {
     activityType: "",
     description: "",
     location: "",
-    startTime: "",
-    endTime: "",
+    startTime: defaults.startTime,
+    endTime: defaults.endTime,
     maxParticipants: 50,
-    registrationDeadline: "",
+    registrationDeadline: defaults.registrationDeadline,
   };
   createDialogVisible.value = true;
 }
@@ -240,15 +335,44 @@ async function reviewActivity() {
 
 function openSettings(activity: Activity) {
   currentActivity.value = activity;
+  const recommended = buildRecommendedCheckinSettings(activity);
+  const useRecommended = !hasExistingCheckinSettings(activity);
+
   settingsForm.value = {
-    checkinCode: "",
-    checkinStartAt: activity.checkinStartAt ?? "",
-    checkinEndAt: activity.checkinEndAt ?? "",
-    checkoutCode: "",
-    checkoutStartAt: activity.checkoutStartAt ?? "",
-    checkoutEndAt: activity.checkoutEndAt ?? "",
+    checkinCode: generateSignCode(),
+    checkinStartAt: useRecommended ? recommended.checkinStartAt : (activity.checkinStartAt ?? ""),
+    checkinEndAt: useRecommended ? recommended.checkinEndAt : (activity.checkinEndAt ?? ""),
+    checkoutCode: generateSignCode(),
+    checkoutStartAt: useRecommended
+      ? recommended.checkoutStartAt
+      : (activity.checkoutStartAt ?? ""),
+    checkoutEndAt: useRecommended ? recommended.checkoutEndAt : (activity.checkoutEndAt ?? ""),
   };
   settingsDialogVisible.value = true;
+}
+
+function applyRecommendedTimes() {
+  if (!currentActivity.value) return;
+
+  const recommended = buildRecommendedCheckinSettings(currentActivity.value);
+  settingsForm.value.checkinStartAt = recommended.checkinStartAt;
+  settingsForm.value.checkinEndAt = recommended.checkinEndAt;
+  settingsForm.value.checkoutStartAt = recommended.checkoutStartAt;
+  settingsForm.value.checkoutEndAt = recommended.checkoutEndAt;
+}
+
+function onCheckinEndChange(value: string) {
+  if (value) {
+    settingsForm.value.checkoutStartAt = value;
+  }
+}
+
+function regenerateCheckinCode() {
+  settingsForm.value.checkinCode = generateSignCode();
+}
+
+function regenerateCheckoutCode() {
+  settingsForm.value.checkoutCode = generateSignCode();
 }
 
 async function saveCheckinSettings() {
@@ -289,7 +413,7 @@ function openSign(activity: Activity, type: "checkin" | "checkout") {
   currentActivity.value = activity;
   signForm.value = {
     type,
-    userId: 1,
+    userId: getCurrentUserId(),
     code: "",
   };
   signDialogVisible.value = true;
@@ -343,14 +467,24 @@ onMounted(loadActivities);
   <div class="page">
     <div class="toolbar">
       <h2>活动管理</h2>
-      <el-button type="primary" @click="openCreate">创建活动</el-button>
+      <div class="toolbar-actions">
+        <el-select v-model="statusFilter" placeholder="筛选状态" class="status-filter">
+          <el-option
+            v-for="option in statusFilterOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+        <el-button type="primary" @click="openCreate">创建活动</el-button>
+      </div>
     </div>
 
     <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
 
     <el-table
       v-loading="loading"
-      :data="activities"
+      :data="filteredActivities"
       stripe
       border
       empty-text="暂无活动数据"
@@ -359,9 +493,9 @@ onMounted(loadActivities);
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column prop="clubName" label="主办社团" width="120" />
-      <el-table-column label="时间" width="190">
+      <el-table-column label="时间" min-width="260">
         <template #default="{ row }">
-          <span>{{ formatTime(row.startTime) }}</span>
+          <span class="time-range">{{ formatActivityTimeRange(row) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="location" label="地点" width="120" show-overflow-tooltip />
@@ -479,8 +613,30 @@ onMounted(loadActivities);
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reviewDialogVisible" title="活动审核" width="480px">
-      <el-form label-position="top">
+    <el-dialog v-model="reviewDialogVisible" title="活动审核" width="520px">
+      <el-descriptions
+        v-if="currentActivity"
+        :column="1"
+        border
+        size="small"
+        class="review-summary"
+      >
+        <el-descriptions-item label="活动标题">{{ currentActivity.title }}</el-descriptions-item>
+        <el-descriptions-item label="主办社团">{{ currentActivity.clubName }}</el-descriptions-item>
+        <el-descriptions-item label="活动时间">{{
+          formatActivityTimeRange(currentActivity)
+        }}</el-descriptions-item>
+        <el-descriptions-item label="活动地点">{{
+          currentActivity.location || "未填写"
+        }}</el-descriptions-item>
+        <el-descriptions-item label="人数上限">{{
+          currentActivity.maxParticipants ?? "不限"
+        }}</el-descriptions-item>
+        <el-descriptions-item label="活动说明">{{
+          currentActivity.description || "未填写"
+        }}</el-descriptions-item>
+      </el-descriptions>
+      <el-form label-position="top" class="review-form">
         <el-form-item label="审核结果">
           <el-radio-group v-model="reviewForm.approved">
             <el-radio :value="true">通过并发布</el-radio>
@@ -506,9 +662,24 @@ onMounted(loadActivities);
     </el-dialog>
 
     <el-dialog v-model="settingsDialogVisible" title="签到签退设置" width="560px">
+      <el-alert
+        v-if="currentActivity"
+        :title="`${currentActivity.title}：${formatActivityTimeRange(currentActivity)}`"
+        :description="`地点：${currentActivity.location || '未填写'}。默认签到窗口 ${CHECKIN_WINDOW_MINUTES} 分钟，可按需调整。`"
+        type="info"
+        :closable="false"
+        show-icon
+        class="settings-hint"
+      />
+      <div class="settings-actions">
+        <el-button size="small" @click="applyRecommendedTimes">恢复推荐时间</el-button>
+      </div>
       <el-form label-position="top">
         <el-form-item label="签到码" required>
-          <el-input v-model="settingsForm.checkinCode" placeholder="请输入签到码" />
+          <div class="code-field">
+            <el-input v-model="settingsForm.checkinCode" placeholder="请输入签到码" />
+            <el-button @click="regenerateCheckinCode">重新生成</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="签到开始时间" required>
           <el-date-picker
@@ -524,10 +695,14 @@ onMounted(loadActivities);
             type="datetime"
             value-format="YYYY-MM-DDTHH:mm:ss"
             placeholder="选择签到结束时间"
+            @change="onCheckinEndChange"
           />
         </el-form-item>
         <el-form-item label="签退码" required>
-          <el-input v-model="settingsForm.checkoutCode" placeholder="请输入签退码" />
+          <div class="code-field">
+            <el-input v-model="settingsForm.checkoutCode" placeholder="请输入签退码" />
+            <el-button @click="regenerateCheckoutCode">重新生成</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="签退开始时间" required>
           <el-date-picker
@@ -615,11 +790,31 @@ onMounted(loadActivities);
   align-items: center;
   margin-bottom: 12px;
 }
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.status-filter {
+  width: 140px;
+}
 .toolbar h2 {
   margin: 0;
 }
 .activity-table {
   width: 100%;
+}
+.time-range {
+  display: inline-block;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+.review-summary {
+  margin-bottom: 16px;
+}
+.review-form {
+  margin-top: 4px;
 }
 .quota-text {
   font-variant-numeric: tabular-nums;
@@ -633,5 +828,21 @@ onMounted(loadActivities);
 }
 .action-buttons :deep(.el-button) {
   margin-left: 0;
+}
+.settings-hint {
+  margin-bottom: 12px;
+}
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.code-field {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.code-field .el-input {
+  flex: 1;
 }
 </style>
