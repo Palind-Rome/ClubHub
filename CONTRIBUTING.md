@@ -468,7 +468,7 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
 > 如果改了它们，下次 `gen-api-code.yml` 运行会覆盖你的改动。
 > 需要修改 API 行为时，请改 `api/openapi.yaml`，然后让流水线重新生成。
 > 如果只是同步了生成 workflow 的修复、但 `api/openapi.yaml` 没有新变化，可以在 GitHub Actions 中手动运行 `生成 API 代码`，选择自己的 feature 分支重新生成。
-> 维护生成 workflow 时，后端 `aspnetcore` generator 使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`。不要加入 `classModifier=public`；当前生成器会直接报错。生成后会删除无用的 `Org.OpenAPITools.Converters` 引用并运行格式化，避免生成代码破坏 CI。生成模型依赖 `Newtonsoft.Json`，如果项目文件缺少该包引用，`gen-api-code.yml` 会失败并要求人工用独立提交补齐，不会自动修改 `backend/ClubHub.Api.csproj`。
+> 维护生成 workflow 时，需要以当前 OpenAPI Generator 版本的实际验证结果为准：后端 `aspnetcore` generator 当前使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`，并且当前版本不要加入 `classModifier=public`，否则会直接报错。每次升级生成器版本时，都要重新确认这些参数、`Org.OpenAPITools.Converters` 清理逻辑、`Newtonsoft.Json` 依赖前提，以及 `gen-api-code.yml` 缺少依赖时失败退出的条件是否仍然成立。生成后会删除无用引用并运行格式化，避免生成代码破坏 CI。
 > `code-check.yml` 中排除自动生成后端模型时必须写仓库相对路径 `backend/Models/**`，不能写 `Models/**`；后者不会命中生成目录。
 
 ## 本地运行
