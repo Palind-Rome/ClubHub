@@ -114,16 +114,16 @@ const reviewForm = reactive({
 
 const recruitmentRules: FormRules = {
   clubId: [{ required: true, message: "请选择发布社团", trigger: "change" }],
-  title: [{ required: true, message: "请填写招募标题", trigger: "blur" }],
+  title: [{ required: true, message: "请填写纳新标题", trigger: "blur" }],
   startAt: [{ required: true, message: "请选择开始时间", trigger: "change" }],
   endAt: [{ required: true, message: "请选择结束时间", trigger: "change" }],
-  quota: [{ required: true, message: "请填写招募人数", trigger: "blur" }],
-  requirements: [{ required: true, message: "请填写招募要求", trigger: "blur" }],
-  recruitStatus: [{ required: true, message: "请选择招募状态", trigger: "change" }],
+  quota: [{ required: true, message: "请填写计划人数", trigger: "blur" }],
+  requirements: [{ required: true, message: "请填写纳新要求", trigger: "blur" }],
+  recruitStatus: [{ required: true, message: "请选择纳新状态", trigger: "change" }],
 };
 
 const applicationRules: FormRules = {
-  applicationReason: [{ required: true, message: "请填写报名理由", trigger: "blur" }],
+  applicationReason: [{ required: true, message: "请填写入社理由", trigger: "blur" }],
 };
 
 const reviewRules: FormRules = {
@@ -236,7 +236,7 @@ async function loadRecruitments() {
     }
   } catch (e) {
     if (requestId === recruitmentRequestId) {
-      error.value = e instanceof Error ? e.message : "招募加载失败";
+      error.value = e instanceof Error ? e.message : "纳新信息加载失败";
       recruitments.value = [];
       applications.value = [];
     }
@@ -258,7 +258,7 @@ async function loadApplications(row: Recruitment) {
   } catch (e) {
     if (requestId === applicationRequestId) {
       applications.value = [];
-      ElMessage.error(e instanceof Error ? e.message : "报名列表加载失败");
+      ElMessage.error(e instanceof Error ? e.message : "入社申请列表加载失败");
     }
   } finally {
     if (requestId === applicationRequestId) applicationLoading.value = false;
@@ -302,7 +302,7 @@ function resetRecruitmentForm() {
 
 function openCreateDialog() {
   if (!canCreateRecruitment.value) {
-    ElMessage.warning("当前账号没有可发布招募的运营中社团。");
+    ElMessage.warning("当前账号没有可发布纳新的运营中社团。");
     return;
   }
 
@@ -314,7 +314,7 @@ function openCreateDialog() {
 
 function openEditDialog(row: Recruitment) {
   if (!row.canManage) {
-    ElMessage.warning("当前账号不能维护该招募。");
+    ElMessage.warning("当前账号不能维护该纳新项目。");
     return;
   }
 
@@ -360,7 +360,7 @@ async function submitRecruitment() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      ElMessage.success("招募已发布");
+      ElMessage.success("纳新已发布");
     } else if (recruitmentTarget.value) {
       await requestJson<Recruitment>(`/api/recruitments/${recruitmentTarget.value.id}`, {
         method: "PATCH",
@@ -370,7 +370,7 @@ async function submitRecruitment() {
           clubId: undefined,
         }),
       });
-      ElMessage.success("招募已保存");
+      ElMessage.success("纳新已保存");
     }
 
     recruitmentDialogVisible.value = false;
@@ -412,11 +412,11 @@ async function submitApplication() {
         }),
       },
     );
-    ElMessage.success("报名已提交");
+    ElMessage.success("入社申请已提交");
     applicationDialogVisible.value = false;
     await loadRecruitments();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "报名失败");
+    ElMessage.error(e instanceof Error ? e.message : "提交申请失败");
   } finally {
     applying.value = false;
   }
@@ -424,7 +424,7 @@ async function submitApplication() {
 
 async function openApplicationWorkbench(row: Recruitment) {
   if (!row.canManage) {
-    ElMessage.warning("当前账号不能查看该招募报名。");
+    ElMessage.warning("当前账号不能查看该纳新申请。");
     return;
   }
 
@@ -434,7 +434,7 @@ async function openApplicationWorkbench(row: Recruitment) {
 
 function openReviewDialog(row: RecruitmentApplication, decision: ReviewDecision) {
   if (row.applicationStatus !== "pending") {
-    ElMessage.warning("只有待筛选报名可以录入结果。");
+    ElMessage.warning("只有待筛选申请可以录入结果。");
     return;
   }
 
@@ -478,7 +478,7 @@ async function submitReview() {
         }),
       },
     );
-    ElMessage.success(`报名已${actionText}`);
+    ElMessage.success(`申请已${actionText}`);
     reviewDialogVisible.value = false;
     await loadRecruitments();
     if (selectedRecruitment.value) await loadApplications(selectedRecruitment.value);
@@ -490,13 +490,13 @@ async function submitReview() {
 }
 
 function applyDisabledReason(row: Recruitment) {
-  if (!canApply.value) return "当前账号不能提交招募报名，请切换到普通学生账号。";
-  if (row.currentUserApplicationId) return "你已经提交过该招募报名。";
-  if (row.recruitStatus !== "published") return "该招募当前不接受报名。";
-  if (row.quota !== null && row.acceptedCount >= row.quota) return "招募名额已满。";
+  if (!canApply.value) return "当前账号不能提交入社申请，请切换到普通学生账号。";
+  if (row.currentUserApplicationId) return "你已经提交过该纳新申请。";
+  if (row.recruitStatus !== "published") return "该纳新当前不接受申请。";
+  if (row.quota !== null && row.acceptedCount >= row.quota) return "纳新名额已满。";
   const now = Date.now();
-  if (row.startAt && new Date(row.startAt).getTime() > now) return "招募尚未开始。";
-  if (row.endAt && new Date(row.endAt).getTime() < now) return "招募已结束。";
+  if (row.startAt && new Date(row.startAt).getTime() > now) return "纳新尚未开始。";
+  if (row.endAt && new Date(row.endAt).getTime() < now) return "纳新已结束。";
   return "";
 }
 
@@ -513,6 +513,12 @@ function statusTagType(status: RecruitmentStatus) {
   if (status === "published") return "success";
   if (status === "closed") return "info";
   return "warning";
+}
+
+function recruitmentStatusText(status: RecruitmentStatus) {
+  if (status === "draft") return "草稿";
+  if (status === "published") return "申请中";
+  return "已结束";
 }
 
 function applicationTagType(status: ApplicationStatus | null) {
@@ -575,8 +581,8 @@ onUnmounted(() => {
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>成员招募</h2>
-        <p>发布招募、提交报名、筛选录取</p>
+        <h2>社团纳新</h2>
+        <p>发布纳新、提交入社申请、筛选录取</p>
       </div>
       <div class="header-actions">
         <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新</el-button>
@@ -587,7 +593,7 @@ onUnmounted(() => {
           :disabled="!canCreateRecruitment"
           @click="openCreateDialog"
         >
-          发布招募
+          发布纳新
         </el-button>
       </div>
     </div>
@@ -598,12 +604,12 @@ onUnmounted(() => {
       <el-select
         v-model="filters.status"
         clearable
-        placeholder="招募状态"
+        placeholder="纳新状态"
         class="filter-control"
         @change="loadRecruitments"
       >
         <el-option label="草稿" value="draft" />
-        <el-option label="报名中" value="published" />
+        <el-option label="申请中" value="published" />
         <el-option label="已结束" value="closed" />
       </el-select>
       <el-select
@@ -626,8 +632,8 @@ onUnmounted(() => {
       <el-button @click="resetFilters">重置</el-button>
     </div>
 
-    <el-table v-loading="loading" :data="recruitments" stripe empty-text="暂无招募数据">
-      <el-table-column label="招募" min-width="260">
+    <el-table v-loading="loading" :data="recruitments" stripe empty-text="暂无纳新数据">
+      <el-table-column label="纳新信息" min-width="260">
         <template #default="{ row }">
           <div class="title-line">{{ row.title }}</div>
           <div class="muted">{{ row.clubName }}</div>
@@ -648,11 +654,11 @@ onUnmounted(() => {
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.recruitStatus)" size="small">
-            {{ row.recruitStatusText }}
+            {{ recruitmentStatusText(row.recruitStatus) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="我的报名" width="120">
+      <el-table-column label="我的申请" width="120">
         <template #default="{ row }">
           <el-tag
             v-if="row.currentUserApplicationStatus"
@@ -661,7 +667,7 @@ onUnmounted(() => {
           >
             {{ row.currentUserApplicationStatusText }}
           </el-tag>
-          <span v-else class="muted">未报名</span>
+          <span v-else class="muted">未申请</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="250" fixed="right">
@@ -673,14 +679,14 @@ onUnmounted(() => {
             :icon="User"
             @click="openApplicationDialog(row)"
           >
-            报名
+            申请加入
           </el-button>
           <el-tooltip
             v-else-if="canApply && !row.currentUserApplicationId"
             :content="applyDisabledReason(row)"
           >
             <span>
-              <el-button link disabled :icon="User">报名</el-button>
+              <el-button link disabled :icon="User">申请加入</el-button>
             </span>
           </el-tooltip>
           <el-button
@@ -690,7 +696,7 @@ onUnmounted(() => {
             :icon="Search"
             @click="openApplicationWorkbench(row)"
           >
-            报名管理
+            申请管理
           </el-button>
           <el-button
             v-if="row.canManage"
@@ -708,9 +714,9 @@ onUnmounted(() => {
     <div v-if="selectedRecruitment" class="applications-panel">
       <div class="panel-header">
         <div>
-          <h3>{{ selectedRecruitment.title }} 报名管理</h3>
+          <h3>{{ selectedRecruitment.title }} 申请管理</h3>
           <p>
-            {{ selectedRecruitment.clubName }} / {{ selectedRecruitment.applicationCount }} 份报名
+            {{ selectedRecruitment.clubName }} / {{ selectedRecruitment.applicationCount }} 份申请
           </p>
         </div>
         <el-button
@@ -718,7 +724,7 @@ onUnmounted(() => {
           :loading="applicationLoading"
           @click="loadApplications(selectedRecruitment)"
         >
-          刷新报名
+          刷新申请
         </el-button>
       </div>
 
@@ -726,13 +732,13 @@ onUnmounted(() => {
         v-loading="applicationLoading"
         :data="applications"
         stripe
-        empty-text="暂无报名数据"
+        empty-text="暂无申请数据"
       >
         <el-table-column prop="applicantName" label="学生" min-width="130" />
         <el-table-column prop="studentNo" label="学号" width="110" />
         <el-table-column
           prop="applicationReason"
-          label="报名理由"
+          label="入社理由"
           min-width="260"
           show-overflow-tooltip
         />
@@ -780,7 +786,7 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="recruitmentDialogVisible"
-      :title="recruitmentFormMode === 'create' ? '发布招募' : '编辑招募'"
+      :title="recruitmentFormMode === 'create' ? '发布纳新' : '编辑纳新'"
       width="640px"
     >
       <el-form
@@ -804,10 +810,10 @@ onUnmounted(() => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="招募标题" prop="title">
+        <el-form-item label="纳新标题" prop="title">
           <el-input v-model="recruitmentForm.title" maxlength="80" show-word-limit />
         </el-form-item>
-        <el-form-item label="招募说明">
+        <el-form-item label="纳新说明">
           <el-input
             v-model="recruitmentForm.description"
             type="textarea"
@@ -836,10 +842,10 @@ onUnmounted(() => {
             </el-form-item>
           </div>
         </el-form-item>
-        <el-form-item label="招募人数" prop="quota">
+        <el-form-item label="计划人数" prop="quota">
           <el-input-number v-model="recruitmentForm.quota" :min="1" :max="999" />
         </el-form-item>
-        <el-form-item label="招募要求" prop="requirements">
+        <el-form-item label="纳新要求" prop="requirements">
           <el-input
             v-model="recruitmentForm.requirements"
             type="textarea"
@@ -848,10 +854,10 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="招募状态" prop="recruitStatus">
+        <el-form-item label="纳新状态" prop="recruitStatus">
           <el-radio-group v-model="recruitmentForm.recruitStatus">
             <el-radio-button label="draft">草稿</el-radio-button>
-            <el-radio-button label="published">报名中</el-radio-button>
+            <el-radio-button label="published">申请中</el-radio-button>
             <el-radio-button label="closed">已结束</el-radio-button>
           </el-radio-group>
         </el-form-item>
@@ -862,17 +868,17 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="applicationDialogVisible" title="提交招募报名" width="560px">
+    <el-dialog v-model="applicationDialogVisible" title="提交入社申请" width="560px">
       <el-form
         ref="applicationFormRef"
         :model="applicationForm"
         :rules="applicationRules"
         label-width="96px"
       >
-        <el-form-item label="报名招募">
+        <el-form-item label="申请项目">
           <span>{{ applicationTarget?.title }}</span>
         </el-form-item>
-        <el-form-item label="报名理由" prop="applicationReason">
+        <el-form-item label="入社理由" prop="applicationReason">
           <el-input
             v-model="applicationForm.applicationReason"
             type="textarea"
@@ -885,14 +891,14 @@ onUnmounted(() => {
       <template #footer>
         <el-button @click="applicationDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="applying" @click="submitApplication"
-          >提交报名</el-button
+          >提交申请</el-button
         >
       </template>
     </el-dialog>
 
     <el-dialog v-model="reviewDialogVisible" title="录入筛选结果" width="520px">
       <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="96px">
-        <el-form-item label="报名学生">
+        <el-form-item label="申请学生">
           <span>{{ reviewTarget?.applicantName }}</span>
         </el-form-item>
         <el-form-item label="面试分">

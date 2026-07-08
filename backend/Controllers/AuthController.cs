@@ -26,6 +26,13 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+    [HttpGet("session")]
+    public async Task<IActionResult> GetSession([FromQuery] int userId)
+    {
+        var result = await _authService.GetSessionAsync(userId);
+        return ToActionResult(result);
+    }
+
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles()
     {

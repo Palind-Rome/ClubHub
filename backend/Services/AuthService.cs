@@ -243,6 +243,33 @@ public class AuthService
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
     }
 
+    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId)
+    {
+        if (userId <= 0)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(400, "请提供当前登录用户。");
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(404, "当前登录用户不存在。");
+        }
+
+        if (!IsNormalAccount(user))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(403, "账号已被禁用，请联系管理员。");
+        }
+
+        var roles = await GetBaseRoleRowsAsync();
+        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        {
+            await _db.SaveChangesAsync();
+        }
+
+        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+    }
+
     public Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync() => Task.FromResult(BaseRoles);
 
     public IReadOnlyList<PermissionDefinition> GetPermissionCatalog() => PermissionCatalog;

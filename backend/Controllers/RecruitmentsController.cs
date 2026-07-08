@@ -18,6 +18,7 @@ public class RecruitmentsController : ControllerBase
     private const string ClubApproved = "approved";
     private const string ClubActive = "active";
     private const string MemberActive = "active";
+    private const string ClubMemberRoleCode = "CLUB_MEMBER";
 
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
     private static readonly HashSet<string> RecruitmentManagerRoleCodes = new(StringComparer.OrdinalIgnoreCase)
@@ -388,6 +389,75 @@ public class RecruitmentsController : ControllerBase
             JoinAt = now,
             ContributionScore = 0
         });
+
+        await EnsureClubMemberRoleAsync(application.Recruitment.ClubId, application.UserId, now);
+    }
+
+    private async Task EnsureClubMemberRoleAsync(int clubId, int userId, DateTime now)
+    {
+        var role = await EnsureClubRoleAsync(
+            ClubMemberRoleCode,
+            "社团成员",
+            "指定社团内角色，可查看社团内部信息、资源、通知和参与讨论、签到。",
+            now);
+
+        var hasRole = await _db.UserRoles.AnyAsync(ur =>
+            ur.UserId == userId &&
+            ur.ClubId == clubId &&
+            ur.Role != null &&
+            ur.Role.RoleCode.ToUpper() == ClubMemberRoleCode);
+        if (hasRole) return;
+
+        _db.UserRoles.Add(new UserRole
+        {
+            UserRoleId = await NextUserRoleIdAsync(),
+            UserId = userId,
+            RoleId = role.RoleId,
+            ClubId = clubId,
+            AssignedAt = now
+        });
+    }
+
+    private async Task<Role> EnsureClubRoleAsync(string roleCode, string roleName, string permissionDesc, DateTime now)
+    {
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
+        if (role is not null) return role;
+
+        role = new Role
+        {
+            RoleId = await NextRoleIdAsync(),
+            RoleCode = roleCode,
+            RoleName = roleName,
+            RoleScope = "club",
+            PermissionDesc = permissionDesc,
+            CreatedAt = now
+        };
+        _db.Roles.Add(role);
+        return role;
+    }
+
+    private async Task<int> NextRoleIdAsync()
+    {
+        var maxSaved = await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0;
+        var maxAdded = _db.ChangeTracker.Entries<Role>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity.RoleId)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Math.Max(maxSaved, maxAdded) + 1;
+    }
+
+    private async Task<int> NextUserRoleIdAsync()
+    {
+        var maxSaved = await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0;
+        var maxAdded = _db.ChangeTracker.Entries<UserRole>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity.UserRoleId)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Math.Max(maxSaved, maxAdded) + 1;
     }
 
     private static RecruitmentDto ToRecruitmentDto(Recruitment recruitment, User viewer)

@@ -19,6 +19,8 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
+    private const string ClubMemberRoleCode = "CLUB_MEMBER";
+    private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
     private const string ClubAdvisorRoleCode = "ADVISOR";
 
@@ -546,6 +548,11 @@ public class ClubsController : ControllerBase
 
         _db.ClubMembers.Add(member);
 
+        if (IsCurrentMemberTerm(member))
+        {
+            await EnsureClubMemberRoleAsync(clubId, req.UserId, now);
+        }
+
         if (IsCurrentMemberTerm(member) && IsStrictPrincipalPosition(member.PositionName))
         {
             club.PresidentUserId = req.UserId;
@@ -618,10 +625,64 @@ public class ClubsController : ControllerBase
             await RefreshClubPresidentAsync(club, member.MemberId, now);
         }
 
+        if (IsCurrentMemberTerm(member) || await HasOtherCurrentMemberTermAsync(clubId, member.UserId, member.MemberId))
+        {
+            await EnsureClubMemberRoleAsync(clubId, member.UserId, now);
+        }
+        else
+        {
+            await RemoveClubMembershipRolesAsync(clubId, member.UserId);
+        }
+
         await _db.SaveChangesAsync();
 
         var updated = await MemberQuery().FirstAsync(cm => cm.MemberId == memberId);
         return Ok(ToMemberRecordDto(updated));
+    }
+
+    [HttpPatch("{clubId:int}/members/self/exit")]
+    public async Task<IActionResult> ExitCurrentMember(int clubId, [FromBody] ExitClubMemberRequest req)
+    {
+        if (req.CurrentUserId <= 0)
+        {
+            return BadRequest(new { message = "请选择当前操作用户。" });
+        }
+
+        var viewer = await LoadUserAsync(req.CurrentUserId);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        return await ExitOrRemoveMemberAsync(clubId, viewer.UserId, viewer, true);
+    }
+
+    [HttpPatch("{clubId:int}/members/{memberId:int}/exit")]
+    public async Task<IActionResult> RemoveMember(int clubId, int memberId, [FromBody] ExitClubMemberRequest req)
+    {
+        if (req.CurrentUserId <= 0)
+        {
+            return BadRequest(new { message = "请选择当前操作用户。" });
+        }
+
+        var viewer = await LoadUserAsync(req.CurrentUserId);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        var member = await _db.ClubMembers.FirstOrDefaultAsync(cm =>
+            cm.ClubId == clubId && cm.MemberId == memberId);
+        if (member is null)
+        {
+            return NotFound(new { message = "社团成员任期记录不存在。" });
+        }
+        if (!IsCurrentMemberTerm(member))
+        {
+            return Conflict(new { message = "只有当前有效成员身份可以退出或移出。" });
+        }
+
+        return await ExitOrRemoveMemberAsync(clubId, member.UserId, viewer, member.UserId == viewer.UserId);
     }
 
     [HttpPatch("{clubId:int}/dissolve")]
@@ -740,6 +801,74 @@ public class ClubsController : ControllerBase
         return (null, club, viewer);
     }
 
+    private async Task<IActionResult> ExitOrRemoveMemberAsync(
+        int clubId,
+        int targetUserId,
+        User viewer,
+        bool isSelfExit)
+    {
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能变更社团成员身份。" });
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return NotFound(new { message = "社团不存在。" });
+        }
+
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以办理退出或移出。" });
+        }
+
+        var canRemove =
+            UsersController.IsSystemAdmin(viewer) ||
+            UsersController.IsClubPrincipal(viewer, clubId) ||
+            HasClubOfficerRole(viewer, clubId);
+        if (!isSelfExit && !canRemove)
+        {
+            return StatusCode(403, new { message = "只有系统管理员、本社团负责人或干部可以移出社团成员。" });
+        }
+
+        if (isSelfExit && viewer.UserId != targetUserId)
+        {
+            return StatusCode(403, new { message = "只能退出自己的社团成员身份。" });
+        }
+
+        var today = BusinessToday();
+        var activeTerms = await _db.ClubMembers
+            .Where(cm =>
+                cm.ClubId == clubId &&
+                cm.UserId == targetUserId &&
+                (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
+                (cm.TermStart == null || cm.TermStart <= today) &&
+                (cm.TermEnd == null || cm.TermEnd >= today))
+            .ToListAsync();
+        if (activeTerms.Count == 0)
+        {
+            return NotFound(new { message = "当前有效社团成员身份不存在或已结束。" });
+        }
+
+        if (club.PresidentUserId == targetUserId || activeTerms.Any(term => IsStrictPrincipalPosition(term.PositionName)))
+        {
+            return StatusCode(403, new { message = "社团负责人不能直接退出或被移出，请先在社团档案中转交负责人。" });
+        }
+
+        foreach (var term in activeTerms)
+        {
+            term.MemberStatus = MemberEnded;
+            term.TermEnd = term.TermStart is not null && today < term.TermStart.Value.Date
+                ? term.TermStart.Value.Date
+                : today;
+        }
+
+        await RemoveClubMembershipRolesAsync(clubId, targetUserId);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private IQueryable<Club> ClubQuery() =>
         _db.Clubs
             .AsNoTracking()
@@ -764,12 +893,69 @@ public class ClubsController : ControllerBase
             ur.Role is not null &&
             ClubParticipantRoleCodes.Contains((ur.Role.RoleCode ?? string.Empty).Trim()));
 
+    private static bool HasClubOfficerRole(User user, int clubId) =>
+        user.UserRoles.Any(ur =>
+            ur.ClubId == clubId &&
+            ur.Role is not null &&
+            ClubManagementRoleCodes.Contains((ur.Role.RoleCode ?? string.Empty).Trim()));
+
     private async Task<User?> LoadUserAsync(int userId) =>
         await _db.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
             .Include(u => u.ClubMemberships)
             .FirstOrDefaultAsync(u => u.UserId == userId);
+
+    private async Task<bool> HasOtherCurrentMemberTermAsync(int clubId, int userId, int ignoredMemberId)
+    {
+        var today = BusinessToday();
+        return await _db.ClubMembers.AnyAsync(cm =>
+            cm.ClubId == clubId &&
+            cm.UserId == userId &&
+            cm.MemberId != ignoredMemberId &&
+            (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
+            (cm.TermStart == null || cm.TermStart <= today) &&
+            (cm.TermEnd == null || cm.TermEnd >= today));
+    }
+
+    private async Task EnsureClubMemberRoleAsync(int clubId, int userId, DateTime now)
+    {
+        var role = await EnsureClubRoleAsync(
+            ClubMemberRoleCode,
+            "社团成员",
+            "指定社团内角色，可查看社团内部信息、资源、通知和参与讨论、签到。",
+            now);
+
+        var hasRole = await _db.UserRoles.AnyAsync(ur =>
+            ur.UserId == userId &&
+            ur.ClubId == clubId &&
+            ur.Role != null &&
+            ur.Role.RoleCode.ToUpper() == ClubMemberRoleCode);
+        if (hasRole) return;
+
+        _db.UserRoles.Add(new UserRole
+        {
+            UserRoleId = await NextUserRoleIdAsync(),
+            UserId = userId,
+            RoleId = role.RoleId,
+            ClubId = clubId,
+            AssignedAt = now
+        });
+    }
+
+    private async Task RemoveClubMembershipRolesAsync(int clubId, int userId)
+    {
+        var staleRoles = await _db.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur =>
+                ur.UserId == userId &&
+                ur.ClubId == clubId &&
+                ur.Role != null &&
+                ClubMembershipRoleCodes.Contains((ur.Role.RoleCode ?? string.Empty).Trim()))
+            .ToListAsync();
+
+        _db.UserRoles.RemoveRange(staleRoles);
+    }
 
     private async Task<(IActionResult? Result, User? User)> ValidateAdvisorAsync(int? advisorUserId)
     {
@@ -813,10 +999,9 @@ public class ClubsController : ControllerBase
             ur.Role.RoleCode.ToUpper() == ClubLeaderRoleCode);
         if (hasRole) return;
 
-        var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = nextUserRoleId,
+            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -855,10 +1040,9 @@ public class ClubsController : ControllerBase
             ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode);
         if (hasRole) return;
 
-        var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = nextUserRoleId,
+            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -885,10 +1069,9 @@ public class ClubsController : ControllerBase
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
         if (role is not null) return role;
 
-        var nextRoleId = (await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0) + 1;
         role = new Role
         {
-            RoleId = nextRoleId,
+            RoleId = await NextRoleIdAsync(),
             RoleCode = roleCode,
             RoleName = roleName,
             RoleScope = "club",
@@ -897,6 +1080,30 @@ public class ClubsController : ControllerBase
         };
         _db.Roles.Add(role);
         return role;
+    }
+
+    private async Task<int> NextRoleIdAsync()
+    {
+        var maxSaved = await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0;
+        var maxAdded = _db.ChangeTracker.Entries<Role>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity.RoleId)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Math.Max(maxSaved, maxAdded) + 1;
+    }
+
+    private async Task<int> NextUserRoleIdAsync()
+    {
+        var maxSaved = await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0;
+        var maxAdded = _db.ChangeTracker.Entries<UserRole>()
+            .Where(entry => entry.State == EntityState.Added)
+            .Select(entry => entry.Entity.UserRoleId)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return Math.Max(maxSaved, maxAdded) + 1;
     }
 
     private async Task RefreshClubPresidentAsync(Club club, int ignoredMemberId, DateTime now)
@@ -930,29 +1137,8 @@ public class ClubsController : ControllerBase
     {
         if (club.ApplicantUserId is null) return;
 
-        var role = await EnsureClubRoleAsync(
-            ClubLeaderRoleCode,
-            "社团负责人",
-            "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
-            now);
-
-        var hasRole = await _db.UserRoles.AnyAsync(ur =>
-            ur.UserId == club.ApplicantUserId.Value &&
-            ur.ClubId == club.ClubId &&
-            ur.Role != null &&
-            ur.Role.RoleCode.ToUpper() == ClubLeaderRoleCode);
-        if (!hasRole)
-        {
-            var nextUserRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
-            _db.UserRoles.Add(new UserRole
-            {
-                UserRoleId = nextUserRoleId,
-                UserId = club.ApplicantUserId.Value,
-                RoleId = role.RoleId,
-                ClubId = club.ClubId,
-                AssignedAt = now
-            });
-        }
+        await EnsureClubMemberRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);
+        await EnsureSingleClubPresidentRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);
 
         var hasMember = await _db.ClubMembers.AnyAsync(cm =>
             cm.UserId == club.ApplicantUserId.Value &&
@@ -1201,11 +1387,26 @@ public class ClubsController : ControllerBase
 
     private static readonly HashSet<string> ClubParticipantRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "club_member",
-        "club_officer",
-        "club_leader",
+        ClubMemberRoleCode,
+        ClubOfficerRoleCode,
+        ClubLeaderRoleCode,
         "club_president",
         "advisor"
+    };
+
+    private static readonly HashSet<string> ClubManagementRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClubOfficerRoleCode,
+        ClubLeaderRoleCode,
+        "club_president"
+    };
+
+    private static readonly HashSet<string> ClubMembershipRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClubMemberRoleCode,
+        ClubOfficerRoleCode,
+        ClubLeaderRoleCode,
+        "club_president"
     };
 }
 
@@ -1284,6 +1485,11 @@ public class UpdateClubProfileRequest
 }
 
 public class DissolveClubRequest
+{
+    public int CurrentUserId { get; set; }
+}
+
+public class ExitClubMemberRequest
 {
     public int CurrentUserId { get; set; }
 }

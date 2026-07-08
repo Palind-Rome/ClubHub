@@ -91,6 +91,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/auth/session:
+    get:
+      summary: 刷新当前用户会话
+      description: 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      operationId: refreshAuthSession
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 已重新计算的用户会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 账号已被禁用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/auth/roles:
     get:
       summary: 获取基础角色定义
@@ -677,6 +715,69 @@ paths:
           description: 当前用户、社团或成员任期记录不存在
         "409":
           description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/members/self/exit:
+    patch:
+      summary: 学生主动退出社团
+      description: 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+      operationId: exitCurrentClubMember
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExitClubMemberRequest"
+      responses:
+        "204":
+          description: 已退出社团
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有退出该社团的权限或需先移交负责人
+        "404":
+          description: 当前用户、社团或有效成员身份不存在
+        "409":
+          description: 社团状态不允许退出或成员身份已结束
+
+  /api/clubs/{clubId}/members/{memberId}/exit:
+    patch:
+      summary: 移出社团成员
+      description: 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+      operationId: removeClubMember
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExitClubMemberRequest"
+      responses:
+        "204":
+          description: 已移出社团成员
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有移出该成员的权限或需先移交负责人
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态不允许移出或成员身份已结束
 
   /api/recruitments:
     get:
@@ -2029,6 +2130,15 @@ components:
         - category
 
     DissolveClubRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+      required:
+        - currentUserId
+
+    ExitClubMemberRequest:
       type: object
       properties:
         currentUserId:
