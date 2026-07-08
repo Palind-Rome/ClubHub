@@ -85,6 +85,14 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Project>(e =>
         {
             e.HasKey(p => p.ProjectId);
+            e.HasOne(p => p.Club)
+             .WithMany()
+             .HasForeignKey(p => p.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

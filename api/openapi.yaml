@@ -609,6 +609,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前登录用户或社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 
 
   /api/projects:
@@ -713,6 +720,8 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 负责人不是有效用户或社团成员
+        "403":
+          description: 当前用户不是本社团负责人或干部，无权分配项目负责人
         "404":
           description: 项目不存在
 

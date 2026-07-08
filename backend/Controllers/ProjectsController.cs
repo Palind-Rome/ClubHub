@@ -252,8 +252,11 @@ public class ProjectsController : ControllerBase
         }
 
         project.ProjectStatus = ClosedStatus;
-        project.ReviewerUserId = null;
-        project.ReviewComment = BuildCancelComment(req.CancelReason);
+        if (projectStatus == PendingStatus)
+        {
+            project.ReviewerUserId = null;
+            project.ReviewComment = BuildCancelComment(req.CancelReason);
+        }
 
         await _db.SaveChangesAsync();
         return Ok(ToProjectDto(project));
@@ -432,13 +435,6 @@ public class ProjectsController : ControllerBase
                 (role.PermissionDesc ?? string.Empty).Contains("审核", StringComparison.Ordinal));
     }
 
-    private static bool HasActiveClubMembership(User user, int clubId)
-    {
-        return user.ClubMemberships.Any(m =>
-            m.ClubId == clubId &&
-            UsersController.IsActive(m.MemberStatus));
-    }
-
     private static bool IsTeacherRole(Role role)
     {
         var code = NormalizeRoleCode(role.RoleCode);
@@ -526,31 +522,28 @@ public class ProjectsController : ControllerBase
     private static string NormalizeRoleCode(string? roleCode) =>
         (roleCode ?? string.Empty).Trim().ToLowerInvariant();
 
-    private static bool IsActiveStatusExpression(string? status)
+    private static ApiProject ToProjectDto(DbProject project)
     {
-        return status == null ||
-               status == string.Empty ||
-               status.ToLower() == ActiveMemberStatus ||
-               status.ToLower() == NormalAccountStatus ||
-               status.ToLower() == EnabledStatus ||
-               status == "在任" ||
-               status == "正常";
-    }
+        if (project.StartDate is null)
+        {
+            throw new InvalidOperationException("Project.StartDate is required.");
+        }
 
-    private static ApiProject ToProjectDto(DbProject project) => new()
-    {
-        Id = project.ProjectId,
-        ClubId = project.ClubId,
-        ProjectName = project.ProjectName,
-        Description = project.Description,
-        LeaderUserId = project.LeaderUserId,
-        StartDate = project.StartDate ?? default,
-        EndDate = project.EndDate,
-        ProjectStatus = ToProjectStatusEnum(project.ProjectStatus),
-        ReviewerUserId = project.ReviewerUserId,
-        ReviewComment = project.ReviewComment,
-        CreatedAt = project.CreatedAt
-    };
+        return new ApiProject
+        {
+            Id = project.ProjectId,
+            ClubId = project.ClubId,
+            ProjectName = project.ProjectName,
+            Description = project.Description,
+            LeaderUserId = project.LeaderUserId,
+            StartDate = project.StartDate.Value,
+            EndDate = project.EndDate,
+            ProjectStatus = ToProjectStatusEnum(project.ProjectStatus),
+            ReviewerUserId = project.ReviewerUserId,
+            ReviewComment = project.ReviewComment,
+            CreatedAt = project.CreatedAt
+        };
+    }
 
     private static string ToReviewStatusValue(ReviewProjectRequest.ProjectStatusEnum status)
     {
