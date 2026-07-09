@@ -5,6 +5,7 @@ using ClubHub.Api.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
 
@@ -258,15 +259,15 @@ public class ActivitiesController : ControllerBase
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                var result = new
+                var result = new ActivityRegistrationResult
                 {
-                    participationId = participation.ParticipationId,
-                    activityId = participation.ActivityId,
-                    userId = participation.UserId,
-                    registerStatus = participation.RegisterStatus,
-                    registeredAt = participation.RegisteredAt,
-                    currentParticipants = currentParticipants + 1,
-                    message = "报名成功"
+                    ParticipationId = participation.ParticipationId,
+                    ActivityId = participation.ActivityId,
+                    UserId = participation.UserId,
+                    RegisterStatus = ActivityRegistrationResult.RegisterStatusEnum.AcceptedEnum,
+                    RegisteredAt = now,
+                    CurrentParticipants = currentParticipants + 1,
+                    Message = "报名成功"
                 };
 
                 return CreatedAtAction(

@@ -278,10 +278,15 @@ async function loadActivities() {
 }
 
 function canRegister(activity: Activity) {
+  const deadlinePassed =
+    activity.registrationDeadline != null &&
+    new Date(activity.registrationDeadline).getTime() < Date.now();
+
   return (
     Boolean(currentUserId.value) &&
     activity.status === "published" &&
     !activity.isRegistered &&
+    !deadlinePassed &&
     (activity.maxParticipants == null || activity.currentParticipants < activity.maxParticipants)
   );
 }
