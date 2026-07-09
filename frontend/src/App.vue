@@ -54,6 +54,7 @@ function logout() {
 
 onMounted(() => {
   refreshSession();
+  checkHealth();
   stopSessionListener = onSessionChange(refreshSession);
 });
 
@@ -82,7 +83,14 @@ onUnmounted(() => {
           <el-button link type="danger" @click="logout">退出</el-button>
         </div>
         <div class="health">
-          <el-tag :type="healthOk ? 'success' : 'danger'" size="small" @click="checkHealth">
+          <el-tag
+            :type="healthOk ? 'success' : 'danger'"
+            size="small"
+            role="button"
+            tabindex="0"
+            @click="checkHealth"
+            @keyup.enter="checkHealth"
+          >
             {{ healthOk ? "后端已连接" : "点击检测" }}
           </el-tag>
         </div>
