@@ -16,6 +16,7 @@
 2. `001_sample_clubs.sql`：基础社团样例。
 3. `002_sample_activities.sql`：活动样例。
 4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
+5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 
 样例账号统一密码为 `123456`：
 

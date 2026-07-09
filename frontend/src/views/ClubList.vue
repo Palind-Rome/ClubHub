@@ -11,7 +11,15 @@ import {
   Search,
   User,
 } from "@element-plus/icons-vue";
-import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
+import {
+  type AuthResponse,
+  type AuthRole,
+  onSessionChange,
+  readAuth,
+  saveAuth,
+} from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
+import { hasScopedRole, roleCoversClub } from "../composables/useManageableClubs";
 
 type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
@@ -117,11 +125,6 @@ interface ClubMemberRecord {
   isCurrent: boolean;
 }
 
-interface ApiError {
-  message?: string;
-  title?: string;
-}
-
 interface ClubContextOption {
   clubId: number;
   clubName: string;
@@ -129,6 +132,16 @@ interface ClubContextOption {
   statusText: string;
   optionLabel: string;
   canManage: boolean;
+}
+
+interface IdentityRow {
+  clubId: number;
+  clubName: string;
+  departmentName: string | null;
+  groupName: string | null;
+  positionName: string | null;
+  termName: string | null;
+  memberStatus: string | null;
 }
 
 const principalRoleCodes = new Set(["club_president", "club_leader", "club_manager", "president"]);
@@ -162,6 +175,8 @@ const reviewing = ref(false);
 const profileSaving = ref(false);
 const termSaving = ref(false);
 const dissolvingClubId = ref<number | null>(null);
+const exitingMemberId = ref<number | null>(null);
+const exitingClubId = ref<number | null>(null);
 const error = ref("");
 const activeTab = ref("workspace");
 const selectedClubId = ref<number>();
@@ -319,8 +334,19 @@ const selectedClubContext = computed(
 const canManageSelectedClub = computed(
   () => selectedClub.value !== null && canManageClub(selectedClub.value),
 );
+const canRemoveSelectedClubMember = computed(
+  () => selectedClub.value !== null && canRemoveClubMember(selectedClub.value),
+);
+const canExitSelectedClub = computed(() => {
+  const clubId = selectedClubId.value;
+  if (!clubId) return false;
+
+  return myMemberships.value.some(
+    (membership) => membership.clubId === clubId && isActiveStatus(membership.memberStatus),
+  );
+});
 const myMemberships = computed(() => currentUser.value?.memberships ?? []);
-const identityRows = computed(() => {
+const identityRows = computed<IdentityRow[]>(() => {
   const user = currentUser.value;
   if (!user) return [];
 
@@ -385,21 +411,20 @@ const visibleTabs = computed(() => {
 });
 const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    let message = `请求失败（${res.status}）`;
-    try {
-      const body = (await res.json()) as ApiError;
-      message = body.message || body.title || message;
-    } catch {
-      /* 保留默认错误信息 */
-    }
-    throw new Error(message);
-  }
+async function refreshAuthSession() {
+  if (!currentUserId.value) return;
 
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  const session = await requestJson<AuthResponse>("/api/auth/session");
+  saveAuth(session);
+  auth.value = session;
+}
+
+async function refreshAuthSessionQuietly() {
+  try {
+    await refreshAuthSession();
+  } catch {
+    /* 会话刷新失败不应覆盖已成功完成的主操作。 */
+  }
 }
 
 async function validateForm(form: FormInstance | undefined) {
@@ -561,6 +586,14 @@ function canManageClub(club: Club) {
   );
 
   return hasRole || hasPrincipalMembership;
+}
+
+function canRemoveClubMember(club: Club) {
+  const user = currentUser.value;
+  if (!user || club.status !== "active") return false;
+  if (canManageClub(club)) return true;
+
+  return hasScopedRole(user.roles, club.id, ["club_officer"]);
 }
 
 function canDissolveClub(club: Club) {
@@ -823,6 +856,79 @@ async function dissolveClub(row: Club) {
   }
 }
 
+async function exitCurrentClub(row: IdentityRow) {
+  if (!currentUserId.value || !canExitIdentity(row)) {
+    ElMessage.warning(memberExitDisabledReason(row));
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认退出“${row.clubName}”？退出后将保留历史任期，但不再拥有该社团成员身份。`,
+      "退出社团",
+      {
+        type: "warning",
+        confirmButtonText: "确认退出",
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  exitingClubId.value = row.clubId;
+  try {
+    await requestJson<void>(`/api/clubs/${row.clubId}/members/self/exit`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentUserId: currentUserId.value }),
+    });
+    ElMessage.success("已退出社团");
+    await refreshAuthSessionQuietly();
+    await Promise.all([loadUsers(), loadData()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "退出失败");
+  } finally {
+    exitingClubId.value = null;
+  }
+}
+
+async function removeClubMember(row: ClubMemberRecord) {
+  if (!currentUserId.value || !canRemoveMemberRow(row)) {
+    ElMessage.warning(memberExitDisabledReason(row));
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认将“${row.userName}”移出“${row.clubName}”？成员任期会转为历史记录。`,
+      "移出成员",
+      {
+        type: "warning",
+        confirmButtonText: "确认移出",
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  exitingMemberId.value = row.memberId;
+  try {
+    await requestJson<void>(`/api/clubs/${row.clubId}/members/${row.memberId}/exit`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentUserId: currentUserId.value }),
+    });
+    ElMessage.success("成员已移出");
+    await Promise.all([loadUsers(), loadData()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "移出失败");
+  } finally {
+    exitingMemberId.value = null;
+  }
+}
+
 function resetMemberTermForm() {
   memberTermForm.userId = undefined;
   memberTermForm.departmentName = "";
@@ -911,6 +1017,9 @@ async function submitMemberTerm() {
 
     ElMessage.success(memberTermMode.value === "create" ? "成员任期已新增" : "成员任期已更新");
     memberTermDialogVisible.value = false;
+    if (memberTermForm.userId === currentUserId.value) {
+      await refreshAuthSessionQuietly();
+    }
     await Promise.all([loadUsers(), loadData()]);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "任期保存失败");
@@ -1014,10 +1123,6 @@ function roleDisplayName(role: UserRoleSummary) {
   return role.clubName ? `${role.roleName} / ${role.clubName}` : role.roleName;
 }
 
-function roleCoversClub(role: UserRoleSummary, clubId: number) {
-  return role.clubId === clubId || Boolean(role.clubIds?.includes(clubId));
-}
-
 function isAdvisorCandidate(user: UserSummary) {
   const studentNo = user.studentNo?.trim() ?? "";
   if (/^\d{5}$/.test(studentNo)) return true;
@@ -1073,6 +1178,38 @@ function goMembers() {
 function openClubMembers(clubId: number) {
   selectedClubId.value = clubId;
   activeTab.value = "members";
+}
+
+function canExitIdentity(row: IdentityRow) {
+  return isActiveStatus(row.memberStatus) && !isPrincipalIdentity(row);
+}
+
+function canExitMemberRow(row: ClubMemberRecord) {
+  return row.isCurrent && row.userId === currentUserId.value && !isPrincipalMember(row);
+}
+
+function canRemoveMemberRow(row: ClubMemberRecord) {
+  return (
+    row.isCurrent &&
+    row.userId !== currentUserId.value &&
+    canRemoveSelectedClubMember.value &&
+    !isPrincipalMember(row)
+  );
+}
+
+function memberExitDisabledReason(row: IdentityRow | ClubMemberRecord) {
+  const status = "isCurrent" in row ? (row.isCurrent ? "active" : "ended") : row.memberStatus;
+  if (!isActiveStatus(status)) return "只能处理当前有效成员身份。";
+  if (isPrincipalIdentity(row)) return "负责人请先转交社团负责人后再退出或移出。";
+  return "当前身份不能办理退出或移出。";
+}
+
+function isPrincipalIdentity(row: IdentityRow | ClubMemberRecord) {
+  return isPrincipalPosition(row.positionName);
+}
+
+function isPrincipalMember(row: ClubMemberRecord) {
+  return selectedClub.value?.presidentUserId === row.userId || isPrincipalIdentity(row);
 }
 
 function memberOptionLabel(member: ClubMemberRecord) {
@@ -1570,10 +1707,41 @@ onUnmounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
-          <el-table-column v-if="canManageSelectedClub" label="操作" width="120" fixed="right">
+          <el-table-column
+            v-if="canManageSelectedClub || canRemoveSelectedClubMember || canExitSelectedClub"
+            label="操作"
+            width="210"
+            fixed="right"
+          >
             <template #default="{ row }">
-              <el-button type="primary" plain :icon="Edit" @click="openEditMemberTermDialog(row)">
+              <el-button
+                v-if="canManageSelectedClub"
+                type="primary"
+                plain
+                :icon="Edit"
+                @click="openEditMemberTermDialog(row)"
+              >
                 编辑
+              </el-button>
+              <el-button
+                v-if="canExitMemberRow(row)"
+                type="danger"
+                plain
+                :icon="DeleteIcon"
+                :loading="exitingClubId === row.clubId"
+                @click="exitCurrentClub(row)"
+              >
+                退出
+              </el-button>
+              <el-button
+                v-if="canRemoveMemberRow(row)"
+                type="danger"
+                plain
+                :icon="DeleteIcon"
+                :loading="exitingMemberId === row.memberId"
+                @click="removeClubMember(row)"
+              >
+                移出
               </el-button>
             </template>
           </el-table-column>
@@ -1594,10 +1762,20 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="210" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
                 查看
+              </el-button>
+              <el-button
+                v-if="canExitIdentity(row)"
+                type="danger"
+                plain
+                :icon="DeleteIcon"
+                :loading="exitingClubId === row.clubId"
+                @click="exitCurrentClub(row)"
+              >
+                退出社团
               </el-button>
             </template>
           </el-table-column>
