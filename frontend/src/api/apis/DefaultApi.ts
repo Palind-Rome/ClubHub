@@ -58,6 +58,11 @@ import {
   ClubApplicationToJSON,
 } from "../models/ClubApplication";
 import {
+  type ClubEvaluationRecord,
+  ClubEvaluationRecordFromJSON,
+  ClubEvaluationRecordToJSON,
+} from "../models/ClubEvaluationRecord";
+import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
@@ -72,6 +77,11 @@ import {
   CreateClubApplicationRequestFromJSON,
   CreateClubApplicationRequestToJSON,
 } from "../models/CreateClubApplicationRequest";
+import {
+  type CreateClubEvaluationRequest,
+  CreateClubEvaluationRequestFromJSON,
+  CreateClubEvaluationRequestToJSON,
+} from "../models/CreateClubEvaluationRequest";
 import {
   type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
@@ -226,6 +236,11 @@ import {
   UpdateCheckinSettingsRequestToJSON,
 } from "../models/UpdateCheckinSettingsRequest";
 import {
+  type UpdateClubEvaluationRequest,
+  UpdateClubEvaluationRequestFromJSON,
+  UpdateClubEvaluationRequestToJSON,
+} from "../models/UpdateClubEvaluationRequest";
+import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
   UpdateClubMemberTermRequestToJSON,
@@ -305,6 +320,11 @@ export interface CreateClubApplicationOperationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
+export interface CreateClubEvaluationOperationRequest {
+  clubId: number;
+  createClubEvaluationRequest: CreateClubEvaluationRequest;
+}
+
 export interface CreateClubMemberTermOperationRequest {
   clubId: number;
   createClubMemberTermRequest: CreateClubMemberTermRequest;
@@ -380,6 +400,13 @@ export interface GetClubApplicationsRequest {
 
 export interface GetClubByIdRequest {
   clubId: number;
+}
+
+export interface GetClubEvaluationsRequest {
+  clubId: number;
+  viewerUserId: number;
+  termName?: string;
+  evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
 export interface GetClubMembersRequest {
@@ -508,6 +535,12 @@ export interface UpdateActivityCheckinSettingsRequest {
 export interface UpdateClubOperationRequest {
   clubId: number;
   updateClubRequest: UpdateClubRequest;
+}
+
+export interface UpdateClubEvaluationOperationRequest {
+  clubId: number;
+  evaluationId: number;
+  updateClubEvaluationRequest: UpdateClubEvaluationRequest;
 }
 
 export interface UpdateClubMemberTermOperationRequest {
@@ -1095,6 +1128,72 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubApplication> {
     const response = await this.createClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubEvaluation without sending the request
+   */
+  async createClubEvaluationRequestOpts(
+    requestParameters: CreateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["createClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubEvaluationRequest",
+        'Required parameter "createClubEvaluationRequest" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubEvaluationRequestToJSON(requestParameters["createClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+   * 录入社团成员评价考核或评优评奖结果
+   */
+  async createClubEvaluationRaw(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.createClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+   * 录入社团成员评价考核或评优评奖结果
+   */
+  async createClubEvaluation(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2106,6 +2205,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Club> {
     const response = await this.getClubByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubEvaluations without sending the request
+   */
+  async getClubEvaluationsRequestOpts(
+    requestParameters: GetClubEvaluationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubEvaluations().',
+      );
+    }
+
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    if (requestParameters["evaluationType"] != null) {
+      queryParameters["evaluationType"] = requestParameters["evaluationType"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+   * 查询社团成员评价考核记录
+   */
+  async getClubEvaluationsRaw(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubEvaluationRecord>>> {
+    const requestOptions = await this.getClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ClubEvaluationRecordFromJSON),
+    );
+  }
+
+  /**
+   * 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+   * 查询社团成员评价考核记录
+   */
+  async getClubEvaluations(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ClubEvaluationRecord>> {
+    const response = await this.getClubEvaluationsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -3842,6 +4016,83 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubEvaluation without sending the request
+   */
+  async updateClubEvaluationRequestOpts(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["evaluationId"] == null) {
+      throw new runtime.RequiredError(
+        "evaluationId",
+        'Required parameter "evaluationId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["updateClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubEvaluationRequest",
+        'Required parameter "updateClubEvaluationRequest" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/{evaluationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{evaluationId}",
+      encodeURIComponent(String(requestParameters["evaluationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubEvaluationRequestToJSON(requestParameters["updateClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 更新社团成员评价考核或评优评奖结果
+   */
+  async updateClubEvaluationRaw(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.updateClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 更新社团成员评价考核或评优评奖结果
+   */
+  async updateClubEvaluation(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubMemberTerm without sending the request
    */
   async updateClubMemberTermRequestOpts(
@@ -4190,6 +4441,15 @@ export const GetClubApplicationsAuditStatusEnum = {
 } as const;
 export type GetClubApplicationsAuditStatusEnum =
   (typeof GetClubApplicationsAuditStatusEnum)[keyof typeof GetClubApplicationsAuditStatusEnum];
+/**
+ * @export
+ */
+export const GetClubEvaluationsEvaluationTypeEnum = {
+  Semester: "semester",
+  Award: "award",
+} as const;
+export type GetClubEvaluationsEvaluationTypeEnum =
+  (typeof GetClubEvaluationsEvaluationTypeEnum)[keyof typeof GetClubEvaluationsEvaluationTypeEnum];
 /**
  * @export
  */
