@@ -15,6 +15,16 @@
 
 import * as runtime from "../runtime";
 import { type Activity, ActivityFromJSON, ActivityToJSON } from "../models/Activity";
+import {
+  type ActivityParticipation,
+  ActivityParticipationFromJSON,
+  ActivityParticipationToJSON,
+} from "../models/ActivityParticipation";
+import {
+  type ActivitySignRequest,
+  ActivitySignRequestFromJSON,
+  ActivitySignRequestToJSON,
+} from "../models/ActivitySignRequest";
 import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
 import {
   type AssignProjectLeaderRequest,
@@ -47,6 +57,11 @@ import {
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
 } from "../models/ClubMemberRecord";
+import {
+  type CreateActivityRequest,
+  CreateActivityRequestFromJSON,
+  CreateActivityRequestToJSON,
+} from "../models/CreateActivityRequest";
 import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
@@ -115,6 +130,11 @@ import {
   RegisterRequestToJSON,
 } from "../models/RegisterRequest";
 import {
+  type ReviewActivityRequest,
+  ReviewActivityRequestFromJSON,
+  ReviewActivityRequestToJSON,
+} from "../models/ReviewActivityRequest";
+import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
@@ -134,6 +154,11 @@ import {
   RoleDefinitionFromJSON,
   RoleDefinitionToJSON,
 } from "../models/RoleDefinition";
+import {
+  type UpdateCheckinSettingsRequest,
+  UpdateCheckinSettingsRequestFromJSON,
+  UpdateCheckinSettingsRequestToJSON,
+} from "../models/UpdateCheckinSettingsRequest";
 import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
@@ -171,6 +196,20 @@ export interface CheckPermissionRequest {
   clubId?: number;
 }
 
+export interface CheckinActivityRequest {
+  activityId: number;
+  activitySignRequest: ActivitySignRequest;
+}
+
+export interface CheckoutActivityRequest {
+  activityId: number;
+  activitySignRequest: ActivitySignRequest;
+}
+
+export interface CreateActivityOperationRequest {
+  createActivityRequest: CreateActivityRequest;
+}
+
 export interface CreateClubOperationRequest {
   createClubRequest: CreateClubRequest;
 }
@@ -198,6 +237,10 @@ export interface DissolveClubOperationRequest {
 }
 
 export interface GetActivityByIdRequest {
+  activityId: number;
+}
+
+export interface GetActivityParticipationsRequest {
   activityId: number;
 }
 
@@ -256,6 +299,11 @@ export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
 }
 
+export interface ReviewActivityOperationRequest {
+  activityId: number;
+  reviewActivityRequest: ReviewActivityRequest;
+}
+
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
@@ -264,6 +312,11 @@ export interface ReviewClubApplicationOperationRequest {
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
+}
+
+export interface UpdateActivityCheckinSettingsRequest {
+  activityId: number;
+  updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
 }
 
 export interface UpdateClubOperationRequest {
@@ -543,6 +596,194 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<PermissionCheckResult> {
     const response = await this.checkPermissionRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for checkinActivity without sending the request
+   */
+  async checkinActivityRequestOpts(
+    requestParameters: CheckinActivityRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling checkinActivity().',
+      );
+    }
+
+    if (requestParameters["activitySignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "activitySignRequest",
+        'Required parameter "activitySignRequest" was null or undefined when calling checkinActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkin`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签到
+   */
+  async checkinActivityRaw(
+    requestParameters: CheckinActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkinActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityParticipationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 活动签到
+   */
+  async checkinActivity(
+    requestParameters: CheckinActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityParticipation> {
+    const response = await this.checkinActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for checkoutActivity without sending the request
+   */
+  async checkoutActivityRequestOpts(
+    requestParameters: CheckoutActivityRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling checkoutActivity().',
+      );
+    }
+
+    if (requestParameters["activitySignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "activitySignRequest",
+        'Required parameter "activitySignRequest" was null or undefined when calling checkoutActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkout`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签退
+   */
+  async checkoutActivityRaw(
+    requestParameters: CheckoutActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkoutActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityParticipationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 活动签退
+   */
+  async checkoutActivity(
+    requestParameters: CheckoutActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityParticipation> {
+    const response = await this.checkoutActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createActivity without sending the request
+   */
+  async createActivityRequestOpts(
+    requestParameters: CreateActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createActivityRequest",
+        'Required parameter "createActivityRequest" was null or undefined when calling createActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateActivityRequestToJSON(requestParameters["createActivityRequest"]),
+    };
+  }
+
+  /**
+   * 创建活动并提交审核
+   */
+  async createActivityRaw(
+    requestParameters: CreateActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.createActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 创建活动并提交审核
+   */
+  async createActivity(
+    requestParameters: CreateActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.createActivityRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -987,6 +1228,63 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.getActivityByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getActivityParticipations without sending the request
+   */
+  async getActivityParticipationsRequestOpts(
+    requestParameters: GetActivityParticipationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling getActivityParticipations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/activities/{activityId}/participations`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取活动参与记录
+   */
+  async getActivityParticipationsRaw(
+    requestParameters: GetActivityParticipationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ActivityParticipation>>> {
+    const requestOptions = await this.getActivityParticipationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ActivityParticipationFromJSON),
+    );
+  }
+
+  /**
+   * 获取活动参与记录
+   */
+  async getActivityParticipations(
+    requestParameters: GetActivityParticipationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ActivityParticipation>> {
+    const response = await this.getActivityParticipationsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1759,6 +2057,71 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewActivity without sending the request
+   */
+  async reviewActivityRequestOpts(
+    requestParameters: ReviewActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling reviewActivity().',
+      );
+    }
+
+    if (requestParameters["reviewActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewActivityRequest",
+        'Required parameter "reviewActivityRequest" was null or undefined when calling reviewActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/review`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewActivityRequestToJSON(requestParameters["reviewActivityRequest"]),
+    };
+  }
+
+  /**
+   * 审核活动并发布或驳回
+   */
+  async reviewActivityRaw(
+    requestParameters: ReviewActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.reviewActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 审核活动并发布或驳回
+   */
+  async reviewActivity(
+    requestParameters: ReviewActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.reviewActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewClubApplication without sending the request
    */
   async reviewClubApplicationRequestOpts(
@@ -1884,6 +2247,71 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Project> {
     const response = await this.reviewProjectRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateActivityCheckinSettings without sending the request
+   */
+  async updateActivityCheckinSettingsRequestOpts(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling updateActivityCheckinSettings().',
+      );
+    }
+
+    if (requestParameters["updateCheckinSettingsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateCheckinSettingsRequest",
+        'Required parameter "updateCheckinSettingsRequest" was null or undefined when calling updateActivityCheckinSettings().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkin-settings`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateCheckinSettingsRequestToJSON(requestParameters["updateCheckinSettingsRequest"]),
+    };
+  }
+
+  /**
+   * 设置活动签到签退码和有效时间
+   */
+  async updateActivityCheckinSettingsRaw(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.updateActivityCheckinSettingsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 设置活动签到签退码和有效时间
+   */
+  async updateActivityCheckinSettings(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.updateActivityCheckinSettingsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

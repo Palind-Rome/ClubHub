@@ -12,6 +12,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Notice> Notices => Set<Notice>();
@@ -77,6 +78,27 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Activity>(e =>
         {
             e.HasKey(a => a.ActivityId);
+            e.HasMany(a => a.Participations)
+             .WithOne(p => p.Activity)
+             .HasForeignKey(p => p.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.CreatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ActivityParticipation>(e =>
+        {
+            e.HasKey(p => p.ParticipationId);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(p => p.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ClubMember>(e =>

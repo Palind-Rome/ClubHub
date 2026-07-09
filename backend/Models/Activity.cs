@@ -40,6 +40,18 @@ namespace Org.OpenAPITools.Models
         public string Title { get; set; }
 
         /// <summary>
+        /// Gets or Sets ActivityType
+        /// </summary>
+        [DataMember(Name="activityType", EmitDefaultValue=true)]
+        public string? ActivityType { get; set; }
+
+        /// <summary>
+        /// Gets or Sets Description
+        /// </summary>
+        [DataMember(Name="description", EmitDefaultValue=true)]
+        public string? Description { get; set; }
+
+        /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
         [Required]
@@ -47,18 +59,31 @@ namespace Org.OpenAPITools.Models
         public string ClubName { get; set; }
 
         /// <summary>
+        /// Gets or Sets ClubId
+        /// </summary>
+        [Required]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        public int ClubId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CreatorUserId
+        /// </summary>
+        [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
+        public int? CreatorUserId { get; set; }
+
+        /// <summary>
         /// Gets or Sets StartTime
         /// </summary>
         [Required]
         [DataMember(Name="startTime", EmitDefaultValue=true)]
-        public DateTime StartTime { get; set; }
+        public DateTime? StartTime { get; set; }
 
         /// <summary>
         /// Gets or Sets EndTime
         /// </summary>
         [Required]
         [DataMember(Name="endTime", EmitDefaultValue=true)]
-        public DateTime EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
 
         /// <summary>
         /// Gets or Sets Location
@@ -81,28 +106,40 @@ namespace Org.OpenAPITools.Models
             DraftEnum = 1,
             
             /// <summary>
+            /// Enum PendingReviewEnum for pending_review
+            /// </summary>
+            [EnumMember(Value = "pending_review")]
+            PendingReviewEnum = 2,
+            
+            /// <summary>
             /// Enum PublishedEnum for published
             /// </summary>
             [EnumMember(Value = "published")]
-            PublishedEnum = 2,
+            PublishedEnum = 3,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 4,
             
             /// <summary>
             /// Enum OngoingEnum for ongoing
             /// </summary>
             [EnumMember(Value = "ongoing")]
-            OngoingEnum = 3,
+            OngoingEnum = 5,
             
             /// <summary>
             /// Enum FinishedEnum for finished
             /// </summary>
             [EnumMember(Value = "finished")]
-            FinishedEnum = 4,
+            FinishedEnum = 6,
             
             /// <summary>
             /// Enum CancelledEnum for cancelled
             /// </summary>
             [EnumMember(Value = "cancelled")]
-            CancelledEnum = 5
+            CancelledEnum = 7
         }
 
         /// <summary>
@@ -117,6 +154,54 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         [DataMember(Name="maxParticipants", EmitDefaultValue=true)]
         public int? MaxParticipants { get; set; }
+
+        /// <summary>
+        /// Gets or Sets RegistrationDeadline
+        /// </summary>
+        [DataMember(Name="registrationDeadline", EmitDefaultValue=true)]
+        public DateTime? RegistrationDeadline { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ReviewerUserId
+        /// </summary>
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        public int? ReviewerUserId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ReviewComment
+        /// </summary>
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
+        public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// Gets or Sets PublishedAt
+        /// </summary>
+        [DataMember(Name="publishedAt", EmitDefaultValue=true)]
+        public DateTime? PublishedAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckinStartAt
+        /// </summary>
+        [DataMember(Name="checkinStartAt", EmitDefaultValue=true)]
+        public DateTime? CheckinStartAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckinEndAt
+        /// </summary>
+        [DataMember(Name="checkinEndAt", EmitDefaultValue=true)]
+        public DateTime? CheckinEndAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckoutStartAt
+        /// </summary>
+        [DataMember(Name="checkoutStartAt", EmitDefaultValue=true)]
+        public DateTime? CheckoutStartAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckoutEndAt
+        /// </summary>
+        [DataMember(Name="checkoutEndAt", EmitDefaultValue=true)]
+        public DateTime? CheckoutEndAt { get; set; }
 
         /// <summary>
         /// Gets or Sets CurrentParticipants

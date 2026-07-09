@@ -691,6 +691,24 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Activity"
+    post:
+      summary: 创建活动并提交审核
+      operationId: createActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityRequest"
+      responses:
+        "201":
+          description: 活动已创建，等待审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: 请求参数或业务规则不合法
 
   /api/activities/{activityId}:
     get:
@@ -709,6 +727,140 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Activity"
+
+  /api/activities/{activityId}/review:
+    post:
+      summary: 审核活动并发布或驳回
+      operationId: reviewActivity
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewActivityRequest"
+      responses:
+        "200":
+          description: 活动审核结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: 当前活动状态不允许审核
+        "404":
+          description: 活动不存在
+
+  /api/activities/{activityId}/checkin-settings:
+    put:
+      summary: 设置活动签到签退码和有效时间
+      operationId: updateActivityCheckinSettings
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCheckinSettingsRequest"
+      responses:
+        "200":
+          description: 签到签退设置已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: 签到或签退时间段不合法
+        "404":
+          description: 活动不存在
+
+  /api/activities/{activityId}/participations:
+    get:
+      summary: 获取活动参与记录
+      operationId: getActivityParticipations
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 活动参与记录列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityParticipation"
+        "404":
+          description: 活动不存在
+
+  /api/activities/{activityId}/checkin:
+    post:
+      summary: 活动签到
+      operationId: checkinActivity
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivitySignRequest"
+      responses:
+        "200":
+          description: 签到成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityParticipation"
+        "400":
+          description: 签到码、时间窗口或活动状态不合法
+        "404":
+          description: 活动不存在
+
+  /api/activities/{activityId}/checkout:
+    post:
+      summary: 活动签退
+      operationId: checkoutActivity
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivitySignRequest"
+      responses:
+        "200":
+          description: 签退成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityParticipation"
+        "400":
+          description: 签退码、时间窗口或活动状态不合法
+        "404":
+          description: 活动不存在
 
   /api/users:
     get:
@@ -2046,22 +2198,74 @@ components:
           type: integer
         title:
           type: string
+        activityType:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
         clubName:
           type: string
+        clubId:
+          type: integer
+        creatorUserId:
+          type: integer
+          nullable: true
         startTime:
           type: string
           format: date-time
+          nullable: true
         endTime:
           type: string
           format: date-time
+          nullable: true
         location:
           type: string
           nullable: true
         status:
           type: string
-          enum: [draft, published, ongoing, finished, cancelled]
+          enum:
+            [
+              draft,
+              pending_review,
+              published,
+              rejected,
+              ongoing,
+              finished,
+              cancelled,
+            ]
         maxParticipants:
           type: integer
+          nullable: true
+        registrationDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkinStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkinEndAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkoutStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkoutEndAt:
+          type: string
+          format: date-time
           nullable: true
         currentParticipants:
           type: integer
@@ -2069,10 +2273,146 @@ components:
         - id
         - title
         - clubName
+        - clubId
         - startTime
         - endTime
         - status
         - currentParticipants
+    CreateActivityRequest:
+      type: object
+      properties:
+        clubId:
+          type: integer
+        creatorUserId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        activityType:
+          type: string
+          nullable: true
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+          maxLength: 255
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        maxParticipants:
+          type: integer
+          nullable: true
+        registrationDeadline:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - clubId
+        - title
+        - startTime
+        - endTime
+
+    ReviewActivityRequest:
+      type: object
+      properties:
+        approved:
+          type: boolean
+          nullable: true
+        reviewerUserId:
+          type: integer
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+
+    UpdateCheckinSettingsRequest:
+      type: object
+      properties:
+        checkinCode:
+          type: string
+          minLength: 1
+          maxLength: 255
+        checkinStartAt:
+          type: string
+          format: date-time
+        checkinEndAt:
+          type: string
+          format: date-time
+        checkoutCode:
+          type: string
+          minLength: 1
+          maxLength: 255
+        checkoutStartAt:
+          type: string
+          format: date-time
+        checkoutEndAt:
+          type: string
+          format: date-time
+      required:
+        - checkinCode
+        - checkinStartAt
+        - checkinEndAt
+        - checkoutCode
+        - checkoutStartAt
+        - checkoutEndAt
+
+    ActivitySignRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+        code:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+        - userId
+        - code
+
+    ActivityParticipation:
+      type: object
+      properties:
+        id:
+          type: integer
+        activityId:
+          type: integer
+        userId:
+          type: integer
+        registerStatus:
+          type: string
+          nullable: true
+        registeredAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkinAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkoutAt:
+          type: string
+          format: date-time
+          nullable: true
+        signStatus:
+          type: string
+          nullable: true
+        remark:
+          type: string
+          nullable: true
+      required:
+        - id
+        - activityId
+        - userId
+
     Project:
       type: object
       description: Project initiation application and review result.
