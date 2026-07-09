@@ -3474,8 +3474,7 @@ components:
         budgetStatus:
           type: string
           nullable: true
-          enum: [pending, approved, rejected]
-          description: 经费审批状态；为空表示尚未提交经费申请。
+          description: 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
         budgetReviewerId:
           type: integer
           nullable: true
