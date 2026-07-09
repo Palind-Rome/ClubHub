@@ -4,7 +4,7 @@ import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
-import { collectManageableClubIds, roleCoversClub } from "../composables/useManageableClubs";
+import { collectManageableClubIds } from "../composables/useManageableClubs";
 
 type PublicStatus = "draft" | "published";
 type AwardFormMode = "create" | "edit";
@@ -54,36 +54,7 @@ interface ClubEvaluationRecord {
   createdAt: string | null;
 }
 
-interface MemberGroupingScope {
-  departmentName: string;
-  groupName: string;
-}
-
 const evaluationDraftPermission = "evaluation:draft";
-const evaluationReviewPermission = "evaluation:review";
-const wholeClubMaintainRoleCodes = new Set([
-  "advisor",
-  "club_leader",
-  "club_manager",
-  "club_president",
-  "president",
-]);
-const officerRoleCodes = new Set(["club_officer"]);
-const cadrePositionNames = new Set([
-  "干部",
-  "部长",
-  "副部长",
-  "组长",
-  "副组长",
-  "干事",
-  "社团干部",
-  "部门负责人",
-  "小组负责人",
-  "officer",
-  "cadre",
-  "minister",
-  "group leader",
-]);
 
 const auth = ref<AuthResponse | null>(readAuth());
 const clubs = ref<Club[]>([]);
@@ -137,10 +108,7 @@ const hasAllPermissions = computed(
     (auth.value?.roles ?? []).some((role) => role.permissions?.includes("*")),
 );
 const manageableClubIds = computed(() =>
-  collectManageableClubIds(auth.value?.roles ?? [], [
-    evaluationDraftPermission,
-    evaluationReviewPermission,
-  ]),
+  collectManageableClubIds(auth.value?.roles ?? [], evaluationDraftPermission),
 );
 const selectedClub = computed(() => clubs.value.find((club) => club.id === selectedClubId.value));
 const canMaintainSelectedClub = computed(
@@ -149,42 +117,6 @@ const canMaintainSelectedClub = computed(
     (hasAllPermissions.value ||
       (selectedClubId.value !== undefined && manageableClubIds.value.has(selectedClubId.value))),
 );
-const canMaintainWholeClub = computed(() => {
-  const clubId = selectedClubId.value;
-  if (!clubId || !canMaintainSelectedClub.value) return false;
-  if (hasAllPermissions.value) return true;
-
-  return (auth.value?.roles ?? []).some(
-    (role) => roleCoversClub(role, clubId) && wholeClubMaintainRoleCodes.has(roleCodeOf(role)),
-  );
-});
-const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
-  const clubId = selectedClubId.value;
-  const userId = currentUserId.value;
-  if (!clubId || !userId || !canMaintainSelectedClub.value || canMaintainWholeClub.value) return [];
-
-  const hasOfficerRole = (auth.value?.roles ?? []).some(
-    (role) => roleCoversClub(role, clubId) && officerRoleCodes.has(roleCodeOf(role)),
-  );
-  const scopeMap = new Map<string, MemberGroupingScope>();
-
-  members.value
-    .filter(
-      (member) =>
-        member.clubId === clubId &&
-        member.userId === userId &&
-        member.isCurrent &&
-        Boolean(member.groupName?.trim()) &&
-        (hasOfficerRole || isCadrePosition(member.positionName)),
-    )
-    .forEach((member) => {
-      const departmentName = member.departmentName?.trim() ?? "";
-      const groupName = member.groupName?.trim() ?? "";
-      scopeMap.set(`${departmentName}\n${groupName}`, { departmentName, groupName });
-    });
-
-  return Array.from(scopeMap.values());
-});
 const publicAwards = computed(() =>
   filteredAwards.value.filter((award) => award.publicStatus === "published"),
 );
@@ -214,9 +146,7 @@ const summary = computed(() => ({
   published: awards.value.filter((award) => award.publicStatus === "published").length,
   draft: awards.value.filter((award) => award.publicStatus !== "published").length,
 }));
-const memberOptions = computed(() =>
-  members.value.filter((member) => member.isCurrent && canMaintainMember(member)),
-);
+const memberOptions = computed(() => members.value.filter((member) => member.isCurrent));
 
 async function validateForm(form?: FormInstance) {
   if (!form) return false;
@@ -334,7 +264,7 @@ function openCreateDialog() {
 }
 
 function openEditDialog(row: ClubEvaluationRecord) {
-  if (!canMaintainAwardRecord(row)) {
+  if (!canMaintainSelectedClub.value) {
     ElMessage.warning("当前账号没有维护该社团评奖评优结果的权限。");
     return;
   }
@@ -383,7 +313,6 @@ async function submitAward() {
     if (awardFormMode.value === "create") {
       await requestJson<ClubEvaluationRecord>(`/api/clubs/${selectedClubId.value}/evaluations`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else if (awardTarget.value) {
@@ -391,7 +320,6 @@ async function submitAward() {
         `/api/clubs/${selectedClubId.value}/evaluations/${awardTarget.value.evaluationId}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
       );
@@ -417,50 +345,6 @@ function clearFilters() {
 function emptyToNull(value: string) {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
-}
-
-function canMaintainAwardRecord(row: ClubEvaluationRecord) {
-  const member = members.value.find((item) => item.userId === row.userId);
-  return Boolean(member && canMaintainMember(member));
-}
-
-function canMaintainMember(member: ClubMemberRecord) {
-  if (!member.isCurrent || !canMaintainSelectedClub.value) return false;
-  if (canMaintainWholeClub.value) return true;
-
-  return selectedCadreGroupingScopes.value.some((scope) =>
-    groupingMatchesScope(
-      member.departmentName,
-      member.groupName,
-      scope.departmentName,
-      scope.groupName,
-    ),
-  );
-}
-
-function groupingMatchesScope(
-  targetDepartment: string | null | undefined,
-  targetGroup: string | null | undefined,
-  scopeDepartment: string | null | undefined,
-  scopeGroup: string | null | undefined,
-) {
-  if (!targetGroup?.trim() || !scopeGroup?.trim()) return false;
-
-  const groupMatches = targetGroup.trim().toLowerCase() === scopeGroup.trim().toLowerCase();
-  const departmentMatches =
-    !scopeDepartment?.trim() ||
-    (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment.trim().toLowerCase();
-  return groupMatches && departmentMatches;
-}
-
-function isCadrePosition(positionName: string | null | undefined) {
-  if (!positionName) return false;
-  const normalized = positionName.trim().toLowerCase();
-  return cadrePositionNames.has(normalized) || cadrePositionNames.has(positionName.trim());
-}
-
-function roleCodeOf(role: { code?: string | null; roleCode?: string | null }) {
-  return (role.code ?? role.roleCode ?? "").trim().toLowerCase();
 }
 
 function statusTagType(status: PublicStatus) {
@@ -592,7 +476,7 @@ onUnmounted(() => {
         <div class="award-actions">
           <el-button :icon="View" @click="openDetail(award)">查看</el-button>
           <el-button
-            v-if="canMaintainAwardRecord(award)"
+            v-if="canMaintainSelectedClub"
             type="primary"
             plain
             :icon="Edit"
