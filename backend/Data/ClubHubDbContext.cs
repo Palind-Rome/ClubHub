@@ -17,6 +17,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Notice> Notices => Set<Notice>();
     public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
+    public DbSet<Evaluation> Evaluations => Set<Evaluation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,23 @@ public class ClubHubDbContext : DbContext
             e.HasOne(r => r.User)
              .WithMany()
              .HasForeignKey(r => r.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Evaluation>(e =>
+        {
+            e.HasKey(ev => ev.EvaluationId);
+            e.HasOne(ev => ev.Club)
+             .WithMany()
+             .HasForeignKey(ev => ev.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(ev => ev.User)
+             .WithMany()
+             .HasForeignKey(ev => ev.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(ev => ev.Evaluator)
+             .WithMany()
+             .HasForeignKey(ev => ev.EvaluatorUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }
