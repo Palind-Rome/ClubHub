@@ -1,8 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 export * from "./Activity";
 export * from "./ActivityParticipation";
+export * from "./ActivityRegistrationResult";
 export * from "./ActivitySignRequest";
 export * from "./ApiError";
 export * from "./AssignProjectLeaderRequest";
@@ -42,6 +43,7 @@ export * from "./PublishAwardCampaignRequest";
 export * from "./Recruitment";
 export * from "./RecruitmentApplication";
 export * from "./RecruitmentWorkflowStatus";
+export * from "./RegisterActivityRequest";
 export * from "./RegisterRequest";
 export * from "./ReviewActivityRequest";
 export * from "./ReviewAwardApplicationRequest";

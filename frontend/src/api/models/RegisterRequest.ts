@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,68 +15,57 @@
 
 import { mapValues } from "../runtime";
 /**
- * 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
- * @export
+ * 鐢ㄦ埛娉ㄥ唽璇锋眰銆傚鐢熷宸ュ彿涓?7 浣嶆暟瀛楋紝鏁欏笀宸ュ彿涓?5 浣嶆暟瀛椼€? * @export
  * @interface RegisterRequest
  */
 export interface RegisterRequest {
   /**
-   * 登录用户名，注册后必须唯一。
-   * @type {string}
+   * 鐧诲綍鐢ㄦ埛鍚嶏紝娉ㄥ唽鍚庡繀椤诲敮涓€銆?     * @type {string}
    * @memberof RegisterRequest
    */
   username: string;
   /**
-   * 登录密码，服务端仅保存密码摘要。
-   * @type {string}
+   * 鐧诲綍瀵嗙爜锛屾湇鍔＄浠呬繚瀛樺瘑鐮佹憳瑕併€?     * @type {string}
    * @memberof RegisterRequest
    */
   password: string;
   /**
-   * 用户真实姓名。
-   * @type {string}
+   * 鐢ㄦ埛鐪熷疄濮撳悕銆?     * @type {string}
    * @memberof RegisterRequest
    */
   realName: string;
   /**
-   * 学工号；学生 7 位，教师 5 位。
-   * @type {string}
+   * 瀛﹀伐鍙凤紱瀛︾敓 7 浣嶏紝鏁欏笀 5 浣嶃€?     * @type {string}
    * @memberof RegisterRequest
    */
   studentNo: string;
   /**
-   * 性别，可为空；当前支持男、女。
-   * @type {string}
+   * 鎬у埆锛屽彲涓虹┖锛涘綋鍓嶆敮鎸佺敺銆佸コ銆?     * @type {string}
    * @memberof RegisterRequest
    */
   gender?: string | null;
   /**
-   * 联系电话，可为空。
-   * @type {string}
+   * 鑱旂郴鐢佃瘽锛屽彲涓虹┖銆?     * @type {string}
    * @memberof RegisterRequest
    */
   phone?: string | null;
   /**
-   * 邮箱地址，可为空。
-   * @type {string}
+   * 閭鍦板潃锛屽彲涓虹┖銆?     * @type {string}
    * @memberof RegisterRequest
    */
   email?: string | null;
   /**
-   * 所属学院，可为空。
-   * @type {string}
+   * 鎵€灞炲闄紝鍙负绌恒€?     * @type {string}
    * @memberof RegisterRequest
    */
   college?: string | null;
   /**
-   * 所属专业，可为空。
-   * @type {string}
+   * 鎵€灞炰笓涓氾紝鍙负绌恒€?     * @type {string}
    * @memberof RegisterRequest
    */
   major?: string | null;
   /**
-   * 年级，可为空。
-   * @type {string}
+   * 骞寸骇锛屽彲涓虹┖銆?     * @type {string}
    * @memberof RegisterRequest
    */
   grade?: string | null;

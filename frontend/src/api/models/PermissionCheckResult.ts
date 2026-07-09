@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -23,44 +23,37 @@ import {
 } from "./AuthRole";
 
 /**
- * 权限检查结果。
- * @export
+ * 鏉冮檺妫€鏌ョ粨鏋溿€? * @export
  * @interface PermissionCheckResult
  */
 export interface PermissionCheckResult {
   /**
-   * 被检查的用户 ID。
-   * @type {number}
+   * 琚鏌ョ殑鐢ㄦ埛 ID銆?     * @type {number}
    * @memberof PermissionCheckResult
    */
   userId: number;
   /**
-   * 被检查的权限编码。
-   * @type {string}
+   * 琚鏌ョ殑鏉冮檺缂栫爜銆?     * @type {string}
    * @memberof PermissionCheckResult
    */
   permission: string;
   /**
-   * 权限检查涉及的社团 ID；全局权限可为空。
-   * @type {number}
+   * 鏉冮檺妫€鏌ユ秹鍙婄殑绀惧洟 ID锛涘叏灞€鏉冮檺鍙负绌恒€?     * @type {number}
    * @memberof PermissionCheckResult
    */
   clubId?: number | null;
   /**
-   * 是否允许访问。
-   * @type {boolean}
+   * 鏄惁鍏佽璁块棶銆?     * @type {boolean}
    * @memberof PermissionCheckResult
    */
   allowed: boolean;
   /**
-   * 命中该权限的角色列表。
-   * @type {Array<AuthRole>}
+   * 鍛戒腑璇ユ潈闄愮殑瑙掕壊鍒楄〃銆?     * @type {Array<AuthRole>}
    * @memberof PermissionCheckResult
    */
   matchedRoles: Array<AuthRole>;
   /**
-   * 面向调用方的判定说明。
-   * @type {string}
+   * 闈㈠悜璋冪敤鏂圭殑鍒ゅ畾璇存槑銆?     * @type {string}
    * @memberof PermissionCheckResult
    */
   message: string;

@@ -1,8 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
+using ApiError = Org.OpenAPITools.Models.ApiError;
+using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -10,13 +15,23 @@ namespace ClubHub.Api.Controllers;
 [Route("api/[controller]")]
 public class ActivitiesController : ControllerBase
 {
+    private const int MaxRegisterRetries = 3;
+    private const string ActivityStatusPublished = "published";
+    private const string MemberStatusActive = "active";
+    private const string RegisterStatusPending = "pending";
+    private const string RegisterStatusAccepted = "accepted";
+    private const string RegisterStatusOnsite = "onsite";
+
     private readonly ClubHubDbContext _db;
 
     public ActivitiesController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int? currentUserId)
     {
+        var shouldCheckRegistration = currentUserId is > 0;
+        var viewerUserId = currentUserId.GetValueOrDefault();
+
         var activities = await _db.Activities
             .OrderBy(a => a.ActivityId)
             .Select(a => new ActivityDto(
@@ -40,7 +55,18 @@ public class ActivitiesController : ControllerBase
                 a.CheckinEndAt,
                 a.CheckoutStartAt,
                 a.CheckoutEndAt,
-                a.Participations.Count
+                _db.ActivityParticipations.Count(p =>
+                    p.ActivityId == a.ActivityId &&
+                    (p.RegisterStatus == RegisterStatusPending ||
+                     p.RegisterStatus == RegisterStatusAccepted ||
+                     p.RegisterStatus == RegisterStatusOnsite)),
+                shouldCheckRegistration &&
+                _db.ActivityParticipations.Any(p =>
+                    p.ActivityId == a.ActivityId &&
+                    p.UserId == viewerUserId &&
+                    (p.RegisterStatus == RegisterStatusPending ||
+                     p.RegisterStatus == RegisterStatusAccepted ||
+                     p.RegisterStatus == RegisterStatusOnsite))
             ))
             .ToListAsync();
 
@@ -104,8 +130,11 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpGet("{activityId:int}")]
-    public async Task<IActionResult> GetById(int activityId)
+    public async Task<IActionResult> GetById(int activityId, [FromQuery] int? currentUserId)
     {
+        var shouldCheckRegistration = currentUserId is > 0;
+        var viewerUserId = currentUserId.GetValueOrDefault();
+
         var activity = await _db.Activities
             .Where(a => a.ActivityId == activityId)
             .Select(a => new ActivityDto(
@@ -129,11 +158,131 @@ public class ActivitiesController : ControllerBase
                 a.CheckinEndAt,
                 a.CheckoutStartAt,
                 a.CheckoutEndAt,
-                a.Participations.Count
+                _db.ActivityParticipations.Count(p =>
+                    p.ActivityId == a.ActivityId &&
+                    (p.RegisterStatus == RegisterStatusPending ||
+                     p.RegisterStatus == RegisterStatusAccepted ||
+                     p.RegisterStatus == RegisterStatusOnsite)),
+                shouldCheckRegistration &&
+                _db.ActivityParticipations.Any(p =>
+                    p.ActivityId == a.ActivityId &&
+                    p.UserId == viewerUserId &&
+                    (p.RegisterStatus == RegisterStatusPending ||
+                     p.RegisterStatus == RegisterStatusAccepted ||
+                     p.RegisterStatus == RegisterStatusOnsite))
             ))
             .FirstOrDefaultAsync();
 
         return activity is null ? NotFound() : Ok(activity);
+    }
+
+    [HttpPost("{activityId:int}/registrations")]
+    public async Task<IActionResult> Register(int activityId, [FromBody] RegisterActivityRequest? request)
+    {
+        if (request is null)
+        {
+            return Error(StatusCodes.Status400BadRequest, "REQUEST_BODY_REQUIRED", "请提交报名用户信息");
+        }
+
+        if (request.UserId <= 0)
+        {
+            return Error(StatusCodes.Status400BadRequest, "INVALID_USER_ID", "报名用户 ID 不合法");
+        }
+
+        for (var attempt = 1; attempt <= MaxRegisterRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+            var activity = await LockActivityForRegistration(activityId);
+            if (activity is null)
+            {
+                return Error(StatusCodes.Status404NotFound, "ACTIVITY_NOT_FOUND", "活动不存在");
+            }
+
+            if (!string.Equals(activity.ActivityStatus, ActivityStatusPublished, StringComparison.OrdinalIgnoreCase))
+            {
+                return Error(StatusCodes.Status400BadRequest, "ACTIVITY_NOT_PUBLISHED", "活动未发布，暂不能报名");
+            }
+
+            var now = DateTime.Now;
+            if (activity.RegistrationDeadline is not null && now > activity.RegistrationDeadline.Value)
+            {
+                return Error(StatusCodes.Status400BadRequest, "REGISTRATION_CLOSED", "报名已截止");
+            }
+
+            var userExists = await _db.Users.AnyAsync(u => u.UserId == request.UserId);
+            if (!userExists)
+            {
+                return Error(StatusCodes.Status404NotFound, "USER_NOT_FOUND", "用户不存在");
+            }
+
+            var isClubMember = await _db.ClubMembers.AnyAsync(m =>
+                m.ClubId == activity.ClubId &&
+                m.UserId == request.UserId &&
+                (m.MemberStatus == null || m.MemberStatus.ToLower() == MemberStatusActive));
+            if (!isClubMember)
+            {
+                return Error(StatusCodes.Status400BadRequest, "NOT_CLUB_MEMBER", "当前用户不符合报名资格");
+            }
+
+            var alreadyRegistered = await _db.ActivityParticipations.AnyAsync(p =>
+                p.ActivityId == activityId &&
+                p.UserId == request.UserId &&
+                (p.RegisterStatus == RegisterStatusPending ||
+                 p.RegisterStatus == RegisterStatusAccepted ||
+                 p.RegisterStatus == RegisterStatusOnsite));
+            if (alreadyRegistered)
+            {
+                return Error(StatusCodes.Status409Conflict, "ALREADY_REGISTERED", "你已报名该活动");
+            }
+
+            var currentParticipants = await CountActiveParticipants(activityId);
+            if (activity.Capacity is not null && currentParticipants >= activity.Capacity.Value)
+            {
+                return Error(StatusCodes.Status409Conflict, "CAPACITY_FULL", "活动名额已满");
+            }
+
+            var participation = new ActivityParticipation
+            {
+                ParticipationId = await NextParticipationId(),
+                ActivityId = activityId,
+                UserId = request.UserId,
+                RegisterStatus = RegisterStatusAccepted,
+                RegisteredAt = now,
+                SignStatus = "registered"
+            };
+
+            _db.ActivityParticipations.Add(participation);
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var result = new ActivityRegistrationResult
+                {
+                    ParticipationId = participation.ParticipationId,
+                    ActivityId = participation.ActivityId,
+                    UserId = participation.UserId,
+                    RegisterStatus = ActivityRegistrationResult.RegisterStatusEnum.AcceptedEnum,
+                    RegisteredAt = now,
+                    CurrentParticipants = currentParticipants + 1,
+                    Message = "报名成功"
+                };
+
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { activityId, currentUserId = request.UserId },
+                    result);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync();
+                _db.Entry(participation).State = EntityState.Detached;
+            }
+        }
+
+        return Error(StatusCodes.Status409Conflict, "REGISTRATION_CONFLICT", "报名写入冲突，请重试");
     }
 
     [HttpPost("{activityId:int}/review")]
@@ -165,7 +314,7 @@ public class ActivitiesController : ControllerBase
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
 
         await _db.SaveChangesAsync();
-        var currentParticipants = await _db.ActivityParticipations.CountAsync(p => p.ActivityId == activityId);
+        var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
 
@@ -225,7 +374,7 @@ public class ActivitiesController : ControllerBase
         activity.CheckoutEndAt = req.CheckoutEndAt;
 
         await _db.SaveChangesAsync();
-        var currentParticipants = await _db.ActivityParticipations.CountAsync(p => p.ActivityId == activityId);
+        var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
 
@@ -318,7 +467,7 @@ public class ActivitiesController : ControllerBase
                 ParticipationId = maxId + 1,
                 ActivityId = activity.ActivityId,
                 UserId = req.UserId,
-                RegisterStatus = "onsite",
+                RegisterStatus = RegisterStatusOnsite,
                 RegisteredAt = now,
                 SignStatus = "registered",
                 Remark = "现场签到自动生成参与记录"
@@ -366,7 +515,46 @@ public class ActivitiesController : ControllerBase
         ));
     }
 
-    private static ActivityDto ToDto(Activity activity, int currentParticipants)
+    private async Task<Activity?> LockActivityForRegistration(int activityId)
+    {
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = "SELECT ACTIVITY_ID FROM ACTIVITIES WHERE ACTIVITY_ID = :activityId FOR UPDATE";
+
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "activityId";
+        parameter.Value = activityId;
+        command.Parameters.Add(parameter);
+
+        var lockedActivityId = await command.ExecuteScalarAsync();
+        if (lockedActivityId is null || lockedActivityId is DBNull)
+        {
+            return null;
+        }
+
+        return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
+    }
+
+    private Task<int> CountActiveParticipants(int activityId)
+    {
+        return _db.ActivityParticipations.CountAsync(p =>
+            p.ActivityId == activityId &&
+            (p.RegisterStatus == RegisterStatusPending ||
+             p.RegisterStatus == RegisterStatusAccepted ||
+             p.RegisterStatus == RegisterStatusOnsite));
+    }
+
+    private async Task<int> NextParticipationId()
+    {
+        // The course schema has no participation sequence, so callers run this inside a transaction and retry conflicts.
+        var maxId = await _db.ActivityParticipations
+            .Select(p => (int?)p.ParticipationId)
+            .MaxAsync();
+        return (maxId ?? 0) + 1;
+    }
+
+    private static ActivityDto ToDto(Activity activity, int currentParticipants, bool isRegistered = false)
     {
         return new ActivityDto(
             activity.ActivityId,
@@ -389,13 +577,26 @@ public class ActivitiesController : ControllerBase
             activity.CheckinEndAt,
             activity.CheckoutStartAt,
             activity.CheckoutEndAt,
-            currentParticipants
+            currentParticipants,
+            isRegistered
         );
     }
 
     private async Task<bool> UserExists(int userId)
     {
         return await _db.Users.AnyAsync(u => u.UserId == userId);
+    }
+
+    private static ObjectResult Error(int statusCode, string code, string message)
+    {
+        return new ObjectResult(new ApiError
+        {
+            Code = code,
+            Message = message
+        })
+        {
+            StatusCode = statusCode
+        };
     }
 }
 
@@ -420,7 +621,8 @@ public record ActivityDto(
     DateTime? CheckinEndAt,
     DateTime? CheckoutStartAt,
     DateTime? CheckoutEndAt,
-    int CurrentParticipants
+    int CurrentParticipants,
+    bool IsRegistered
 );
 
 public class CreateActivityRequest

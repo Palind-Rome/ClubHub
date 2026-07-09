@@ -34,4 +34,7 @@ public class ActivityParticipation
 
     [ForeignKey("ActivityId")]
     public Activity? Activity { get; set; }
+
+    [ForeignKey("UserId")]
+    public User? User { get; set; }
 }

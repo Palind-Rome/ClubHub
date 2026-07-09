@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,38 +15,32 @@
 
 import { mapValues } from "../runtime";
 /**
- * 系统预置角色定义。
- * @export
+ * 绯荤粺棰勭疆瑙掕壊瀹氫箟銆? * @export
  * @interface RoleDefinition
  */
 export interface RoleDefinition {
   /**
-   * 角色编码。
-   * @type {string}
+   * 瑙掕壊缂栫爜銆?     * @type {string}
    * @memberof RoleDefinition
    */
   code: string;
   /**
-   * 角色名称。
-   * @type {string}
+   * 瑙掕壊鍚嶇О銆?     * @type {string}
    * @memberof RoleDefinition
    */
   name: string;
   /**
-   * 角色作用域。
-   * @type {RoleDefinitionScopeEnum}
+   * 瑙掕壊浣滅敤鍩熴€?     * @type {RoleDefinitionScopeEnum}
    * @memberof RoleDefinition
    */
   scope: RoleDefinitionScopeEnum;
   /**
-   * 角色业务说明。
-   * @type {string}
+   * 瑙掕壊涓氬姟璇存槑銆?     * @type {string}
    * @memberof RoleDefinition
    */
   description: string;
   /**
-   * 角色拥有的权限编码列表。
-   * @type {Array<string>}
+   * 瑙掕壊鎷ユ湁鐨勬潈闄愮紪鐮佸垪琛ㄣ€?     * @type {Array<string>}
    * @memberof RoleDefinition
    */
   permissions: Array<string>;

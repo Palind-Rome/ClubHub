@@ -34,6 +34,10 @@ public class ClubHubDbContext : DbContext
              .WithOne(cm => cm.User)
              .HasForeignKey(cm => cm.UserId)
              .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(u => u.ActivityParticipations)
+             .WithOne(p => p.User)
+             .HasForeignKey(p => p.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Role>(e =>
@@ -102,10 +106,6 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ActivityParticipation>(e =>
         {
             e.HasKey(p => p.ParticipationId);
-            e.HasOne<User>()
-             .WithMany()
-             .HasForeignKey(p => p.UserId)
-             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ClubMember>(e =>

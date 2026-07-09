@@ -17,55 +17,47 @@ import { mapValues } from "../runtime";
 /**
  *
  * @export
- * @interface ActivitySignRequest
+ * @interface RegisterActivityRequest
  */
-export interface ActivitySignRequest {
+export interface RegisterActivityRequest {
   /**
-   *
+   * 鎶ュ悕鐢ㄦ埛 ID
    * @type {number}
-   * @memberof ActivitySignRequest
+   * @memberof RegisterActivityRequest
    */
   userId: number;
-  /**
-   *
-   * @type {string}
-   * @memberof ActivitySignRequest
-   */
-  code: string;
 }
 
 /**
- * Check if a given object implements the ActivitySignRequest interface.
+ * Check if a given object implements the RegisterActivityRequest interface.
  */
-export function instanceOfActivitySignRequest(value: object): value is ActivitySignRequest {
+export function instanceOfRegisterActivityRequest(value: object): value is RegisterActivityRequest {
   if (!("userId" in value) || value["userId"] === undefined) return false;
-  if (!("code" in value) || value["code"] === undefined) return false;
   return true;
 }
 
-export function ActivitySignRequestFromJSON(json: any): ActivitySignRequest {
-  return ActivitySignRequestFromJSONTyped(json, false);
+export function RegisterActivityRequestFromJSON(json: any): RegisterActivityRequest {
+  return RegisterActivityRequestFromJSONTyped(json, false);
 }
 
-export function ActivitySignRequestFromJSONTyped(
+export function RegisterActivityRequestFromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): ActivitySignRequest {
+): RegisterActivityRequest {
   if (json == null) {
     return json;
   }
   return {
     userId: json["userId"],
-    code: json["code"],
   };
 }
 
-export function ActivitySignRequestToJSON(json: any): ActivitySignRequest {
-  return ActivitySignRequestToJSONTyped(json, false);
+export function RegisterActivityRequestToJSON(json: any): RegisterActivityRequest {
+  return RegisterActivityRequestToJSONTyped(json, false);
 }
 
-export function ActivitySignRequestToJSONTyped(
-  value?: ActivitySignRequest | null,
+export function RegisterActivityRequestToJSONTyped(
+  value?: RegisterActivityRequest | null,
   ignoreDiscriminator: boolean = false,
 ): any {
   if (value == null) {
@@ -74,6 +66,5 @@ export function ActivitySignRequestToJSONTyped(
 
   return {
     userId: value["userId"],
-    code: value["code"],
   };
 }

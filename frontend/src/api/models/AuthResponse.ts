@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -30,14 +30,12 @@ import {
 } from "./AuthUser";
 
 /**
- * 注册或登录成功后的认证响应。
- * @export
+ * 娉ㄥ唽鎴栫櫥褰曟垚鍔熷悗鐨勮璇佸搷搴斻€? * @export
  * @interface AuthResponse
  */
 export interface AuthResponse {
   /**
-   * 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
-   * @type {string}
+   * 鐧诲綍浠ょ墝锛涜皟鐢ㄩ渶瑕佸綋鍓嶇櫥褰曟€佺殑鎺ュ彛鏃堕€氳繃 Authorization Bearer 澶翠紶閫掋€?     * @type {string}
    * @memberof AuthResponse
    */
   token: string;
@@ -48,14 +46,12 @@ export interface AuthResponse {
    */
   user: AuthUser;
   /**
-   * 当前用户拥有的角色列表。
-   * @type {Array<AuthRole>}
+   * 褰撳墠鐢ㄦ埛鎷ユ湁鐨勮鑹插垪琛ㄣ€?     * @type {Array<AuthRole>}
    * @memberof AuthResponse
    */
   roles: Array<AuthRole>;
   /**
-   * 当前用户角色权限的并集。
-   * @type {Array<string>}
+   * 褰撳墠鐢ㄦ埛瑙掕壊鏉冮檺鐨勫苟闆嗐€?     * @type {Array<string>}
    * @memberof AuthResponse
    */
   permissions: Array<string>;

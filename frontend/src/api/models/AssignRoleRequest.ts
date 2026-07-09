@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,32 +15,27 @@
 
 import { mapValues } from "../runtime";
 /**
- * 为目标用户分配系统级或社团级角色。
- * @export
+ * 涓虹洰鏍囩敤鎴峰垎閰嶇郴缁熺骇鎴栫ぞ鍥㈢骇瑙掕壊銆? * @export
  * @interface AssignRoleRequest
  */
 export interface AssignRoleRequest {
   /**
-   * 发起分配操作的用户 ID。
-   * @type {number}
+   * 鍙戣捣鍒嗛厤鎿嶄綔鐨勭敤鎴?ID銆?     * @type {number}
    * @memberof AssignRoleRequest
    */
   operatorUserId: number;
   /**
-   * 被分配角色的用户 ID。
-   * @type {number}
+   * 琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?     * @type {number}
    * @memberof AssignRoleRequest
    */
   targetUserId: number;
   /**
-   * 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
-   * @type {string}
+   * 瑙掕壊缂栫爜锛屼緥濡?STUDENT銆丆LUB_MEMBER銆丼YSTEM_ADMIN銆?     * @type {string}
    * @memberof AssignRoleRequest
    */
   roleCode: string;
   /**
-   * 社团级角色所属社团 ID；系统级角色可为空。
-   * @type {number}
+   * 绀惧洟绾ц鑹叉墍灞炵ぞ鍥?ID锛涚郴缁熺骇瑙掕壊鍙负绌恒€?     * @type {number}
    * @memberof AssignRoleRequest
    */
   clubId?: number | null;

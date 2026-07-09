@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -23,14 +23,12 @@ import {
 } from "./AuthRole";
 
 /**
- * 角色分配结果。
- * @export
+ * 瑙掕壊鍒嗛厤缁撴灉銆? * @export
  * @interface RoleAssignmentResult
  */
 export interface RoleAssignmentResult {
   /**
-   * 被分配角色的用户 ID。
-   * @type {number}
+   * 琚垎閰嶈鑹茬殑鐢ㄦ埛 ID銆?     * @type {number}
    * @memberof RoleAssignmentResult
    */
   targetUserId: number;
@@ -41,14 +39,12 @@ export interface RoleAssignmentResult {
    */
   role: AuthRole;
   /**
-   * 该角色分配是否原本已存在。
-   * @type {boolean}
+   * 璇ヨ鑹插垎閰嶆槸鍚﹀師鏈凡瀛樺湪銆?     * @type {boolean}
    * @memberof RoleAssignmentResult
    */
   alreadyExists: boolean;
   /**
-   * 角色分配结果说明。
-   * @type {string}
+   * 瑙掕壊鍒嗛厤缁撴灉璇存槑銆?     * @type {string}
    * @memberof RoleAssignmentResult
    */
   message: string;

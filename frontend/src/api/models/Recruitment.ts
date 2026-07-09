@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -21,140 +21,117 @@ import { mapValues } from "../runtime";
  */
 export interface Recruitment {
   /**
-   * 招募记录 ID。
-   * @type {number}
+   * 鎷涘嫙璁板綍 ID銆?     * @type {number}
    * @memberof Recruitment
    */
   id: number;
   /**
-   * 发布该纳新的社团 ID。
-   * @type {number}
+   * 鍙戝竷璇ョ撼鏂扮殑绀惧洟 ID銆?     * @type {number}
    * @memberof Recruitment
    */
   clubId: number;
   /**
-   * 发布该纳新的社团名称。
-   * @type {string}
+   * 鍙戝竷璇ョ撼鏂扮殑绀惧洟鍚嶇О銆?     * @type {string}
    * @memberof Recruitment
    */
   clubName: string;
   /**
-   * 纳新标题。
-   * @type {string}
+   * 绾虫柊鏍囬銆?     * @type {string}
    * @memberof Recruitment
    */
   title: string;
   /**
-   * 纳新的补充说明，可为空。
-   * @type {string}
+   * 绾虫柊鐨勮ˉ鍏呰鏄庯紝鍙负绌恒€?     * @type {string}
    * @memberof Recruitment
    */
   description?: string | null;
   /**
-   * 纳新开始时间；审核通过后用于计算“未开始/申请中/已结束”。
-   * @type {Date}
+   * 绾虫柊寮€濮嬫椂闂达紱瀹℃牳閫氳繃鍚庣敤浜庤绠椻€滄湭寮€濮?鐢宠涓?宸茬粨鏉熲€濄€?     * @type {Date}
    * @memberof Recruitment
    */
   startAt?: Date | null;
   /**
-   * 纳新结束时间；到期后自动展示为已结束。
-   * @type {Date}
+   * 绾虫柊缁撴潫鏃堕棿锛涘埌鏈熷悗鑷姩灞曠ず涓哄凡缁撴潫銆?     * @type {Date}
    * @memberof Recruitment
    */
   endAt?: Date | null;
   /**
-   * 计划录取人数上限。
-   * @type {number}
+   * 璁″垝褰曞彇浜烘暟涓婇檺銆?     * @type {number}
    * @memberof Recruitment
    */
   quota?: number | null;
   /**
-   * 报名要求或筛选标准。
-   * @type {string}
+   * 鎶ュ悕瑕佹眰鎴栫瓫閫夋爣鍑嗐€?     * @type {string}
    * @memberof Recruitment
    */
   requirements?: string | null;
   /**
-   * 当前展示状态；draft 和 pending_review 为流程状态，not_started/accepting/ended 由已通过纳新的时间窗口计算得到。
-   * @type {RecruitmentRecruitStatusEnum}
+   * 褰撳墠灞曠ず鐘舵€侊紱draft 鍜?pending_review 涓烘祦绋嬬姸鎬侊紝not_started/accepting/ended 鐢卞凡閫氳繃绾虫柊鐨勬椂闂寸獥鍙ｈ绠楀緱鍒般€?     * @type {RecruitmentRecruitStatusEnum}
    * @memberof Recruitment
    */
   recruitStatus: RecruitmentRecruitStatusEnum;
   /**
-   * 当前展示状态的中文文案。
-   * @type {string}
+   * 褰撳墠灞曠ず鐘舵€佺殑涓枃鏂囨銆?     * @type {string}
    * @memberof Recruitment
    */
   recruitStatusText: string;
   /**
-   * 招募创建时间。
-   * @type {Date}
+   * 鎷涘嫙鍒涘缓鏃堕棿銆?     * @type {Date}
    * @memberof Recruitment
    */
   createdAt: Date;
   /**
-   * 当前报名申请总数。
-   * @type {number}
+   * 褰撳墠鎶ュ悕鐢宠鎬绘暟銆?     * @type {number}
    * @memberof Recruitment
    */
   applicationCount: number;
   /**
-   * 当前已录取申请数。
-   * @type {number}
+   * 褰撳墠宸插綍鍙栫敵璇锋暟銆?     * @type {number}
    * @memberof Recruitment
    */
   acceptedCount: number;
   /**
-   * 当前查看用户在该纳新下的申请 ID；未申请时为空。
-   * @type {number}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鍦ㄨ绾虫柊涓嬬殑鐢宠 ID锛涙湭鐢宠鏃朵负绌恒€?     * @type {number}
    * @memberof Recruitment
    */
   currentUserApplicationId?: number | null;
   /**
-   * 当前查看用户的申请状态；未申请时为空。
-   * @type {string}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鐨勭敵璇风姸鎬侊紱鏈敵璇锋椂涓虹┖銆?     * @type {string}
    * @memberof Recruitment
    */
   currentUserApplicationStatus?: string | null;
   /**
-   * 当前查看用户申请状态的中文文案；未申请时为空。
-   * @type {string}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鐢宠鐘舵€佺殑涓枃鏂囨锛涙湭鐢宠鏃朵负绌恒€?     * @type {string}
    * @memberof Recruitment
    */
   currentUserApplicationStatusText?: string | null;
   /**
-   * 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁宸茬粡鏄绀惧洟鎴愬憳锛涘共閮ㄥ拰璐熻矗浜轰篃鎸夋垚鍛樺鐞嗐€?     * @type {boolean}
    * @memberof Recruitment
    */
   currentUserIsMember: boolean;
   /**
-   * 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁搴斿皢璇ョ撼鏂板綊鍏ユ湰绀惧洟鎻愬嚭鐨勭撼鏂帮紱鍚岀ぞ鍥㈠共閮ㄣ€佽礋璐ｄ汉鍏变韩璇ヨ瑙掋€?     * @type {boolean}
    * @memberof Recruitment
    */
   isOwnProposal: boolean;
   /**
-   * 当前查看用户是否可以管理该纳新和其报名。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁鍙互绠＄悊璇ョ撼鏂板拰鍏舵姤鍚嶃€?     * @type {boolean}
    * @memberof Recruitment
    */
   canManage: boolean;
   /**
-   * 当前查看用户是否可以编辑该纳新草稿。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁鍙互缂栬緫璇ョ撼鏂拌崏绋裤€?     * @type {boolean}
    * @memberof Recruitment
    */
   canEdit: boolean;
   /**
-   * 当前查看用户是否可以删除该纳新草稿。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁鍙互鍒犻櫎璇ョ撼鏂拌崏绋裤€?     * @type {boolean}
    * @memberof Recruitment
    */
   canDelete: boolean;
   /**
-   * 当前查看用户是否可以审核该纳新。
-   * @type {boolean}
+   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁鍙互瀹℃牳璇ョ撼鏂般€?     * @type {boolean}
    * @memberof Recruitment
    */
   canReview: boolean;

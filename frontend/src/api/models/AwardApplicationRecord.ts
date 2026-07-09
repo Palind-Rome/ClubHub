@@ -1,9 +1,9 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,8 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 评优评奖成员申报记录。当前复用 EVALUATIONS 表中的 award_application 类型承载。
- * @export
+ * 璇勪紭璇勫鎴愬憳鐢虫姤璁板綍銆傚綋鍓嶅鐢?EVALUATIONS 琛ㄤ腑鐨?award_application 绫诲瀷鎵胯浇銆? * @export
  * @interface AwardApplicationRecord
  */
 export interface AwardApplicationRecord {
