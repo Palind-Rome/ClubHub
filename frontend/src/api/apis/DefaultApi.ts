@@ -103,6 +103,26 @@ import {
   CreateRecruitmentRequestToJSON,
 } from "../models/CreateRecruitmentRequest";
 import {
+  type CreateVenueRequest,
+  CreateVenueRequestFromJSON,
+  CreateVenueRequestToJSON,
+} from "../models/CreateVenueRequest";
+import {
+  type CreateVenueReservationRequest,
+  CreateVenueReservationRequestFromJSON,
+  CreateVenueReservationRequestToJSON,
+} from "../models/CreateVenueReservationRequest";
+import {
+  type DeleteVenueRequest,
+  DeleteVenueRequestFromJSON,
+  DeleteVenueRequestToJSON,
+} from "../models/DeleteVenueRequest";
+import {
+  type DeleteVenueReservationRequest,
+  DeleteVenueReservationRequestFromJSON,
+  DeleteVenueReservationRequestToJSON,
+} from "../models/DeleteVenueReservationRequest";
+import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -186,6 +206,11 @@ import {
   ReviewRecruitmentRequestToJSON,
 } from "../models/ReviewRecruitmentRequest";
 import {
+  type ReviewVenueReservationRequest,
+  ReviewVenueReservationRequestFromJSON,
+  ReviewVenueReservationRequestToJSON,
+} from "../models/ReviewVenueReservationRequest";
+import {
   type RoleAssignmentResult,
   RoleAssignmentResultFromJSON,
   RoleAssignmentResultToJSON,
@@ -220,7 +245,23 @@ import {
   UpdateRecruitmentRequestFromJSON,
   UpdateRecruitmentRequestToJSON,
 } from "../models/UpdateRecruitmentRequest";
+import {
+  type UpdateVenueRequest,
+  UpdateVenueRequestFromJSON,
+  UpdateVenueRequestToJSON,
+} from "../models/UpdateVenueRequest";
+import {
+  type UpdateVenueStatusRequest,
+  UpdateVenueStatusRequestFromJSON,
+  UpdateVenueStatusRequestToJSON,
+} from "../models/UpdateVenueStatusRequest";
 import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
+import { type Venue, VenueFromJSON, VenueToJSON } from "../models/Venue";
+import {
+  type VenueReservation,
+  VenueReservationFromJSON,
+  VenueReservationToJSON,
+} from "../models/VenueReservation";
 
 export interface AssignProjectLeaderOperationRequest {
   projectId: number;
@@ -286,9 +327,27 @@ export interface CreateRecruitmentApplicationOperationRequest {
   createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
 }
 
+export interface CreateVenueOperationRequest {
+  createVenueRequest: CreateVenueRequest;
+}
+
+export interface CreateVenueReservationOperationRequest {
+  createVenueReservationRequest: CreateVenueReservationRequest;
+}
+
 export interface DeleteRecruitmentRequest {
   recruitId: number;
   currentUserId: number;
+}
+
+export interface DeleteVenueOperationRequest {
+  venueId: number;
+  deleteVenueRequest: DeleteVenueRequest;
+}
+
+export interface DeleteVenueReservationOperationRequest {
+  reservationId: number;
+  deleteVenueReservationRequest: DeleteVenueReservationRequest;
 }
 
 export interface DissolveClubOperationRequest {
@@ -367,6 +426,26 @@ export interface GetUsersRequest {
   clubId?: number;
 }
 
+export interface GetVenueByIdRequest {
+  venueId: number;
+}
+
+export interface GetVenueReservationByIdRequest {
+  reservationId: number;
+}
+
+export interface GetVenueReservationsRequest {
+  status?: GetVenueReservationsStatusEnum;
+  venueId?: number;
+  clubId?: number;
+  applicantUserId?: number;
+  reviewerUserId?: number;
+}
+
+export interface GetVenuesRequest {
+  status?: GetVenuesStatusEnum;
+}
+
 export interface LoginUserRequest {
   loginRequest: LoginRequest;
 }
@@ -416,6 +495,11 @@ export interface ReviewRecruitmentApplicationOperationRequest {
   reviewRecruitmentApplicationRequest: ReviewRecruitmentApplicationRequest;
 }
 
+export interface ReviewVenueReservationOperationRequest {
+  reservationId: number;
+  reviewVenueReservationRequest: ReviewVenueReservationRequest;
+}
+
 export interface UpdateActivityCheckinSettingsRequest {
   activityId: number;
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
@@ -440,6 +524,16 @@ export interface UpdateClubProfileOperationRequest {
 export interface UpdateRecruitmentOperationRequest {
   recruitId: number;
   updateRecruitmentRequest: UpdateRecruitmentRequest;
+}
+
+export interface UpdateVenueOperationRequest {
+  venueId: number;
+  updateVenueRequest: UpdateVenueRequest;
+}
+
+export interface UpdateVenueStatusOperationRequest {
+  venueId: number;
+  updateVenueStatusRequest: UpdateVenueStatusRequest;
 }
 
 /**
@@ -1308,6 +1402,116 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createVenue without sending the request
+   */
+  async createVenueRequestOpts(
+    requestParameters: CreateVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createVenueRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createVenueRequest",
+        'Required parameter "createVenueRequest" was null or undefined when calling createVenue().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venues`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateVenueRequestToJSON(requestParameters["createVenueRequest"]),
+    };
+  }
+
+  /**
+   * 创建场地
+   */
+  async createVenueRaw(
+    requestParameters: CreateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.createVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
+  }
+
+  /**
+   * 创建场地
+   */
+  async createVenue(
+    requestParameters: CreateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Venue> {
+    const response = await this.createVenueRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createVenueReservation without sending the request
+   */
+  async createVenueReservationRequestOpts(
+    requestParameters: CreateVenueReservationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createVenueReservationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createVenueReservationRequest",
+        'Required parameter "createVenueReservationRequest" was null or undefined when calling createVenueReservation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venue-reservations`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateVenueReservationRequestToJSON(requestParameters["createVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 提交场地预约申请
+   */
+  async createVenueReservationRaw(
+    requestParameters: CreateVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.createVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      VenueReservationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 提交场地预约申请
+   */
+  async createVenueReservation(
+    requestParameters: CreateVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<VenueReservation> {
+    const response = await this.createVenueReservationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for deleteRecruitment without sending the request
    */
   async deleteRecruitmentRequestOpts(
@@ -1372,6 +1576,134 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteRecruitmentRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteVenue without sending the request
+   */
+  async deleteVenueRequestOpts(
+    requestParameters: DeleteVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["venueId"] == null) {
+      throw new runtime.RequiredError(
+        "venueId",
+        'Required parameter "venueId" was null or undefined when calling deleteVenue().',
+      );
+    }
+
+    if (requestParameters["deleteVenueRequest"] == null) {
+      throw new runtime.RequiredError(
+        "deleteVenueRequest",
+        'Required parameter "deleteVenueRequest" was null or undefined when calling deleteVenue().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venues/{venueId}`;
+    urlPath = urlPath.replace(
+      "{venueId}",
+      encodeURIComponent(String(requestParameters["venueId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: DeleteVenueRequestToJSON(requestParameters["deleteVenueRequest"]),
+    };
+  }
+
+  /**
+   * 删除场地
+   */
+  async deleteVenueRaw(
+    requestParameters: DeleteVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除场地
+   */
+  async deleteVenue(
+    requestParameters: DeleteVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteVenueRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteVenueReservation without sending the request
+   */
+  async deleteVenueReservationRequestOpts(
+    requestParameters: DeleteVenueReservationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["reservationId"] == null) {
+      throw new runtime.RequiredError(
+        "reservationId",
+        'Required parameter "reservationId" was null or undefined when calling deleteVenueReservation().',
+      );
+    }
+
+    if (requestParameters["deleteVenueReservationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "deleteVenueReservationRequest",
+        'Required parameter "deleteVenueReservationRequest" was null or undefined when calling deleteVenueReservation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venue-reservations/{reservationId}`;
+    urlPath = urlPath.replace(
+      "{reservationId}",
+      encodeURIComponent(String(requestParameters["reservationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: DeleteVenueReservationRequestToJSON(requestParameters["deleteVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 删除场地预约
+   */
+  async deleteVenueReservationRaw(
+    requestParameters: DeleteVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除场地预约
+   */
+  async deleteVenueReservation(
+    requestParameters: DeleteVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteVenueReservationRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -2353,6 +2685,230 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getVenueById without sending the request
+   */
+  async getVenueByIdRequestOpts(
+    requestParameters: GetVenueByIdRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["venueId"] == null) {
+      throw new runtime.RequiredError(
+        "venueId",
+        'Required parameter "venueId" was null or undefined when calling getVenueById().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/venues/{venueId}`;
+    urlPath = urlPath.replace(
+      "{venueId}",
+      encodeURIComponent(String(requestParameters["venueId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地详情
+   */
+  async getVenueByIdRaw(
+    requestParameters: GetVenueByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.getVenueByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
+  }
+
+  /**
+   * 获取场地详情
+   */
+  async getVenueById(
+    requestParameters: GetVenueByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Venue> {
+    const response = await this.getVenueByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getVenueReservationById without sending the request
+   */
+  async getVenueReservationByIdRequestOpts(
+    requestParameters: GetVenueReservationByIdRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["reservationId"] == null) {
+      throw new runtime.RequiredError(
+        "reservationId",
+        'Required parameter "reservationId" was null or undefined when calling getVenueReservationById().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/venue-reservations/{reservationId}`;
+    urlPath = urlPath.replace(
+      "{reservationId}",
+      encodeURIComponent(String(requestParameters["reservationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地预约详情
+   */
+  async getVenueReservationByIdRaw(
+    requestParameters: GetVenueReservationByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.getVenueReservationByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      VenueReservationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 获取场地预约详情
+   */
+  async getVenueReservationById(
+    requestParameters: GetVenueReservationByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<VenueReservation> {
+    const response = await this.getVenueReservationByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getVenueReservations without sending the request
+   */
+  async getVenueReservationsRequestOpts(
+    requestParameters: GetVenueReservationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["venueId"] != null) {
+      queryParameters["venueId"] = requestParameters["venueId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["applicantUserId"] != null) {
+      queryParameters["applicantUserId"] = requestParameters["applicantUserId"];
+    }
+
+    if (requestParameters["reviewerUserId"] != null) {
+      queryParameters["reviewerUserId"] = requestParameters["reviewerUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/venue-reservations`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地预约列表
+   */
+  async getVenueReservationsRaw(
+    requestParameters: GetVenueReservationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<VenueReservation>>> {
+    const requestOptions = await this.getVenueReservationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(VenueReservationFromJSON),
+    );
+  }
+
+  /**
+   * 获取场地预约列表
+   */
+  async getVenueReservations(
+    requestParameters: GetVenueReservationsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<VenueReservation>> {
+    const response = await this.getVenueReservationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getVenues without sending the request
+   */
+  async getVenuesRequestOpts(requestParameters: GetVenuesRequest): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/venues`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地列表
+   */
+  async getVenuesRaw(
+    requestParameters: GetVenuesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Venue>>> {
+    const requestOptions = await this.getVenuesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(VenueFromJSON));
+  }
+
+  /**
+   * 获取场地列表
+   */
+  async getVenues(
+    requestParameters: GetVenuesRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Venue>> {
+    const response = await this.getVenuesRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for healthCheck without sending the request
    */
   async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
@@ -3092,6 +3648,73 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewVenueReservation without sending the request
+   */
+  async reviewVenueReservationRequestOpts(
+    requestParameters: ReviewVenueReservationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["reservationId"] == null) {
+      throw new runtime.RequiredError(
+        "reservationId",
+        'Required parameter "reservationId" was null or undefined when calling reviewVenueReservation().',
+      );
+    }
+
+    if (requestParameters["reviewVenueReservationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewVenueReservationRequest",
+        'Required parameter "reviewVenueReservationRequest" was null or undefined when calling reviewVenueReservation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venue-reservations/{reservationId}/review`;
+    urlPath = urlPath.replace(
+      "{reservationId}",
+      encodeURIComponent(String(requestParameters["reservationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewVenueReservationRequestToJSON(requestParameters["reviewVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 审批场地预约
+   */
+  async reviewVenueReservationRaw(
+    requestParameters: ReviewVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.reviewVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      VenueReservationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 审批场地预约
+   */
+  async reviewVenueReservation(
+    requestParameters: ReviewVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<VenueReservation> {
+    const response = await this.reviewVenueReservationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateActivityCheckinSettings without sending the request
    */
   async updateActivityCheckinSettingsRequestOpts(
@@ -3425,6 +4048,136 @@ export class DefaultApi extends runtime.BaseAPI {
     const response = await this.updateRecruitmentRaw(requestParameters, initOverrides);
     return await response.value();
   }
+
+  /**
+   * Creates request options for updateVenue without sending the request
+   */
+  async updateVenueRequestOpts(
+    requestParameters: UpdateVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["venueId"] == null) {
+      throw new runtime.RequiredError(
+        "venueId",
+        'Required parameter "venueId" was null or undefined when calling updateVenue().',
+      );
+    }
+
+    if (requestParameters["updateVenueRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateVenueRequest",
+        'Required parameter "updateVenueRequest" was null or undefined when calling updateVenue().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venues/{venueId}`;
+    urlPath = urlPath.replace(
+      "{venueId}",
+      encodeURIComponent(String(requestParameters["venueId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateVenueRequestToJSON(requestParameters["updateVenueRequest"]),
+    };
+  }
+
+  /**
+   * 更新场地信息
+   */
+  async updateVenueRaw(
+    requestParameters: UpdateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.updateVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
+  }
+
+  /**
+   * 更新场地信息
+   */
+  async updateVenue(
+    requestParameters: UpdateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Venue> {
+    const response = await this.updateVenueRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateVenueStatus without sending the request
+   */
+  async updateVenueStatusRequestOpts(
+    requestParameters: UpdateVenueStatusOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["venueId"] == null) {
+      throw new runtime.RequiredError(
+        "venueId",
+        'Required parameter "venueId" was null or undefined when calling updateVenueStatus().',
+      );
+    }
+
+    if (requestParameters["updateVenueStatusRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateVenueStatusRequest",
+        'Required parameter "updateVenueStatusRequest" was null or undefined when calling updateVenueStatus().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/venues/{venueId}/status`;
+    urlPath = urlPath.replace(
+      "{venueId}",
+      encodeURIComponent(String(requestParameters["venueId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateVenueStatusRequestToJSON(requestParameters["updateVenueStatusRequest"]),
+    };
+  }
+
+  /**
+   * 更新场地状态
+   */
+  async updateVenueStatusRaw(
+    requestParameters: UpdateVenueStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.updateVenueStatusRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
+  }
+
+  /**
+   * 更新场地状态
+   */
+  async updateVenueStatus(
+    requestParameters: UpdateVenueStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Venue> {
+    const response = await this.updateVenueStatusRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
 }
 
 /**
@@ -3470,3 +4223,23 @@ export const GetRecruitmentsStatusEnum = {
 } as const;
 export type GetRecruitmentsStatusEnum =
   (typeof GetRecruitmentsStatusEnum)[keyof typeof GetRecruitmentsStatusEnum];
+/**
+ * @export
+ */
+export const GetVenueReservationsStatusEnum = {
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+  Cancelled: "cancelled",
+} as const;
+export type GetVenueReservationsStatusEnum =
+  (typeof GetVenueReservationsStatusEnum)[keyof typeof GetVenueReservationsStatusEnum];
+/**
+ * @export
+ */
+export const GetVenuesStatusEnum = {
+  Available: "available",
+  Disabled: "disabled",
+  Maintenance: "maintenance",
+} as const;
+export type GetVenuesStatusEnum = (typeof GetVenuesStatusEnum)[keyof typeof GetVenuesStatusEnum];

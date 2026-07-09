@@ -33,7 +33,7 @@ export interface AssignRoleRequest {
    */
   targetUserId: number;
   /**
-   * 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+   * 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。
    * @type {string}
    * @memberof AssignRoleRequest
    */

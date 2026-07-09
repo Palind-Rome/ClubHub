@@ -1476,6 +1476,393 @@ paths:
           description: 当前用户无权撤销该项目申请
         "404":
           description: 项目不存在
+
+  /api/venues:
+    get:
+      summary: 获取场地列表
+      operationId: getVenues
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: 按场地状态筛选。
+          schema:
+            type: string
+            enum: [available, disabled, maintenance]
+      responses:
+        "200":
+          description: 场地列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Venue"
+    post:
+      summary: 创建场地
+      operationId: createVenue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVenueRequest"
+      responses:
+        "201":
+          description: 场地已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有创建场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venues/{venueId}:
+    get:
+      summary: 获取场地详情
+      operationId: getVenueById
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 场地详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      summary: 更新场地信息
+      operationId: updateVenue
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVenueRequest"
+      responses:
+        "200":
+          description: 场地已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有维护场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除场地
+      operationId: deleteVenue
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteVenueRequest"
+      responses:
+        "204":
+          description: 场地已删除
+        "403":
+          description: 当前用户没有删除场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 场地已有预约记录，不能删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venues/{venueId}/status:
+    patch:
+      summary: 更新场地状态
+      operationId: updateVenueStatus
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVenueStatusRequest"
+      responses:
+        "200":
+          description: 场地状态已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有停用或恢复场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 场地后续存在与状态变更冲突的预约
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venue-reservations:
+    get:
+      summary: 获取场地预约列表
+      operationId: getVenueReservations
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: 按预约审批状态筛选。
+          schema:
+            type: string
+            enum: [pending, approved, rejected, cancelled]
+        - name: venueId
+          in: query
+          required: false
+          description: 按场地筛选。
+          schema:
+            type: integer
+        - name: clubId
+          in: query
+          required: false
+          description: 按申请社团筛选。
+          schema:
+            type: integer
+        - name: applicantUserId
+          in: query
+          required: false
+          description: 按申请人用户筛选。
+          schema:
+            type: integer
+        - name: reviewerUserId
+          in: query
+          required: false
+          description: 按审批人用户筛选。
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 场地预约列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VenueReservation"
+    post:
+      summary: 提交场地预约申请
+      operationId: createVenueReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVenueReservationRequest"
+      responses:
+        "201":
+          description: 预约申请已提交，等待管理员审批
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VenueReservation"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地、社团、活动或申请人不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 同一场地存在时间重叠的已通过预约
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venue-reservations/{reservationId}:
+    get:
+      summary: 获取场地预约详情
+      operationId: getVenueReservationById
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 场地预约详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VenueReservation"
+        "404":
+          description: 预约不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除场地预约
+      operationId: deleteVenueReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteVenueReservationRequest"
+      responses:
+        "204":
+          description: 预约已删除
+        "403":
+          description: 当前用户没有删除该预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 预约不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 已开始且未结束的已通过预约暂时无法删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venue-reservations/{reservationId}/review:
+    post:
+      summary: 审批场地预约
+      operationId: reviewVenueReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewVenueReservationRequest"
+      responses:
+        "200":
+          description: 场地预约审批结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VenueReservation"
+        "400":
+          description: 请求参数不合法或预约状态不允许审批
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 预约或审批人不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有场地预约审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 审批通过时发现同一场地存在时间重叠的已通过预约
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1622,7 +2009,7 @@ components:
           example: 2
         roleCode:
           type: string
-          description: 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+          description: 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。
           maxLength: 50
           example: CLUB_MEMBER
         clubId:
@@ -3068,6 +3455,7 @@ components:
           type: string
           nullable: true
           maxLength: 255
+
         startTime:
           type: string
           format: date-time
@@ -3179,6 +3567,253 @@ components:
         - id
         - activityId
         - userId
+
+    Venue:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        building:
+          type: string
+          nullable: true
+        roomNo:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+        status:
+          type: string
+          enum: [available, disabled, maintenance]
+        managerUserId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        maintenanceUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: 维护结束时间。为空表示维护结束时间未知。
+      required:
+        - id
+        - name
+        - capacity
+        - status
+        - createdAt
+
+    CreateVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行创建操作的用户 ID，用于校验 venue:create 权限。
+        name:
+          type: string
+          maxLength: 255
+        building:
+          type: string
+          nullable: true
+          maxLength: 255
+        roomNo:
+          type: string
+          nullable: true
+          maxLength: 255
+        capacity:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [available, disabled, maintenance]
+          default: available
+        managerUserId:
+          type: integer
+          nullable: true
+      required:
+        - operatorUserId
+        - name
+        - capacity
+
+    UpdateVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行维护操作的用户 ID，用于校验 venue:update 权限。
+        name:
+          type: string
+          maxLength: 255
+        building:
+          type: string
+          nullable: true
+          maxLength: 255
+        roomNo:
+          type: string
+          nullable: true
+          maxLength: 255
+        capacity:
+          type: integer
+          minimum: 1
+        managerUserId:
+          type: integer
+          nullable: true
+      required:
+        - operatorUserId
+        - name
+        - capacity
+
+    UpdateVenueStatusRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行状态变更操作的用户 ID，用于校验 venue:disable 权限。
+        status:
+          type: string
+          enum: [available, disabled, maintenance]
+        maintenanceUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: status 为 maintenance 时可选填写的维护结束时间。
+        cancelConflictingReservations:
+          type: boolean
+          nullable: true
+          description: 若状态变更与后续预约冲突，是否自动取消这些冲突预约。
+      required:
+        - operatorUserId
+        - status
+
+    DeleteVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行删除操作的用户 ID，用于校验 venue:disable 权限。
+      required:
+        - operatorUserId
+
+    DeleteVenueReservationRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。
+      required:
+        - operatorUserId
+
+    VenueReservation:
+      type: object
+      properties:
+        id:
+          type: integer
+        venueId:
+          type: integer
+        venueName:
+          type: string
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        activityId:
+          type: integer
+          nullable: true
+        activityTitle:
+          type: string
+          nullable: true
+        applicantUserId:
+          type: integer
+        applicantName:
+          type: string
+          nullable: true
+        startTime:
+          type: string
+          format: date-time
+          description: 预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+        endTime:
+          type: string
+          format: date-time
+          description: 预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+        purpose:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+          maxLength: 255
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+      required:
+        - id
+        - venueId
+        - venueName
+        - clubId
+        - clubName
+        - applicantUserId
+        - startTime
+        - endTime
+        - purpose
+        - status
+        - createdAt
+
+    CreateVenueReservationRequest:
+      type: object
+      properties:
+        venueId:
+          type: integer
+        clubId:
+          type: integer
+        activityId:
+          type: integer
+          nullable: true
+        applicantUserId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+          description: 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
+        endTime:
+          type: string
+          format: date-time
+          description: 预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+        - venueId
+        - clubId
+        - applicantUserId
+        - startTime
+        - endTime
+        - purpose
+
+    ReviewVenueReservationRequest:
+      type: object
+      properties:
+        reviewerUserId:
+          type: integer
+        approved:
+          type: boolean
+        reviewComment:
+          type: string
+          nullable: true
+          maxLength: 255
+      required:
+        - reviewerUserId
+        - approved
 
     Project:
       type: object

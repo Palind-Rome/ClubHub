@@ -44,9 +44,9 @@ namespace Org.OpenAPITools.Models
         public int TargetUserId { get; set; }
 
         /// <summary>
-        /// 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+        /// 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。
         /// </summary>
-        /// <value>角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。</value>
+        /// <value>角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。</value>
         /* <example>CLUB_MEMBER</example> */
         [Required]
         [MaxLength(50)]
