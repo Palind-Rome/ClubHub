@@ -32,6 +32,11 @@ import {
 } from "../models/ActivitySignRequest";
 import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
 import {
+  type ApplyActivityBudgetRequest,
+  ApplyActivityBudgetRequestFromJSON,
+  ApplyActivityBudgetRequestToJSON,
+} from "../models/ApplyActivityBudgetRequest";
+import {
   type AssignProjectLeaderRequest,
   AssignProjectLeaderRequestFromJSON,
   AssignProjectLeaderRequestToJSON,
@@ -181,6 +186,11 @@ import {
   RegisterRequestToJSON,
 } from "../models/RegisterRequest";
 import {
+  type ReviewActivityBudgetRequest,
+  ReviewActivityBudgetRequestFromJSON,
+  ReviewActivityBudgetRequestToJSON,
+} from "../models/ReviewActivityBudgetRequest";
+import {
   type ReviewActivityRequest,
   ReviewActivityRequestFromJSON,
   ReviewActivityRequestToJSON,
@@ -262,6 +272,11 @@ import {
   VenueReservationFromJSON,
   VenueReservationToJSON,
 } from "../models/VenueReservation";
+
+export interface ApplyActivityBudgetOperationRequest {
+  activityId: number;
+  applyActivityBudgetRequest: ApplyActivityBudgetRequest;
+}
 
 export interface AssignProjectLeaderOperationRequest {
   projectId: number;
@@ -475,6 +490,11 @@ export interface ReviewActivityOperationRequest {
   reviewActivityRequest: ReviewActivityRequest;
 }
 
+export interface ReviewActivityBudgetOperationRequest {
+  activityId: number;
+  reviewActivityBudgetRequest: ReviewActivityBudgetRequest;
+}
+
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
@@ -540,6 +560,73 @@ export interface UpdateVenueStatusOperationRequest {
  *
  */
 export class DefaultApi extends runtime.BaseAPI {
+  /**
+   * Creates request options for applyActivityBudget without sending the request
+   */
+  async applyActivityBudgetRequestOpts(
+    requestParameters: ApplyActivityBudgetOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling applyActivityBudget().',
+      );
+    }
+
+    if (requestParameters["applyActivityBudgetRequest"] == null) {
+      throw new runtime.RequiredError(
+        "applyActivityBudgetRequest",
+        'Required parameter "applyActivityBudgetRequest" was null or undefined when calling applyActivityBudget().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/budget`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ApplyActivityBudgetRequestToJSON(requestParameters["applyActivityBudgetRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。
+   * 提交或更新活动经费预算申请
+   */
+  async applyActivityBudgetRaw(
+    requestParameters: ApplyActivityBudgetOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.applyActivityBudgetRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。
+   * 提交或更新活动经费预算申请
+   */
+  async applyActivityBudget(
+    requestParameters: ApplyActivityBudgetOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.applyActivityBudgetRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
   /**
    * Creates request options for assignProjectLeader without sending the request
    */
@@ -3377,6 +3464,73 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.reviewActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewActivityBudget without sending the request
+   */
+  async reviewActivityBudgetRequestOpts(
+    requestParameters: ReviewActivityBudgetOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling reviewActivityBudget().',
+      );
+    }
+
+    if (requestParameters["reviewActivityBudgetRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewActivityBudgetRequest",
+        'Required parameter "reviewActivityBudgetRequest" was null or undefined when calling reviewActivityBudget().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/budget/review`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewActivityBudgetRequestToJSON(requestParameters["reviewActivityBudgetRequest"]),
+    };
+  }
+
+  /**
+   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
+   * 审批活动经费预算
+   */
+  async reviewActivityBudgetRaw(
+    requestParameters: ReviewActivityBudgetOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.reviewActivityBudgetRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
+   * 审批活动经费预算
+   */
+  async reviewActivityBudget(
+    requestParameters: ReviewActivityBudgetOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.reviewActivityBudgetRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

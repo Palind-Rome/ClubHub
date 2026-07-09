@@ -174,6 +174,48 @@ namespace Org.OpenAPITools.Models
         public string? ReviewComment { get; set; }
 
         /// <summary>
+        /// 活动经费预算金额，未申请时为空。
+        /// </summary>
+        /// <value>活动经费预算金额，未申请时为空。</value>
+        [DataMember(Name="budgetAmount", EmitDefaultValue=true)]
+        public double? BudgetAmount { get; set; }
+
+        /// <summary>
+        /// 活动经费用途，未申请时为空。
+        /// </summary>
+        /// <value>活动经费用途，未申请时为空。</value>
+        [DataMember(Name="budgetPurpose", EmitDefaultValue=true)]
+        public string? BudgetPurpose { get; set; }
+
+        /// <summary>
+        /// 活动经费预算明细，未申请时为空。
+        /// </summary>
+        /// <value>活动经费预算明细，未申请时为空。</value>
+        [DataMember(Name="budgetDetail", EmitDefaultValue=true)]
+        public string? BudgetDetail { get; set; }
+
+        /// <summary>
+        /// 经费审批状态；为空表示尚未提交经费申请。
+        /// </summary>
+        /// <value>经费审批状态；为空表示尚未提交经费申请。</value>
+        [DataMember(Name="budgetStatus", EmitDefaultValue=true)]
+        public BudgetStatusEnum? BudgetStatus { get; set; }
+
+        /// <summary>
+        /// 经费审批人用户 ID。
+        /// </summary>
+        /// <value>经费审批人用户 ID。</value>
+        [DataMember(Name="budgetReviewerId", EmitDefaultValue=true)]
+        public int? BudgetReviewerId { get; set; }
+
+        /// <summary>
+        /// 经费审批意见。
+        /// </summary>
+        /// <value>经费审批意见。</value>
+        [DataMember(Name="budgetComment", EmitDefaultValue=true)]
+        public string? BudgetComment { get; set; }
+
+        /// <summary>
         /// Gets or Sets PublishedAt
         /// </summary>
         [DataMember(Name="publishedAt", EmitDefaultValue=true)]

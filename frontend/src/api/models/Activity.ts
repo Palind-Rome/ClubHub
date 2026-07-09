@@ -111,6 +111,42 @@ export interface Activity {
    */
   reviewComment?: string | null;
   /**
+   * 活动经费预算金额，未申请时为空。
+   * @type {number}
+   * @memberof Activity
+   */
+  budgetAmount?: number | null;
+  /**
+   * 活动经费用途，未申请时为空。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetPurpose?: string | null;
+  /**
+   * 活动经费预算明细，未申请时为空。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetDetail?: string | null;
+  /**
+   * 经费审批状态；为空表示尚未提交经费申请。
+   * @type {ActivityBudgetStatusEnum}
+   * @memberof Activity
+   */
+  budgetStatus?: ActivityBudgetStatusEnum | null;
+  /**
+   * 经费审批人用户 ID。
+   * @type {number}
+   * @memberof Activity
+   */
+  budgetReviewerId?: number | null;
+  /**
+   * 经费审批意见。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetComment?: string | null;
+  /**
    *
    * @type {Date}
    * @memberof Activity
@@ -169,6 +205,17 @@ export const ActivityStatusEnum = {
 export type ActivityStatusEnum = (typeof ActivityStatusEnum)[keyof typeof ActivityStatusEnum];
 
 /**
+ * @export
+ */
+export const ActivityBudgetStatusEnum = {
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+} as const;
+export type ActivityBudgetStatusEnum =
+  (typeof ActivityBudgetStatusEnum)[keyof typeof ActivityBudgetStatusEnum];
+
+/**
  * Check if a given object implements the Activity interface.
  */
 export function instanceOfActivity(value: object): value is Activity {
@@ -209,6 +256,12 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
       json["registrationDeadline"] == null ? undefined : new Date(json["registrationDeadline"]),
     reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    budgetAmount: json["budgetAmount"] == null ? undefined : json["budgetAmount"],
+    budgetPurpose: json["budgetPurpose"] == null ? undefined : json["budgetPurpose"],
+    budgetDetail: json["budgetDetail"] == null ? undefined : json["budgetDetail"],
+    budgetStatus: json["budgetStatus"] == null ? undefined : json["budgetStatus"],
+    budgetReviewerId: json["budgetReviewerId"] == null ? undefined : json["budgetReviewerId"],
+    budgetComment: json["budgetComment"] == null ? undefined : json["budgetComment"],
     publishedAt: json["publishedAt"] == null ? undefined : new Date(json["publishedAt"]),
     checkinStartAt: json["checkinStartAt"] == null ? undefined : new Date(json["checkinStartAt"]),
     checkinEndAt: json["checkinEndAt"] == null ? undefined : new Date(json["checkinEndAt"]),
@@ -251,6 +304,12 @@ export function ActivityToJSONTyped(
         : value["registrationDeadline"].toISOString(),
     reviewerUserId: value["reviewerUserId"],
     reviewComment: value["reviewComment"],
+    budgetAmount: value["budgetAmount"],
+    budgetPurpose: value["budgetPurpose"],
+    budgetDetail: value["budgetDetail"],
+    budgetStatus: value["budgetStatus"],
+    budgetReviewerId: value["budgetReviewerId"],
+    budgetComment: value["budgetComment"],
     publishedAt:
       value["publishedAt"] == null ? value["publishedAt"] : value["publishedAt"].toISOString(),
     checkinStartAt:
