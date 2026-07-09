@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
 
 const healthOk = ref(false);
+const healthChecking = ref(false);
 const route = useRoute();
 const router = useRouter();
 const auth = ref<AuthResponse | null>(null);
@@ -38,11 +39,14 @@ function refreshSession() {
 }
 
 async function checkHealth() {
+  healthChecking.value = true;
   try {
     const res = await fetch("/api/health");
     healthOk.value = res.ok;
   } catch {
     healthOk.value = false;
+  } finally {
+    healthChecking.value = false;
   }
 }
 
@@ -88,10 +92,15 @@ onUnmounted(() => {
             size="small"
             role="button"
             tabindex="0"
+            :aria-label="
+              healthOk ? '后端已连接，回车或空格重新检测' : '点击、回车或空格检测后端健康状态'
+            "
+            :aria-busy="healthChecking"
             @click="checkHealth"
             @keyup.enter="checkHealth"
+            @keyup.space.prevent="checkHealth"
           >
-            {{ healthOk ? "后端已连接" : "点击检测" }}
+            {{ healthChecking ? "检测中..." : healthOk ? "后端已连接" : "点击检测" }}
           </el-tag>
         </div>
       </el-menu>
