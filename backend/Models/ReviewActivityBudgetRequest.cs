@@ -31,7 +31,7 @@ namespace Org.OpenAPITools.Models
         /// <value>经费审批结果，true 为通过，false 为驳回。</value>
         [Required]
         [DataMember(Name="approved", EmitDefaultValue=true)]
-        public bool? Approved { get; set; }
+        public bool Approved { get; set; }
 
         /// <summary>
         /// 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。

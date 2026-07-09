@@ -25,7 +25,7 @@ export interface ReviewActivityBudgetRequest {
    * @type {boolean}
    * @memberof ReviewActivityBudgetRequest
    */
-  approved: boolean | null;
+  approved: boolean;
   /**
    * 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。
    * @type {number}

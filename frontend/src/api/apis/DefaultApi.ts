@@ -602,7 +602,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。
+   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
    * 提交或更新活动经费预算申请
    */
   async applyActivityBudgetRaw(
@@ -616,7 +616,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。
+   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
    * 提交或更新活动经费预算申请
    */
   async applyActivityBudget(
