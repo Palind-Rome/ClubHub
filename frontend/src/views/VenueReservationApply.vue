@@ -9,7 +9,6 @@ import {
   beijingTodayStartTimestamp,
   formatVenueReservationDate,
   formatVenueReservationDateTime,
-  formatVenueReservationTime,
   venueReservationTimestamp,
 } from "../beijingTime";
 import {
@@ -464,12 +463,8 @@ function formatDateOnly(value: string) {
   return formatVenueReservationDate(value);
 }
 
-function formatTimeOnly(value: string) {
-  return formatVenueReservationTime(value);
-}
-
 function formatSlotRange(slot: VenueReservation) {
-  return `${formatTimeOnly(slot.startTime)} - ${formatTimeOnly(slot.endTime)}`;
+  return `起始 ${formatDateTime(slot.startTime)} · 终止 ${formatDateTime(slot.endTime)}`;
 }
 
 function formatSlotDuration(slot: VenueReservation) {
@@ -839,9 +834,6 @@ onMounted(refreshVenueData);
             <span class="slot-dot"></span>
             <div class="slot-content">
               <div class="slot-range">{{ formatSlotRange(slot) }}</div>
-              <div class="slot-date-range">
-                起始 {{ formatDateOnly(slot.startTime) }} · 终止 {{ formatDateOnly(slot.endTime) }}
-              </div>
               <div class="muted">持续 {{ formatSlotDuration(slot) }}</div>
             </div>
           </div>
@@ -1076,11 +1068,6 @@ onMounted(refreshVenueData);
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-.slot-date-range {
-  color: var(--el-text-color-regular);
-  font-size: 13px;
-  line-height: 1.35;
 }
 .muted {
   color: var(--el-text-color-secondary);
