@@ -23,31 +23,35 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class Venue 
+    public partial class CreateVenueRequest 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// 执行创建操作的用户 ID，用于校验 venue:create 权限。
         /// </summary>
+        /// <value>执行创建操作的用户 ID，用于校验 venue:create 权限。</value>
         [Required]
-        [DataMember(Name="id", EmitDefaultValue=true)]
-        public int Id { get; set; }
+        [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
+        public int OperatorUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets Name
         /// </summary>
         [Required]
+        [MaxLength(255)]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
         /// Gets or Sets Building
         /// </summary>
+        [MaxLength(255)]
         [DataMember(Name="building", EmitDefaultValue=true)]
         public string? Building { get; set; }
 
         /// <summary>
         /// Gets or Sets RoomNo
         /// </summary>
+        [MaxLength(255)]
         [DataMember(Name="roomNo", EmitDefaultValue=true)]
         public string? RoomNo { get; set; }
 
@@ -88,29 +92,14 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
-        [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
-        public StatusEnum Status { get; set; }
+        public StatusEnum Status { get; set; } = StatusEnum.AvailableEnum;
 
         /// <summary>
         /// Gets or Sets ManagerUserId
         /// </summary>
         [DataMember(Name="managerUserId", EmitDefaultValue=true)]
         public int? ManagerUserId { get; set; }
-
-        /// <summary>
-        /// Gets or Sets CreatedAt
-        /// </summary>
-        [Required]
-        [DataMember(Name="createdAt", EmitDefaultValue=true)]
-        public DateTime CreatedAt { get; set; }
-
-        /// <summary>
-        /// 维护结束时间。为空表示维护结束时间未知。
-        /// </summary>
-        /// <value>维护结束时间。为空表示维护结束时间未知。</value>
-        [DataMember(Name="maintenanceUntil", EmitDefaultValue=true)]
-        public DateTime? MaintenanceUntil { get; set; }
 
     }
 }

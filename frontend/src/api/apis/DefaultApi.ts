@@ -14,148 +14,254 @@
  */
 
 import * as runtime from "../runtime";
-import type {
-  Activity,
-  ActivityParticipation,
-  ActivitySignRequest,
-  ApiError,
-  AssignProjectLeaderRequest,
-  AssignRoleRequest,
-  AuthResponse,
-  CancelProjectRequest,
-  Club,
-  ClubApplication,
-  ClubMemberRecord,
-  CreateActivityRequest,
-  CreateClubApplicationRequest,
-  CreateClubMemberTermRequest,
-  CreateClubRequest,
-  CreateNoticeRequest,
-  CreateProjectRequest,
-  CreateVenueRequest,
-  CreateVenueReservationRequest,
-  DeleteVenueRequest,
-  DeleteVenueReservationRequest,
-  DissolveClubRequest,
-  HealthStatus,
-  LoginRequest,
-  MarkNoticeReadRequest,
-  Notice,
-  NoticeReadResult,
-  PermissionCheckResult,
-  PermissionDefinition,
-  Project,
-  RegisterRequest,
-  ReviewActivityRequest,
-  ReviewClubApplicationRequest,
-  ReviewProjectRequest,
-  ReviewVenueReservationRequest,
-  RoleAssignmentResult,
-  RoleDefinition,
-  UpdateCheckinSettingsRequest,
-  UpdateClubMemberTermRequest,
-  UpdateClubProfileRequest,
-  UpdateClubRequest,
-  UpdateVenueRequest,
-  UpdateVenueStatusRequest,
-  UserSummary,
-  Venue,
-  VenueReservation,
-} from "../models/index";
+import { type Activity, ActivityFromJSON, ActivityToJSON } from "../models/Activity";
 import {
-  ActivityFromJSON,
-  ActivityToJSON,
+  type ActivityParticipation,
   ActivityParticipationFromJSON,
   ActivityParticipationToJSON,
+} from "../models/ActivityParticipation";
+import {
+  type ActivityRegistrationResult,
+  ActivityRegistrationResultFromJSON,
+  ActivityRegistrationResultToJSON,
+} from "../models/ActivityRegistrationResult";
+import {
+  type ActivitySignRequest,
   ActivitySignRequestFromJSON,
   ActivitySignRequestToJSON,
-  ApiErrorFromJSON,
-  ApiErrorToJSON,
+} from "../models/ActivitySignRequest";
+import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
+import {
+  type AssignProjectLeaderRequest,
   AssignProjectLeaderRequestFromJSON,
   AssignProjectLeaderRequestToJSON,
+} from "../models/AssignProjectLeaderRequest";
+import {
+  type AssignRoleRequest,
   AssignRoleRequestFromJSON,
   AssignRoleRequestToJSON,
+} from "../models/AssignRoleRequest";
+import {
+  type AuthResponse,
   AuthResponseFromJSON,
   AuthResponseToJSON,
+} from "../models/AuthResponse";
+import {
+  type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
-  ClubFromJSON,
-  ClubToJSON,
+} from "../models/CancelProjectRequest";
+import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
+import {
+  type ClubApplication,
   ClubApplicationFromJSON,
   ClubApplicationToJSON,
+} from "../models/ClubApplication";
+import {
+  type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
+} from "../models/ClubMemberRecord";
+import {
+  type CreateActivityRequest,
   CreateActivityRequestFromJSON,
   CreateActivityRequestToJSON,
+} from "../models/CreateActivityRequest";
+import {
+  type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
   CreateClubApplicationRequestToJSON,
+} from "../models/CreateClubApplicationRequest";
+import {
+  type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
   CreateClubMemberTermRequestToJSON,
+} from "../models/CreateClubMemberTermRequest";
+import {
+  type CreateClubRequest,
   CreateClubRequestFromJSON,
   CreateClubRequestToJSON,
+} from "../models/CreateClubRequest";
+import {
+  type CreateNoticeRequest,
   CreateNoticeRequestFromJSON,
   CreateNoticeRequestToJSON,
+} from "../models/CreateNoticeRequest";
+import {
+  type CreateProjectRequest,
   CreateProjectRequestFromJSON,
   CreateProjectRequestToJSON,
+} from "../models/CreateProjectRequest";
+import {
+  type CreateRecruitmentApplicationRequest,
+  CreateRecruitmentApplicationRequestFromJSON,
+  CreateRecruitmentApplicationRequestToJSON,
+} from "../models/CreateRecruitmentApplicationRequest";
+import {
+  type CreateRecruitmentRequest,
+  CreateRecruitmentRequestFromJSON,
+  CreateRecruitmentRequestToJSON,
+} from "../models/CreateRecruitmentRequest";
+import {
+  type CreateVenueRequest,
   CreateVenueRequestFromJSON,
   CreateVenueRequestToJSON,
+} from "../models/CreateVenueRequest";
+import {
+  type CreateVenueReservationRequest,
   CreateVenueReservationRequestFromJSON,
   CreateVenueReservationRequestToJSON,
+} from "../models/CreateVenueReservationRequest";
+import {
+  type DeleteVenueRequest,
   DeleteVenueRequestFromJSON,
   DeleteVenueRequestToJSON,
+} from "../models/DeleteVenueRequest";
+import {
+  type DeleteVenueReservationRequest,
   DeleteVenueReservationRequestFromJSON,
   DeleteVenueReservationRequestToJSON,
+} from "../models/DeleteVenueReservationRequest";
+import {
+  type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
+} from "../models/DissolveClubRequest";
+import {
+  type ExitClubMemberRequest,
+  ExitClubMemberRequestFromJSON,
+  ExitClubMemberRequestToJSON,
+} from "../models/ExitClubMemberRequest";
+import {
+  type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
+} from "../models/HealthStatus";
+import {
+  type LoginRequest,
   LoginRequestFromJSON,
   LoginRequestToJSON,
+} from "../models/LoginRequest";
+import {
+  type MarkNoticeReadRequest,
   MarkNoticeReadRequestFromJSON,
   MarkNoticeReadRequestToJSON,
-  NoticeFromJSON,
-  NoticeToJSON,
+} from "../models/MarkNoticeReadRequest";
+import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
+import {
+  type NoticeReadResult,
   NoticeReadResultFromJSON,
   NoticeReadResultToJSON,
+} from "../models/NoticeReadResult";
+import {
+  type PermissionCheckResult,
   PermissionCheckResultFromJSON,
   PermissionCheckResultToJSON,
+} from "../models/PermissionCheckResult";
+import {
+  type PermissionDefinition,
   PermissionDefinitionFromJSON,
   PermissionDefinitionToJSON,
-  ProjectFromJSON,
-  ProjectToJSON,
+} from "../models/PermissionDefinition";
+import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
+import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
+import {
+  type RecruitmentApplication,
+  RecruitmentApplicationFromJSON,
+  RecruitmentApplicationToJSON,
+} from "../models/RecruitmentApplication";
+import {
+  type RegisterActivityRequest,
+  RegisterActivityRequestFromJSON,
+  RegisterActivityRequestToJSON,
+} from "../models/RegisterActivityRequest";
+import {
+  type RegisterRequest,
   RegisterRequestFromJSON,
   RegisterRequestToJSON,
+} from "../models/RegisterRequest";
+import {
+  type ReviewActivityRequest,
   ReviewActivityRequestFromJSON,
   ReviewActivityRequestToJSON,
+} from "../models/ReviewActivityRequest";
+import {
+  type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
+} from "../models/ReviewClubApplicationRequest";
+import {
+  type ReviewProjectRequest,
   ReviewProjectRequestFromJSON,
   ReviewProjectRequestToJSON,
+} from "../models/ReviewProjectRequest";
+import {
+  type ReviewRecruitmentApplicationRequest,
+  ReviewRecruitmentApplicationRequestFromJSON,
+  ReviewRecruitmentApplicationRequestToJSON,
+} from "../models/ReviewRecruitmentApplicationRequest";
+import {
+  type ReviewRecruitmentRequest,
+  ReviewRecruitmentRequestFromJSON,
+  ReviewRecruitmentRequestToJSON,
+} from "../models/ReviewRecruitmentRequest";
+import {
+  type ReviewVenueReservationRequest,
   ReviewVenueReservationRequestFromJSON,
   ReviewVenueReservationRequestToJSON,
+} from "../models/ReviewVenueReservationRequest";
+import {
+  type RoleAssignmentResult,
   RoleAssignmentResultFromJSON,
   RoleAssignmentResultToJSON,
+} from "../models/RoleAssignmentResult";
+import {
+  type RoleDefinition,
   RoleDefinitionFromJSON,
   RoleDefinitionToJSON,
+} from "../models/RoleDefinition";
+import {
+  type UpdateCheckinSettingsRequest,
   UpdateCheckinSettingsRequestFromJSON,
   UpdateCheckinSettingsRequestToJSON,
+} from "../models/UpdateCheckinSettingsRequest";
+import {
+  type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
   UpdateClubMemberTermRequestToJSON,
+} from "../models/UpdateClubMemberTermRequest";
+import {
+  type UpdateClubProfileRequest,
   UpdateClubProfileRequestFromJSON,
   UpdateClubProfileRequestToJSON,
+} from "../models/UpdateClubProfileRequest";
+import {
+  type UpdateClubRequest,
   UpdateClubRequestFromJSON,
   UpdateClubRequestToJSON,
+} from "../models/UpdateClubRequest";
+import {
+  type UpdateRecruitmentRequest,
+  UpdateRecruitmentRequestFromJSON,
+  UpdateRecruitmentRequestToJSON,
+} from "../models/UpdateRecruitmentRequest";
+import {
+  type UpdateVenueRequest,
   UpdateVenueRequestFromJSON,
   UpdateVenueRequestToJSON,
+} from "../models/UpdateVenueRequest";
+import {
+  type UpdateVenueStatusRequest,
   UpdateVenueStatusRequestFromJSON,
   UpdateVenueStatusRequestToJSON,
-  UserSummaryFromJSON,
-  UserSummaryToJSON,
-  VenueFromJSON,
-  VenueToJSON,
+} from "../models/UpdateVenueStatusRequest";
+import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
+import { type Venue, VenueFromJSON, VenueToJSON } from "../models/Venue";
+import {
+  type VenueReservation,
   VenueReservationFromJSON,
   VenueReservationToJSON,
-} from "../models/index";
+} from "../models/VenueReservation";
 
 export interface AssignProjectLeaderOperationRequest {
   projectId: number;
@@ -212,12 +318,26 @@ export interface CreateProjectOperationRequest {
   createProjectRequest: CreateProjectRequest;
 }
 
+export interface CreateRecruitmentOperationRequest {
+  createRecruitmentRequest: CreateRecruitmentRequest;
+}
+
+export interface CreateRecruitmentApplicationOperationRequest {
+  recruitId: number;
+  createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
+}
+
 export interface CreateVenueOperationRequest {
   createVenueRequest: CreateVenueRequest;
 }
 
 export interface CreateVenueReservationOperationRequest {
   createVenueReservationRequest: CreateVenueReservationRequest;
+}
+
+export interface DeleteRecruitmentRequest {
+  recruitId: number;
+  currentUserId: number;
 }
 
 export interface DeleteVenueOperationRequest {
@@ -235,8 +355,18 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
+export interface ExitCurrentClubMemberRequest {
+  clubId: number;
+  exitClubMemberRequest: ExitClubMemberRequest;
+}
+
+export interface GetActivitiesRequest {
+  currentUserId?: number;
+}
+
 export interface GetActivityByIdRequest {
   activityId: number;
+  currentUserId?: number;
 }
 
 export interface GetActivityParticipationsRequest {
@@ -280,6 +410,17 @@ export interface GetProjectsRequest {
   pageSize?: number;
 }
 
+export interface GetRecruitmentApplicationsRequest {
+  recruitId: number;
+  viewerUserId: number;
+}
+
+export interface GetRecruitmentsRequest {
+  viewerUserId: number;
+  clubId?: number;
+  status?: GetRecruitmentsStatusEnum;
+}
+
 export interface GetUsersRequest {
   viewerUserId: number;
   clubId?: number;
@@ -314,8 +455,19 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
+export interface RegisterActivityOperationRequest {
+  activityId: number;
+  registerActivityRequest: RegisterActivityRequest;
+}
+
 export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
+}
+
+export interface RemoveClubMemberRequest {
+  clubId: number;
+  memberId: number;
+  exitClubMemberRequest: ExitClubMemberRequest;
 }
 
 export interface ReviewActivityOperationRequest {
@@ -331,6 +483,16 @@ export interface ReviewClubApplicationOperationRequest {
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
+}
+
+export interface ReviewRecruitmentOperationRequest {
+  recruitId: number;
+  reviewRecruitmentRequest: ReviewRecruitmentRequest;
+}
+
+export interface ReviewRecruitmentApplicationOperationRequest {
+  applicationId: number;
+  reviewRecruitmentApplicationRequest: ReviewRecruitmentApplicationRequest;
 }
 
 export interface ReviewVenueReservationOperationRequest {
@@ -359,6 +521,11 @@ export interface UpdateClubProfileOperationRequest {
   updateClubProfileRequest: UpdateClubProfileRequest;
 }
 
+export interface UpdateRecruitmentOperationRequest {
+  recruitId: number;
+  updateRecruitmentRequest: UpdateRecruitmentRequest;
+}
+
 export interface UpdateVenueOperationRequest {
   venueId: number;
   updateVenueRequest: UpdateVenueRequest;
@@ -374,12 +541,11 @@ export interface UpdateVenueStatusOperationRequest {
  */
 export class DefaultApi extends runtime.BaseAPI {
   /**
-   * 分配或调整项目负责人
+   * Creates request options for assignProjectLeader without sending the request
    */
-  async assignProjectLeaderRaw(
+  async assignProjectLeaderRequestOpts(
     requestParameters: AssignProjectLeaderOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -402,20 +568,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects/{projectId}/leader`;
     urlPath = urlPath.replace(
-      `{${"projectId"}}`,
+      "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PUT",
-        headers: headerParameters,
-        query: queryParameters,
-        body: AssignProjectLeaderRequestToJSON(requestParameters["assignProjectLeaderRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: AssignProjectLeaderRequestToJSON(requestParameters["assignProjectLeaderRequest"]),
+    };
+  }
+
+  /**
+   * 分配或调整项目负责人
+   */
+  async assignProjectLeaderRaw(
+    requestParameters: AssignProjectLeaderOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.assignProjectLeaderRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
   }
@@ -432,12 +606,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 分配用户角色
+   * Creates request options for assignUserRole without sending the request
    */
-  async assignUserRoleRaw(
+  async assignUserRoleRequestOpts(
     requestParameters: AssignUserRoleRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<RoleAssignmentResult>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["assignRoleRequest"] == null) {
       throw new runtime.RequiredError(
         "assignRoleRequest",
@@ -453,16 +626,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/auth/roles/assign`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: AssignRoleRequestToJSON(requestParameters["assignRoleRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: AssignRoleRequestToJSON(requestParameters["assignRoleRequest"]),
+    };
+  }
+
+  /**
+   * 分配用户角色
+   */
+  async assignUserRoleRaw(
+    requestParameters: AssignUserRoleRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RoleAssignmentResult>> {
+    const requestOptions = await this.assignUserRoleRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       RoleAssignmentResultFromJSON(jsonValue),
@@ -481,13 +662,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
-   * 撤销待审核或进行中的项目
+   * Creates request options for cancelProject without sending the request
    */
-  async cancelProjectRaw(
+  async cancelProjectRequestOpts(
     requestParameters: CancelProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -510,20 +689,29 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects/{projectId}/cancel`;
     urlPath = urlPath.replace(
-      `{${"projectId"}}`,
+      "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CancelProjectRequestToJSON(requestParameters["cancelProjectRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CancelProjectRequestToJSON(requestParameters["cancelProjectRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 撤销待审核或进行中的项目
+   */
+  async cancelProjectRaw(
+    requestParameters: CancelProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.cancelProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
   }
@@ -541,12 +729,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
+   * Creates request options for checkPermission without sending the request
    */
-  async checkPermissionRaw(
+  async checkPermissionRequestOpts(
     requestParameters: CheckPermissionRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["userId"] == null) {
       throw new runtime.RequiredError(
         "userId",
@@ -579,15 +766,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/auth/permissions/check`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 检查用户是否拥有指定权限
+   */
+  async checkPermissionRaw(
+    requestParameters: CheckPermissionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
+    const requestOptions = await this.checkPermissionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       PermissionCheckResultFromJSON(jsonValue),
@@ -606,12 +801,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 活动签到
+   * Creates request options for checkinActivity without sending the request
    */
-  async checkinActivityRaw(
+  async checkinActivityRequestOpts(
     requestParameters: CheckinActivityRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -634,20 +828,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities/{activityId}/checkin`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签到
+   */
+  async checkinActivityRaw(
+    requestParameters: CheckinActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkinActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       ActivityParticipationFromJSON(jsonValue),
@@ -666,12 +868,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 活动签退
+   * Creates request options for checkoutActivity without sending the request
    */
-  async checkoutActivityRaw(
+  async checkoutActivityRequestOpts(
     requestParameters: CheckoutActivityRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -694,20 +895,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities/{activityId}/checkout`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签退
+   */
+  async checkoutActivityRaw(
+    requestParameters: CheckoutActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkoutActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       ActivityParticipationFromJSON(jsonValue),
@@ -726,12 +935,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 创建活动并提交审核
+   * Creates request options for createActivity without sending the request
    */
-  async createActivityRaw(
+  async createActivityRequestOpts(
     requestParameters: CreateActivityOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Activity>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createActivityRequest"] == null) {
       throw new runtime.RequiredError(
         "createActivityRequest",
@@ -747,16 +955,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateActivityRequestToJSON(requestParameters["createActivityRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateActivityRequestToJSON(requestParameters["createActivityRequest"]),
+    };
+  }
+
+  /**
+   * 创建活动并提交审核
+   */
+  async createActivityRaw(
+    requestParameters: CreateActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.createActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
   }
@@ -773,12 +989,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 创建社团
+   * Creates request options for createClub without sending the request
    */
-  async createClubRaw(
+  async createClubRequestOpts(
     requestParameters: CreateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createClubRequest"] == null) {
       throw new runtime.RequiredError(
         "createClubRequest",
@@ -794,16 +1009,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/clubs`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateClubRequestToJSON(requestParameters["createClubRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubRequestToJSON(requestParameters["createClubRequest"]),
+    };
+  }
+
+  /**
+   * 创建社团
+   */
+  async createClubRaw(
+    requestParameters: CreateClubOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Club>> {
+    const requestOptions = await this.createClubRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
   }
@@ -820,13 +1043,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
-   * 提交社团注册申请
+   * Creates request options for createClubApplication without sending the request
    */
-  async createClubApplicationRaw(
+  async createClubApplicationRequestOpts(
     requestParameters: CreateClubApplicationOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ClubApplication>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createClubApplicationRequest"] == null) {
       throw new runtime.RequiredError(
         "createClubApplicationRequest",
@@ -842,16 +1063,25 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/clubs/applications`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateClubApplicationRequestToJSON(requestParameters["createClubApplicationRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubApplicationRequestToJSON(requestParameters["createClubApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
+   * 提交社团注册申请
+   */
+  async createClubApplicationRaw(
+    requestParameters: CreateClubApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubApplication>> {
+    const requestOptions = await this.createClubApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
   }
@@ -869,13 +1099,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
-   * 新增社团成员或干部任期
+   * Creates request options for createClubMemberTerm without sending the request
    */
-  async createClubMemberTermRaw(
+  async createClubMemberTermRequestOpts(
     requestParameters: CreateClubMemberTermOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -897,21 +1125,27 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/{clubId}/members/terms`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateClubMemberTermRequestToJSON(requestParameters["createClubMemberTermRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubMemberTermRequestToJSON(requestParameters["createClubMemberTermRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 新增社团成员或干部任期
+   */
+  async createClubMemberTermRaw(
+    requestParameters: CreateClubMemberTermOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+    const requestOptions = await this.createClubMemberTermRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       ClubMemberRecordFromJSON(jsonValue),
@@ -931,13 +1165,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * Creates request options for createNotice without sending the request
    */
-  async createNoticeRaw(
+  async createNoticeRequestOpts(
     requestParameters: CreateNoticeOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Notice>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createNoticeRequest"] == null) {
       throw new runtime.RequiredError(
         "createNoticeRequest",
@@ -953,16 +1185,25 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/notices`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateNoticeRequestToJSON(requestParameters["createNoticeRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateNoticeRequestToJSON(requestParameters["createNoticeRequest"]),
+    };
+  }
+
+  /**
+   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+   * 发布公告通知
+   */
+  async createNoticeRaw(
+    requestParameters: CreateNoticeOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Notice>> {
+    const requestOptions = await this.createNoticeRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => NoticeFromJSON(jsonValue));
   }
@@ -980,12 +1221,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人或指导老师提交项目立项申请
+   * Creates request options for createProject without sending the request
    */
-  async createProjectRaw(
+  async createProjectRequestOpts(
     requestParameters: CreateProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createProjectRequest"] == null) {
       throw new runtime.RequiredError(
         "createProjectRequest",
@@ -1001,16 +1241,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateProjectRequestToJSON(requestParameters["createProjectRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateProjectRequestToJSON(requestParameters["createProjectRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人或指导老师提交项目立项申请
+   */
+  async createProjectRaw(
+    requestParameters: CreateProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.createProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
   }
@@ -1027,12 +1275,138 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 创建场地
+   * Creates request options for createRecruitment without sending the request
    */
-  async createVenueRaw(
-    requestParameters: CreateVenueOperationRequest,
+  async createRecruitmentRequestOpts(
+    requestParameters: CreateRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createRecruitmentRequest",
+        'Required parameter "createRecruitmentRequest" was null or undefined when calling createRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateRecruitmentRequestToJSON(requestParameters["createRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
+   * 创建社团招募
+   */
+  async createRecruitmentRaw(
+    requestParameters: CreateRecruitmentOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Venue>> {
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.createRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
+   * 创建社团招募
+   */
+  async createRecruitment(
+    requestParameters: CreateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.createRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createRecruitmentApplication without sending the request
+   */
+  async createRecruitmentApplicationRequestOpts(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling createRecruitmentApplication().',
+      );
+    }
+
+    if (requestParameters["createRecruitmentApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createRecruitmentApplicationRequest",
+        'Required parameter "createRecruitmentApplicationRequest" was null or undefined when calling createRecruitmentApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateRecruitmentApplicationRequestToJSON(
+        requestParameters["createRecruitmentApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+   * 提交招募报名
+   */
+  async createRecruitmentApplicationRaw(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RecruitmentApplication>> {
+    const requestOptions = await this.createRecruitmentApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RecruitmentApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+   * 提交招募报名
+   */
+  async createRecruitmentApplication(
+    requestParameters: CreateRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RecruitmentApplication> {
+    const response = await this.createRecruitmentApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createVenue without sending the request
+   */
+  async createVenueRequestOpts(
+    requestParameters: CreateVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createVenueRequest"] == null) {
       throw new runtime.RequiredError(
         "createVenueRequest",
@@ -1048,16 +1422,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateVenueRequestToJSON(requestParameters["createVenueRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateVenueRequestToJSON(requestParameters["createVenueRequest"]),
+    };
+  }
+
+  /**
+   * 创建场地
+   */
+  async createVenueRaw(
+    requestParameters: CreateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.createVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
   }
@@ -1074,12 +1456,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 提交场地预约申请
+   * Creates request options for createVenueReservation without sending the request
    */
-  async createVenueReservationRaw(
+  async createVenueReservationRequestOpts(
     requestParameters: CreateVenueReservationOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<VenueReservation>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["createVenueReservationRequest"] == null) {
       throw new runtime.RequiredError(
         "createVenueReservationRequest",
@@ -1095,18 +1476,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venue-reservations`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: CreateVenueReservationRequestToJSON(
-          requestParameters["createVenueReservationRequest"],
-        ),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateVenueReservationRequestToJSON(requestParameters["createVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 提交场地预约申请
+   */
+  async createVenueReservationRaw(
+    requestParameters: CreateVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.createVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       VenueReservationFromJSON(jsonValue),
@@ -1125,12 +1512,78 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除场地
+   * Creates request options for deleteRecruitment without sending the request
    */
-  async deleteVenueRaw(
-    requestParameters: DeleteVenueOperationRequest,
+  async deleteRecruitmentRequestOpts(
+    requestParameters: DeleteRecruitmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments/{recruitId}`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 目标社团的社团干部、负责人可以删除本社团草稿招募。
+   * 删除草稿招募
+   */
+  async deleteRecruitmentRaw(
+    requestParameters: DeleteRecruitmentRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 目标社团的社团干部、负责人可以删除本社团草稿招募。
+   * 删除草稿招募
+   */
+  async deleteRecruitment(
+    requestParameters: DeleteRecruitmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteRecruitmentRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteVenue without sending the request
+   */
+  async deleteVenueRequestOpts(
+    requestParameters: DeleteVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["venueId"] == null) {
       throw new runtime.RequiredError(
         "venueId",
@@ -1153,20 +1606,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues/{venueId}`;
     urlPath = urlPath.replace(
-      `{${"venueId"}}`,
+      "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "DELETE",
-        headers: headerParameters,
-        query: queryParameters,
-        body: DeleteVenueRequestToJSON(requestParameters["deleteVenueRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: DeleteVenueRequestToJSON(requestParameters["deleteVenueRequest"]),
+    };
+  }
+
+  /**
+   * 删除场地
+   */
+  async deleteVenueRaw(
+    requestParameters: DeleteVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.VoidApiResponse(response);
   }
@@ -1182,12 +1643,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除场地预约
+   * Creates request options for deleteVenueReservation without sending the request
    */
-  async deleteVenueReservationRaw(
+  async deleteVenueReservationRequestOpts(
     requestParameters: DeleteVenueReservationOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<void>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
         "reservationId",
@@ -1210,22 +1670,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
-      `{${"reservationId"}}`,
+      "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "DELETE",
-        headers: headerParameters,
-        query: queryParameters,
-        body: DeleteVenueReservationRequestToJSON(
-          requestParameters["deleteVenueReservationRequest"],
-        ),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: DeleteVenueReservationRequestToJSON(requestParameters["deleteVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 删除场地预约
+   */
+  async deleteVenueReservationRaw(
+    requestParameters: DeleteVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.VoidApiResponse(response);
   }
@@ -1241,13 +1707,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
-   * 解散社团
+   * Creates request options for dissolveClub without sending the request
    */
-  async dissolveClubRaw(
+  async dissolveClubRequestOpts(
     requestParameters: DissolveClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<void>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -1269,21 +1733,27 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/{clubId}/dissolve`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PATCH",
-        headers: headerParameters,
-        query: queryParameters,
-        body: DissolveClubRequestToJSON(requestParameters["dissolveClubRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: DissolveClubRequestToJSON(requestParameters["dissolveClubRequest"]),
+    };
+  }
+
+  /**
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
+   */
+  async dissolveClubRaw(
+    requestParameters: DissolveClubOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.dissolveClubRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.VoidApiResponse(response);
   }
@@ -1300,26 +1770,101 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取活动列表
+   * Creates request options for exitCurrentClubMember without sending the request
    */
-  async getActivitiesRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Activity>>> {
+  async exitCurrentClubMemberRequestOpts(
+    requestParameters: ExitCurrentClubMemberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling exitCurrentClubMember().',
+      );
+    }
+
+    if (requestParameters["exitClubMemberRequest"] == null) {
+      throw new runtime.RequiredError(
+        "exitClubMemberRequest",
+        'Required parameter "exitClubMemberRequest" was null or undefined when calling exitCurrentClubMember().',
+      );
+    }
+
     const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/self/exit`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
+    };
+  }
+
+  /**
+   * 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 学生主动退出社团
+   */
+  async exitCurrentClubMemberRaw(
+    requestParameters: ExitCurrentClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.exitCurrentClubMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 学生主动退出社团
+   */
+  async exitCurrentClubMember(
+    requestParameters: ExitCurrentClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.exitCurrentClubMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for getActivities without sending the request
+   */
+  async getActivitiesRequestOpts(
+    requestParameters: GetActivitiesRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/activities`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取活动列表
+   */
+  async getActivitiesRaw(
+    requestParameters: GetActivitiesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Activity>>> {
+    const requestOptions = await this.getActivitiesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ActivityFromJSON));
   }
@@ -1328,19 +1873,19 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取活动列表
    */
   async getActivities(
+    requestParameters: GetActivitiesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Activity>> {
-    const response = await this.getActivitiesRaw(initOverrides);
+    const response = await this.getActivitiesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
   /**
-   * 获取活动详情
+   * Creates request options for getActivityById without sending the request
    */
-  async getActivityByIdRaw(
+  async getActivityByIdRequestOpts(
     requestParameters: GetActivityByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Activity>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -1350,23 +1895,35 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/activities/{activityId}`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取活动详情
+   */
+  async getActivityByIdRaw(
+    requestParameters: GetActivityByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.getActivityByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
   }
@@ -1383,12 +1940,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取活动参与记录
+   * Creates request options for getActivityParticipations without sending the request
    */
-  async getActivityParticipationsRaw(
+  async getActivityParticipationsRequestOpts(
     requestParameters: GetActivityParticipationsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<ActivityParticipation>>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -1402,19 +1958,27 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities/{activityId}/participations`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取活动参与记录
+   */
+  async getActivityParticipationsRaw(
+    requestParameters: GetActivityParticipationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ActivityParticipation>>> {
+    const requestOptions = await this.getActivityParticipationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(ActivityParticipationFromJSON),
@@ -1433,12 +1997,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限查询社团注册申请
+   * Creates request options for getClubApplications without sending the request
    */
-  async getClubApplicationsRaw(
+  async getClubApplicationsRequestOpts(
     requestParameters: GetClubApplicationsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<ClubApplication>>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["viewerUserId"] == null) {
       throw new runtime.RequiredError(
         "viewerUserId",
@@ -1460,15 +2023,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/clubs/applications`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 按当前用户权限查询社团注册申请
+   */
+  async getClubApplicationsRaw(
+    requestParameters: GetClubApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubApplication>>> {
+    const requestOptions = await this.getClubApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(ClubApplicationFromJSON),
@@ -1487,12 +2058,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取社团详情
+   * Creates request options for getClubById without sending the request
    */
-  async getClubByIdRaw(
+  async getClubByIdRequestOpts(
     requestParameters: GetClubByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -1505,20 +2075,25 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/clubs/{clubId}`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取社团详情
+   */
+  async getClubByIdRaw(
+    requestParameters: GetClubByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Club>> {
+    const requestOptions = await this.getClubByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
   }
@@ -1535,13 +2110,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
-   * 查询社团成员与干部任期记录
+   * Creates request options for getClubMembers without sending the request
    */
-  async getClubMembersRaw(
+  async getClubMembersRequestOpts(
     requestParameters: GetClubMembersRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<ClubMemberRecord>>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -1569,20 +2142,26 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/clubs/{clubId}/members`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 查询社团成员与干部任期记录
+   */
+  async getClubMembersRaw(
+    requestParameters: GetClubMembersRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubMemberRecord>>> {
+    const requestOptions = await this.getClubMembersRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(ClubMemberRecordFromJSON),
@@ -1602,12 +2181,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取社团列表
+   * Creates request options for getClubs without sending the request
    */
-  async getClubsRaw(
-    requestParameters: GetClubsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Club>>> {
+  async getClubsRequestOpts(requestParameters: GetClubsRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     if (requestParameters["viewerUserId"] != null) {
@@ -1618,15 +2194,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/clubs`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取社团列表
+   */
+  async getClubsRaw(
+    requestParameters: GetClubsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Club>>> {
+    const requestOptions = await this.getClubsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClubFromJSON));
   }
@@ -1643,13 +2227,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
-   * 查询公告通知
+   * Creates request options for getNotices without sending the request
    */
-  async getNoticesRaw(
-    requestParameters: GetNoticesRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Notice>>> {
+  async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
     if (requestParameters["viewerUserId"] == null) {
       throw new runtime.RequiredError(
         "viewerUserId",
@@ -1683,15 +2263,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/notices`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 查询公告通知
+   */
+  async getNoticesRaw(
+    requestParameters: GetNoticesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Notice>>> {
+    const requestOptions = await this.getNoticesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(NoticeFromJSON));
   }
@@ -1709,26 +2298,31 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取权限目录
+   * Creates request options for getPermissionCatalog without sending the request
    */
-  async getPermissionCatalogRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<PermissionDefinition>>> {
+  async getPermissionCatalogRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/auth/permissions`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取权限目录
+   */
+  async getPermissionCatalogRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<PermissionDefinition>>> {
+    const requestOptions = await this.getPermissionCatalogRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(PermissionDefinitionFromJSON),
@@ -1746,12 +2340,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取项目详情
+   * Creates request options for getProjectById without sending the request
    */
-  async getProjectByIdRaw(
+  async getProjectByIdRequestOpts(
     requestParameters: GetProjectByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -1765,19 +2358,27 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects/{projectId}`;
     urlPath = urlPath.replace(
-      `{${"projectId"}}`,
+      "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取项目详情
+   */
+  async getProjectByIdRaw(
+    requestParameters: GetProjectByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.getProjectByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
   }
@@ -1794,12 +2395,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取项目列表
+   * Creates request options for getProjects without sending the request
    */
-  async getProjectsRaw(
+  async getProjectsRequestOpts(
     requestParameters: GetProjectsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Project>>> {
+  ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     if (requestParameters["clubId"] != null) {
@@ -1818,15 +2418,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取项目列表
+   */
+  async getProjectsRaw(
+    requestParameters: GetProjectsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Project>>> {
+    const requestOptions = await this.getProjectsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ProjectFromJSON));
   }
@@ -1843,26 +2451,166 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取基础角色定义
+   * Creates request options for getRecruitmentApplications without sending the request
    */
-  async getRoleDefinitionsRaw(
+  async getRecruitmentApplicationsRequestOpts(
+    requestParameters: GetRecruitmentApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+   * 查询招募报名列表
+   */
+  async getRecruitmentApplicationsRaw(
+    requestParameters: GetRecruitmentApplicationsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<RoleDefinition>>> {
+  ): Promise<runtime.ApiResponse<Array<RecruitmentApplication>>> {
+    const requestOptions = await this.getRecruitmentApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(RecruitmentApplicationFromJSON),
+    );
+  }
+
+  /**
+   * 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+   * 查询招募报名列表
+   */
+  async getRecruitmentApplications(
+    requestParameters: GetRecruitmentApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<RecruitmentApplication>> {
+    const response = await this.getRecruitmentApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getRecruitments without sending the request
+   */
+  async getRecruitmentsRequestOpts(
+    requestParameters: GetRecruitmentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getRecruitments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/recruitments`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
+   * 查询社团招募列表
+   */
+  async getRecruitmentsRaw(
+    requestParameters: GetRecruitmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Recruitment>>> {
+    const requestOptions = await this.getRecruitmentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(RecruitmentFromJSON));
+  }
+
+  /**
+   * 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
+   * 查询社团招募列表
+   */
+  async getRecruitments(
+    requestParameters: GetRecruitmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Recruitment>> {
+    const response = await this.getRecruitmentsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getRoleDefinitions without sending the request
+   */
+  async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/auth/roles`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取基础角色定义
+   */
+  async getRoleDefinitionsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<RoleDefinition>>> {
+    const requestOptions = await this.getRoleDefinitionsRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(RoleDefinitionFromJSON),
@@ -1880,12 +2628,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取当前账号可查看或可分配的用户列表
+   * Creates request options for getUsers without sending the request
    */
-  async getUsersRaw(
-    requestParameters: GetUsersRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<UserSummary>>> {
+  async getUsersRequestOpts(requestParameters: GetUsersRequest): Promise<runtime.RequestOpts> {
     if (requestParameters["viewerUserId"] == null) {
       throw new runtime.RequiredError(
         "viewerUserId",
@@ -1907,15 +2652,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/users`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取当前账号可查看或可分配的用户列表
+   */
+  async getUsersRaw(
+    requestParameters: GetUsersRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<UserSummary>>> {
+    const requestOptions = await this.getUsersRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserSummaryFromJSON));
   }
@@ -1932,12 +2685,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取场地详情
+   * Creates request options for getVenueById without sending the request
    */
-  async getVenueByIdRaw(
+  async getVenueByIdRequestOpts(
     requestParameters: GetVenueByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Venue>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["venueId"] == null) {
       throw new runtime.RequiredError(
         "venueId",
@@ -1951,19 +2703,27 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues/{venueId}`;
     urlPath = urlPath.replace(
-      `{${"venueId"}}`,
+      "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地详情
+   */
+  async getVenueByIdRaw(
+    requestParameters: GetVenueByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.getVenueByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
   }
@@ -1980,12 +2740,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取场地预约详情
+   * Creates request options for getVenueReservationById without sending the request
    */
-  async getVenueReservationByIdRaw(
+  async getVenueReservationByIdRequestOpts(
     requestParameters: GetVenueReservationByIdRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<VenueReservation>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
         "reservationId",
@@ -1999,19 +2758,27 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
-      `{${"reservationId"}}`,
+      "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地预约详情
+   */
+  async getVenueReservationByIdRaw(
+    requestParameters: GetVenueReservationByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.getVenueReservationByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       VenueReservationFromJSON(jsonValue),
@@ -2030,12 +2797,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取场地预约列表
+   * Creates request options for getVenueReservations without sending the request
    */
-  async getVenueReservationsRaw(
+  async getVenueReservationsRequestOpts(
     requestParameters: GetVenueReservationsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<VenueReservation>>> {
+  ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     if (requestParameters["status"] != null) {
@@ -2062,15 +2828,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venue-reservations`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地预约列表
+   */
+  async getVenueReservationsRaw(
+    requestParameters: GetVenueReservationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<VenueReservation>>> {
+    const requestOptions = await this.getVenueReservationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       jsonValue.map(VenueReservationFromJSON),
@@ -2089,12 +2863,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取场地列表
+   * Creates request options for getVenues without sending the request
    */
-  async getVenuesRaw(
-    requestParameters: GetVenuesRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<Venue>>> {
+  async getVenuesRequestOpts(requestParameters: GetVenuesRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     if (requestParameters["status"] != null) {
@@ -2105,15 +2876,23 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取场地列表
+   */
+  async getVenuesRaw(
+    requestParameters: GetVenuesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Venue>>> {
+    const requestOptions = await this.getVenuesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(VenueFromJSON));
   }
@@ -2130,26 +2909,31 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 健康检查
+   * Creates request options for healthCheck without sending the request
    */
-  async healthCheckRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<HealthStatus>> {
+  async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/health`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "GET",
-        headers: headerParameters,
-        query: queryParameters,
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 健康检查
+   */
+  async healthCheckRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<HealthStatus>> {
+    const requestOptions = await this.healthCheckRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => HealthStatusFromJSON(jsonValue));
   }
@@ -2165,12 +2949,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 用户登录
+   * Creates request options for loginUser without sending the request
    */
-  async loginUserRaw(
-    requestParameters: LoginUserRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<AuthResponse>> {
+  async loginUserRequestOpts(requestParameters: LoginUserRequest): Promise<runtime.RequestOpts> {
     if (requestParameters["loginRequest"] == null) {
       throw new runtime.RequiredError(
         "loginRequest",
@@ -2186,16 +2967,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/auth/login`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: LoginRequestToJSON(requestParameters["loginRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: LoginRequestToJSON(requestParameters["loginRequest"]),
+    };
+  }
+
+  /**
+   * 用户登录
+   */
+  async loginUserRaw(
+    requestParameters: LoginUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.loginUserRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
   }
@@ -2212,13 +3001,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
-   * 标记通知已读
+   * Creates request options for markNoticeRead without sending the request
    */
-  async markNoticeReadRaw(
+  async markNoticeReadRequestOpts(
     requestParameters: MarkNoticeReadOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<NoticeReadResult>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["noticeId"] == null) {
       throw new runtime.RequiredError(
         "noticeId",
@@ -2241,20 +3028,29 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/notices/{noticeId}/reads`;
     urlPath = urlPath.replace(
-      `{${"noticeId"}}`,
+      "{noticeId}",
       encodeURIComponent(String(requestParameters["noticeId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
+    };
+  }
+
+  /**
+   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 标记通知已读
+   */
+  async markNoticeReadRaw(
+    requestParameters: MarkNoticeReadOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<NoticeReadResult>> {
+    const requestOptions = await this.markNoticeReadRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       NoticeReadResultFromJSON(jsonValue),
@@ -2274,12 +3070,129 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 用户注册
+   * Creates request options for refreshAuthSession without sending the request
    */
-  async registerUserRaw(
-    requestParameters: RegisterUserRequest,
+  async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/auth/session`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSessionRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.refreshAuthSessionRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
+  }
+
+  /**
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSession(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AuthResponse> {
+    const response = await this.refreshAuthSessionRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for registerActivity without sending the request
+   */
+  async registerActivityRequestOpts(
+    requestParameters: RegisterActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling registerActivity().',
+      );
+    }
+
+    if (requestParameters["registerActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "registerActivityRequest",
+        'Required parameter "registerActivityRequest" was null or undefined when calling registerActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/registrations`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterActivityRequestToJSON(requestParameters["registerActivityRequest"]),
+    };
+  }
+
+  /**
+   * 报名活动
+   */
+  async registerActivityRaw(
+    requestParameters: RegisterActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityRegistrationResult>> {
+    const requestOptions = await this.registerActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityRegistrationResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 报名活动
+   */
+  async registerActivity(
+    requestParameters: RegisterActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityRegistrationResult> {
+    const response = await this.registerActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for registerUser without sending the request
+   */
+  async registerUserRequestOpts(
+    requestParameters: RegisterUserRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["registerRequest"] == null) {
       throw new runtime.RequiredError(
         "registerRequest",
@@ -2295,16 +3208,24 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/auth/register`;
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: RegisterRequestToJSON(requestParameters["registerRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterRequestToJSON(requestParameters["registerRequest"]),
+    };
+  }
+
+  /**
+   * 用户注册
+   */
+  async registerUserRaw(
+    requestParameters: RegisterUserRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.registerUserRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
   }
@@ -2321,12 +3242,85 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 审核活动并发布或驳回
+   * Creates request options for removeClubMember without sending the request
    */
-  async reviewActivityRaw(
-    requestParameters: ReviewActivityOperationRequest,
+  async removeClubMemberRequestOpts(
+    requestParameters: RemoveClubMemberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    if (requestParameters["memberId"] == null) {
+      throw new runtime.RequiredError(
+        "memberId",
+        'Required parameter "memberId" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    if (requestParameters["exitClubMemberRequest"] == null) {
+      throw new runtime.RequiredError(
+        "exitClubMemberRequest",
+        'Required parameter "exitClubMemberRequest" was null or undefined when calling removeClubMember().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/{memberId}/exit`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{memberId}",
+      encodeURIComponent(String(requestParameters["memberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 移出社团成员
+   */
+  async removeClubMemberRaw(
+    requestParameters: RemoveClubMemberRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Activity>> {
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.removeClubMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+   * 移出社团成员
+   */
+  async removeClubMember(
+    requestParameters: RemoveClubMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.removeClubMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for reviewActivity without sending the request
+   */
+  async reviewActivityRequestOpts(
+    requestParameters: ReviewActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -2349,20 +3343,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities/{activityId}/review`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ReviewActivityRequestToJSON(requestParameters["reviewActivityRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewActivityRequestToJSON(requestParameters["reviewActivityRequest"]),
+    };
+  }
+
+  /**
+   * 审核活动并发布或驳回
+   */
+  async reviewActivityRaw(
+    requestParameters: ReviewActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.reviewActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
   }
@@ -2379,12 +3381,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员审核社团注册申请
+   * Creates request options for reviewClubApplication without sending the request
    */
-  async reviewClubApplicationRaw(
+  async reviewClubApplicationRequestOpts(
     requestParameters: ReviewClubApplicationOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ClubApplication>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -2406,21 +3407,26 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/applications/{clubId}/review`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PATCH",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ReviewClubApplicationRequestToJSON(requestParameters["reviewClubApplicationRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewClubApplicationRequestToJSON(requestParameters["reviewClubApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 平台管理员审核社团注册申请
+   */
+  async reviewClubApplicationRaw(
+    requestParameters: ReviewClubApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubApplication>> {
+    const requestOptions = await this.reviewClubApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
   }
@@ -2437,13 +3443,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
-   * 指导老师审核项目立项申请
+   * Creates request options for reviewProject without sending the request
    */
-  async reviewProjectRaw(
+  async reviewProjectRequestOpts(
     requestParameters: ReviewProjectOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Project>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -2466,20 +3470,29 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/projects/{projectId}/review`;
     urlPath = urlPath.replace(
-      `{${"projectId"}}`,
+      "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ReviewProjectRequestToJSON(requestParameters["reviewProjectRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewProjectRequestToJSON(requestParameters["reviewProjectRequest"]),
+    };
+  }
+
+  /**
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+   * 指导老师审核项目立项申请
+   */
+  async reviewProjectRaw(
+    requestParameters: ReviewProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.reviewProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
   }
@@ -2497,12 +3510,149 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 审批场地预约
+   * Creates request options for reviewRecruitment without sending the request
    */
-  async reviewVenueReservationRaw(
-    requestParameters: ReviewVenueReservationOperationRequest,
+  async reviewRecruitmentRequestOpts(
+    requestParameters: ReviewRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling reviewRecruitment().',
+      );
+    }
+
+    if (requestParameters["reviewRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewRecruitmentRequest",
+        'Required parameter "reviewRecruitmentRequest" was null or undefined when calling reviewRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}/review`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewRecruitmentRequestToJSON(requestParameters["reviewRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+   * 审核社团招募
+   */
+  async reviewRecruitmentRaw(
+    requestParameters: ReviewRecruitmentOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<VenueReservation>> {
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.reviewRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+   * 审核社团招募
+   */
+  async reviewRecruitment(
+    requestParameters: ReviewRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.reviewRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewRecruitmentApplication without sending the request
+   */
+  async reviewRecruitmentApplicationRequestOpts(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling reviewRecruitmentApplication().',
+      );
+    }
+
+    if (requestParameters["reviewRecruitmentApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewRecruitmentApplicationRequest",
+        'Required parameter "reviewRecruitmentApplicationRequest" was null or undefined when calling reviewRecruitmentApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/applications/{applicationId}/review`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewRecruitmentApplicationRequestToJSON(
+        requestParameters["reviewRecruitmentApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+   * 筛选招募报名
+   */
+  async reviewRecruitmentApplicationRaw(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RecruitmentApplication>> {
+    const requestOptions = await this.reviewRecruitmentApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RecruitmentApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+   * 筛选招募报名
+   */
+  async reviewRecruitmentApplication(
+    requestParameters: ReviewRecruitmentApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RecruitmentApplication> {
+    const response = await this.reviewRecruitmentApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewVenueReservation without sending the request
+   */
+  async reviewVenueReservationRequestOpts(
+    requestParameters: ReviewVenueReservationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
         "reservationId",
@@ -2525,22 +3675,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venue-reservations/{reservationId}/review`;
     urlPath = urlPath.replace(
-      `{${"reservationId"}}`,
+      "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "POST",
-        headers: headerParameters,
-        query: queryParameters,
-        body: ReviewVenueReservationRequestToJSON(
-          requestParameters["reviewVenueReservationRequest"],
-        ),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewVenueReservationRequestToJSON(requestParameters["reviewVenueReservationRequest"]),
+    };
+  }
+
+  /**
+   * 审批场地预约
+   */
+  async reviewVenueReservationRaw(
+    requestParameters: ReviewVenueReservationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<VenueReservation>> {
+    const requestOptions = await this.reviewVenueReservationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       VenueReservationFromJSON(jsonValue),
@@ -2559,12 +3715,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 设置活动签到签退码和有效时间
+   * Creates request options for updateActivityCheckinSettings without sending the request
    */
-  async updateActivityCheckinSettingsRaw(
+  async updateActivityCheckinSettingsRequestOpts(
     requestParameters: UpdateActivityCheckinSettingsRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Activity>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -2587,20 +3742,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/activities/{activityId}/checkin-settings`;
     urlPath = urlPath.replace(
-      `{${"activityId"}}`,
+      "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PUT",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateCheckinSettingsRequestToJSON(requestParameters["updateCheckinSettingsRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateCheckinSettingsRequestToJSON(requestParameters["updateCheckinSettingsRequest"]),
+    };
+  }
+
+  /**
+   * 设置活动签到签退码和有效时间
+   */
+  async updateActivityCheckinSettingsRaw(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.updateActivityCheckinSettingsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
   }
@@ -2617,12 +3780,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 更新社团
+   * Creates request options for updateClub without sending the request
    */
-  async updateClubRaw(
+  async updateClubRequestOpts(
     requestParameters: UpdateClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -2644,21 +3806,26 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/{clubId}`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PUT",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateClubRequestToJSON(requestParameters["updateClubRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubRequestToJSON(requestParameters["updateClubRequest"]),
+    };
+  }
+
+  /**
+   * 更新社团
+   */
+  async updateClubRaw(
+    requestParameters: UpdateClubOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Club>> {
+    const requestOptions = await this.updateClubRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
   }
@@ -2675,13 +3842,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
-   * 更新社团成员或干部任期
+   * Creates request options for updateClubMemberTerm without sending the request
    */
-  async updateClubMemberTermRaw(
+  async updateClubMemberTermRequestOpts(
     requestParameters: UpdateClubMemberTermOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -2710,25 +3875,31 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/{clubId}/members/{memberId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
-    urlPath = urlPath.replace(
-      `{${"memberId"}}`,
+      "{memberId}",
       encodeURIComponent(String(requestParameters["memberId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PATCH",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateClubMemberTermRequestToJSON(requestParameters["updateClubMemberTermRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubMemberTermRequestToJSON(requestParameters["updateClubMemberTermRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 更新社团成员或干部任期
+   */
+  async updateClubMemberTermRaw(
+    requestParameters: UpdateClubMemberTermOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+    const requestOptions = await this.updateClubMemberTermRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
       ClubMemberRecordFromJSON(jsonValue),
@@ -2748,13 +3919,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
-   * 维护社团基础信息
+   * Creates request options for updateClubProfile without sending the request
    */
-  async updateClubProfileRaw(
+  async updateClubProfileRequestOpts(
     requestParameters: UpdateClubProfileOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Club>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -2776,21 +3945,27 @@ export class DefaultApi extends runtime.BaseAPI {
     headerParameters["Content-Type"] = "application/json";
 
     let urlPath = `/api/clubs/{clubId}/profile`;
-    urlPath = urlPath.replace(
-      `{${"clubId"}}`,
-      encodeURIComponent(String(requestParameters["clubId"])),
-    );
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PATCH",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateClubProfileRequestToJSON(requestParameters["updateClubProfileRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubProfileRequestToJSON(requestParameters["updateClubProfileRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 维护社团基础信息
+   */
+  async updateClubProfileRaw(
+    requestParameters: UpdateClubProfileOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Club>> {
+    const requestOptions = await this.updateClubProfileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => ClubFromJSON(jsonValue));
   }
@@ -2808,12 +3983,78 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 更新场地信息
+   * Creates request options for updateRecruitment without sending the request
    */
-  async updateVenueRaw(
-    requestParameters: UpdateVenueOperationRequest,
+  async updateRecruitmentRequestOpts(
+    requestParameters: UpdateRecruitmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling updateRecruitment().',
+      );
+    }
+
+    if (requestParameters["updateRecruitmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateRecruitmentRequest",
+        'Required parameter "updateRecruitmentRequest" was null or undefined when calling updateRecruitment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/recruitments/{recruitId}`;
+    urlPath = urlPath.replace(
+      "{recruitId}",
+      encodeURIComponent(String(requestParameters["recruitId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateRecruitmentRequestToJSON(requestParameters["updateRecruitmentRequest"]),
+    };
+  }
+
+  /**
+   * 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+   * 更新社团招募
+   */
+  async updateRecruitmentRaw(
+    requestParameters: UpdateRecruitmentOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Venue>> {
+  ): Promise<runtime.ApiResponse<Recruitment>> {
+    const requestOptions = await this.updateRecruitmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => RecruitmentFromJSON(jsonValue));
+  }
+
+  /**
+   * 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+   * 更新社团招募
+   */
+  async updateRecruitment(
+    requestParameters: UpdateRecruitmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Recruitment> {
+    const response = await this.updateRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateVenue without sending the request
+   */
+  async updateVenueRequestOpts(
+    requestParameters: UpdateVenueOperationRequest,
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["venueId"] == null) {
       throw new runtime.RequiredError(
         "venueId",
@@ -2836,20 +4077,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues/{venueId}`;
     urlPath = urlPath.replace(
-      `{${"venueId"}}`,
+      "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PUT",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateVenueRequestToJSON(requestParameters["updateVenueRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateVenueRequestToJSON(requestParameters["updateVenueRequest"]),
+    };
+  }
+
+  /**
+   * 更新场地信息
+   */
+  async updateVenueRaw(
+    requestParameters: UpdateVenueOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.updateVenueRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
   }
@@ -2866,12 +4115,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 更新场地状态
+   * Creates request options for updateVenueStatus without sending the request
    */
-  async updateVenueStatusRaw(
+  async updateVenueStatusRequestOpts(
     requestParameters: UpdateVenueStatusOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Venue>> {
+  ): Promise<runtime.RequestOpts> {
     if (requestParameters["venueId"] == null) {
       throw new runtime.RequiredError(
         "venueId",
@@ -2894,20 +4142,28 @@ export class DefaultApi extends runtime.BaseAPI {
 
     let urlPath = `/api/venues/{venueId}/status`;
     urlPath = urlPath.replace(
-      `{${"venueId"}}`,
+      "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
     );
 
-    const response = await this.request(
-      {
-        path: urlPath,
-        method: "PATCH",
-        headers: headerParameters,
-        query: queryParameters,
-        body: UpdateVenueStatusRequestToJSON(requestParameters["updateVenueStatusRequest"]),
-      },
-      initOverrides,
-    );
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateVenueStatusRequestToJSON(requestParameters["updateVenueStatusRequest"]),
+    };
+  }
+
+  /**
+   * 更新场地状态
+   */
+  async updateVenueStatusRaw(
+    requestParameters: UpdateVenueStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Venue>> {
+    const requestOptions = await this.updateVenueStatusRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => VenueFromJSON(jsonValue));
   }
@@ -2955,6 +4211,18 @@ export const GetNoticesTargetTypeEnum = {
 } as const;
 export type GetNoticesTargetTypeEnum =
   (typeof GetNoticesTargetTypeEnum)[keyof typeof GetNoticesTargetTypeEnum];
+/**
+ * @export
+ */
+export const GetRecruitmentsStatusEnum = {
+  Draft: "draft",
+  PendingReview: "pending_review",
+  NotStarted: "not_started",
+  Accepting: "accepting",
+  Ended: "ended",
+} as const;
+export type GetRecruitmentsStatusEnum =
+  (typeof GetRecruitmentsStatusEnum)[keyof typeof GetRecruitmentsStatusEnum];
 /**
  * @export
  */

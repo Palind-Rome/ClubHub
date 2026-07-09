@@ -86,15 +86,17 @@ namespace Org.OpenAPITools.Models
         public string? ApplicantName { get; set; }
 
         /// <summary>
-        /// Gets or Sets StartTime
+        /// 预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
+        /// <value>预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
         [Required]
         [DataMember(Name="startTime", EmitDefaultValue=true)]
         public DateTime StartTime { get; set; }
 
         /// <summary>
-        /// Gets or Sets EndTime
+        /// 预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
+        /// <value>预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
         [Required]
         [DataMember(Name="endTime", EmitDefaultValue=true)]
         public DateTime EndTime { get; set; }
@@ -166,8 +168,9 @@ namespace Org.OpenAPITools.Models
         public string? ReviewComment { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
+        /// <value>创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }

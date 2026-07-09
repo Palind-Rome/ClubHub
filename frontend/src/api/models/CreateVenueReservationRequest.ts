@@ -45,13 +45,13 @@ export interface CreateVenueReservationRequest {
    */
   applicantUserId: number;
   /**
-   *
+   * 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
    * @type {Date}
    * @memberof CreateVenueReservationRequest
    */
   startTime: Date;
   /**
-   *
+   * 预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
    * @type {Date}
    * @memberof CreateVenueReservationRequest
    */

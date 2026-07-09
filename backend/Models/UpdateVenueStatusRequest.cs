@@ -23,40 +23,15 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class Venue 
+    public partial class UpdateVenueStatusRequest 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// 执行状态变更操作的用户 ID，用于校验 venue:disable 权限。
         /// </summary>
+        /// <value>执行状态变更操作的用户 ID，用于校验 venue:disable 权限。</value>
         [Required]
-        [DataMember(Name="id", EmitDefaultValue=true)]
-        public int Id { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Name
-        /// </summary>
-        [Required]
-        [DataMember(Name="name", EmitDefaultValue=false)]
-        public string Name { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Building
-        /// </summary>
-        [DataMember(Name="building", EmitDefaultValue=true)]
-        public string? Building { get; set; }
-
-        /// <summary>
-        /// Gets or Sets RoomNo
-        /// </summary>
-        [DataMember(Name="roomNo", EmitDefaultValue=true)]
-        public string? RoomNo { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Capacity
-        /// </summary>
-        [Required]
-        [DataMember(Name="capacity", EmitDefaultValue=true)]
-        public int Capacity { get; set; }
+        [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
+        public int OperatorUserId { get; set; }
 
 
         /// <summary>
@@ -93,24 +68,18 @@ namespace Org.OpenAPITools.Models
         public StatusEnum Status { get; set; }
 
         /// <summary>
-        /// Gets or Sets ManagerUserId
+        /// status 为 maintenance 时可选填写的维护结束时间。
         /// </summary>
-        [DataMember(Name="managerUserId", EmitDefaultValue=true)]
-        public int? ManagerUserId { get; set; }
-
-        /// <summary>
-        /// Gets or Sets CreatedAt
-        /// </summary>
-        [Required]
-        [DataMember(Name="createdAt", EmitDefaultValue=true)]
-        public DateTime CreatedAt { get; set; }
-
-        /// <summary>
-        /// 维护结束时间。为空表示维护结束时间未知。
-        /// </summary>
-        /// <value>维护结束时间。为空表示维护结束时间未知。</value>
+        /// <value>status 为 maintenance 时可选填写的维护结束时间。</value>
         [DataMember(Name="maintenanceUntil", EmitDefaultValue=true)]
         public DateTime? MaintenanceUntil { get; set; }
+
+        /// <summary>
+        /// 若状态变更与后续预约冲突，是否自动取消这些冲突预约。
+        /// </summary>
+        /// <value>若状态变更与后续预约冲突，是否自动取消这些冲突预约。</value>
+        [DataMember(Name="cancelConflictingReservations", EmitDefaultValue=true)]
+        public bool? CancelConflictingReservations { get; set; }
 
     }
 }

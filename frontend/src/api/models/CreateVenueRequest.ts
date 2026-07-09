@@ -17,130 +17,115 @@ import { mapValues } from "../runtime";
 /**
  *
  * @export
- * @interface Venue
+ * @interface CreateVenueRequest
  */
-export interface Venue {
+export interface CreateVenueRequest {
   /**
-   *
+   * 执行创建操作的用户 ID，用于校验 venue:create 权限。
    * @type {number}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
-  id: number;
+  operatorUserId: number;
   /**
    *
    * @type {string}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
   name: string;
   /**
    *
    * @type {string}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
   building?: string | null;
   /**
    *
    * @type {string}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
   roomNo?: string | null;
   /**
    *
    * @type {number}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
   capacity: number;
   /**
    *
-   * @type {VenueStatusEnum}
-   * @memberof Venue
+   * @type {CreateVenueRequestStatusEnum}
+   * @memberof CreateVenueRequest
    */
-  status: VenueStatusEnum;
+  status?: CreateVenueRequestStatusEnum;
   /**
    *
    * @type {number}
-   * @memberof Venue
+   * @memberof CreateVenueRequest
    */
   managerUserId?: number | null;
-  /**
-   *
-   * @type {Date}
-   * @memberof Venue
-   */
-  createdAt: Date;
-  /**
-   * 维护结束时间。为空表示维护结束时间未知。
-   * @type {Date}
-   * @memberof Venue
-   */
-  maintenanceUntil?: Date | null;
 }
 
 /**
  * @export
  */
-export const VenueStatusEnum = {
+export const CreateVenueRequestStatusEnum = {
   Available: "available",
   Disabled: "disabled",
   Maintenance: "maintenance",
 } as const;
-export type VenueStatusEnum = (typeof VenueStatusEnum)[keyof typeof VenueStatusEnum];
+export type CreateVenueRequestStatusEnum =
+  (typeof CreateVenueRequestStatusEnum)[keyof typeof CreateVenueRequestStatusEnum];
 
 /**
- * Check if a given object implements the Venue interface.
+ * Check if a given object implements the CreateVenueRequest interface.
  */
-export function instanceOfVenue(value: object): value is Venue {
-  if (!("id" in value) || value["id"] === undefined) return false;
+export function instanceOfCreateVenueRequest(value: object): value is CreateVenueRequest {
+  if (!("operatorUserId" in value) || value["operatorUserId"] === undefined) return false;
   if (!("name" in value) || value["name"] === undefined) return false;
   if (!("capacity" in value) || value["capacity"] === undefined) return false;
-  if (!("status" in value) || value["status"] === undefined) return false;
-  if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   return true;
 }
 
-export function VenueFromJSON(json: any): Venue {
-  return VenueFromJSONTyped(json, false);
+export function CreateVenueRequestFromJSON(json: any): CreateVenueRequest {
+  return CreateVenueRequestFromJSONTyped(json, false);
 }
 
-export function VenueFromJSONTyped(json: any, ignoreDiscriminator: boolean): Venue {
+export function CreateVenueRequestFromJSONTyped(
+  json: any,
+  ignoreDiscriminator: boolean,
+): CreateVenueRequest {
   if (json == null) {
     return json;
   }
   return {
-    id: json["id"],
+    operatorUserId: json["operatorUserId"],
     name: json["name"],
     building: json["building"] == null ? undefined : json["building"],
     roomNo: json["roomNo"] == null ? undefined : json["roomNo"],
     capacity: json["capacity"],
-    status: json["status"],
+    status: json["status"] == null ? undefined : json["status"],
     managerUserId: json["managerUserId"] == null ? undefined : json["managerUserId"],
-    createdAt: new Date(json["createdAt"]),
-    maintenanceUntil:
-      json["maintenanceUntil"] == null ? undefined : new Date(json["maintenanceUntil"]),
   };
 }
 
-export function VenueToJSON(json: any): Venue {
-  return VenueToJSONTyped(json, false);
+export function CreateVenueRequestToJSON(json: any): CreateVenueRequest {
+  return CreateVenueRequestToJSONTyped(json, false);
 }
 
-export function VenueToJSONTyped(value?: Venue | null, ignoreDiscriminator: boolean = false): any {
+export function CreateVenueRequestToJSONTyped(
+  value?: CreateVenueRequest | null,
+  ignoreDiscriminator: boolean = false,
+): any {
   if (value == null) {
     return value;
   }
 
   return {
-    id: value["id"],
+    operatorUserId: value["operatorUserId"],
     name: value["name"],
     building: value["building"],
     roomNo: value["roomNo"],
     capacity: value["capacity"],
     status: value["status"],
     managerUserId: value["managerUserId"],
-    createdAt: value["createdAt"].toISOString(),
-    maintenanceUntil:
-      value["maintenanceUntil"] == null
-        ? value["maintenanceUntil"]
-        : value["maintenanceUntil"].toISOString(),
   };
 }

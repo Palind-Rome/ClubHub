@@ -75,13 +75,13 @@ export interface VenueReservation {
    */
   applicantName?: string | null;
   /**
-   *
+   * 预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
    * @type {Date}
    * @memberof VenueReservation
    */
   startTime: Date;
   /**
-   *
+   * 预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
    * @type {Date}
    * @memberof VenueReservation
    */
@@ -117,7 +117,7 @@ export interface VenueReservation {
    */
   reviewComment?: string | null;
   /**
-   *
+   * 创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
    * @type {Date}
    * @memberof VenueReservation
    */
