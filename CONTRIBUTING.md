@@ -6,7 +6,7 @@
 
 - 我们采用 GitHub Issues + Pull Requests + CI 的轻量协作流程。
 - `main` 保存阶段性稳定版本，`dev` 用作日常集成，个人任务从 `dev` 拉功能分支。
-- 功能分支可以 `fetch + rebase`，但最好不要。
+- 功能分支与 `dev` 同步时一律使用 fetch + rebase + force push，禁止使用 git merge 产生合并提交。冲突时暂停并告知用户。
 - 密码、私钥、服务器 IP、Oracle 连接串不进仓库，只放本机环境变量或 GitHub Secrets。
 - 前后端分离：后端 C# / ASP.NET Core 10 Web API，前端 Vue 3 / Vite + Element Plus，数据库 Oracle。
 
