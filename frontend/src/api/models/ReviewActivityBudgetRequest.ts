@@ -27,12 +27,6 @@ export interface ReviewActivityBudgetRequest {
    */
   approved: boolean;
   /**
-   * 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。
-   * @type {number}
-   * @memberof ReviewActivityBudgetRequest
-   */
-  reviewerUserId: number;
-  /**
    * 经费审批意见。
    * @type {string}
    * @memberof ReviewActivityBudgetRequest
@@ -47,7 +41,6 @@ export function instanceOfReviewActivityBudgetRequest(
   value: object,
 ): value is ReviewActivityBudgetRequest {
   if (!("approved" in value) || value["approved"] === undefined) return false;
-  if (!("reviewerUserId" in value) || value["reviewerUserId"] === undefined) return false;
   return true;
 }
 
@@ -64,7 +57,6 @@ export function ReviewActivityBudgetRequestFromJSONTyped(
   }
   return {
     approved: json["approved"],
-    reviewerUserId: json["reviewerUserId"],
     comment: json["comment"] == null ? undefined : json["comment"],
   };
 }
@@ -83,7 +75,6 @@ export function ReviewActivityBudgetRequestToJSONTyped(
 
   return {
     approved: value["approved"],
-    reviewerUserId: value["reviewerUserId"],
     comment: value["comment"],
   };
 }

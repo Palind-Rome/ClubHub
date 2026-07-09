@@ -26,17 +26,10 @@ namespace Org.OpenAPITools.Models
     public partial class ApplyActivityBudgetRequest 
     {
         /// <summary>
-        /// 经费申请人用户 ID；用于校验其是否拥有该社团 budget:apply 权限。
-        /// </summary>
-        /// <value>经费申请人用户 ID；用于校验其是否拥有该社团 budget:apply 权限。</value>
-        [Required]
-        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
-        public int ApplicantUserId { get; set; }
-
-        /// <summary>
         /// 预算金额，必须大于 0。
         /// </summary>
         /// <value>预算金额，必须大于 0。</value>
+        /* <example>800</example> */
         [Required]
         [DataMember(Name="budgetAmount", EmitDefaultValue=true)]
         public double BudgetAmount { get; set; }
@@ -45,6 +38,7 @@ namespace Org.OpenAPITools.Models
         /// 经费用途，例如物料采购、场地布置或嘉宾交通。
         /// </summary>
         /// <value>经费用途，例如物料采购、场地布置或嘉宾交通。</value>
+        /* <example>物料采购</example> */
         [Required]
         [StringLength(255, MinimumLength=1)]
         [DataMember(Name="budgetPurpose", EmitDefaultValue=false)]
@@ -54,6 +48,8 @@ namespace Org.OpenAPITools.Models
         /// 经费明细，可填写多项预算说明。
         /// </summary>
         /// <value>经费明细，可填写多项预算说明。</value>
+        /* <example>场地布置 500 元，物料采购 300 元。</example> */
+        [MaxLength(4000)]
         [DataMember(Name="budgetDetail", EmitDefaultValue=true)]
         public string? BudgetDetail { get; set; }
 

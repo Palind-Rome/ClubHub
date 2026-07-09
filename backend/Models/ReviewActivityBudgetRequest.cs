@@ -29,22 +29,16 @@ namespace Org.OpenAPITools.Models
         /// 经费审批结果，true 为通过，false 为驳回。
         /// </summary>
         /// <value>经费审批结果，true 为通过，false 为驳回。</value>
+        /* <example>true</example> */
         [Required]
         [DataMember(Name="approved", EmitDefaultValue=true)]
         public bool Approved { get; set; }
 
         /// <summary>
-        /// 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。
-        /// </summary>
-        /// <value>经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。</value>
-        [Required]
-        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
-        public int ReviewerUserId { get; set; }
-
-        /// <summary>
         /// 经费审批意见。
         /// </summary>
         /// <value>经费审批意见。</value>
+        /* <example>预算合理，同意执行。</example> */
         [MaxLength(255)]
         [DataMember(Name="comment", EmitDefaultValue=true)]
         public string? Comment { get; set; }

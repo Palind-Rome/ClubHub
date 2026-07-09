@@ -21,12 +21,6 @@ import { mapValues } from "../runtime";
  */
 export interface ApplyActivityBudgetRequest {
   /**
-   * 经费申请人用户 ID；用于校验其是否拥有该社团 budget:apply 权限。
-   * @type {number}
-   * @memberof ApplyActivityBudgetRequest
-   */
-  applicantUserId: number;
-  /**
    * 预算金额，必须大于 0。
    * @type {number}
    * @memberof ApplyActivityBudgetRequest
@@ -52,7 +46,6 @@ export interface ApplyActivityBudgetRequest {
 export function instanceOfApplyActivityBudgetRequest(
   value: object,
 ): value is ApplyActivityBudgetRequest {
-  if (!("applicantUserId" in value) || value["applicantUserId"] === undefined) return false;
   if (!("budgetAmount" in value) || value["budgetAmount"] === undefined) return false;
   if (!("budgetPurpose" in value) || value["budgetPurpose"] === undefined) return false;
   return true;
@@ -70,7 +63,6 @@ export function ApplyActivityBudgetRequestFromJSONTyped(
     return json;
   }
   return {
-    applicantUserId: json["applicantUserId"],
     budgetAmount: json["budgetAmount"],
     budgetPurpose: json["budgetPurpose"],
     budgetDetail: json["budgetDetail"] == null ? undefined : json["budgetDetail"],
@@ -90,7 +82,6 @@ export function ApplyActivityBudgetRequestToJSONTyped(
   }
 
   return {
-    applicantUserId: value["applicantUserId"],
     budgetAmount: value["budgetAmount"],
     budgetPurpose: value["budgetPurpose"],
     budgetDetail: value["budgetDetail"],
