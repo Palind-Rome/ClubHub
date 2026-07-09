@@ -1541,7 +1541,7 @@ public record ClubApplicationDto(
 
 public class CreateClubRequest
 {
-    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "CurrentUserId 必须大于或等于 1")]
     public int CurrentUserId { get; set; }
 
     [Required, StringLength(255, MinimumLength = 1)]
