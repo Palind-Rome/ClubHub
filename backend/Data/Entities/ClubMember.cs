@@ -41,7 +41,9 @@ public class ClubMember
     [Column("CONTRIBUTION_SCORE")]
     public decimal? ContributionScore { get; set; }
 
+    [ForeignKey(nameof(ClubId))]
     public Club? Club { get; set; }
 
+    [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
 }
