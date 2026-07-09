@@ -19,7 +19,7 @@ type MemberStatus = "active" | "ended" | "suspended";
 type TermMode = "create" | "edit";
 type GroupingMode = "free" | "own";
 type GroupingField = "departmentName" | "groupName";
-type EvaluationType = "semester" | "award";
+type EvaluationType = "semester";
 type EvaluationPublicStatus = "draft" | "published";
 type EvaluationMode = "create" | "edit";
 
@@ -137,9 +137,6 @@ interface ClubEvaluationRecord {
   evaluatorUserId: number | null;
   evaluatorName: string | null;
   termName: string;
-  awardTitle: string | null;
-  awardLevel: string | null;
-  awardReason: string | null;
   activityScore: number;
   taskScore: number;
   learningScore: number;
@@ -249,7 +246,6 @@ const memberFilters = reactive({
 
 const evaluationFilters = reactive({
   termName: "",
-  evaluationType: "",
 });
 
 const applicationDialogVisible = ref(false);
@@ -315,12 +311,8 @@ const evaluationFormRef = ref<FormInstance>();
 const evaluationMode = ref<EvaluationMode>("create");
 const evaluationTarget = ref<ClubEvaluationRecord | null>(null);
 const evaluationForm = reactive({
-  evaluationType: "semester" as EvaluationType,
   userId: undefined as number | undefined,
   termName: `${new Date().getFullYear()} 学年春季学期`,
-  awardTitle: "",
-  awardLevel: "",
-  awardReason: "",
   activityScore: 0,
   taskScore: 0,
   learningScore: 0,
@@ -353,45 +345,8 @@ const memberTermRules: FormRules = {
 };
 
 const evaluationRules: FormRules = {
-  evaluationType: [{ required: true, message: "请选择评价类型", trigger: "change" }],
   userId: [{ required: true, message: "请选择被评价成员", trigger: "change" }],
   termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
-  awardTitle: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写评优评奖标题"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
-  awardLevel: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写奖项等级"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
-  awardReason: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写获奖原因"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
 };
 
 let stopSessionListener: (() => void) | null = null;
@@ -833,9 +788,7 @@ async function loadEvaluations() {
   try {
     const query = new URLSearchParams({ viewerUserId: String(userId) });
     if (evaluationFilters.termName) query.set("termName", evaluationFilters.termName);
-    if (evaluationFilters.evaluationType) {
-      query.set("evaluationType", evaluationFilters.evaluationType);
-    }
+    query.set("evaluationType", "semester");
     const data = await requestJson<ClubEvaluationRecord[]>(
       `/api/clubs/${clubId}/evaluations?${query.toString()}`,
     );
@@ -843,7 +796,7 @@ async function loadEvaluations() {
   } catch (e) {
     if (requestId === evaluationsRequestId) {
       evaluations.value = [];
-      ElMessage.error(e instanceof Error ? e.message : "评价考核加载失败");
+      ElMessage.error(e instanceof Error ? e.message : "学期考核加载失败");
     }
   } finally {
     if (requestId === evaluationsRequestId) evaluationLoading.value = false;
@@ -1471,12 +1424,8 @@ function groupingMatchesScope(
 }
 
 function resetEvaluationForm() {
-  evaluationForm.evaluationType = "semester";
   evaluationForm.userId = evaluationTargetOptions.value[0]?.userId;
   evaluationForm.termName = `${new Date().getFullYear()} 学年春季学期`;
-  evaluationForm.awardTitle = "";
-  evaluationForm.awardLevel = "";
-  evaluationForm.awardReason = "";
   evaluationForm.activityScore = 0;
   evaluationForm.taskScore = 0;
   evaluationForm.learningScore = 0;
@@ -1507,12 +1456,8 @@ function openEditEvaluationDialog(row: ClubEvaluationRecord) {
 
   evaluationMode.value = "edit";
   evaluationTarget.value = row;
-  evaluationForm.evaluationType = row.evaluationType;
   evaluationForm.userId = row.userId;
   evaluationForm.termName = row.termName;
-  evaluationForm.awardTitle = row.awardTitle ?? "";
-  evaluationForm.awardLevel = row.awardLevel ?? "";
-  evaluationForm.awardReason = row.awardReason ?? "";
   evaluationForm.activityScore = row.activityScore;
   evaluationForm.taskScore = row.taskScore;
   evaluationForm.learningScore = row.learningScore;
@@ -1531,12 +1476,9 @@ async function submitEvaluation() {
   try {
     const payload = {
       currentUserId: currentUserId.value,
-      evaluationType: evaluationForm.evaluationType,
+      evaluationType: "semester",
       userId: evaluationForm.userId,
       termName: evaluationForm.termName,
-      awardTitle: emptyToNull(evaluationForm.awardTitle),
-      awardLevel: emptyToNull(evaluationForm.awardLevel),
-      awardReason: emptyToNull(evaluationForm.awardReason),
       activityScore: evaluationForm.activityScore,
       taskScore: evaluationForm.taskScore,
       learningScore: evaluationForm.learningScore,
@@ -1562,11 +1504,11 @@ async function submitEvaluation() {
       );
     }
 
-    ElMessage.success(evaluationMode.value === "create" ? "评价考核已录入" : "评价考核已更新");
+    ElMessage.success(evaluationMode.value === "create" ? "学期考核已录入" : "学期考核已更新");
     evaluationDialogVisible.value = false;
     await loadEvaluations();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "评价考核保存失败");
+    ElMessage.error(e instanceof Error ? e.message : "学期考核保存失败");
   } finally {
     evaluationSaving.value = false;
   }
@@ -1574,7 +1516,6 @@ async function submitEvaluation() {
 
 function clearEvaluationFilters() {
   evaluationFilters.termName = "";
-  evaluationFilters.evaluationType = "";
   void loadEvaluations();
 }
 
@@ -1657,14 +1598,6 @@ function memberStatusText(status: string | null | undefined) {
   if (normalized === "active") return "在任";
   if (normalized === "ended") return "已结束";
   return "暂停";
-}
-
-function evaluationTypeText(type: EvaluationType) {
-  return type === "award" ? "评优评奖" : "学期考核";
-}
-
-function evaluationTypeTagType(type: EvaluationType) {
-  return type === "award" ? "warning" : "primary";
 }
 
 function evaluationPublicTagType(status: EvaluationPublicStatus) {
@@ -1821,7 +1754,6 @@ watch(selectedClubId, () => {
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
   evaluationFilters.termName = "";
-  evaluationFilters.evaluationType = "";
 });
 
 watch(
@@ -1840,7 +1772,7 @@ watch(selectedClubId, () => {
   void Promise.all([loadEvaluationMembers(), loadEvaluations()]);
 });
 
-watch([() => evaluationFilters.termName, () => evaluationFilters.evaluationType], () => {
+watch([() => evaluationFilters.termName], () => {
   void loadEvaluations();
 });
 
@@ -1878,7 +1810,7 @@ onUnmounted(() => {
     <section class="toolbar">
       <div>
         <h2>社团组织管理</h2>
-        <div class="subtitle">社团注册审核、档案维护、成员任期、干部换届与评价考核</div>
+        <div class="subtitle">社团注册审核、档案维护、成员任期、干部换届与学期考核</div>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -1930,7 +1862,7 @@ onUnmounted(() => {
             可维护社团档案
           </el-tag>
           <el-tag v-if="memberViewClubs.length > 0" effect="plain">可查看成员任期</el-tag>
-          <el-tag v-if="evaluationViewClubs.length > 0" effect="plain">可查看评价考核</el-tag>
+          <el-tag v-if="evaluationViewClubs.length > 0" effect="plain">可查看学期考核</el-tag>
           <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
         </div>
         <div class="identity-actions">
@@ -2405,7 +2337,7 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="evaluationViewClubs.length > 0" label="评价考核" name="evaluations">
+      <el-tab-pane v-if="evaluationViewClubs.length > 0" label="学期考核" name="evaluations">
         <div class="member-head">
           <div class="member-controls">
             <el-select
@@ -2437,15 +2369,6 @@ onUnmounted(() => {
                 :value="term"
               />
             </el-select>
-            <el-select
-              v-model="evaluationFilters.evaluationType"
-              class="filter-item"
-              clearable
-              placeholder="评价类型"
-            >
-              <el-option label="学期考核" value="semester" />
-              <el-option label="评优评奖" value="award" />
-            </el-select>
             <el-button :icon="Refresh" @click="clearEvaluationFilters">清除筛选</el-button>
           </div>
           <el-button
@@ -2454,12 +2377,12 @@ onUnmounted(() => {
             :icon="Plus"
             @click="openCreateEvaluationDialog"
           >
-            录入评价
+            录入考核
           </el-button>
         </div>
 
         <div class="member-summary">
-          <span>评价记录 {{ evaluationSummary.total }} 条</span>
+          <span>考核记录 {{ evaluationSummary.total }} 条</span>
           <span>已公示 {{ evaluationSummary.published }} 条</span>
           <span>平均总分 {{ evaluationSummary.average }}</span>
           <span>可评价成员 {{ evaluationTargetOptions.length }} 人</span>
@@ -2470,7 +2393,7 @@ onUnmounted(() => {
           :data="evaluations"
           border
           stripe
-          empty-text="暂无评价考核记录"
+          empty-text="暂无学期考核记录"
           row-key="evaluationId"
         >
           <el-table-column type="expand">
@@ -2489,16 +2412,7 @@ onUnmounted(() => {
                   <el-descriptions-item label="职位">
                     {{ row.positionName || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="奖项标题">
-                    {{ row.awardTitle || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="奖项等级">
-                    {{ row.awardLevel || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="获奖原因" :span="2">
-                    {{ row.awardReason || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="评价说明" :span="2">
+                  <el-descriptions-item label="考核说明" :span="2">
                     {{ row.commentText || "-" }}
                   </el-descriptions-item>
                   <el-descriptions-item label="创建时间">
@@ -2510,17 +2424,10 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column prop="userName" label="成员" min-width="150" />
           <el-table-column prop="termName" label="学期" min-width="150" />
-          <el-table-column label="类型" width="120">
-            <template #default="{ row }">
-              <el-tag :type="evaluationTypeTagType(row.evaluationType)" effect="plain">
-                {{ evaluationTypeText(row.evaluationType) }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="activityScore" label="活动分" width="100" />
           <el-table-column prop="taskScore" label="任务分" width="100" />
           <el-table-column prop="learningScore" label="学习分" width="100" />
-          <el-table-column prop="awardScore" label="奖项分" width="100" />
+          <el-table-column prop="awardScore" label="荣誉加分" width="110" />
           <el-table-column prop="totalScore" label="总分" width="100" />
           <el-table-column label="等级" width="110">
             <template #default="{ row }">
@@ -2849,7 +2756,7 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="evaluationDialogVisible"
-      :title="evaluationMode === 'create' ? '录入评价考核' : '编辑评价考核'"
+      :title="evaluationMode === 'create' ? '录入学期考核' : '编辑学期考核'"
       width="720px"
     >
       <el-form
@@ -2860,12 +2767,6 @@ onUnmounted(() => {
       >
         <el-form-item label="社团">
           <el-input :model-value="selectedClub?.name" disabled />
-        </el-form-item>
-        <el-form-item label="评价类型" prop="evaluationType">
-          <el-radio-group v-model="evaluationForm.evaluationType">
-            <el-radio-button label="semester">学期考核</el-radio-button>
-            <el-radio-button label="award">评优评奖</el-radio-button>
-          </el-radio-group>
         </el-form-item>
         <el-form-item v-if="evaluationMode === 'create'" label="成员" prop="userId">
           <el-select v-model="evaluationForm.userId" filterable placeholder="选择被评价成员">
@@ -2909,7 +2810,7 @@ onUnmounted(() => {
               :precision="1"
             />
           </el-form-item>
-          <el-form-item label="奖项分">
+          <el-form-item label="荣誉加分">
             <el-input-number
               v-model="evaluationForm.awardScore"
               :min="0"
@@ -2926,40 +2827,13 @@ onUnmounted(() => {
           </el-tag>
         </div>
 
-        <el-form-item
-          v-if="evaluationForm.evaluationType === 'award'"
-          label="奖项标题"
-          prop="awardTitle"
-        >
-          <el-input v-model="evaluationForm.awardTitle" maxlength="80" show-word-limit />
-        </el-form-item>
-        <el-form-item
-          v-if="evaluationForm.evaluationType === 'award'"
-          label="奖项等级"
-          prop="awardLevel"
-        >
-          <el-input v-model="evaluationForm.awardLevel" maxlength="80" show-word-limit />
-        </el-form-item>
-        <el-form-item
-          v-if="evaluationForm.evaluationType === 'award'"
-          label="获奖原因"
-          prop="awardReason"
-        >
-          <el-input
-            v-model="evaluationForm.awardReason"
-            type="textarea"
-            :rows="3"
-            maxlength="255"
-            show-word-limit
-          />
-        </el-form-item>
         <el-form-item label="公示状态">
           <el-radio-group v-model="evaluationForm.publicStatus">
             <el-radio-button label="draft">草稿</el-radio-button>
             <el-radio-button label="published">已公示</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="评价说明">
+        <el-form-item label="考核说明">
           <el-input
             v-model="evaluationForm.commentText"
             type="textarea"
@@ -2972,7 +2846,7 @@ onUnmounted(() => {
       <template #footer>
         <el-button @click="evaluationDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="evaluationSaving" @click="submitEvaluation">
-          保存评价
+          保存考核
         </el-button>
       </template>
     </el-dialog>

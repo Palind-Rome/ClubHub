@@ -3,6 +3,7 @@ import ClubList from "../views/ClubList.vue";
 import ActivityList from "../views/ActivityList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
+import AwardCampaignList from "../views/AwardCampaignList.vue";
 import ProjectList from "../views/ProjectList.vue";
 import { hasCompletedSession } from "../authSession";
 
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: "/", redirect: "/auth" },
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
+    { path: "/awards", component: AwardCampaignList },
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },
