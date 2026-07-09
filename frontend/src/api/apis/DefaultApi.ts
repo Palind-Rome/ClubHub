@@ -63,6 +63,11 @@ import {
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
 import {
+  type CreateNoticeRequest,
+  CreateNoticeRequestFromJSON,
+  CreateNoticeRequestToJSON,
+} from "../models/CreateNoticeRequest";
+import {
   type CreateProjectRequest,
   CreateProjectRequestFromJSON,
   CreateProjectRequestToJSON,
@@ -82,6 +87,17 @@ import {
   LoginRequestFromJSON,
   LoginRequestToJSON,
 } from "../models/LoginRequest";
+import {
+  type MarkNoticeReadRequest,
+  MarkNoticeReadRequestFromJSON,
+  MarkNoticeReadRequestToJSON,
+} from "../models/MarkNoticeReadRequest";
+import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
+import {
+  type NoticeReadResult,
+  NoticeReadResultFromJSON,
+  NoticeReadResultToJSON,
+} from "../models/NoticeReadResult";
 import {
   type PermissionCheckResult,
   PermissionCheckResultFromJSON,
@@ -168,6 +184,10 @@ export interface CreateClubMemberTermOperationRequest {
   createClubMemberTermRequest: CreateClubMemberTermRequest;
 }
 
+export interface CreateNoticeOperationRequest {
+  createNoticeRequest: CreateNoticeRequest;
+}
+
 export interface CreateProjectOperationRequest {
   createProjectRequest: CreateProjectRequest;
 }
@@ -200,6 +220,14 @@ export interface GetClubsRequest {
   viewerUserId?: number;
 }
 
+export interface GetNoticesRequest {
+  viewerUserId: number;
+  noticeStatus?: GetNoticesNoticeStatusEnum;
+  targetType?: GetNoticesTargetTypeEnum;
+  clubId?: number;
+  unreadOnly?: boolean;
+}
+
 export interface GetProjectByIdRequest {
   projectId: number;
 }
@@ -217,6 +245,11 @@ export interface GetUsersRequest {
 
 export interface LoginUserRequest {
   loginRequest: LoginRequest;
+}
+
+export interface MarkNoticeReadOperationRequest {
+  noticeId: number;
+  markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
 export interface RegisterUserRequest {
@@ -690,6 +723,62 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createNotice without sending the request
+   */
+  async createNoticeRequestOpts(
+    requestParameters: CreateNoticeOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createNoticeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createNoticeRequest",
+        'Required parameter "createNoticeRequest" was null or undefined when calling createNotice().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/notices`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateNoticeRequestToJSON(requestParameters["createNoticeRequest"]),
+    };
+  }
+
+  /**
+   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+   * 发布公告通知
+   */
+  async createNoticeRaw(
+    requestParameters: CreateNoticeOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Notice>> {
+    const requestOptions = await this.createNoticeRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => NoticeFromJSON(jsonValue));
+  }
+
+  /**
+   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+   * 发布公告通知
+   */
+  async createNotice(
+    requestParameters: CreateNoticeOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Notice> {
+    const response = await this.createNoticeRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createProject without sending the request
    */
   async createProjectRequestOpts(
@@ -1132,6 +1221,77 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getNotices without sending the request
+   */
+  async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getNotices().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["noticeStatus"] != null) {
+      queryParameters["noticeStatus"] = requestParameters["noticeStatus"];
+    }
+
+    if (requestParameters["targetType"] != null) {
+      queryParameters["targetType"] = requestParameters["targetType"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["unreadOnly"] != null) {
+      queryParameters["unreadOnly"] = requestParameters["unreadOnly"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/notices`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 查询公告通知
+   */
+  async getNoticesRaw(
+    requestParameters: GetNoticesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Notice>>> {
+    const requestOptions = await this.getNoticesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(NoticeFromJSON));
+  }
+
+  /**
+   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 查询公告通知
+   */
+  async getNotices(
+    requestParameters: GetNoticesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Notice>> {
+    const response = await this.getNoticesRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getPermissionCatalog without sending the request
    */
   async getPermissionCatalogRequestOpts(): Promise<runtime.RequestOpts> {
@@ -1472,6 +1632,75 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<AuthResponse> {
     const response = await this.loginUserRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for markNoticeRead without sending the request
+   */
+  async markNoticeReadRequestOpts(
+    requestParameters: MarkNoticeReadOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["noticeId"] == null) {
+      throw new runtime.RequiredError(
+        "noticeId",
+        'Required parameter "noticeId" was null or undefined when calling markNoticeRead().',
+      );
+    }
+
+    if (requestParameters["markNoticeReadRequest"] == null) {
+      throw new runtime.RequiredError(
+        "markNoticeReadRequest",
+        'Required parameter "markNoticeReadRequest" was null or undefined when calling markNoticeRead().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/notices/{noticeId}/reads`;
+    urlPath = urlPath.replace(
+      "{noticeId}",
+      encodeURIComponent(String(requestParameters["noticeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
+    };
+  }
+
+  /**
+   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 标记通知已读
+   */
+  async markNoticeReadRaw(
+    requestParameters: MarkNoticeReadOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<NoticeReadResult>> {
+    const requestOptions = await this.markNoticeReadRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      NoticeReadResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 标记通知已读
+   */
+  async markNoticeRead(
+    requestParameters: MarkNoticeReadOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<NoticeReadResult> {
+    const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1872,3 +2101,24 @@ export const GetClubApplicationsAuditStatusEnum = {
 } as const;
 export type GetClubApplicationsAuditStatusEnum =
   (typeof GetClubApplicationsAuditStatusEnum)[keyof typeof GetClubApplicationsAuditStatusEnum];
+/**
+ * @export
+ */
+export const GetNoticesNoticeStatusEnum = {
+  Draft: "draft",
+  Published: "published",
+  Expired: "expired",
+} as const;
+export type GetNoticesNoticeStatusEnum =
+  (typeof GetNoticesNoticeStatusEnum)[keyof typeof GetNoticesNoticeStatusEnum];
+/**
+ * @export
+ */
+export const GetNoticesTargetTypeEnum = {
+  School: "school",
+  Club: "club",
+  Department: "department",
+  Member: "member",
+} as const;
+export type GetNoticesTargetTypeEnum =
+  (typeof GetNoticesTargetTypeEnum)[keyof typeof GetNoticesTargetTypeEnum];
