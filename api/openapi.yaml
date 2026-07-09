@@ -1705,6 +1705,12 @@ paths:
           description: 按申请人用户筛选。
           schema:
             type: integer
+        - name: reviewerUserId
+          in: query
+          required: false
+          description: 按审批人用户筛选。
+          schema:
+            type: integer
       responses:
         "200":
           description: 场地预约列表
@@ -1772,12 +1778,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "409":
-          description: 已开始且未结束的已通过预约暂时无法删除
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
     delete:
       summary: 删除场地预约
       operationId: deleteVenueReservation
@@ -1804,6 +1804,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 预约不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 已开始且未结束的已通过预约暂时无法删除
           content:
             application/json:
               schema:

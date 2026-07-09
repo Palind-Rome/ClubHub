@@ -234,11 +234,11 @@ async function submitVenue() {
   try {
     const savedVenue = venue ? await updateVenue(venue.id) : await createVenue();
     if (venue && venue.status !== form.status) {
-      if (form.status === "available") {
-        await changeVenueStatus(savedVenue.id, "available", false);
-      } else {
-        await requestVenueStatusChange(savedVenue, form.status);
-      }
+      const statusApplied =
+        form.status === "available"
+          ? await changeVenueStatus(savedVenue.id, "available", false)
+          : await requestVenueStatusChange(savedVenue, form.status);
+      if (!statusApplied) return;
     }
 
     dialogVisible.value = false;
@@ -285,14 +285,14 @@ async function submitMaintenanceStatus() {
   const venue = venues.value.find((item) => item.id === maintenanceForm.venueId);
   if (!venue) return;
 
-  await requestVenueStatusChange(
+  const statusApplied = await requestVenueStatusChange(
     venue,
     "maintenance",
     maintenanceForm.maintenanceUntil
       ? beijingDateTimeToUtcIso(maintenanceForm.maintenanceUntil)
       : null,
   );
-  maintenanceDialogVisible.value = false;
+  if (statusApplied) maintenanceDialogVisible.value = false;
 }
 
 async function requestVenueStatusChange(
@@ -300,10 +300,10 @@ async function requestVenueStatusChange(
   status: "maintenance" | "disabled",
   maintenanceUntil: string | null = null,
 ) {
-  if (!operatorUserId.value) return;
+  if (!operatorUserId.value) return false;
   if (!canDisable.value) {
     ElMessage.error("当前账号没有停用或恢复场地权限。");
-    return;
+    return false;
   }
 
   statusChangingId.value = venue.id;
@@ -314,12 +314,13 @@ async function requestVenueStatusChange(
       pendingStatusChange.value = { venue, status, maintenanceUntil };
       statusConflictReservations.value = conflicts;
       statusConflictDialogVisible.value = true;
-      return;
+      return false;
     }
 
-    await changeVenueStatus(venue.id, status, true, maintenanceUntil);
+    return await changeVenueStatus(venue.id, status, true, maintenanceUntil);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "检查场地预约冲突失败");
+    return false;
   } finally {
     statusChangingId.value = undefined;
   }
@@ -363,10 +364,10 @@ async function changeVenueStatus(
   maintenanceUntil: string | null = null,
   cancelConflictingReservations = false,
 ) {
-  if (!operatorUserId.value) return;
+  if (!operatorUserId.value) return false;
   if (!canDisable.value) {
     ElMessage.error("当前账号没有停用或恢复场地权限。");
-    return;
+    return false;
   }
 
   statusChangingId.value = venueId;

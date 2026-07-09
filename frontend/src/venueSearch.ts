@@ -27,14 +27,9 @@ export function matchesVenueSearch(index: VenueSearchIndex, query: string) {
   const normalizedQuery = normalizeSearchValue(query);
   if (!normalizedQuery) return true;
 
-  return normalizedQuery.split(" ").every((token) => {
-    const compactToken = token.replace(/\s+/g, "");
-    return (
-      index.idValues.includes(token) ||
-      index.textValue.includes(token) ||
-      (compactToken !== token && index.textValue.includes(compactToken))
-    );
-  });
+  return normalizedQuery
+    .split(" ")
+    .every((token) => index.idValues.includes(token) || index.textValue.includes(token));
 }
 
 export function formatVenueLocation(building?: string | null, roomNo?: string | null) {

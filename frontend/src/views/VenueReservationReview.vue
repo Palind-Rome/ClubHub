@@ -262,18 +262,17 @@ async function loadPendingReservations() {
 }
 
 async function loadHistoryReservations() {
-  if (!reviewerUserId.value) return;
+  const reviewerId = reviewerUserId.value;
+  if (!reviewerId) return;
 
   historyLoading.value = true;
   historyError.value = "";
   try {
     const [approved, rejected] = await Promise.all([
-      fetchReservationsByStatus("approved"),
-      fetchReservationsByStatus("rejected"),
+      fetchReservationsByStatus("approved", reviewerId),
+      fetchReservationsByStatus("rejected", reviewerId),
     ]);
-    historyReservations.value = [...approved, ...rejected].filter(
-      (reservation) => reservation.reviewerUserId === reviewerUserId.value,
-    );
+    historyReservations.value = [...approved, ...rejected];
   } catch (e) {
     historyError.value = e instanceof Error ? e.message : "加载审批历史失败";
   } finally {
@@ -281,8 +280,12 @@ async function loadHistoryReservations() {
   }
 }
 
-async function fetchReservationsByStatus(status: "approved" | "rejected") {
-  const res = await fetch(`/api/venue-reservations?status=${status}`);
+async function fetchReservationsByStatus(status: "approved" | "rejected", reviewerId: number) {
+  const params = new URLSearchParams({
+    status,
+    reviewerUserId: String(reviewerId),
+  });
+  const res = await fetch(`/api/venue-reservations?${params.toString()}`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as VenueReservation[];
 }
@@ -603,9 +606,9 @@ watch(filteredVenueGroups, syncSelectedVenue);
       <div class="history-toolbar">
         <div class="history-filters">
           <el-radio-group v-model="historyStatus" size="small">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="approved">已同意</el-radio-button>
-            <el-radio-button label="rejected">已拒绝</el-radio-button>
+            <el-radio-button value="all">全部</el-radio-button>
+            <el-radio-button value="approved">已同意</el-radio-button>
+            <el-radio-button value="rejected">已拒绝</el-radio-button>
           </el-radio-group>
           <el-input
             v-model="historySearch"

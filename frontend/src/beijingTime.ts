@@ -31,10 +31,6 @@ function normalizeLocalDateTime(value: string) {
   return value.trim().replace(" ", "T");
 }
 
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
 function formatterParts(formatter: Intl.DateTimeFormat, date: Date) {
   return Object.fromEntries(
     formatter
@@ -73,9 +69,8 @@ export function beijingDateTimeToUtcIso(value: string) {
 }
 
 export function beijingCalendarDateTimestamp(date: Date) {
-  return beijingDateTimeTimestamp(
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T00:00:00`,
-  );
+  const parts = formatterParts(dateFormatter, date);
+  return beijingDateTimeTimestamp(`${parts.year}-${parts.month}-${parts.day}T00:00:00`);
 }
 
 export function beijingTodayStartTimestamp() {

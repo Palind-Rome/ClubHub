@@ -45,7 +45,8 @@ public class VenueReservationsController : ControllerBase
         [FromQuery] string? status,
         [FromQuery] int? venueId,
         [FromQuery] int? clubId,
-        [FromQuery] int? applicantUserId)
+        [FromQuery] int? applicantUserId,
+        [FromQuery] int? reviewerUserId)
     {
         if (!IsValidStatus(status, AllowedReservationStatuses, out var normalizedStatus))
         {
@@ -72,6 +73,11 @@ public class VenueReservationsController : ControllerBase
         if (applicantUserId is not null)
         {
             query = query.Where(r => r.ApplicantUserId == applicantUserId);
+        }
+
+        if (reviewerUserId is not null)
+        {
+            query = query.Where(r => r.ReviewerUserId == reviewerUserId);
         }
 
         var reservations = await query
