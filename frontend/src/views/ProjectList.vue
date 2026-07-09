@@ -2,8 +2,6 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
-  Configuration,
-  DefaultApi,
   ProjectProjectStatusEnum,
   ReviewProjectRequestProjectStatusEnum,
   type CancelProjectRequest,
@@ -11,9 +9,8 @@ import {
   type Project,
   type UserSummary,
 } from "../api";
+import { apiClient as api } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
-
-const api = new DefaultApi(new Configuration({ basePath: "" }));
 
 const projectReviewPermission = "project:review";
 const projectTaskManagePermission = "project:task:manage";
