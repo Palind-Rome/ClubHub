@@ -23,6 +23,7 @@ const roleSummary = computed(() => {
 });
 const activeMenu = computed(() => {
   if (route.path.startsWith("/recruitments")) return "/recruitments";
+  if (route.path.startsWith("/evaluations")) return "/evaluations";
   if (route.path.startsWith("/awards")) return "/awards";
   return route.path;
 });
@@ -85,6 +86,7 @@ onUnmounted(() => {
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/recruitments">纳新</el-menu-item>
+        <el-menu-item index="/evaluations">成员考核</el-menu-item>
         <el-menu-item index="/awards">评奖评优</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
