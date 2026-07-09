@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,32 +15,38 @@
 
 import { mapValues } from "../runtime";
 /**
- * 系统预置角色定义�? * @export
+ * 系统预置角色定义。
+ * @export
  * @interface RoleDefinition
  */
 export interface RoleDefinition {
   /**
-   * 角色编码�?     * @type {string}
+   * 角色编码。
+   * @type {string}
    * @memberof RoleDefinition
    */
   code: string;
   /**
-   * 角色名称�?     * @type {string}
+   * 角色名称。
+   * @type {string}
    * @memberof RoleDefinition
    */
   name: string;
   /**
-   * 角色作用域�?     * @type {RoleDefinitionScopeEnum}
+   * 角色作用域。
+   * @type {RoleDefinitionScopeEnum}
    * @memberof RoleDefinition
    */
   scope: RoleDefinitionScopeEnum;
   /**
-   * 角色业务说明�?     * @type {string}
+   * 角色业务说明。
+   * @type {string}
    * @memberof RoleDefinition
    */
   description: string;
   /**
-   * 角色拥有的权限编码列表�?     * @type {Array<string>}
+   * 角色拥有的权限编码列表。
+   * @type {Array<string>}
    * @memberof RoleDefinition
    */
   permissions: Array<string>;

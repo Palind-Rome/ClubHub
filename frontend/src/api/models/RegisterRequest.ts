@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,57 +15,68 @@
 
 import { mapValues } from "../runtime";
 /**
- * 用户注册请求。学生学工号�?7 位数字，教师工号�?5 位数字�? * @export
+ * 用户注册请求。学生学工号为 7 位数字，教师工号为 5 位数字。
+ * @export
  * @interface RegisterRequest
  */
 export interface RegisterRequest {
   /**
-   * 登录用户名，注册后必须唯一�?     * @type {string}
+   * 登录用户名，注册后必须唯一。
+   * @type {string}
    * @memberof RegisterRequest
    */
   username: string;
   /**
-   * 登录密码，服务端仅保存密码摘要�?     * @type {string}
+   * 登录密码，服务端仅保存密码摘要。
+   * @type {string}
    * @memberof RegisterRequest
    */
   password: string;
   /**
-   * 用户真实姓名�?     * @type {string}
+   * 用户真实姓名。
+   * @type {string}
    * @memberof RegisterRequest
    */
   realName: string;
   /**
-   * 学工号；学生 7 位，教师 5 位�?     * @type {string}
+   * 学工号；学生 7 位，教师 5 位。
+   * @type {string}
    * @memberof RegisterRequest
    */
   studentNo: string;
   /**
-   * 性别，可为空；当前支持男、女�?     * @type {string}
+   * 性别，可为空；当前支持男、女。
+   * @type {string}
    * @memberof RegisterRequest
    */
   gender?: string | null;
   /**
-   * 联系电话，可为空�?     * @type {string}
+   * 联系电话，可为空。
+   * @type {string}
    * @memberof RegisterRequest
    */
   phone?: string | null;
   /**
-   * 邮箱地址，可为空�?     * @type {string}
+   * 邮箱地址，可为空。
+   * @type {string}
    * @memberof RegisterRequest
    */
   email?: string | null;
   /**
-   * 所属学院，可为空�?     * @type {string}
+   * 所属学院，可为空。
+   * @type {string}
    * @memberof RegisterRequest
    */
   college?: string | null;
   /**
-   * 所属专业，可为空�?     * @type {string}
+   * 所属专业，可为空。
+   * @type {string}
    * @memberof RegisterRequest
    */
   major?: string | null;
   /**
-   * 年级，可为空�?     * @type {string}
+   * 年级，可为空。
+   * @type {string}
    * @memberof RegisterRequest
    */
   grade?: string | null;

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,17 +15,20 @@
 
 import { mapValues } from "../runtime";
 /**
- * 用户登录请求，username 可填写用户名或学工号�? * @export
+ * 用户登录请求，username 可填写用户名或学工号。
+ * @export
  * @interface LoginRequest
  */
 export interface LoginRequest {
   /**
-   * 用户名或学工号�?     * @type {string}
+   * 用户名或学工号。
+   * @type {string}
    * @memberof LoginRequest
    */
   username: string;
   /**
-   * 登录密码�?     * @type {string}
+   * 登录密码。
+   * @type {string}
    * @memberof LoginRequest
    */
   password: string;

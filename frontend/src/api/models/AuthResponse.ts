@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -30,7 +30,8 @@ import {
 } from "./AuthUser";
 
 /**
- * 注册或登录成功后的认证响应�? * @export
+ * 注册或登录成功后的认证响应。
+ * @export
  * @interface AuthResponse
  */
 export interface AuthResponse {
@@ -47,12 +48,14 @@ export interface AuthResponse {
    */
   user: AuthUser;
   /**
-   * 当前用户拥有的角色列表�?     * @type {Array<AuthRole>}
+   * 当前用户拥有的角色列表。
+   * @type {Array<AuthRole>}
    * @memberof AuthResponse
    */
   roles: Array<AuthRole>;
   /**
-   * 当前用户角色权限的并集�?     * @type {Array<string>}
+   * 当前用户角色权限的并集。
+   * @type {Array<string>}
    * @memberof AuthResponse
    */
   permissions: Array<string>;

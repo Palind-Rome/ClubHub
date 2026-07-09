@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,52 +15,62 @@
 
 import { mapValues } from "../runtime";
 /**
- * 发布公告通知请求�? * @export
+ * 发布公告通知请求。
+ * @export
  * @interface CreateNoticeRequest
  */
 export interface CreateNoticeRequest {
   /**
-   * 当前发布人用�?ID�?     * @type {number}
+   * 当前发布人用户 ID。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   currentUserId: number;
   /**
-   * 通知类型，例�?announcement、urgent、event�?     * @type {string}
+   * 通知类型，例如 announcement、urgent、event。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   noticeType: string;
   /**
-   * 通知标题�?     * @type {string}
+   * 通知标题。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   title: string;
   /**
-   * 通知正文�?     * @type {string}
+   * 通知正文。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   content: string;
   /**
-   * 定向类型�?     * @type {CreateNoticeRequestTargetTypeEnum}
+   * 定向类型。
+   * @type {CreateNoticeRequestTargetTypeEnum}
    * @memberof CreateNoticeRequest
    */
   targetType: CreateNoticeRequestTargetTypeEnum;
   /**
-   * 成员定向所属社�?ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空�?     * @type {number}
+   * 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   clubId?: number | null;
   /**
-   * 目标 ID；school 为空，club 传目标社�?ID，department 传成员任�?memberId，member 传目�?userId�?     * @type {number}
+   * 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   targetId?: number | null;
   /**
-   * 过期时间，必须晚于发布时间�?     * @type {Date}
+   * 过期时间，必须晚于发布时间。
+   * @type {Date}
    * @memberof CreateNoticeRequest
    */
   expireAt?: Date | null;
   /**
-   * 通知状态；默认 published�?     * @type {CreateNoticeRequestNoticeStatusEnum}
+   * 通知状态；默认 published。
+   * @type {CreateNoticeRequestNoticeStatusEnum}
    * @memberof CreateNoticeRequest
    */
   noticeStatus?: CreateNoticeRequestNoticeStatusEnum;

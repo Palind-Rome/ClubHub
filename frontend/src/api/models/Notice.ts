@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,97 +15,116 @@
 
 import { mapValues } from "../runtime";
 /**
- * 公告通知及当前用户已读状态�? * @export
+ * 公告通知及当前用户已读状态。
+ * @export
  * @interface Notice
  */
 export interface Notice {
   /**
-   * 通知 ID�?     * @type {number}
+   * 通知 ID。
+   * @type {number}
    * @memberof Notice
    */
   id: number;
   /**
-   * 社团 ID；全校通知可为空�?     * @type {number}
+   * 社团 ID；全校通知可为空。
+   * @type {number}
    * @memberof Notice
    */
   clubId?: number | null;
   /**
-   * 社团名称�?     * @type {string}
+   * 社团名称。
+   * @type {string}
    * @memberof Notice
    */
   clubName?: string | null;
   /**
-   * 发布人用�?ID�?     * @type {number}
+   * 发布人用户 ID。
+   * @type {number}
    * @memberof Notice
    */
   publisherUserId: number;
   /**
-   * 发布人展示名称�?     * @type {string}
+   * 发布人展示名称。
+   * @type {string}
    * @memberof Notice
    */
   publisherName?: string | null;
   /**
-   * 通知类型，例�?announcement、urgent、event�?     * @type {string}
+   * 通知类型，例如 announcement、urgent、event。
+   * @type {string}
    * @memberof Notice
    */
   noticeType: string;
   /**
-   * 通知标题�?     * @type {string}
+   * 通知标题。
+   * @type {string}
    * @memberof Notice
    */
   title: string;
   /**
-   * 通知正文�?     * @type {string}
+   * 通知正文。
+   * @type {string}
    * @memberof Notice
    */
   content: string;
   /**
-   * 定向类型�?     * @type {NoticeTargetTypeEnum}
+   * 定向类型。
+   * @type {NoticeTargetTypeEnum}
    * @memberof Notice
    */
   targetType: NoticeTargetTypeEnum;
   /**
-   * 目标 ID；社团通知�?clubId，部门通知为成员任�?memberId，成员通知�?userId，全校通知为空�?     * @type {number}
+   * 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+   * @type {number}
    * @memberof Notice
    */
   targetId?: number | null;
   /**
-   * 前端展示用目标名称�?     * @type {string}
+   * 前端展示用目标名称。
+   * @type {string}
    * @memberof Notice
    */
   targetName?: string | null;
   /**
-   * 发布时间�?     * @type {Date}
+   * 发布时间。
+   * @type {Date}
    * @memberof Notice
    */
   publishAt: Date;
   /**
-   * 过期时间�?     * @type {Date}
+   * 过期时间。
+   * @type {Date}
    * @memberof Notice
    */
   expireAt?: Date | null;
   /**
-   * 通知状态�?     * @type {NoticeNoticeStatusEnum}
+   * 通知状态。
+   * @type {NoticeNoticeStatusEnum}
    * @memberof Notice
    */
   noticeStatus: NoticeNoticeStatusEnum;
   /**
-   * 当前查看用户是否已读�?     * @type {boolean}
+   * 当前查看用户是否已读。
+   * @type {boolean}
    * @memberof Notice
    */
   isRead: boolean;
   /**
-   * 当前查看用户已读时间�?     * @type {Date}
+   * 当前查看用户已读时间。
+   * @type {Date}
    * @memberof Notice
    */
   readAt?: Date | null;
   /**
-   * 当前规则下可接收该通知的用户数�?     * @type {number}
+   * 当前规则下可接收该通知的用户数。
+   * @type {number}
    * @memberof Notice
    */
   audienceCount?: number | null;
   /**
-   * 已读人数�?     * @type {number}
+   * 已读人数。
+   * @type {number}
    * @memberof Notice
    */
   readCount: number;

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,27 +15,32 @@
 
 import { mapValues } from "../runtime";
 /**
- * 为目标用户分配系统级或社团级角色�? * @export
+ * 为目标用户分配系统级或社团级角色。
+ * @export
  * @interface AssignRoleRequest
  */
 export interface AssignRoleRequest {
   /**
-   * 发起分配操作的用�?ID�?     * @type {number}
+   * 发起分配操作的用户 ID。
+   * @type {number}
    * @memberof AssignRoleRequest
    */
   operatorUserId: number;
   /**
-   * 被分配角色的用户 ID�?     * @type {number}
+   * 被分配角色的用户 ID。
+   * @type {number}
    * @memberof AssignRoleRequest
    */
   targetUserId: number;
   /**
-   * 角色编码，例�?STUDENT、CLUB_MEMBER、SYSTEM_ADMIN�?     * @type {string}
+   * 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+   * @type {string}
    * @memberof AssignRoleRequest
    */
   roleCode: string;
   /**
-   * 社团级角色所属社�?ID；系统级角色可为空�?     * @type {number}
+   * 社团级角色所属社团 ID；系统级角色可为空。
+   * @type {number}
    * @memberof AssignRoleRequest
    */
   clubId?: number | null;
