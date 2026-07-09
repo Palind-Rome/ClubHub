@@ -8,14 +8,24 @@ namespace ClubHub.Api.Services;
 public sealed class AuthTokenService
 {
     private const int TokenLifetimeHours = 12;
+    private const string LocalDevelopmentSigningKey = "ClubHub.LocalDevelopment.TokenSigningKey.ChangeForProduction";
     private readonly byte[] _signingKey;
 
-    public AuthTokenService(IConfiguration configuration)
+    public AuthTokenService(IConfiguration configuration, IHostEnvironment environment)
     {
         var configuredKey = configuration["Authentication:TokenSigningKey"];
-        var signingKey = string.IsNullOrWhiteSpace(configuredKey)
-            ? "ClubHub.LocalDevelopment.TokenSigningKey.ChangeForProduction"
-            : configuredKey;
+        var signingKey = configuredKey;
+        if (string.IsNullOrWhiteSpace(signingKey))
+        {
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException(
+                    "Authentication:TokenSigningKey must be configured outside Development.");
+            }
+
+            signingKey = LocalDevelopmentSigningKey;
+        }
+
         _signingKey = Encoding.UTF8.GetBytes(signingKey);
     }
 

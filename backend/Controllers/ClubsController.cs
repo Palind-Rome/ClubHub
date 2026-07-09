@@ -21,6 +21,7 @@ public class ClubsController : ControllerBase
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
     private const string ApplicationAccepted = "accepted";
+    private const string ApplicationRejected = "rejected";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
@@ -977,7 +978,12 @@ public class ClubsController : ControllerBase
                 (a.Recruitment.EndAt == null || a.Recruitment.EndAt >= now))
             .ToListAsync();
 
-        _db.RecruitmentApplications.RemoveRange(applications);
+        var reviewedAt = DateTime.UtcNow;
+        foreach (var application in applications)
+        {
+            application.ApplicationStatus = ApplicationRejected;
+            application.ReviewedAt = reviewedAt;
+        }
     }
 
     private async Task EnsureClubMemberRoleAsync(int clubId, int userId, DateTime now)

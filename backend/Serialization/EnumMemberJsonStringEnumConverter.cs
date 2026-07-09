@@ -49,7 +49,11 @@ public sealed class EnumMemberJsonStringEnumConverter : JsonConverterFactory
 
             if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var numericValue))
             {
-                return (TEnum)Enum.ToObject(typeof(TEnum), numericValue);
+                var enumValue = (TEnum)Enum.ToObject(typeof(TEnum), numericValue);
+                if (_toJson.ContainsKey(enumValue))
+                {
+                    return enumValue;
+                }
             }
 
             throw new JsonException($"Cannot convert JSON value to {typeof(TEnum).Name}.");

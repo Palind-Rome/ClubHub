@@ -15,7 +15,7 @@ export function collectManageableClubIds(
   roles
     .filter((role) => role.permissions?.includes(permission) || role.permissions?.includes("*"))
     .forEach((role) => {
-      const ids = role.clubIds?.length ? role.clubIds : role.clubId ? [role.clubId] : [];
+      const ids = role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
       ids.forEach((clubId) => clubIds.add(clubId));
     });
 

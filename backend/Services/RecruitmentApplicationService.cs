@@ -4,6 +4,7 @@ using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Oracle.ManagedDataAccess.Client;
 using CreateRecruitmentApplicationRequest = Org.OpenAPITools.Models.CreateRecruitmentApplicationRequest;
 using RecruitmentApplicationDto = Org.OpenAPITools.Models.RecruitmentApplication;
 using ReviewRecruitmentApplicationRequest = Org.OpenAPITools.Models.ReviewRecruitmentApplicationRequest;
@@ -41,11 +42,6 @@ public class RecruitmentApplicationService
             .ThenByDescending(a => a.ApplicationId)
             .ToListAsync();
 
-        if (!canManage && applications.Count == 0)
-        {
-            return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Fail(403, "当前用户没有查看该招募报名的权限。");
-        }
-
         return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Ok(applications.Select(ToApplicationDto).ToList());
     }
 
@@ -68,9 +64,14 @@ public class RecruitmentApplicationService
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        if (!await LockRecruitmentRowAsync(recruitId))
+        var lockResult = await LockRecruitmentRowAsync(recruitId);
+        if (lockResult == RecruitmentRowLockResult.Missing)
         {
             return ServiceResult<RecruitmentApplicationDto>.Fail(404, "招募不存在。");
+        }
+        if (lockResult == RecruitmentRowLockResult.Busy)
+        {
+            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "招募正在处理其他报名，请稍后重试。");
         }
 
         var recruitment = await RecruitmentQuery().FirstOrDefaultAsync(r => r.RecruitId == recruitId);
@@ -166,16 +167,7 @@ public class RecruitmentApplicationService
             return await AcceptApplicationAsync(application, reviewer, req);
         }
 
-        application.ApplicationStatus = decision;
-        application.InterviewScore = req.InterviewScore is null ? null : Convert.ToDecimal(req.InterviewScore.Value);
-        application.ReviewerUserId = reviewer.UserId;
-        application.Reviewer = reviewer;
-        application.ReviewedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        var reviewed = await ApplicationQuery().FirstAsync(a => a.ApplicationId == application.ApplicationId);
-        return ServiceResult<RecruitmentApplicationDto>.Ok(ToApplicationDto(reviewed));
+        return await RejectApplicationAsync(application, reviewer, req);
     }
 
     private async Task<ServiceResult<RecruitmentApplicationDto>> AcceptApplicationAsync(
@@ -184,9 +176,14 @@ public class RecruitmentApplicationService
         ReviewRecruitmentApplicationRequest req)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        if (!await LockRecruitmentRowAsync(application.RecruitId))
+        var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
+        if (lockResult == RecruitmentRowLockResult.Missing)
         {
             return ServiceResult<RecruitmentApplicationDto>.Fail(404, "招募不存在。");
+        }
+        if (lockResult == RecruitmentRowLockResult.Busy)
+        {
+            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "招募正在处理其他筛选结果，请稍后重试。");
         }
 
         await _db.Entry(application).ReloadAsync();
@@ -239,6 +236,41 @@ public class RecruitmentApplicationService
         return ServiceResult<RecruitmentApplicationDto>.Ok(ToApplicationDto(accepted));
     }
 
+    private async Task<ServiceResult<RecruitmentApplicationDto>> RejectApplicationAsync(
+        RecruitmentApplication application,
+        User reviewer,
+        ReviewRecruitmentApplicationRequest req)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
+        if (lockResult == RecruitmentRowLockResult.Missing)
+        {
+            return ServiceResult<RecruitmentApplicationDto>.Fail(404, "招募不存在。");
+        }
+        if (lockResult == RecruitmentRowLockResult.Busy)
+        {
+            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "招募正在处理其他筛选结果，请稍后重试。");
+        }
+
+        await _db.Entry(application).ReloadAsync();
+        if (application.ApplicationStatus != ApplicationPending)
+        {
+            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "只有待筛选的报名可以录入筛选结果。");
+        }
+
+        application.ApplicationStatus = ApplicationRejected;
+        application.InterviewScore = req.InterviewScore is null ? null : Convert.ToDecimal(req.InterviewScore.Value);
+        application.ReviewerUserId = reviewer.UserId;
+        application.Reviewer = reviewer;
+        application.ReviewedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        var rejected = await ApplicationQuery().FirstAsync(a => a.ApplicationId == application.ApplicationId);
+        return ServiceResult<RecruitmentApplicationDto>.Ok(ToApplicationDto(rejected));
+    }
+
     private IQueryable<Recruitment> RecruitmentQuery(bool asNoTracking = false)
     {
         var query = _db.Recruitments
@@ -259,7 +291,7 @@ public class RecruitmentApplicationService
         return asNoTracking ? query.AsNoTracking() : query;
     }
 
-    private async Task<bool> LockRecruitmentRowAsync(int recruitId)
+    private async Task<RecruitmentRowLockResult> LockRecruitmentRowAsync(int recruitId)
     {
         var connection = _db.Database.GetDbConnection();
         if (connection.State != ConnectionState.Open)
@@ -269,15 +301,34 @@ public class RecruitmentApplicationService
 
         await using var command = connection.CreateCommand();
         command.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
-        command.CommandText = "SELECT RECRUIT_ID FROM RECRUITMENTS WHERE RECRUIT_ID = :recruitId FOR UPDATE";
+        command.CommandText = "SELECT RECRUIT_ID FROM RECRUITMENTS WHERE RECRUIT_ID = :recruitId FOR UPDATE WAIT 5";
 
         var parameter = command.CreateParameter();
         parameter.ParameterName = "recruitId";
         parameter.Value = recruitId;
         command.Parameters.Add(parameter);
 
-        var lockedRecruitId = await command.ExecuteScalarAsync();
-        return lockedRecruitId is not null && lockedRecruitId != DBNull.Value;
+        try
+        {
+            var lockedRecruitId = await command.ExecuteScalarAsync();
+            return lockedRecruitId is not null && lockedRecruitId != DBNull.Value
+                ? RecruitmentRowLockResult.Locked
+                : RecruitmentRowLockResult.Missing;
+        }
+        catch (OracleException ex) when (IsLockContention(ex))
+        {
+            return RecruitmentRowLockResult.Busy;
+        }
+    }
+
+    private static bool IsLockContention(OracleException ex) =>
+        ex.Number is 54 or 60 or 30006;
+
+    private enum RecruitmentRowLockResult
+    {
+        Locked,
+        Missing,
+        Busy
     }
 
     private async Task<User?> LoadUserAsync(int userId) =>
