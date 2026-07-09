@@ -521,6 +521,11 @@ function openBudgetReview(activity: Activity) {
   budgetReviewDialogVisible.value = true;
 }
 
+function openMaterialPlaceholder(activity: Activity) {
+  currentActivity.value = activity;
+  ElMessage.info("活动物资借用、归还与损坏登记将在 #23 接入。");
+}
+
 async function reviewBudget() {
   if (!currentActivity.value) return;
 
@@ -758,67 +763,69 @@ async function readErrorMessage(res: Response) {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="520" align="center">
+      <el-table-column label="操作" width="360" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
-            <el-button
-              v-if="row.status === 'published'"
-              size="small"
-              type="primary"
-              :disabled="!canRegister(row)"
-              :loading="registeringActivityId === row.id"
-              @click="registerActivity(row)"
-              >{{ registerButtonText(row) }}</el-button
-            >
-            <el-button
-              v-if="row.status === 'pending_review'"
-              size="small"
-              type="primary"
-              plain
-              @click="openReview(row)"
-              >审核</el-button
-            >
-            <el-button
-              size="small"
-              type="primary"
-              plain
-              :disabled="row.budgetStatus === 'approved'"
-              @click="openBudget(row)"
-              >经费申请</el-button
-            >
-            <el-button
-              v-if="row.budgetStatus === 'pending'"
-              size="small"
-              type="warning"
-              plain
-              @click="openBudgetReview(row)"
-              >经费审批</el-button
-            >
-            <el-button
-              v-if="row.status === 'published' || row.status === 'ongoing'"
-              size="small"
-              type="primary"
-              plain
-              @click="openSettings(row)"
-              >签到设置</el-button
-            >
-            <el-button
-              v-if="row.status === 'published' || row.status === 'ongoing'"
-              size="small"
-              type="success"
-              plain
-              @click="openSign(row, 'checkin')"
-              >签到</el-button
-            >
-            <el-button
-              v-if="row.status === 'published' || row.status === 'ongoing'"
-              size="small"
-              type="warning"
-              plain
-              @click="openSign(row, 'checkout')"
-              >签退</el-button
-            >
-            <el-button size="small" plain @click="openParticipations(row)">记录</el-button>
+            <el-dropdown trigger="click">
+              <el-button size="small" plain>活动详情</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openParticipations(row)">参与记录</el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="row.status === 'published'"
+                    :disabled="!canRegister(row) || registeringActivityId === row.id"
+                    @click="registerActivity(row)"
+                  >
+                    {{ registerButtonText(row) }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 'pending_review'" @click="openReview(row)">
+                    活动审核
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
+            <el-dropdown trigger="click">
+              <el-button size="small" type="primary" plain>经费管理</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    :disabled="row.budgetStatus === 'approved'"
+                    @click="openBudget(row)"
+                  >
+                    经费申请
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="row.budgetStatus === 'pending'"
+                    @click="openBudgetReview(row)"
+                  >
+                    经费审批
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
+            <el-button size="small" plain @click="openMaterialPlaceholder(row)">
+              物资借用
+            </el-button>
+
+            <el-dropdown trigger="click">
+              <el-button
+                size="small"
+                type="success"
+                plain
+                :disabled="row.status !== 'published' && row.status !== 'ongoing'"
+              >
+                签到管理
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openSettings(row)">签到设置</el-dropdown-item>
+                  <el-dropdown-item @click="openSign(row, 'checkin')">签到</el-dropdown-item>
+                  <el-dropdown-item @click="openSign(row, 'checkout')">签退</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </template>
       </el-table-column>
@@ -1201,6 +1208,9 @@ async function readErrorMessage(res: Response) {
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
+}
+.action-buttons :deep(.el-dropdown) {
+  display: inline-flex;
 }
 .action-buttons :deep(.el-button) {
   margin-left: 0;
