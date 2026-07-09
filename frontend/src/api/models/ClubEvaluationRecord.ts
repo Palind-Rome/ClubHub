@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,7 +15,8 @@
 
 import { mapValues } from "../runtime";
 /**
- * 绀惧洟鎴愬憳瀛︽湡鎴愮哗涓庤础鐚害鑰冩牳璁板綍锛屽搴?EVALUATIONS 琛ㄤ腑鐨?semester 璁板綍銆? * @export
+ * 社团成员学期成绩与贡献度考核记录，对应 EVALUATIONS 表中的 semester 记录。
+ * @export
  * @interface ClubEvaluationRecord
  */
 export interface ClubEvaluationRecord {
@@ -26,7 +27,8 @@ export interface ClubEvaluationRecord {
    */
   evaluationId: number;
   /**
-   * 浠呰〃绀哄鏈熻€冩牳銆傝瘎浼樿瘎濂栦娇鐢?AwardCampaignRecord 鍜?AwardApplicationRecord銆?     * @type {ClubEvaluationRecordEvaluationTypeEnum}
+   * 仅表示学期考核。评优评奖使用 AwardCampaignRecord 和 AwardApplicationRecord。
+   * @type {ClubEvaluationRecordEvaluationTypeEnum}
    * @memberof ClubEvaluationRecord
    */
   evaluationType: ClubEvaluationRecordEvaluationTypeEnum;

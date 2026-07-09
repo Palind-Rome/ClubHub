@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,97 +15,116 @@
 
 import { mapValues } from "../runtime";
 /**
- * 鍏憡閫氱煡鍙婂綋鍓嶇敤鎴峰凡璇荤姸鎬併€? * @export
+ * 公告通知及当前用户已读状态。
+ * @export
  * @interface Notice
  */
 export interface Notice {
   /**
-   * 閫氱煡 ID銆?     * @type {number}
+   * 通知 ID。
+   * @type {number}
    * @memberof Notice
    */
   id: number;
   /**
-   * 绀惧洟 ID锛涘叏鏍￠€氱煡鍙负绌恒€?     * @type {number}
+   * 社团 ID；全校通知可为空。
+   * @type {number}
    * @memberof Notice
    */
   clubId?: number | null;
   /**
-   * 绀惧洟鍚嶇О銆?     * @type {string}
+   * 社团名称。
+   * @type {string}
    * @memberof Notice
    */
   clubName?: string | null;
   /**
-   * 鍙戝竷浜虹敤鎴?ID銆?     * @type {number}
+   * 发布人用户 ID。
+   * @type {number}
    * @memberof Notice
    */
   publisherUserId: number;
   /**
-   * 鍙戝竷浜哄睍绀哄悕绉般€?     * @type {string}
+   * 发布人展示名称。
+   * @type {string}
    * @memberof Notice
    */
   publisherName?: string | null;
   /**
-   * 閫氱煡绫诲瀷锛屼緥濡?announcement銆乽rgent銆乪vent銆?     * @type {string}
+   * 通知类型，例如 announcement、urgent、event。
+   * @type {string}
    * @memberof Notice
    */
   noticeType: string;
   /**
-   * 閫氱煡鏍囬銆?     * @type {string}
+   * 通知标题。
+   * @type {string}
    * @memberof Notice
    */
   title: string;
   /**
-   * 閫氱煡姝ｆ枃銆?     * @type {string}
+   * 通知正文。
+   * @type {string}
    * @memberof Notice
    */
   content: string;
   /**
-   * 瀹氬悜绫诲瀷銆?     * @type {NoticeTargetTypeEnum}
+   * 定向类型。
+   * @type {NoticeTargetTypeEnum}
    * @memberof Notice
    */
   targetType: NoticeTargetTypeEnum;
   /**
-   * 鐩爣 ID锛涚ぞ鍥㈤€氱煡涓?clubId锛岄儴闂ㄩ€氱煡涓烘垚鍛樹换鏈?memberId锛屾垚鍛橀€氱煡涓?userId锛屽叏鏍￠€氱煡涓虹┖銆?     * @type {number}
+   * 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+   * @type {number}
    * @memberof Notice
    */
   targetId?: number | null;
   /**
-   * 鍓嶇灞曠ず鐢ㄧ洰鏍囧悕绉般€?     * @type {string}
+   * 前端展示用目标名称。
+   * @type {string}
    * @memberof Notice
    */
   targetName?: string | null;
   /**
-   * 鍙戝竷鏃堕棿銆?     * @type {Date}
+   * 发布时间。
+   * @type {Date}
    * @memberof Notice
    */
   publishAt: Date;
   /**
-   * 杩囨湡鏃堕棿銆?     * @type {Date}
+   * 过期时间。
+   * @type {Date}
    * @memberof Notice
    */
   expireAt?: Date | null;
   /**
-   * 閫氱煡鐘舵€併€?     * @type {NoticeNoticeStatusEnum}
+   * 通知状态。
+   * @type {NoticeNoticeStatusEnum}
    * @memberof Notice
    */
   noticeStatus: NoticeNoticeStatusEnum;
   /**
-   * 褰撳墠鏌ョ湅鐢ㄦ埛鏄惁宸茶銆?     * @type {boolean}
+   * 当前查看用户是否已读。
+   * @type {boolean}
    * @memberof Notice
    */
   isRead: boolean;
   /**
-   * 褰撳墠鏌ョ湅鐢ㄦ埛宸茶鏃堕棿銆?     * @type {Date}
+   * 当前查看用户已读时间。
+   * @type {Date}
    * @memberof Notice
    */
   readAt?: Date | null;
   /**
-   * 褰撳墠瑙勫垯涓嬪彲鎺ユ敹璇ラ€氱煡鐨勭敤鎴锋暟銆?     * @type {number}
+   * 当前规则下可接收该通知的用户数。
+   * @type {number}
    * @memberof Notice
    */
   audienceCount?: number | null;
   /**
-   * 宸茶浜烘暟銆?     * @type {number}
+   * 已读人数。
+   * @type {number}
    * @memberof Notice
    */
   readCount: number;

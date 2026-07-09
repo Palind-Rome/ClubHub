@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,52 +15,62 @@
 
 import { mapValues } from "../runtime";
 /**
- * 鍙戝竷鍏憡閫氱煡璇锋眰銆? * @export
+ * 发布公告通知请求。
+ * @export
  * @interface CreateNoticeRequest
  */
 export interface CreateNoticeRequest {
   /**
-   * 褰撳墠鍙戝竷浜虹敤鎴?ID銆?     * @type {number}
+   * 当前发布人用户 ID。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   currentUserId: number;
   /**
-   * 閫氱煡绫诲瀷锛屼緥濡?announcement銆乽rgent銆乪vent銆?     * @type {string}
+   * 通知类型，例如 announcement、urgent、event。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   noticeType: string;
   /**
-   * 閫氱煡鏍囬銆?     * @type {string}
+   * 通知标题。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   title: string;
   /**
-   * 閫氱煡姝ｆ枃銆?     * @type {string}
+   * 通知正文。
+   * @type {string}
    * @memberof CreateNoticeRequest
    */
   content: string;
   /**
-   * 瀹氬悜绫诲瀷銆?     * @type {CreateNoticeRequestTargetTypeEnum}
+   * 定向类型。
+   * @type {CreateNoticeRequestTargetTypeEnum}
    * @memberof CreateNoticeRequest
    */
   targetType: CreateNoticeRequestTargetTypeEnum;
   /**
-   * 鎴愬憳瀹氬悜鎵€灞炵ぞ鍥?ID锛涗粎 member 瀹氬悜闇€瑕佷綔涓虹ぞ鍥笂涓嬫枃锛屽叏鏍°€佺ぞ鍥€侀儴闂ㄥ畾鍚戝彲涓虹┖銆?     * @type {number}
+   * 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   clubId?: number | null;
   /**
-   * 鐩爣 ID锛泂chool 涓虹┖锛宑lub 浼犵洰鏍囩ぞ鍥?ID锛宒epartment 浼犳垚鍛樹换鏈?memberId锛宮ember 浼犵洰鏍?userId銆?     * @type {number}
+   * 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
+   * @type {number}
    * @memberof CreateNoticeRequest
    */
   targetId?: number | null;
   /**
-   * 杩囨湡鏃堕棿锛屽繀椤绘櫄浜庡彂甯冩椂闂淬€?     * @type {Date}
+   * 过期时间，必须晚于发布时间。
+   * @type {Date}
    * @memberof CreateNoticeRequest
    */
   expireAt?: Date | null;
   /**
-   * 閫氱煡鐘舵€侊紱榛樿 published銆?     * @type {CreateNoticeRequestNoticeStatusEnum}
+   * 通知状态；默认 published。
+   * @type {CreateNoticeRequestNoticeStatusEnum}
    * @memberof CreateNoticeRequest
    */
   noticeStatus?: CreateNoticeRequestNoticeStatusEnum;

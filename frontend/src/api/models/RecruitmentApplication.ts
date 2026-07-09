@@ -1,9 +1,9 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 楂樻牎绀惧洟杩愯惀涓庡崗鍚岀鐞嗗钩鍙?API銆? **API-first 寮€鍙戞祦绋?*锛氫慨鏀规湰鏂囦欢 鈫?push 鈫?CI 鑷姩鐢熸垚鍓嶅悗绔唬鐮?鈫?git pull 鎷夊彇鐢熸垚浠ｇ爜 鈫?鍦?Controller / Services / Vue 缁勪欢涓墜鍐欎笟鍔￠€昏緫銆?
+ * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -21,82 +21,98 @@ import { mapValues } from "../runtime";
  */
 export interface RecruitmentApplication {
   /**
-   * 鎷涘嫙鎶ュ悕鐢宠 ID銆?     * @type {number}
+   * 招募报名申请 ID。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   id: number;
   /**
-   * 鎵€灞炴嫑鍕?ID銆?     * @type {number}
+   * 所属招募 ID。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   recruitId: number;
   /**
-   * 鎵€灞炴嫑鍕熸爣棰樸€?     * @type {string}
+   * 所属招募标题。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   recruitTitle: string;
   /**
-   * 鎵€灞炵ぞ鍥?ID銆?     * @type {number}
+   * 所属社团 ID。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   clubId: number;
   /**
-   * 鎵€灞炵ぞ鍥㈠悕绉般€?     * @type {string}
+   * 所属社团名称。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   clubName: string;
   /**
-   * 鐢宠浜虹敤鎴?ID銆?     * @type {number}
+   * 申请人用户 ID。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   userId: number;
   /**
-   * 鐢宠浜哄睍绀哄鍚嶃€?     * @type {string}
+   * 申请人展示姓名。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   applicantName: string;
   /**
-   * 鐢宠浜哄宸ュ彿銆?     * @type {string}
+   * 申请人学工号。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   studentNo?: string | null;
   /**
-   * 鐢宠浜哄～鍐欑殑鍏ョぞ鐞嗙敱銆?     * @type {string}
+   * 申请人填写的入社理由。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   applicationReason: string;
   /**
-   * 闈㈣瘯鎴栫瓫閫夎瘎鍒嗭紝0 鍒?100锛涙湭璇勫垎鏃朵负绌恒€?     * @type {number}
+   * 面试或筛选评分，0 到 100；未评分时为空。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   interviewScore?: number | null;
   /**
-   * 鎶ュ悕鐢宠绛涢€夌姸鎬併€?     * @type {RecruitmentApplicationApplicationStatusEnum}
+   * 报名申请筛选状态。
+   * @type {RecruitmentApplicationApplicationStatusEnum}
    * @memberof RecruitmentApplication
    */
   applicationStatus: RecruitmentApplicationApplicationStatusEnum;
   /**
-   * 鎶ュ悕鐢宠绛涢€夌姸鎬佺殑涓枃鏂囨銆?     * @type {string}
+   * 报名申请筛选状态的中文文案。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   applicationStatusText: string;
   /**
-   * 瀹℃牳/绛涢€変汉鐢ㄦ埛 ID锛涙湭澶勭悊鏃朵负绌恒€?     * @type {number}
+   * 审核/筛选人用户 ID；未处理时为空。
+   * @type {number}
    * @memberof RecruitmentApplication
    */
   reviewerUserId?: number | null;
   /**
-   * 瀹℃牳/绛涢€変汉灞曠ず濮撳悕锛涙湭澶勭悊鏃朵负绌恒€?     * @type {string}
+   * 审核/筛选人展示姓名；未处理时为空。
+   * @type {string}
    * @memberof RecruitmentApplication
    */
   reviewerName?: string | null;
   /**
-   * 鎶ュ悕鎻愪氦鏃堕棿銆?     * @type {Date}
+   * 报名提交时间。
+   * @type {Date}
    * @memberof RecruitmentApplication
    */
   submittedAt?: Date | null;
   /**
-   * 鎶ュ悕绛涢€夊鐞嗘椂闂达紱鏈鐞嗘椂涓虹┖銆?     * @type {Date}
+   * 报名筛选处理时间；未处理时为空。
+   * @type {Date}
    * @memberof RecruitmentApplication
    */
   reviewedAt?: Date | null;
