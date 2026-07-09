@@ -6,11 +6,7 @@ import { onSessionChange, readAuth, type AuthRole } from "../authSession";
 
 type CampaignStatus = "open" | "closed" | "published";
 type ApplicationStatus =
-  | "submitted"
-  | "leader_approved"
-  | "advisor_approved"
-  | "rejected"
-  | "published";
+  "submitted" | "leader_approved" | "advisor_approved" | "rejected" | "published";
 type ReviewDecision = "approved" | "rejected";
 
 interface Club {
@@ -257,7 +253,11 @@ function openCampaignDialog() {
 }
 
 async function createCampaign() {
-  if (!(await validateForm(campaignFormRef.value)) || !campaignForm.clubId || !currentUserId.value) {
+  if (
+    !(await validateForm(campaignFormRef.value)) ||
+    !campaignForm.clubId ||
+    !currentUserId.value
+  ) {
     return;
   }
 
@@ -300,7 +300,8 @@ function openApplyDialog(campaign: AwardCampaignRecord) {
 }
 
 async function submitApplication() {
-  if (!(await validateForm(applyFormRef.value)) || !applyTarget.value || !currentUserId.value) return;
+  if (!(await validateForm(applyFormRef.value)) || !applyTarget.value || !currentUserId.value)
+    return;
 
   saving.value = true;
   try {
@@ -338,7 +339,8 @@ function openReviewDialog(row: AwardApplicationRecord) {
 }
 
 async function reviewApplication() {
-  if (!(await validateForm(reviewFormRef.value)) || !reviewTarget.value || !currentUserId.value) return;
+  if (!(await validateForm(reviewFormRef.value)) || !reviewTarget.value || !currentUserId.value)
+    return;
   if (reviewForm.decision === "rejected" && !reviewForm.reviewComment.trim()) {
     ElMessage.warning("退回申报时必须填写审核意见");
     return;
@@ -578,7 +580,9 @@ onUnmounted(() => {
       <div class="section-head">
         <div>
           <h3>{{ selectedCampaign?.title || "申报记录" }}</h3>
-          <p>{{ selectedCampaign?.description || "选择一个活动查看成员申报、审核状态和公示结果。" }}</p>
+          <p>
+            {{ selectedCampaign?.description || "选择一个活动查看成员申报、审核状态和公示结果。" }}
+          </p>
         </div>
       </div>
 
@@ -645,7 +649,12 @@ onUnmounted(() => {
     </section>
 
     <el-dialog v-model="campaignDialogVisible" title="发布评优评奖活动" width="620px">
-      <el-form ref="campaignFormRef" :model="campaignForm" :rules="campaignRules" label-width="90px">
+      <el-form
+        ref="campaignFormRef"
+        :model="campaignForm"
+        :rules="campaignRules"
+        label-width="90px"
+      >
         <el-form-item label="社团" prop="clubId">
           <el-select v-model="campaignForm.clubId" filterable placeholder="选择社团">
             <el-option

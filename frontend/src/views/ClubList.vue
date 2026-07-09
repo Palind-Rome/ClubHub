@@ -1891,9 +1891,7 @@ onUnmounted(() => {
           <el-button v-if="evaluationViewClubs.length > 0" plain @click="goEvaluations">
             查看考核
           </el-button>
-          <el-button v-if="awardWorkspaceAvailable" plain @click="goAwards">
-            评优评奖
-          </el-button>
+          <el-button v-if="awardWorkspaceAvailable" plain @click="goAwards"> 评优评奖 </el-button>
         </div>
       </div>
     </section>
