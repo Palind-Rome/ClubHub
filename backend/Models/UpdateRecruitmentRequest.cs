@@ -73,7 +73,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。</value>
         [DataMember(Name="recruitStatus", EmitDefaultValue=true)]
-        public RecruitStatusEnum? RecruitStatus { get; set; }
+        public RecruitmentWorkflowStatus? RecruitStatus { get; set; }
 
     }
 }

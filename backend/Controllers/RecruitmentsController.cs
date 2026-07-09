@@ -135,7 +135,7 @@ public class RecruitmentsController : ControllerBase
         }
 
         var status = NormalizeRecruitmentWorkflowStatus(req.RecruitStatus);
-        if (!string.IsNullOrWhiteSpace(req.RecruitStatus) && status is null)
+        if (req.RecruitStatus.HasValue && status is null)
         {
             return BadRequest(new { message = "纳新状态只能保存为草稿或提交审核。" });
         }

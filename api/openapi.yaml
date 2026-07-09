@@ -2721,6 +2721,11 @@ components:
         - quota
         - requirements
 
+    RecruitmentWorkflowStatus:
+      type: string
+      description: 纳新草稿可编辑流程状态。
+      enum: [draft, pending_review]
+
     UpdateRecruitmentRequest:
       type: object
       properties:
@@ -2749,9 +2754,9 @@ components:
           type: string
           nullable: true
         recruitStatus:
-          type: string
           description: 仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。
-          enum: [draft, pending_review]
+          allOf:
+            - $ref: "#/components/schemas/RecruitmentWorkflowStatus"
           nullable: true
       required:
         - currentUserId

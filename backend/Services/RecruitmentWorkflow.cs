@@ -4,6 +4,7 @@ using ClubHub.Api.Data.Entities;
 using CreateRecruitmentRequest = Org.OpenAPITools.Models.CreateRecruitmentRequest;
 using RecruitmentApplicationDto = Org.OpenAPITools.Models.RecruitmentApplication;
 using RecruitmentDto = Org.OpenAPITools.Models.Recruitment;
+using RecruitmentWorkflowStatus = Org.OpenAPITools.Models.RecruitmentWorkflowStatus;
 using ReviewRecruitmentApplicationRequest = Org.OpenAPITools.Models.ReviewRecruitmentApplicationRequest;
 using ReviewRecruitmentRequest = Org.OpenAPITools.Models.ReviewRecruitmentRequest;
 
@@ -211,6 +212,14 @@ public static class RecruitmentWorkflow
         {
             CreateRecruitmentRequest.RecruitStatusEnum.DraftEnum => RecruitmentStatuses.Draft,
             CreateRecruitmentRequest.RecruitStatusEnum.PendingReviewEnum => RecruitmentStatuses.PendingReview,
+            _ => null
+        };
+
+    public static string? NormalizeRecruitmentWorkflowStatus(RecruitmentWorkflowStatus? status) =>
+        status switch
+        {
+            RecruitmentWorkflowStatus.DraftEnum => RecruitmentStatuses.Draft,
+            RecruitmentWorkflowStatus.PendingReviewEnum => RecruitmentStatuses.PendingReview,
             _ => null
         };
 

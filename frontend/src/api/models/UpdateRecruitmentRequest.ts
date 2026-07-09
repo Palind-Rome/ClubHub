@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { RecruitmentWorkflowStatus } from "./RecruitmentWorkflowStatus";
+import {
+  RecruitmentWorkflowStatusFromJSON,
+  RecruitmentWorkflowStatusFromJSONTyped,
+  RecruitmentWorkflowStatusToJSON,
+  RecruitmentWorkflowStatusToJSONTyped,
+} from "./RecruitmentWorkflowStatus";
+
 /**
  *
  * @export
@@ -64,21 +72,11 @@ export interface UpdateRecruitmentRequest {
   requirements?: string | null;
   /**
    * 仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。
-   * @type {UpdateRecruitmentRequestRecruitStatusEnum}
+   * @type {RecruitmentWorkflowStatus}
    * @memberof UpdateRecruitmentRequest
    */
-  recruitStatus?: UpdateRecruitmentRequestRecruitStatusEnum | null;
+  recruitStatus?: RecruitmentWorkflowStatus | null;
 }
-
-/**
- * @export
- */
-export const UpdateRecruitmentRequestRecruitStatusEnum = {
-  Draft: "draft",
-  PendingReview: "pending_review",
-} as const;
-export type UpdateRecruitmentRequestRecruitStatusEnum =
-  (typeof UpdateRecruitmentRequestRecruitStatusEnum)[keyof typeof UpdateRecruitmentRequestRecruitStatusEnum];
 
 /**
  * Check if a given object implements the UpdateRecruitmentRequest interface.
@@ -109,7 +107,10 @@ export function UpdateRecruitmentRequestFromJSONTyped(
     endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
     quota: json["quota"] == null ? undefined : json["quota"],
     requirements: json["requirements"] == null ? undefined : json["requirements"],
-    recruitStatus: json["recruitStatus"] == null ? undefined : json["recruitStatus"],
+    recruitStatus:
+      json["recruitStatus"] == null
+        ? undefined
+        : RecruitmentWorkflowStatusFromJSON(json["recruitStatus"]),
   };
 }
 
@@ -133,6 +134,6 @@ export function UpdateRecruitmentRequestToJSONTyped(
     endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     quota: value["quota"],
     requirements: value["requirements"],
-    recruitStatus: value["recruitStatus"],
+    recruitStatus: RecruitmentWorkflowStatusToJSON(value["recruitStatus"]),
   };
 }

@@ -34,6 +34,7 @@ export * from "./PermissionDefinition";
 export * from "./Project";
 export * from "./Recruitment";
 export * from "./RecruitmentApplication";
+export * from "./RecruitmentWorkflowStatus";
 export * from "./RegisterRequest";
 export * from "./ReviewActivityRequest";
 export * from "./ReviewClubApplicationRequest";
