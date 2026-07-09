@@ -40,7 +40,11 @@ public sealed class JsonStringEnumMemberConverter : JsonConverterFactory
             }
             else if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var numberValue))
             {
-                return (TEnum)Enum.ToObject(typeof(TEnum), numberValue);
+                var enumValue = (TEnum)Enum.ToObject(typeof(TEnum), numberValue);
+                if (ToWireValue.ContainsKey(enumValue))
+                {
+                    return enumValue;
+                }
             }
 
             throw new JsonException($"Invalid value for enum {typeof(TEnum).Name}.");

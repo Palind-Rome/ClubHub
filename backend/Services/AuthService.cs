@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
@@ -124,8 +123,13 @@ public class AuthService
     ];
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthTokenService _authTokenService;
 
-    public AuthService(ClubHubDbContext db) => _db = db;
+    public AuthService(ClubHubDbContext db, AuthTokenService authTokenService)
+    {
+        _db = db;
+        _authTokenService = authTokenService;
+    }
 
     public async Task InitializeBaseRolesAsync()
     {
@@ -227,6 +231,33 @@ public class AuthService
         if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
             return AuthServiceResult<AuthResponse>.Fail(401, "用户名/学工号或密码错误。");
+        }
+
+        if (!IsNormalAccount(user))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(403, "账号已被禁用，请联系管理员。");
+        }
+
+        var roles = await GetBaseRoleRowsAsync();
+        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        {
+            await _db.SaveChangesAsync();
+        }
+
+        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+    }
+
+    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId)
+    {
+        if (userId <= 0)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(400, "请提供当前登录用户。");
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(404, "当前登录用户不存在。");
         }
 
         if (!IsNormalAccount(user))
@@ -389,7 +420,7 @@ public class AuthService
             .ToList();
 
         return new AuthResponse(
-            GenerateDemoToken(),
+            _authTokenService.CreateToken(user),
             ToAuthUser(user),
             displayRoles,
             permissions);
@@ -779,9 +810,4 @@ public class AuthService
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
-    private static string GenerateDemoToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Convert.ToBase64String(bytes);
-    }
 }

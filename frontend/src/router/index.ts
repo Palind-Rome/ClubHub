@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import ClubList from "../views/ClubList.vue";
 import ActivityList from "../views/ActivityList.vue";
+import RecruitmentList from "../views/RecruitmentList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
 import AwardCampaignList from "../views/AwardCampaignList.vue";
@@ -14,6 +15,8 @@ const router = createRouter({
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
     { path: "/awards", component: AwardCampaignList },
+    { path: "/recruitments", component: RecruitmentList },
+    { path: "/recruitments/:recruitmentId/applications", component: RecruitmentList },
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },

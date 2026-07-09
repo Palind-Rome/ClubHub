@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
 
 const healthOk = ref(false);
+const route = useRoute();
 const router = useRouter();
 const auth = ref<AuthResponse | null>(null);
 let stopSessionListener: (() => void) | null = null;
@@ -19,6 +20,9 @@ const roleSummary = computed(() => {
   if (roles.length === 0) return "暂无角色";
   return roles.map((role) => role.displayName || role.name).join("、");
 });
+const activeMenu = computed(() =>
+  route.path.startsWith("/recruitments") ? "/recruitments" : route.path,
+);
 
 function refreshSession() {
   auth.value = readAuth();
@@ -53,9 +57,10 @@ onUnmounted(() => {
   <el-container>
     <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
-      <el-menu mode="horizontal" router :default-active="$route.path" class="nav">
+      <el-menu mode="horizontal" router :default-active="activeMenu" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
+        <el-menu-item index="/recruitments">纳新</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
