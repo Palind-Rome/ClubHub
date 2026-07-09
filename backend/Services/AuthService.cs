@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
@@ -124,8 +123,13 @@ public class AuthService
     ];
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthTokenService _authTokenService;
 
-    public AuthService(ClubHubDbContext db) => _db = db;
+    public AuthService(ClubHubDbContext db, AuthTokenService authTokenService)
+    {
+        _db = db;
+        _authTokenService = authTokenService;
+    }
 
     public async Task InitializeBaseRolesAsync()
     {
@@ -416,7 +420,7 @@ public class AuthService
             .ToList();
 
         return new AuthResponse(
-            GenerateDemoToken(),
+            _authTokenService.CreateToken(user),
             ToAuthUser(user),
             displayRoles,
             permissions);
@@ -806,9 +810,4 @@ public class AuthService
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
-    private static string GenerateDemoToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Convert.ToBase64String(bytes);
-    }
 }

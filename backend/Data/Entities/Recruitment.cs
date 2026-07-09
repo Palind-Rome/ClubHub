@@ -30,6 +30,7 @@ public class Recruitment
     public string? Requirements { get; set; }
 
     [Column("RECRUIT_STATUS")]
+    // Stores one of the persisted values defined in RecruitmentStatuses.
     public string? RecruitStatus { get; set; }
 
     [Column("CREATED_AT")]

@@ -18,6 +18,8 @@ import {
   readAuth,
   saveAuth,
 } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
+import { hasScopedRole, roleCoversClub } from "../composables/useManageableClubs";
 
 type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
@@ -121,11 +123,6 @@ interface ClubMemberRecord {
   joinAt: string | null;
   contributionScore: number | null;
   isCurrent: boolean;
-}
-
-interface ApiError {
-  message?: string;
-  title?: string;
 }
 
 interface ClubContextOption {
@@ -414,31 +411,20 @@ const visibleTabs = computed(() => {
 });
 const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    let message = `请求失败（${res.status}）`;
-    try {
-      const body = (await res.json()) as ApiError;
-      message = body.message || body.title || message;
-    } catch {
-      /* 保留默认错误信息 */
-    }
-    throw new Error(message);
-  }
-
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
 async function refreshAuthSession() {
   if (!currentUserId.value) return;
 
-  const session = await requestJson<AuthResponse>(
-    `/api/auth/session?userId=${currentUserId.value}`,
-  );
+  const session = await requestJson<AuthResponse>("/api/auth/session");
   saveAuth(session);
   auth.value = session;
+}
+
+async function refreshAuthSessionQuietly() {
+  try {
+    await refreshAuthSession();
+  } catch {
+    /* 会话刷新失败不应覆盖已成功完成的主操作。 */
+  }
 }
 
 async function validateForm(form: FormInstance | undefined) {
@@ -605,15 +591,9 @@ function canManageClub(club: Club) {
 function canRemoveClubMember(club: Club) {
   const user = currentUser.value;
   if (!user || club.status !== "active") return false;
-  if (hasAllPermissions.value || canManageClub(club)) return true;
+  if (canManageClub(club)) return true;
 
-  return user.roles.some(
-    (role) =>
-      roleCoversClub(role, club.id) &&
-      ["club_officer", "club_leader", "club_president"].includes(
-        (role.roleCode ?? "").toLowerCase(),
-      ),
-  );
+  return hasScopedRole(user.roles, club.id, ["club_officer"]);
 }
 
 function canDissolveClub(club: Club) {
@@ -904,7 +884,7 @@ async function exitCurrentClub(row: IdentityRow) {
       body: JSON.stringify({ currentUserId: currentUserId.value }),
     });
     ElMessage.success("已退出社团");
-    await refreshAuthSession();
+    await refreshAuthSessionQuietly();
     await Promise.all([loadUsers(), loadData()]);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "退出失败");
@@ -1038,7 +1018,7 @@ async function submitMemberTerm() {
     ElMessage.success(memberTermMode.value === "create" ? "成员任期已新增" : "成员任期已更新");
     memberTermDialogVisible.value = false;
     if (memberTermForm.userId === currentUserId.value) {
-      await refreshAuthSession();
+      await refreshAuthSessionQuietly();
     }
     await Promise.all([loadUsers(), loadData()]);
   } catch (e) {
@@ -1141,10 +1121,6 @@ function roleLabel(user: UserSummary | null) {
 
 function roleDisplayName(role: UserRoleSummary) {
   return role.clubName ? `${role.roleName} / ${role.clubName}` : role.roleName;
-}
-
-function roleCoversClub(role: UserRoleSummary, clubId: number) {
-  return role.clubId === clubId || Boolean(role.clubIds?.includes(clubId));
 }
 
 function isAdvisorCandidate(user: UserSummary) {

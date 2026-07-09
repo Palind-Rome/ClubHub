@@ -94,15 +94,10 @@ paths:
   /api/auth/session:
     get:
       summary: 刷新当前用户会话
-      description: 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
       operationId: refreshAuthSession
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: 已重新计算的用户会话
@@ -110,8 +105,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
-        "400":
-          description: 请求参数不合法
+        "401":
+          description: 登录状态缺失或令牌无效
           content:
             application/json:
               schema:
@@ -1429,6 +1424,13 @@ paths:
         "404":
           description: 项目不存在
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ClubHub-HMAC
+      description: 登录或注册成功后返回的 ClubHub Bearer 令牌。
+
   schemas:
     ApiError:
       type: object
@@ -1586,8 +1588,8 @@ components:
       properties:
         token:
           type: string
-          description: 登录演示令牌
-          example: demo-token
+          description: 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
+          example: eyJ1c2VySWQiOjF9.abc123signature
         user:
           description: 当前登录用户信息。
           $ref: "#/components/schemas/AuthUser"
@@ -2471,64 +2473,108 @@ components:
       properties:
         id:
           type: integer
+          description: 招募记录 ID。
+          example: 1
         clubId:
           type: integer
+          description: 发布该纳新的社团 ID。
+          example: 1
         clubName:
           type: string
+          description: 发布该纳新的社团名称。
+          example: 计算机协会
         title:
           type: string
+          description: 纳新标题。
+          example: 2026 春季纳新
         description:
           type: string
+          description: 纳新的补充说明，可为空。
           nullable: true
+          example: 面向对编程、竞赛和项目协作感兴趣的同学。
         startAt:
           type: string
           format: date-time
+          description: 纳新开始时间；审核通过后用于计算“未开始/申请中/已结束”。
           nullable: true
+          example: "2026-03-01T09:00:00Z"
         endAt:
           type: string
           format: date-time
+          description: 纳新结束时间；到期后自动展示为已结束。
           nullable: true
+          example: "2026-03-20T18:00:00Z"
         quota:
           type: integer
+          description: 计划录取人数上限。
           nullable: true
+          example: 30
         requirements:
           type: string
+          description: 报名要求或筛选标准。
           nullable: true
+          example: 对社团活动有稳定参与时间，愿意参与一次面试。
         recruitStatus:
           type: string
+          description: 当前展示状态；draft 和 pending_review 为流程状态，not_started/accepting/ended 由已通过纳新的时间窗口计算得到。
           enum: [draft, pending_review, not_started, accepting, ended]
+          example: accepting
         recruitStatusText:
           type: string
+          description: 当前展示状态的中文文案。
+          example: 申请中
         createdAt:
           type: string
           format: date-time
+          description: 招募创建时间。
+          example: "2026-02-20T08:30:00Z"
         applicationCount:
           type: integer
+          description: 当前报名申请总数。
+          example: 18
         acceptedCount:
           type: integer
+          description: 当前已录取申请数。
+          example: 8
         currentUserApplicationId:
           type: integer
+          description: 当前查看用户在该纳新下的申请 ID；未申请时为空。
           nullable: true
+          example: 12
         currentUserApplicationStatus:
           type: string
+          description: 当前查看用户的申请状态；未申请时为空。
           nullable: true
+          example: pending
         currentUserApplicationStatusText:
           type: string
+          description: 当前查看用户申请状态的中文文案；未申请时为空。
           nullable: true
+          example: 待筛选
         currentUserIsMember:
           type: boolean
           description: 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
+          example: false
         isOwnProposal:
           type: boolean
           description: 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
+          example: true
         canManage:
           type: boolean
+          description: 当前查看用户是否可以管理该纳新和其报名。
+          example: true
         canEdit:
           type: boolean
+          description: 当前查看用户是否可以编辑该纳新草稿。
+          example: false
         canDelete:
           type: boolean
+          description: 当前查看用户是否可以删除该纳新草稿。
+          example: false
         canReview:
           type: boolean
+          description: 当前查看用户是否可以审核该纳新。
+          example: false
       required:
         - id
         - clubId
@@ -2551,46 +2597,78 @@ components:
       properties:
         id:
           type: integer
+          description: 招募报名申请 ID。
+          example: 101
         recruitId:
           type: integer
+          description: 所属招募 ID。
+          example: 1
         recruitTitle:
           type: string
+          description: 所属招募标题。
+          example: 2026 春季纳新
         clubId:
           type: integer
+          description: 所属社团 ID。
+          example: 1
         clubName:
           type: string
+          description: 所属社团名称。
+          example: 计算机协会
         userId:
           type: integer
+          description: 申请人用户 ID。
+          example: 23
         applicantName:
           type: string
+          description: 申请人展示姓名。
+          example: 陈同学
         studentNo:
           type: string
+          description: 申请人学工号。
           nullable: true
+          example: "2350001"
         applicationReason:
           type: string
+          description: 申请人填写的入社理由。
+          example: 希望参与算法竞赛训练和项目实践。
         interviewScore:
           type: number
           format: double
+          description: 面试或筛选评分，0 到 100；未评分时为空。
           nullable: true
+          example: 86.5
         applicationStatus:
           type: string
+          description: 报名申请筛选状态。
           enum: [pending, accepted, rejected]
+          example: pending
         applicationStatusText:
           type: string
+          description: 报名申请筛选状态的中文文案。
+          example: 待筛选
         reviewerUserId:
           type: integer
+          description: 审核/筛选人用户 ID；未处理时为空。
           nullable: true
+          example: 5
         reviewerName:
           type: string
+          description: 审核/筛选人展示姓名；未处理时为空。
           nullable: true
+          example: 王负责人
         submittedAt:
           type: string
           format: date-time
+          description: 报名提交时间。
           nullable: true
+          example: "2026-03-05T10:15:00Z"
         reviewedAt:
           type: string
           format: date-time
+          description: 报名筛选处理时间；未处理时为空。
           nullable: true
+          example: "2026-03-08T14:30:00Z"
       required:
         - id
         - recruitId

@@ -14,6 +14,8 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
+import { collectManageableClubIds } from "../composables/useManageableClubs";
 
 type RecruitmentStatus = "draft" | "pending_review" | "not_started" | "accepting" | "ended";
 type RecruitmentWorkflowStatus = "draft" | "pending_review";
@@ -72,11 +74,6 @@ interface RecruitmentApplication {
   reviewerName: string | null;
   submittedAt: string | null;
   reviewedAt: string | null;
-}
-
-interface ApiError {
-  message?: string;
-  title?: string;
 }
 
 const recruitmentManagePermission = "recruitment:manage";
@@ -151,6 +148,7 @@ const reviewRules: FormRules = {
 };
 
 let stopSessionListener: (() => void) | null = null;
+let clubRequestId = 0;
 let recruitmentRequestId = 0;
 let applicationRequestId = 0;
 
@@ -164,16 +162,9 @@ const canApply = computed(
 const hasManageAccess = computed(() =>
   (auth.value?.roles ?? []).some((role) => role.permissions?.includes(recruitmentManagePermission)),
 );
-const manageableClubIdSet = computed(() => {
-  const clubIds = new Set<number>();
-  (auth.value?.roles ?? [])
-    .filter((role) => role.permissions?.includes(recruitmentManagePermission))
-    .forEach((role) => {
-      const ids = role.clubIds?.length ? role.clubIds : role.clubId ? [role.clubId] : [];
-      ids.forEach((clubId) => clubIds.add(clubId));
-    });
-  return clubIds;
-});
+const manageableClubIdSet = computed(() =>
+  collectManageableClubIds(auth.value?.roles ?? [], recruitmentManagePermission),
+);
 const manageableClubs = computed(() => {
   const clubIds = manageableClubIdSet.value;
   return clubs.value.filter((club) => {
@@ -201,23 +192,6 @@ const displayedRecruitments = computed(() => {
   return activeRecruitmentTab.value === "own" ? ownRecruitments.value : otherRecruitments.value;
 });
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    let message = `请求失败（${res.status}）`;
-    try {
-      const body = (await res.json()) as ApiError;
-      message = body.message || body.title || message;
-    } catch {
-      /* 保留默认错误信息 */
-    }
-    throw new Error(message);
-  }
-
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
 async function validateForm(form: FormInstance | undefined) {
   if (!form) return false;
 
@@ -230,20 +204,25 @@ async function validateForm(form: FormInstance | undefined) {
 }
 
 async function loadClubs() {
+  const requestId = ++clubRequestId;
   if (!currentUserId.value || !hasManageAccess.value) {
-    clubs.value = [];
+    if (requestId === clubRequestId) clubs.value = [];
     return;
   }
 
   clubLoading.value = true;
   try {
-    clubs.value = await requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`);
+    const data = await requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`);
+    if (requestId !== clubRequestId) return;
+    clubs.value = data;
     syncSelectedClubFilter();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "社团加载失败");
-    clubs.value = [];
+    if (requestId === clubRequestId) {
+      ElMessage.error(e instanceof Error ? e.message : "社团加载失败");
+      clubs.value = [];
+    }
   } finally {
-    clubLoading.value = false;
+    if (requestId === clubRequestId) clubLoading.value = false;
   }
 }
 
@@ -264,7 +243,7 @@ async function loadRecruitments() {
     const data = await requestJson<Recruitment[]>(`/api/recruitments?${query.toString()}`);
     if (requestId !== recruitmentRequestId) return;
     recruitments.value = data;
-    await syncApplicationWorkbench();
+    await syncApplicationWorkbench(requestId);
   } catch (e) {
     if (requestId === recruitmentRequestId) {
       error.value = e instanceof Error ? e.message : "纳新信息加载失败";
@@ -276,7 +255,9 @@ async function loadRecruitments() {
   }
 }
 
-async function syncApplicationWorkbench() {
+async function syncApplicationWorkbench(requestId = recruitmentRequestId) {
+  if (requestId !== recruitmentRequestId) return;
+
   if (!isApplicationWorkbench.value) {
     selectedRecruitment.value = null;
     applications.value = [];

@@ -2,6 +2,7 @@ using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -19,7 +20,6 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
-    private const string RecruitmentPublished = "published";
     private const string ApplicationAccepted = "accepted";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
@@ -822,6 +822,8 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = "当前用户账号不可用，不能变更社团成员身份。" });
         }
 
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
         var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
         if (club is null)
         {
@@ -877,6 +879,7 @@ public class ClubsController : ControllerBase
         await RemoveOngoingAcceptedRecruitmentApplicationsAsync(clubId, targetUserId);
         await RemoveClubMembershipRolesAsync(clubId, targetUserId);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return NoContent();
     }
 
@@ -969,7 +972,7 @@ public class ClubsController : ControllerBase
                 a.ApplicationStatus == ApplicationAccepted &&
                 a.Recruitment != null &&
                 a.Recruitment.ClubId == clubId &&
-                a.Recruitment.RecruitStatus == RecruitmentPublished &&
+                a.Recruitment.RecruitStatus == RecruitmentStatuses.Published &&
                 (a.Recruitment.StartAt == null || a.Recruitment.StartAt <= now) &&
                 (a.Recruitment.EndAt == null || a.Recruitment.EndAt >= now))
             .ToListAsync();
@@ -1558,11 +1561,6 @@ public class UpdateClubProfileRequest
 }
 
 public class DissolveClubRequest
-{
-    public int CurrentUserId { get; set; }
-}
-
-public class ExitClubMemberRequest
 {
     public int CurrentUserId { get; set; }
 }

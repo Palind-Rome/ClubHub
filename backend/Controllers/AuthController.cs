@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using ClubHub.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Org.OpenAPITools.Models;
 
@@ -26,9 +28,16 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+    [Authorize]
     [HttpGet("session")]
-    public async Task<IActionResult> GetSession([FromQuery] int userId)
+    public async Task<IActionResult> GetSession()
     {
+        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(rawUserId, out var userId))
+        {
+            return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
+        }
+
         var result = await _authService.GetSessionAsync(userId);
         return ToActionResult(result);
     }
