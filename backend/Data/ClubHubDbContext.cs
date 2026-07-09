@@ -102,6 +102,10 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(a => a.ReviewerUserId)
              .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.BudgetReviewerId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ActivityParticipation>(e =>

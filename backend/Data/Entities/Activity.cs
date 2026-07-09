@@ -65,6 +65,24 @@ public class Activity
     [Column("REVIEW_COMMENT")]
     public string? ReviewComment { get; set; }
 
+    [Column("BUDGET_AMOUNT")]
+    public decimal? BudgetAmount { get; set; }
+
+    [Column("BUDGET_PURPOSE")]
+    public string? BudgetPurpose { get; set; }
+
+    [Column("BUDGET_DETAIL")]
+    public string? BudgetDetail { get; set; }
+
+    [Column("BUDGET_STATUS")]
+    public string? BudgetStatus { get; set; }
+
+    [Column("BUDGET_REVIEWER_ID")]
+    public int? BudgetReviewerId { get; set; }
+
+    [Column("BUDGET_COMMENT")]
+    public string? BudgetComment { get; set; }
+
     [Column("PUBLISHED_AT")]
     public DateTime? PublishedAt { get; set; }
 

@@ -1,13 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.Data;
+using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
+using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
 using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
+using ReviewActivityBudgetRequest = Org.OpenAPITools.Models.ReviewActivityBudgetRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -21,10 +26,18 @@ public class ActivitiesController : ControllerBase
     private const string RegisterStatusPending = "pending";
     private const string RegisterStatusAccepted = "accepted";
     private const string RegisterStatusOnsite = "onsite";
+    private const string BudgetStatusPending = "pending";
+    private const string BudgetStatusApproved = "approved";
+    private const string BudgetStatusRejected = "rejected";
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthService _authService;
 
-    public ActivitiesController(ClubHubDbContext db) => _db = db;
+    public ActivitiesController(ClubHubDbContext db, AuthService authService)
+    {
+        _db = db;
+        _authService = authService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? currentUserId)
@@ -50,6 +63,12 @@ public class ActivitiesController : ControllerBase
                 a.RegistrationDeadline,
                 a.ReviewerUserId,
                 a.ReviewComment,
+                a.BudgetAmount,
+                a.BudgetPurpose,
+                a.BudgetDetail,
+                a.BudgetStatus,
+                a.BudgetReviewerId,
+                a.BudgetComment,
                 a.PublishedAt,
                 a.CheckinStartAt,
                 a.CheckinEndAt,
@@ -153,6 +172,12 @@ public class ActivitiesController : ControllerBase
                 a.RegistrationDeadline,
                 a.ReviewerUserId,
                 a.ReviewComment,
+                a.BudgetAmount,
+                a.BudgetPurpose,
+                a.BudgetDetail,
+                a.BudgetStatus,
+                a.BudgetReviewerId,
+                a.BudgetComment,
                 a.PublishedAt,
                 a.CheckinStartAt,
                 a.CheckinEndAt,
@@ -314,6 +339,104 @@ public class ActivitiesController : ControllerBase
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
 
         await _db.SaveChangesAsync();
+        var currentParticipants = await CountActiveParticipants(activityId);
+        return Ok(ToDto(activity, currentParticipants));
+    }
+
+    [HttpPut("{activityId:int}/budget")]
+    [Authorize]
+    public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
+    {
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+        var activity = await LockActivityForRegistration(activityId);
+
+        if (activity is null) return NotFound();
+
+        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:apply", activity.ClubId);
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
+        }
+
+        if (req.BudgetAmount < 0.01)
+        {
+            return BadRequest(new { message = "预算金额必须大于 0。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(req.BudgetPurpose))
+        {
+            return BadRequest(new { message = "预算用途不能为空。" });
+        }
+
+        if (req.BudgetDetail?.Length > 4000)
+        {
+            return BadRequest(new { message = "经费明细不能超过 4000 个字符。" });
+        }
+
+        if (activity.ActivityStatus is "finished" or "cancelled")
+        {
+            return BadRequest(new { message = "已结束或已取消的活动不能提交经费申请。" });
+        }
+
+        if (string.Equals(activity.BudgetStatus, BudgetStatusApproved, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "经费预算已审批通过，不能重复修改申请。" });
+        }
+
+        activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
+        activity.BudgetPurpose = req.BudgetPurpose.Trim();
+        activity.BudgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        activity.BudgetStatus = BudgetStatusPending;
+        activity.BudgetReviewerId = null;
+        activity.BudgetComment = null;
+
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        var currentParticipants = await CountActiveParticipants(activityId);
+        return Ok(ToDto(activity, currentParticipants));
+    }
+
+    [HttpPost("{activityId:int}/budget/review")]
+    [Authorize]
+    public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
+    {
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+        var activity = await LockActivityForRegistration(activityId);
+
+        if (activity is null) return NotFound();
+        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:review", activity.ClubId);
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
+        }
+
+        if (!string.Equals(activity.BudgetStatus, BudgetStatusPending, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "只有待审批的经费申请才能审批。" });
+        }
+
+        activity.BudgetReviewerId = currentUserId.Value;
+        activity.BudgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
+
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
@@ -536,6 +659,12 @@ public class ActivitiesController : ControllerBase
         return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
+    private int? GetAuthenticatedUserId()
+    {
+        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(rawUserId, out var userId) && userId > 0 ? userId : null;
+    }
+
     private Task<int> CountActiveParticipants(int activityId)
     {
         return _db.ActivityParticipations.CountAsync(p =>
@@ -572,6 +701,12 @@ public class ActivitiesController : ControllerBase
             activity.RegistrationDeadline,
             activity.ReviewerUserId,
             activity.ReviewComment,
+            activity.BudgetAmount,
+            activity.BudgetPurpose,
+            activity.BudgetDetail,
+            activity.BudgetStatus,
+            activity.BudgetReviewerId,
+            activity.BudgetComment,
             activity.PublishedAt,
             activity.CheckinStartAt,
             activity.CheckinEndAt,
@@ -616,6 +751,12 @@ public record ActivityDto(
     DateTime? RegistrationDeadline,
     int? ReviewerUserId,
     string? ReviewComment,
+    decimal? BudgetAmount,
+    string? BudgetPurpose,
+    string? BudgetDetail,
+    string? BudgetStatus,
+    int? BudgetReviewerId,
+    string? BudgetComment,
     DateTime? PublishedAt,
     DateTime? CheckinStartAt,
     DateTime? CheckinEndAt,
