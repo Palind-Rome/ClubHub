@@ -129,11 +129,11 @@ export interface Activity {
    */
   budgetDetail?: string | null;
   /**
-   * 经费审批状态；为空表示尚未提交经费申请。
-   * @type {ActivityBudgetStatusEnum}
+   * 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
+   * @type {string}
    * @memberof Activity
    */
-  budgetStatus?: ActivityBudgetStatusEnum | null;
+  budgetStatus?: string | null;
   /**
    * 经费审批人用户 ID。
    * @type {number}
@@ -203,17 +203,6 @@ export const ActivityStatusEnum = {
   Cancelled: "cancelled",
 } as const;
 export type ActivityStatusEnum = (typeof ActivityStatusEnum)[keyof typeof ActivityStatusEnum];
-
-/**
- * @export
- */
-export const ActivityBudgetStatusEnum = {
-  Pending: "pending",
-  Approved: "approved",
-  Rejected: "rejected",
-} as const;
-export type ActivityBudgetStatusEnum =
-  (typeof ActivityBudgetStatusEnum)[keyof typeof ActivityBudgetStatusEnum];
 
 /**
  * Check if a given object implements the Activity interface.

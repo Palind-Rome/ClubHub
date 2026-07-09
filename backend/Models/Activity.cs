@@ -195,11 +195,11 @@ namespace Org.OpenAPITools.Models
         public string? BudgetDetail { get; set; }
 
         /// <summary>
-        /// 经费审批状态；为空表示尚未提交经费申请。
+        /// 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
         /// </summary>
-        /// <value>经费审批状态；为空表示尚未提交经费申请。</value>
+        /// <value>经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。</value>
         [DataMember(Name="budgetStatus", EmitDefaultValue=true)]
-        public BudgetStatusEnum? BudgetStatus { get; set; }
+        public string? BudgetStatus { get; set; }
 
         /// <summary>
         /// 经费审批人用户 ID。
