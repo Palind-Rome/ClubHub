@@ -182,12 +182,10 @@ public class VenuesController : ControllerBase
         var venue = await _db.Venues.FindAsync(venueId);
         if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
 
-        var hasReservations = await _db.VenueReservations.AnyAsync(r => r.VenueId == venueId);
-        if (hasReservations)
-        {
-            return Conflict(Error("venue_has_reservations", "该场地已有预约记录，不能删除。"));
-        }
-
+        var reservations = await _db.VenueReservations
+            .Where(r => r.VenueId == venueId)
+            .ToListAsync();
+        _db.VenueReservations.RemoveRange(reservations);
         _db.Venues.Remove(venue);
         MaintenanceUntilByVenueId.TryRemove(venueId, out _);
         await _db.SaveChangesAsync();

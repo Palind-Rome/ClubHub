@@ -13,6 +13,10 @@ namespace ClubHub.Api.Controllers;
 public class VenueReservationsController : ControllerBase
 {
     private const string VenueStatusAvailable = "available";
+    private const string ClubStatusActive = "active";
+    private const string AccountStatusNormal = "normal";
+    private const string AccountStatusEnabled = "enabled";
+    private const string MemberStatusActive = "active";
     private const string ReservationStatusPending = "pending";
     private const string ReservationStatusApproved = "approved";
     private const string ReservationStatusRejected = "rejected";
@@ -113,9 +117,22 @@ public class VenueReservationsController : ControllerBase
 
         var club = await _db.Clubs.FindAsync(req.ClubId);
         if (club is null) return NotFound(Error("club_not_found", "社团不存在。"));
+        if (!IsActiveClub(club.ClubStatus))
+        {
+            return BadRequest(Error("club_not_active", "只有正常运营中的社团可以提交场地预约。"));
+        }
 
         var applicant = await _db.Users.FindAsync(req.ApplicantUserId);
         if (applicant is null) return NotFound(Error("applicant_not_found", "申请人不存在。"));
+        if (!IsActiveAccount(applicant.AccountStatus))
+        {
+            return BadRequest(Error("applicant_account_inactive", "申请人账号不可用，不能提交场地预约。"));
+        }
+
+        if (!await IsClubParticipantAsync(req.ClubId, req.ApplicantUserId))
+        {
+            return StatusCode(403, Error("club_participant_required", "申请人必须是该社团的当前有效成员或社团角色。"));
+        }
 
         ClubHub.Api.Data.Entities.Activity? activity = null;
         if (req.ActivityId is not null)
@@ -281,6 +298,32 @@ public class VenueReservationsController : ControllerBase
             r.EndAt.Value > startTime);
     }
 
+    private async Task<bool> IsClubParticipantAsync(int clubId, int userId)
+    {
+        var today = BeijingToday();
+        var memberStatuses = await _db.ClubMembers
+            .Where(member =>
+                member.ClubId == clubId &&
+                member.UserId == userId &&
+                (member.TermStart == null || member.TermStart.Value.Date <= today) &&
+                (member.TermEnd == null || member.TermEnd.Value.Date >= today))
+            .Select(member => member.MemberStatus)
+            .ToListAsync();
+
+        if (memberStatuses.Any(IsActiveMemberStatus)) return true;
+
+        var roleCodes = await _db.UserRoles
+            .Include(userRole => userRole.Role)
+            .Where(userRole =>
+                userRole.UserId == userId &&
+                userRole.ClubId == clubId &&
+                userRole.Role != null)
+            .Select(userRole => userRole.Role!.RoleCode)
+            .ToListAsync();
+
+        return roleCodes.Any(IsClubParticipantRole);
+    }
+
     private IActionResult? ValidateReservationTime(DateTime startTime, DateTime endTime)
     {
         if (startTime == default || endTime == default)
@@ -375,6 +418,35 @@ public class VenueReservationsController : ControllerBase
     private static string NormalizeStatus(string? status)
     {
         return string.IsNullOrWhiteSpace(status) ? "" : status.Trim().ToLowerInvariant();
+    }
+
+    private static bool IsActiveClub(string? status)
+    {
+        var normalized = NormalizeStatus(status);
+        return normalized is "" or ClubStatusActive or AccountStatusNormal or AccountStatusEnabled or "运营中" or "正常";
+    }
+
+    private static bool IsActiveAccount(string? status)
+    {
+        var normalized = NormalizeStatus(status);
+        return normalized is "" or AccountStatusNormal or AccountStatusEnabled or MemberStatusActive or "正常";
+    }
+
+    private static bool IsActiveMemberStatus(string? status)
+    {
+        var normalized = NormalizeStatus(status);
+        return normalized is "" or MemberStatusActive or AccountStatusNormal or AccountStatusEnabled or "在任" or "正常";
+    }
+
+    private static bool IsClubParticipantRole(string? roleCode)
+    {
+        var normalized = NormalizeStatus(roleCode);
+        return normalized is "club_member" or "club_officer" or "club_leader" or "club_president" or "advisor";
+    }
+
+    private static DateTime BeijingToday()
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BeijingTimeZone).Date;
     }
 
     private static string NormalizeReservationStatus(string? status)

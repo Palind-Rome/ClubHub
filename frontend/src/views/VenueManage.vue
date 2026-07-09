@@ -443,7 +443,7 @@ async function deleteVenue(venue: Venue) {
 
   try {
     await ElMessageBox.confirm(
-      `确定删除场地「${venue.name}」吗？删除后不可恢复。`,
+      `确定删除场地「${venue.name}」及其关联预约记录吗？删除后不可恢复。`,
       "确认删除场地",
       {
         confirmButtonText: "确定删除",
