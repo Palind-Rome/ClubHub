@@ -10,6 +10,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__Default: ${DB_CONNECTION_STRING}
+      Authentication__TokenSigningKey: ${AUTH_TOKEN_SIGNING_KEY}
     expose:
       - "5000"
     networks:
