@@ -12,6 +12,7 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { type AuthResponse, type AuthRole, onSessionChange, readAuth } from "../authSession";
+import AwardCampaignList from "./AwardCampaignList.vue";
 
 type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
@@ -573,6 +574,14 @@ const visibleIdentityRows = computed(() => {
   if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
   return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
 });
+const awardWorkspaceAvailable = computed(
+  () =>
+    currentUser.value !== null &&
+    (isGlobalClubGovernance.value ||
+      memberViewClubs.value.length > 0 ||
+      evaluationViewClubs.value.length > 0 ||
+      visibleIdentityRows.value.length > 0),
+);
 const visibleTabs = computed(() => {
   const tabs: string[] = [];
 
@@ -581,6 +590,7 @@ const visibleTabs = computed(() => {
     if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
     if (memberViewClubs.value.length > 0) tabs.push("members");
     if (evaluationViewClubs.value.length > 0) tabs.push("evaluations");
+    if (awardWorkspaceAvailable.value) tabs.push("awards");
     if (visibleIdentityRows.value.length > 0) tabs.push("identity");
     return tabs;
   }
@@ -588,6 +598,7 @@ const visibleTabs = computed(() => {
   if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
   if (memberViewClubs.value.length > 0) tabs.push("members");
   if (evaluationViewClubs.value.length > 0) tabs.push("evaluations");
+  if (awardWorkspaceAvailable.value) tabs.push("awards");
   if (visibleIdentityRows.value.length > 0) tabs.push("identity");
   if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
   return tabs;
@@ -1699,6 +1710,10 @@ function goEvaluations() {
   syncSelectedClub();
 }
 
+function goAwards() {
+  activeTab.value = "awards";
+}
+
 function openClubMembers(clubId: number) {
   selectedClubId.value = clubId;
   activeTab.value = "members";
@@ -1810,7 +1825,7 @@ onUnmounted(() => {
     <section class="toolbar">
       <div>
         <h2>社团组织管理</h2>
-        <div class="subtitle">社团注册审核、档案维护、成员任期、干部换届与学期考核</div>
+        <div class="subtitle">社团注册审核、档案维护、成员任期、干部换届、学期考核与评优评奖</div>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -1863,6 +1878,7 @@ onUnmounted(() => {
           </el-tag>
           <el-tag v-if="memberViewClubs.length > 0" effect="plain">可查看成员任期</el-tag>
           <el-tag v-if="evaluationViewClubs.length > 0" effect="plain">可查看学期考核</el-tag>
+          <el-tag v-if="awardWorkspaceAvailable" effect="plain">可参与评优评奖</el-tag>
           <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
         </div>
         <div class="identity-actions">
@@ -1874,6 +1890,9 @@ onUnmounted(() => {
           </el-button>
           <el-button v-if="evaluationViewClubs.length > 0" plain @click="goEvaluations">
             查看考核
+          </el-button>
+          <el-button v-if="awardWorkspaceAvailable" plain @click="goAwards">
+            评优评奖
           </el-button>
         </div>
       </div>
@@ -2458,6 +2477,10 @@ onUnmounted(() => {
             </template>
           </el-table-column>
         </el-table>
+      </el-tab-pane>
+
+      <el-tab-pane v-if="awardWorkspaceAvailable" label="评优评奖" name="awards">
+        <AwardCampaignList />
       </el-tab-pane>
 
       <el-tab-pane v-if="visibleIdentityRows.length > 0" label="我的社团身份" name="identity">

@@ -56,7 +56,6 @@ onUnmounted(() => {
       <el-menu mode="horizontal" router :default-active="$route.path" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
-        <el-menu-item index="/awards">评优评奖</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
