@@ -70,7 +70,11 @@ public class Club
 
     public ICollection<Activity> Activities { get; set; } = new List<Activity>();
 
+    public ICollection<Recruitment> Recruitments { get; set; } = new List<Recruitment>();
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public ICollection<ClubMember> Members { get; set; } = new List<ClubMember>();
+
+    public ICollection<Notice> Notices { get; set; } = new List<Notice>();
 }

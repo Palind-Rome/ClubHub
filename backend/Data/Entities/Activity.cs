@@ -11,6 +11,9 @@ public class Activity
     [Column("CLUB_ID")]
     public int ClubId { get; set; }
 
+    [Column("CREATOR_USER_ID")]
+    public int? CreatorUserId { get; set; }
+
     [Column("TITLE")]
     public string Title { get; set; } = string.Empty;
 
@@ -35,8 +38,50 @@ public class Activity
     [Column("REGISTRATION_DEADLINE")]
     public DateTime? RegistrationDeadline { get; set; }
 
+    [Column("CHECKIN_CODE")]
+    public string? CheckinCode { get; set; }
+
+    [Column("CHECKIN_START_AT")]
+    public DateTime? CheckinStartAt { get; set; }
+
+    [Column("CHECKIN_END_AT")]
+    public DateTime? CheckinEndAt { get; set; }
+
+    [Column("CHECKOUT_CODE")]
+    public string? CheckoutCode { get; set; }
+
+    [Column("CHECKOUT_START_AT")]
+    public DateTime? CheckoutStartAt { get; set; }
+
+    [Column("CHECKOUT_END_AT")]
+    public DateTime? CheckoutEndAt { get; set; }
+
     [Column("ACTIVITY_STATUS")]
     public string? ActivityStatus { get; set; }
+
+    [Column("REVIEWER_USER_ID")]
+    public int? ReviewerUserId { get; set; }
+
+    [Column("REVIEW_COMMENT")]
+    public string? ReviewComment { get; set; }
+
+    [Column("BUDGET_AMOUNT")]
+    public decimal? BudgetAmount { get; set; }
+
+    [Column("BUDGET_PURPOSE")]
+    public string? BudgetPurpose { get; set; }
+
+    [Column("BUDGET_DETAIL")]
+    public string? BudgetDetail { get; set; }
+
+    [Column("BUDGET_STATUS")]
+    public string? BudgetStatus { get; set; }
+
+    [Column("BUDGET_REVIEWER_ID")]
+    public int? BudgetReviewerId { get; set; }
+
+    [Column("BUDGET_COMMENT")]
+    public string? BudgetComment { get; set; }
 
     [Column("PUBLISHED_AT")]
     public DateTime? PublishedAt { get; set; }
@@ -46,4 +91,7 @@ public class Activity
 
     [ForeignKey("ClubId")]
     public Club? Club { get; set; }
+
+    public ICollection<ActivityParticipation> Participations { get; set; } =
+        new List<ActivityParticipation>();
 }

@@ -50,4 +50,7 @@ public class User
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public ICollection<ClubMember> ClubMemberships { get; set; } = new List<ClubMember>();
+
+    public ICollection<ActivityParticipation> ActivityParticipations { get; set; } =
+        new List<ActivityParticipation>();
 }

@@ -37,19 +37,43 @@ export interface Activity {
    * @type {string}
    * @memberof Activity
    */
+  activityType?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
+  description?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
   clubName: string;
   /**
    *
-   * @type {Date}
+   * @type {number}
    * @memberof Activity
    */
-  startTime: Date;
+  clubId: number;
+  /**
+   *
+   * @type {number}
+   * @memberof Activity
+   */
+  creatorUserId?: number | null;
   /**
    *
    * @type {Date}
    * @memberof Activity
    */
-  endTime: Date;
+  startTime: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  endTime: Date | null;
   /**
    *
    * @type {string}
@@ -70,10 +94,100 @@ export interface Activity {
   maxParticipants?: number | null;
   /**
    *
+   * @type {Date}
+   * @memberof Activity
+   */
+  registrationDeadline?: Date | null;
+  /**
+   *
+   * @type {number}
+   * @memberof Activity
+   */
+  reviewerUserId?: number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof Activity
+   */
+  reviewComment?: string | null;
+  /**
+   * 活动经费预算金额，未申请时为空。
+   * @type {number}
+   * @memberof Activity
+   */
+  budgetAmount?: number | null;
+  /**
+   * 活动经费用途，未申请时为空。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetPurpose?: string | null;
+  /**
+   * 活动经费预算明细，未申请时为空。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetDetail?: string | null;
+  /**
+   * 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetStatus?: string | null;
+  /**
+   * 经费审批人用户 ID。
+   * @type {number}
+   * @memberof Activity
+   */
+  budgetReviewerId?: number | null;
+  /**
+   * 经费审批意见。
+   * @type {string}
+   * @memberof Activity
+   */
+  budgetComment?: string | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  publishedAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkinStartAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkinEndAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkoutStartAt?: Date | null;
+  /**
+   *
+   * @type {Date}
+   * @memberof Activity
+   */
+  checkoutEndAt?: Date | null;
+  /**
+   *
    * @type {number}
    * @memberof Activity
    */
   currentParticipants: number;
+  /**
+   * 当前用户是否已报名；未传 currentUserId 时为 false
+   * @type {boolean}
+   * @memberof Activity
+   */
+  isRegistered: boolean;
 }
 
 /**
@@ -81,7 +195,9 @@ export interface Activity {
  */
 export const ActivityStatusEnum = {
   Draft: "draft",
+  PendingReview: "pending_review",
   Published: "published",
+  Rejected: "rejected",
   Ongoing: "ongoing",
   Finished: "finished",
   Cancelled: "cancelled",
@@ -95,10 +211,12 @@ export function instanceOfActivity(value: object): value is Activity {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
   if (!("clubName" in value) || value["clubName"] === undefined) return false;
+  if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("startTime" in value) || value["startTime"] === undefined) return false;
   if (!("endTime" in value) || value["endTime"] === undefined) return false;
   if (!("status" in value) || value["status"] === undefined) return false;
   if (!("currentParticipants" in value) || value["currentParticipants"] === undefined) return false;
+  if (!("isRegistered" in value) || value["isRegistered"] === undefined) return false;
   return true;
 }
 
@@ -113,13 +231,34 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
   return {
     id: json["id"],
     title: json["title"],
+    activityType: json["activityType"] == null ? undefined : json["activityType"],
+    description: json["description"] == null ? undefined : json["description"],
     clubName: json["clubName"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    clubId: json["clubId"],
+    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
+    startTime: json["startTime"] == null ? null : new Date(json["startTime"]),
+    endTime: json["endTime"] == null ? null : new Date(json["endTime"]),
     location: json["location"] == null ? undefined : json["location"],
     status: json["status"],
     maxParticipants: json["maxParticipants"] == null ? undefined : json["maxParticipants"],
+    registrationDeadline:
+      json["registrationDeadline"] == null ? undefined : new Date(json["registrationDeadline"]),
+    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
+    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    budgetAmount: json["budgetAmount"] == null ? undefined : json["budgetAmount"],
+    budgetPurpose: json["budgetPurpose"] == null ? undefined : json["budgetPurpose"],
+    budgetDetail: json["budgetDetail"] == null ? undefined : json["budgetDetail"],
+    budgetStatus: json["budgetStatus"] == null ? undefined : json["budgetStatus"],
+    budgetReviewerId: json["budgetReviewerId"] == null ? undefined : json["budgetReviewerId"],
+    budgetComment: json["budgetComment"] == null ? undefined : json["budgetComment"],
+    publishedAt: json["publishedAt"] == null ? undefined : new Date(json["publishedAt"]),
+    checkinStartAt: json["checkinStartAt"] == null ? undefined : new Date(json["checkinStartAt"]),
+    checkinEndAt: json["checkinEndAt"] == null ? undefined : new Date(json["checkinEndAt"]),
+    checkoutStartAt:
+      json["checkoutStartAt"] == null ? undefined : new Date(json["checkoutStartAt"]),
+    checkoutEndAt: json["checkoutEndAt"] == null ? undefined : new Date(json["checkoutEndAt"]),
     currentParticipants: json["currentParticipants"],
+    isRegistered: json["isRegistered"],
   };
 }
 
@@ -138,12 +277,45 @@ export function ActivityToJSONTyped(
   return {
     id: value["id"],
     title: value["title"],
+    activityType: value["activityType"],
+    description: value["description"],
     clubName: value["clubName"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    clubId: value["clubId"],
+    creatorUserId: value["creatorUserId"],
+    startTime: value["startTime"] == null ? value["startTime"] : value["startTime"].toISOString(),
+    endTime: value["endTime"] == null ? value["endTime"] : value["endTime"].toISOString(),
     location: value["location"],
     status: value["status"],
     maxParticipants: value["maxParticipants"],
+    registrationDeadline:
+      value["registrationDeadline"] == null
+        ? value["registrationDeadline"]
+        : value["registrationDeadline"].toISOString(),
+    reviewerUserId: value["reviewerUserId"],
+    reviewComment: value["reviewComment"],
+    budgetAmount: value["budgetAmount"],
+    budgetPurpose: value["budgetPurpose"],
+    budgetDetail: value["budgetDetail"],
+    budgetStatus: value["budgetStatus"],
+    budgetReviewerId: value["budgetReviewerId"],
+    budgetComment: value["budgetComment"],
+    publishedAt:
+      value["publishedAt"] == null ? value["publishedAt"] : value["publishedAt"].toISOString(),
+    checkinStartAt:
+      value["checkinStartAt"] == null
+        ? value["checkinStartAt"]
+        : value["checkinStartAt"].toISOString(),
+    checkinEndAt:
+      value["checkinEndAt"] == null ? value["checkinEndAt"] : value["checkinEndAt"].toISOString(),
+    checkoutStartAt:
+      value["checkoutStartAt"] == null
+        ? value["checkoutStartAt"]
+        : value["checkoutStartAt"].toISOString(),
+    checkoutEndAt:
+      value["checkoutEndAt"] == null
+        ? value["checkoutEndAt"]
+        : value["checkoutEndAt"].toISOString(),
     currentParticipants: value["currentParticipants"],
+    isRegistered: value["isRegistered"],
   };
 }

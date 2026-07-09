@@ -26,10 +26,10 @@ namespace Org.OpenAPITools.Models
     public partial class AuthResponse 
     {
         /// <summary>
-        /// 登录演示令牌
+        /// 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
         /// </summary>
-        /// <value>登录演示令牌</value>
-        /* <example>demo-token</example> */
+        /// <value>登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。</value>
+        /* <example>eyJ1c2VySWQiOjF9.abc123signature</example> */
         [Required]
         [DataMember(Name="token", EmitDefaultValue=false)]
         public string Token { get; set; }

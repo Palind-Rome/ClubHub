@@ -12,7 +12,15 @@ public class ClubHubDbContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Notice> Notices => Set<Notice>();
+    public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
+    public DbSet<Recruitment> Recruitments => Set<Recruitment>();
+    public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
+    public DbSet<Venue> Venues => Set<Venue>();
+    public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +34,10 @@ public class ClubHubDbContext : DbContext
             e.HasMany(u => u.ClubMemberships)
              .WithOne(cm => cm.User)
              .HasForeignKey(cm => cm.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(u => u.ActivityParticipations)
+             .WithOne(p => p.User)
+             .HasForeignKey(p => p.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -53,6 +65,14 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
+            e.HasMany(c => c.Notices)
+             .WithOne(n => n.Club)
+             .HasForeignKey(n => n.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.Recruitments)
+             .WithOne(r => r.Club)
+             .HasForeignKey(r => r.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(c => c.Applicant)
              .WithMany()
              .HasForeignKey(c => c.ApplicantUserId)
@@ -70,6 +90,27 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Activity>(e =>
         {
             e.HasKey(a => a.ActivityId);
+            e.HasMany(a => a.Participations)
+             .WithOne(p => p.Activity)
+             .HasForeignKey(p => p.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.CreatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(a => a.BudgetReviewerId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ActivityParticipation>(e =>
+        {
+            e.HasKey(p => p.ParticipationId);
         });
 
         modelBuilder.Entity<ClubMember>(e =>
@@ -78,6 +119,93 @@ public class ClubHubDbContext : DbContext
             e.HasOne(cm => cm.Club)
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Project>(e =>
+        {
+            e.HasKey(p => p.ProjectId);
+            e.HasOne(p => p.Club)
+             .WithMany()
+             .HasForeignKey(p => p.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Notice>(e =>
+        {
+            e.HasKey(n => n.NoticeId);
+            e.HasOne(n => n.Publisher)
+             .WithMany()
+             .HasForeignKey(n => n.PublisherUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(n => n.Reads)
+             .WithOne(r => r.Notice)
+             .HasForeignKey(r => r.NoticeId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<NoticeRead>(e =>
+        {
+            e.HasKey(r => r.ReadId);
+            e.HasOne(r => r.User)
+             .WithMany()
+             .HasForeignKey(r => r.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Recruitment>(e =>
+        {
+            e.HasKey(r => r.RecruitId);
+            e.HasMany(r => r.Applications)
+             .WithOne(a => a.Recruitment)
+             .HasForeignKey(a => a.RecruitId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<RecruitmentApplication>(e =>
+        {
+            e.HasKey(a => a.ApplicationId);
+            e.HasOne(a => a.User)
+             .WithMany()
+             .HasForeignKey(a => a.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Reviewer)
+             .WithMany()
+             .HasForeignKey(a => a.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Venue>(e =>
+        {
+            e.HasKey(v => v.VenueId);
+            e.HasMany(v => v.Reservations)
+             .WithOne(r => r.Venue)
+             .HasForeignKey(r => r.VenueId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<VenueReservation>(e =>
+        {
+            e.HasKey(r => r.ReservationId);
+            e.HasOne(r => r.Club)
+             .WithMany()
+             .HasForeignKey(r => r.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.Activity)
+             .WithMany()
+             .HasForeignKey(r => r.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.ApplicantUser)
+             .WithMany()
+             .HasForeignKey(r => r.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(r => r.ReviewerUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

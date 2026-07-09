@@ -36,7 +36,7 @@ import {
  */
 export interface AuthResponse {
   /**
-   * 登录演示令牌
+   * 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
    * @type {string}
    * @memberof AuthResponse
    */

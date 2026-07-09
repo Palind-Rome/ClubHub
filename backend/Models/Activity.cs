@@ -40,6 +40,18 @@ namespace Org.OpenAPITools.Models
         public string Title { get; set; }
 
         /// <summary>
+        /// Gets or Sets ActivityType
+        /// </summary>
+        [DataMember(Name="activityType", EmitDefaultValue=true)]
+        public string? ActivityType { get; set; }
+
+        /// <summary>
+        /// Gets or Sets Description
+        /// </summary>
+        [DataMember(Name="description", EmitDefaultValue=true)]
+        public string? Description { get; set; }
+
+        /// <summary>
         /// Gets or Sets ClubName
         /// </summary>
         [Required]
@@ -47,18 +59,31 @@ namespace Org.OpenAPITools.Models
         public string ClubName { get; set; }
 
         /// <summary>
+        /// Gets or Sets ClubId
+        /// </summary>
+        [Required]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
+        public int ClubId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CreatorUserId
+        /// </summary>
+        [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
+        public int? CreatorUserId { get; set; }
+
+        /// <summary>
         /// Gets or Sets StartTime
         /// </summary>
         [Required]
         [DataMember(Name="startTime", EmitDefaultValue=true)]
-        public DateTime StartTime { get; set; }
+        public DateTime? StartTime { get; set; }
 
         /// <summary>
         /// Gets or Sets EndTime
         /// </summary>
         [Required]
         [DataMember(Name="endTime", EmitDefaultValue=true)]
-        public DateTime EndTime { get; set; }
+        public DateTime? EndTime { get; set; }
 
         /// <summary>
         /// Gets or Sets Location
@@ -81,28 +106,40 @@ namespace Org.OpenAPITools.Models
             DraftEnum = 1,
             
             /// <summary>
+            /// Enum PendingReviewEnum for pending_review
+            /// </summary>
+            [EnumMember(Value = "pending_review")]
+            PendingReviewEnum = 2,
+            
+            /// <summary>
             /// Enum PublishedEnum for published
             /// </summary>
             [EnumMember(Value = "published")]
-            PublishedEnum = 2,
+            PublishedEnum = 3,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 4,
             
             /// <summary>
             /// Enum OngoingEnum for ongoing
             /// </summary>
             [EnumMember(Value = "ongoing")]
-            OngoingEnum = 3,
+            OngoingEnum = 5,
             
             /// <summary>
             /// Enum FinishedEnum for finished
             /// </summary>
             [EnumMember(Value = "finished")]
-            FinishedEnum = 4,
+            FinishedEnum = 6,
             
             /// <summary>
             /// Enum CancelledEnum for cancelled
             /// </summary>
             [EnumMember(Value = "cancelled")]
-            CancelledEnum = 5
+            CancelledEnum = 7
         }
 
         /// <summary>
@@ -119,11 +156,109 @@ namespace Org.OpenAPITools.Models
         public int? MaxParticipants { get; set; }
 
         /// <summary>
+        /// Gets or Sets RegistrationDeadline
+        /// </summary>
+        [DataMember(Name="registrationDeadline", EmitDefaultValue=true)]
+        public DateTime? RegistrationDeadline { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ReviewerUserId
+        /// </summary>
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        public int? ReviewerUserId { get; set; }
+
+        /// <summary>
+        /// Gets or Sets ReviewComment
+        /// </summary>
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
+        public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// 活动经费预算金额，未申请时为空。
+        /// </summary>
+        /// <value>活动经费预算金额，未申请时为空。</value>
+        [DataMember(Name="budgetAmount", EmitDefaultValue=true)]
+        public double? BudgetAmount { get; set; }
+
+        /// <summary>
+        /// 活动经费用途，未申请时为空。
+        /// </summary>
+        /// <value>活动经费用途，未申请时为空。</value>
+        [DataMember(Name="budgetPurpose", EmitDefaultValue=true)]
+        public string? BudgetPurpose { get; set; }
+
+        /// <summary>
+        /// 活动经费预算明细，未申请时为空。
+        /// </summary>
+        /// <value>活动经费预算明细，未申请时为空。</value>
+        [DataMember(Name="budgetDetail", EmitDefaultValue=true)]
+        public string? BudgetDetail { get; set; }
+
+        /// <summary>
+        /// 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
+        /// </summary>
+        /// <value>经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。</value>
+        [DataMember(Name="budgetStatus", EmitDefaultValue=true)]
+        public string? BudgetStatus { get; set; }
+
+        /// <summary>
+        /// 经费审批人用户 ID。
+        /// </summary>
+        /// <value>经费审批人用户 ID。</value>
+        [DataMember(Name="budgetReviewerId", EmitDefaultValue=true)]
+        public int? BudgetReviewerId { get; set; }
+
+        /// <summary>
+        /// 经费审批意见。
+        /// </summary>
+        /// <value>经费审批意见。</value>
+        [DataMember(Name="budgetComment", EmitDefaultValue=true)]
+        public string? BudgetComment { get; set; }
+
+        /// <summary>
+        /// Gets or Sets PublishedAt
+        /// </summary>
+        [DataMember(Name="publishedAt", EmitDefaultValue=true)]
+        public DateTime? PublishedAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckinStartAt
+        /// </summary>
+        [DataMember(Name="checkinStartAt", EmitDefaultValue=true)]
+        public DateTime? CheckinStartAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckinEndAt
+        /// </summary>
+        [DataMember(Name="checkinEndAt", EmitDefaultValue=true)]
+        public DateTime? CheckinEndAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckoutStartAt
+        /// </summary>
+        [DataMember(Name="checkoutStartAt", EmitDefaultValue=true)]
+        public DateTime? CheckoutStartAt { get; set; }
+
+        /// <summary>
+        /// Gets or Sets CheckoutEndAt
+        /// </summary>
+        [DataMember(Name="checkoutEndAt", EmitDefaultValue=true)]
+        public DateTime? CheckoutEndAt { get; set; }
+
+        /// <summary>
         /// Gets or Sets CurrentParticipants
         /// </summary>
         [Required]
         [DataMember(Name="currentParticipants", EmitDefaultValue=true)]
         public int CurrentParticipants { get; set; }
+
+        /// <summary>
+        /// 当前用户是否已报名；未传 currentUserId 时为 false
+        /// </summary>
+        /// <value>当前用户是否已报名；未传 currentUserId 时为 false</value>
+        [Required]
+        [DataMember(Name="isRegistered", EmitDefaultValue=true)]
+        public bool IsRegistered { get; set; }
 
     }
 }

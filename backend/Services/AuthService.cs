@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
@@ -18,6 +17,7 @@ public class AuthService
     private const string ClubOfficerRole = "CLUB_OFFICER";
     private const string ClubLeaderRole = "CLUB_LEADER";
     private const string AdvisorRole = "ADVISOR";
+    private const string VenueAdminRole = "VENUE_ADMIN";
     private const string SystemAdminRole = "SYSTEM_ADMIN";
     private const int StudentNoLength = 7;
     private const int StaffNoLength = 5;
@@ -58,6 +58,9 @@ public class AuthService
         new("budget:review", "审核经费", "审核活动经费预算。"),
         new("evaluation:review", "审核评价", "审核成员评价或评优结果。"),
         new("club:review", "审核社团申请", "审核社团注册申请。"),
+        new("venue:create", "创建场地", "新增可预约场地基础信息。"),
+        new("venue:update", "维护场地", "维护场地名称、位置、容量和负责人信息。"),
+        new("venue:disable", "停用或恢复场地", "将场地切换为可预约、维护中或停用状态。"),
         new("venue:review", "审核场地预约", "审核活动场地预约。"),
         new("club:status:manage", "管理社团状态", "调整社团启用、停用等状态。"),
         new("notice:publish:school", "发布校级通知", "发布面向全校或跨社团的通知公告。"),
@@ -116,6 +119,12 @@ public class AuthService
             "校级社团管理角色，可审核社团注册申请并管理社团状态，不参与社团内部档案、成员任期和干部换届维护。",
             ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
         new(
+            VenueAdminRole,
+            "场地管理员",
+            SystemScope,
+            "校级场地管理角色，可维护场地基础信息、停用或恢复场地，并审核场地预约。",
+            ["venue:create", "venue:update", "venue:disable", "venue:review"]),
+        new(
             SystemAdminRole,
             "系统管理员",
             SystemScope,
@@ -124,8 +133,13 @@ public class AuthService
     ];
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthTokenService _authTokenService;
 
-    public AuthService(ClubHubDbContext db) => _db = db;
+    public AuthService(ClubHubDbContext db, AuthTokenService authTokenService)
+    {
+        _db = db;
+        _authTokenService = authTokenService;
+    }
 
     public async Task InitializeBaseRolesAsync()
     {
@@ -227,6 +241,33 @@ public class AuthService
         if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
             return AuthServiceResult<AuthResponse>.Fail(401, "用户名/学工号或密码错误。");
+        }
+
+        if (!IsNormalAccount(user))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(403, "账号已被禁用，请联系管理员。");
+        }
+
+        var roles = await GetBaseRoleRowsAsync();
+        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        {
+            await _db.SaveChangesAsync();
+        }
+
+        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+    }
+
+    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId)
+    {
+        if (userId <= 0)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(400, "请提供当前登录用户。");
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null)
+        {
+            return AuthServiceResult<AuthResponse>.Fail(404, "当前登录用户不存在。");
         }
 
         if (!IsNormalAccount(user))
@@ -389,7 +430,7 @@ public class AuthService
             .ToList();
 
         return new AuthResponse(
-            GenerateDemoToken(),
+            _authTokenService.CreateToken(user),
             ToAuthUser(user),
             displayRoles,
             permissions);
@@ -779,9 +820,4 @@ public class AuthService
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
-    private static string GenerateDemoToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Convert.ToBase64String(bytes);
-    }
 }
