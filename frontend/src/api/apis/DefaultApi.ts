@@ -296,14 +296,13 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
-export interface GetActivitiesRequest {
-  currentUserId?: number;
-
-}
-
 export interface ExitCurrentClubMemberRequest {
   clubId: number;
   exitClubMemberRequest: ExitClubMemberRequest;
+}
+
+export interface GetActivitiesRequest {
+  currentUserId?: number;
 }
 
 export interface GetActivityByIdRequest {
@@ -2515,6 +2514,57 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for refreshAuthSession without sending the request
+   */
+  async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/auth/session`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSessionRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AuthResponse>> {
+    const requestOptions = await this.refreshAuthSessionRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
+  }
+
+  /**
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 刷新当前用户会话
+   */
+  async refreshAuthSession(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AuthResponse> {
+    const response = await this.refreshAuthSessionRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for registerActivity without sending the request
    */
   async registerActivityRequestOpts(
@@ -2534,9 +2584,6 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-   * Creates request options for refreshAuthSession without sending the request
-   */
-  async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -2581,46 +2628,6 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ActivityRegistrationResult> {
     const response = await this.registerActivityRaw(requestParameters, initOverrides);
-    if (this.configuration && this.configuration.accessToken) {
-      const token = this.configuration.accessToken;
-      const tokenString = await token("bearerAuth", []);
-
-      if (tokenString) {
-        headerParameters["Authorization"] = `Bearer ${tokenString}`;
-      }
-    }
-
-    let urlPath = `/api/auth/session`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
-   * 刷新当前用户会话
-   */
-  async refreshAuthSessionRaw(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<AuthResponse>> {
-    const requestOptions = await this.refreshAuthSessionRequestOpts();
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
-  }
-
-  /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
-   * 刷新当前用户会话
-   */
-  async refreshAuthSession(
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<AuthResponse> {
-    const response = await this.refreshAuthSessionRaw(initOverrides);
     return await response.value();
   }
 
