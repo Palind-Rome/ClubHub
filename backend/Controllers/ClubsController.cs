@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -1540,9 +1541,15 @@ public record ClubApplicationDto(
 
 public class CreateClubRequest
 {
+    [Required]
     public int CurrentUserId { get; set; }
+
+    [Required, StringLength(255, MinimumLength = 1)]
     public string Name { get; set; } = string.Empty;
-    public string? Category { get; set; }
+
+    [Required, StringLength(255, MinimumLength = 1)]
+    public string Category { get; set; } = string.Empty;
+
     public string? Description { get; set; }
 }
 
