@@ -1183,6 +1183,8 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 预算金额、用途或活动状态不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
         "403":
           description: 当前用户没有该社团的经费申请权限
         "404":
@@ -1214,6 +1216,8 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 当前经费状态不允许审批或参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
         "403":
           description: 当前用户没有该社团的经费审批权限
         "404":
@@ -3579,26 +3583,25 @@ components:
     ApplyActivityBudgetRequest:
       type: object
       properties:
-        applicantUserId:
-          type: integer
-          minimum: 1
-          description: 经费申请人用户 ID；用于校验其是否拥有该社团 budget:apply 权限。
         budgetAmount:
           type: number
           format: double
           minimum: 0.01
           description: 预算金额，必须大于 0。
+          example: 800
         budgetPurpose:
           type: string
           minLength: 1
           maxLength: 255
           description: 经费用途，例如物料采购、场地布置或嘉宾交通。
+          example: 物料采购
         budgetDetail:
           type: string
           nullable: true
+          maxLength: 4000
           description: 经费明细，可填写多项预算说明。
+          example: 场地布置 500 元，物料采购 300 元。
       required:
-        - applicantUserId
         - budgetAmount
         - budgetPurpose
 
@@ -3608,18 +3611,15 @@ components:
         approved:
           type: boolean
           description: 经费审批结果，true 为通过，false 为驳回。
-        reviewerUserId:
-          type: integer
-          minimum: 1
-          description: 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。
+          example: true
         comment:
           type: string
           nullable: true
           maxLength: 255
           description: 经费审批意见。
+          example: 预算合理，同意执行。
       required:
         - approved
-        - reviewerUserId
 
     UpdateCheckinSettingsRequest:
       type: object

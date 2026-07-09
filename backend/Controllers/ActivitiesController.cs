@@ -1,14 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.Data;
+using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
+using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
 using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
+using ReviewActivityBudgetRequest = Org.OpenAPITools.Models.ReviewActivityBudgetRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -340,19 +344,28 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPut("{activityId:int}/budget")]
+    [Authorize]
     public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
     {
-        var activity = await _db.Activities
-            .Include(a => a.Club)
-            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
-
-        if (activity is null) return NotFound();
-        if (req.ApplicantUserId <= 0)
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null)
         {
-            return BadRequest(new { message = "必须提供经费申请人用户 ID。" });
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
         }
 
-        if (req.BudgetAmount <= 0)
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+        var activity = await LockActivityForRegistration(activityId);
+
+        if (activity is null) return NotFound();
+
+        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:apply", activity.ClubId);
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
+        }
+
+        if (req.BudgetAmount < 0.01)
         {
             return BadRequest(new { message = "预算金额必须大于 0。" });
         }
@@ -360,6 +373,11 @@ public class ActivitiesController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.BudgetPurpose))
         {
             return BadRequest(new { message = "预算用途不能为空。" });
+        }
+
+        if (req.BudgetDetail?.Length > 4000)
+        {
+            return BadRequest(new { message = "经费明细不能超过 4000 个字符。" });
         }
 
         if (activity.ActivityStatus is "finished" or "cancelled")
@@ -372,13 +390,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "经费预算已审批通过，不能重复修改申请。" });
         }
 
-        var permission = await _authService.CheckPermissionAsync(req.ApplicantUserId, "budget:apply", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
-        }
-
-        activity.BudgetAmount = req.BudgetAmount;
+        activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
         activity.BudgetPurpose = req.BudgetPurpose.Trim();
         activity.BudgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
         activity.BudgetStatus = BudgetStatusPending;
@@ -386,26 +398,31 @@ public class ActivitiesController : ControllerBase
         activity.BudgetComment = null;
 
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
 
     [HttpPost("{activityId:int}/budget/review")]
+    [Authorize]
     public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
-        var activity = await _db.Activities
-            .Include(a => a.Club)
-            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
-
-        if (activity is null) return NotFound();
-        if (req.Approved is null)
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null)
         {
-            return BadRequest(new { message = "必须提供经费审批结果 approved。" });
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
         }
 
-        if (req.ReviewerUserId <= 0)
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+        var activity = await LockActivityForRegistration(activityId);
+
+        if (activity is null) return NotFound();
+        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:review", activity.ClubId);
+        if (permission.Value?.Allowed != true)
         {
-            return BadRequest(new { message = "必须提供经费审批人用户 ID。" });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
         }
 
         if (!string.Equals(activity.BudgetStatus, BudgetStatusPending, StringComparison.OrdinalIgnoreCase))
@@ -413,17 +430,13 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "只有待审批的经费申请才能审批。" });
         }
 
-        var permission = await _authService.CheckPermissionAsync(req.ReviewerUserId, "budget:review", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
-        }
-
-        activity.BudgetReviewerId = req.ReviewerUserId;
+        activity.BudgetReviewerId = currentUserId.Value;
         activity.BudgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
-        activity.BudgetStatus = req.Approved.Value ? BudgetStatusApproved : BudgetStatusRejected;
+        activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
 
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
@@ -646,6 +659,12 @@ public class ActivitiesController : ControllerBase
         return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
+    private int? GetAuthenticatedUserId()
+    {
+        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(rawUserId, out var userId) && userId > 0 ? userId : null;
+    }
+
     private Task<int> CountActiveParticipants(int activityId)
     {
         return _db.ActivityParticipations.CountAsync(p =>
@@ -784,33 +803,6 @@ public class ReviewActivityRequest
 
     public int? ReviewerUserId { get; set; }
 
-    public string? Comment { get; set; }
-}
-
-public class ApplyActivityBudgetRequest
-{
-    [Required]
-    public int ApplicantUserId { get; set; }
-
-    [Required]
-    public decimal BudgetAmount { get; set; }
-
-    [Required, StringLength(255, MinimumLength = 1)]
-    public string BudgetPurpose { get; set; } = string.Empty;
-
-    [StringLength(4000)]
-    public string? BudgetDetail { get; set; }
-}
-
-public class ReviewActivityBudgetRequest
-{
-    [Required]
-    public bool? Approved { get; set; }
-
-    [Required]
-    public int ReviewerUserId { get; set; }
-
-    [StringLength(255)]
     public string? Comment { get; set; }
 }
 

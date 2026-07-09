@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
 
 interface Activity {
   id: number;
@@ -65,7 +66,6 @@ interface ReviewActivityForm {
 }
 
 interface BudgetForm {
-  applicantUserId: number;
   budgetAmount: number;
   budgetPurpose: string;
   budgetDetail: string;
@@ -73,7 +73,6 @@ interface BudgetForm {
 
 interface BudgetReviewForm {
   approved: boolean;
-  reviewerUserId: number;
   comment: string;
 }
 
@@ -99,6 +98,11 @@ const participations = ref<ActivityParticipation[]>([]);
 const participationLoading = ref(false);
 
 const currentUserId = computed(() => auth.value?.user.id ?? null);
+const currentUserDisplay = computed(() => {
+  const user = auth.value?.user;
+  if (!user) return "未登录";
+  return user.realName || user.username || `用户 #${user.id}`;
+});
 
 const createForm = ref<CreateActivityForm>({
   clubId: 1,
@@ -120,7 +124,6 @@ const reviewForm = ref<ReviewActivityForm>({
 });
 
 const budgetForm = ref<BudgetForm>({
-  applicantUserId: 1,
   budgetAmount: 1000,
   budgetPurpose: "",
   budgetDetail: "",
@@ -128,7 +131,6 @@ const budgetForm = ref<BudgetForm>({
 
 const budgetReviewForm = ref<BudgetReviewForm>({
   approved: true,
-  reviewerUserId: 1,
   comment: "",
 });
 
@@ -258,10 +260,6 @@ function buildDefaultCreateTimes() {
     endTime: formatDateTimeForPicker(end),
     registrationDeadline: formatDateTimeForPicker(deadline),
   };
-}
-
-function getCurrentUserId() {
-  return currentUserId.value ?? 1;
 }
 
 function generateSignCode() {
@@ -465,9 +463,13 @@ async function reviewActivity() {
 }
 
 function openBudget(activity: Activity) {
+  if (!currentUserId.value) {
+    ElMessage.warning("请先登录后再提交经费申请");
+    return;
+  }
+
   currentActivity.value = activity;
   budgetForm.value = {
-    applicantUserId: getCurrentUserId(),
     budgetAmount: activity.budgetAmount ?? 1000,
     budgetPurpose: activity.budgetPurpose ?? "",
     budgetDetail: activity.budgetDetail ?? "",
@@ -485,17 +487,15 @@ async function applyBudget() {
 
   saving.value = true;
   try {
-    const res = await fetch(`/api/activities/${currentActivity.value.id}/budget`, {
+    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/budget`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        applicantUserId: budgetForm.value.applicantUserId,
         budgetAmount: budgetForm.value.budgetAmount,
         budgetPurpose: budgetForm.value.budgetPurpose,
         budgetDetail: emptyToNull(budgetForm.value.budgetDetail),
       }),
     });
-    if (!res.ok) throw new Error(await readErrorMessage(res));
     budgetDialogVisible.value = false;
     ElMessage.success("经费预算已提交审批");
     await loadActivities();
@@ -508,10 +508,14 @@ async function applyBudget() {
 }
 
 function openBudgetReview(activity: Activity) {
+  if (!currentUserId.value) {
+    ElMessage.warning("请先登录后再审批经费申请");
+    return;
+  }
+
   currentActivity.value = activity;
   budgetReviewForm.value = {
     approved: true,
-    reviewerUserId: getCurrentUserId(),
     comment: "",
   };
   budgetReviewDialogVisible.value = true;
@@ -522,12 +526,14 @@ async function reviewBudget() {
 
   saving.value = true;
   try {
-    const res = await fetch(`/api/activities/${currentActivity.value.id}/budget/review`, {
+    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/budget/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(budgetReviewForm.value),
+      body: JSON.stringify({
+        approved: budgetReviewForm.value.approved,
+        comment: emptyToNull(budgetReviewForm.value.comment),
+      }),
     });
-    if (!res.ok) throw new Error(await readErrorMessage(res));
     budgetReviewDialogVisible.value = false;
     ElMessage.success("经费审批结果已保存");
     await loadActivities();
@@ -616,10 +622,16 @@ async function saveCheckinSettings() {
 }
 
 function openSign(activity: Activity, type: "checkin" | "checkout") {
+  const userId = currentUserId.value;
+  if (!userId) {
+    ElMessage.warning("请先登录后再签到签退");
+    return;
+  }
+
   currentActivity.value = activity;
   signForm.value = {
     type,
-    userId: getCurrentUserId(),
+    userId,
     code: "",
   };
   signDialogVisible.value = true;
@@ -941,8 +953,8 @@ async function readErrorMessage(res: Response) {
         }}</el-descriptions-item>
       </el-descriptions>
       <el-form label-position="top" class="review-form">
-        <el-form-item label="申请人用户 ID" required>
-          <el-input-number v-model="budgetForm.applicantUserId" :min="1" />
+        <el-form-item label="申请人">
+          <span class="readonly-user">{{ currentUserDisplay }}</span>
         </el-form-item>
         <el-form-item label="预算金额" required>
           <el-input-number
@@ -996,8 +1008,8 @@ async function readErrorMessage(res: Response) {
             <el-radio :value="false">驳回</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="审批人用户 ID" required>
-          <el-input-number v-model="budgetReviewForm.reviewerUserId" :min="1" />
+        <el-form-item label="审批人">
+          <span class="readonly-user">{{ currentUserDisplay }}</span>
         </el-form-item>
         <el-form-item label="审批意见">
           <el-input
@@ -1088,8 +1100,8 @@ async function readErrorMessage(res: Response) {
       width="420px"
     >
       <el-form label-position="top">
-        <el-form-item label="用户 ID" required>
-          <el-input-number v-model="signForm.userId" :min="1" />
+        <el-form-item label="用户">
+          <span class="readonly-user">{{ currentUserDisplay }}</span>
         </el-form-item>
         <el-form-item :label="signForm.type === 'checkin' ? '签到码' : '签退码'" required>
           <el-input v-model="signForm.code" placeholder="请输入验证码" />
@@ -1168,6 +1180,10 @@ async function readErrorMessage(res: Response) {
 }
 .review-form {
   margin-top: 4px;
+}
+.readonly-user {
+  color: var(--el-text-color-primary);
+  font-weight: 500;
 }
 .quota-text {
   font-variant-numeric: tabular-nums;
