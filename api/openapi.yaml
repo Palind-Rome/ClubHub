@@ -137,8 +137,10 @@ paths:
         - name: clubId
           in: query
           required: false
+          description: Optional club id filter.
           schema:
             type: integer
+            minimum: 1
       responses:
         "200":
           description: 权限判断结果
@@ -585,7 +587,7 @@ paths:
           required: false
           schema:
             type: integer
-          description: 当用于维护指定社团成员任期时传入；仅社团负责人或平台管理员可获取可分配用户。
+          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人或干部可获取该社团有效成员。
       responses:
         "200":
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
@@ -607,7 +609,183 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前登录用户或社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
+
+
+  /api/projects:
+    get:
+      summary: 获取项目列表
+      operationId: getProjects
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: 按社团 ID 过滤项目列表。
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 页码，从 1 开始。
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: 每页项目数量，最大 100。
+      responses:
+        "200":
+          description: 项目列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      summary: 社团负责人或指导老师提交项目立项申请
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: 项目立项申请已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 请求参数或业务校验失败
+
+  /api/projects/{projectId}:
+    get:
+      summary: 获取项目详情
+      operationId: getProjectById
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 项目详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/leader:
+    put:
+      summary: 分配或调整项目负责人
+      operationId: assignProjectLeader
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignProjectLeaderRequest"
+      responses:
+        "200":
+          description: 项目负责人已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 负责人不是有效用户或社团成员
+        "403":
+          description: 当前用户不是本社团负责人或干部，无权分配项目负责人
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/review:
+    post:
+      summary: 指导老师审核项目立项申请
+      description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+      operationId: reviewProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewProjectRequest"
+      responses:
+        "200":
+          description: 项目审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 审核状态或指导老师无效
+        "403":
+          description: 当前用户不是本社团指导老师，无权审核项目立项申请
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/cancel:
+    post:
+      summary: 撤销待审核或进行中的项目
+      description: 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+      operationId: cancelProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelProjectRequest"
+      responses:
+        "200":
+          description: 项目立项申请已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 项目不是待审核/进行中状态或当前用户无效
+        "403":
+          description: 当前用户无权撤销该项目申请
+        "404":
+          description: 项目不存在
 components:
   schemas:
     ApiError:
@@ -1561,3 +1739,174 @@ components:
         - endTime
         - status
         - currentParticipants
+    Project:
+      type: object
+      description: Project initiation application and review result.
+      properties:
+        id:
+          type: integer
+          description: Project id in PROJECTS.PROJECT_ID.
+          example: 1001
+        clubId:
+          type: integer
+          description: Club that owns the project application.
+          example: 1
+        projectName:
+          type: string
+          description: Project name submitted by the club.
+          example: 校园公益服务项目
+        description:
+          type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
+          nullable: true
+        leaderUserId:
+          type: integer
+          description: Optional project leader user id.
+          example: 12
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
+          nullable: true
+        projectStatus:
+          type: string
+          enum: [pending, running, finished, delayed, closed]
+          description: Current project status.
+          example: pending
+        reviewerUserId:
+          type: integer
+          description: User id of the reviewer after approval or rejection.
+          example: 3
+          nullable: true
+        reviewComment:
+          type: string
+          description: Optional reviewer comment.
+          example: 立项材料完整，同意执行。
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Project application creation time.
+          example: "2026-07-08T12:00:00Z"
+      required:
+        - id
+        - clubId
+        - projectName
+        - startDate
+        - projectStatus
+        - createdAt
+
+    CreateProjectRequest:
+      type: object
+      description: Request body for creating a project initiation application.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前提交立项申请的用户 ID；后端据此校验其是否为本社团负责人或指导老师。
+          minimum: 1
+          example: 12
+        clubId:
+          type: integer
+          description: Club that submits the project application.
+          minimum: 1
+          example: 1
+        projectName:
+          type: string
+          description: Project name.
+          minLength: 1
+          maxLength: 100
+          example: 校园公益服务项目
+        description:
+          type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
+          nullable: true
+        leaderUserId:
+          type: integer
+          description: Optional project leader user id.
+          minimum: 1
+          example: 12
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
+          nullable: true
+      required:
+        - currentUserId
+        - clubId
+        - projectName
+        - startDate
+
+    AssignProjectLeaderRequest:
+      type: object
+      description: Request body for assigning or changing a project leader.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
+          minimum: 1
+          example: 7
+        leaderUserId:
+          type: integer
+          description: User id of an active club member.
+          minimum: 1
+          example: 12
+      required:
+        - currentUserId
+        - leaderUserId
+
+    ReviewProjectRequest:
+      type: object
+      description: Request body for reviewing a project initiation application.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前审核操作用户 ID；仅本社团指导老师可审核。
+          minimum: 1
+          example: 3
+        projectStatus:
+          type: string
+          enum: [running, closed]
+          description: Review result. running means approved; closed means rejected or closed.
+          example: running
+        reviewComment:
+          type: string
+          description: Optional review comment.
+          example: 立项材料完整，同意执行。
+          nullable: true
+      required:
+        - currentUserId
+        - projectStatus
+
+    CancelProjectRequest:
+      type: object
+      description: Request body for canceling a pending or running project.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
+          minimum: 1
+          example: 12
+        cancelReason:
+          type: string
+          description: Optional applicant cancellation reason.
+          maxLength: 200
+          example: 申请材料需要补充，暂时撤销。
+          nullable: true
+      required:
+        - currentUserId

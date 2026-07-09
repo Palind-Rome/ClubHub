@@ -13,6 +13,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
+    public DbSet<Project> Projects => Set<Project>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +79,19 @@ public class ClubHubDbContext : DbContext
             e.HasOne(cm => cm.Club)
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Project>(e =>
+        {
+            e.HasKey(p => p.ProjectId);
+            e.HasOne(p => p.Club)
+             .WithMany()
+             .HasForeignKey(p => p.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<User>()
+             .WithMany()
+             .HasForeignKey(p => p.LeaderUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

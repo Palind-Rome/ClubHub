@@ -1,10 +1,15 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Org.OpenAPITools.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumMemberConverter());
+    });
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddDbContext<ClubHubDbContext>(options =>

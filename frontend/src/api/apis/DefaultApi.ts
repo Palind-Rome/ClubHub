@@ -17,6 +17,11 @@ import * as runtime from "../runtime";
 import { type Activity, ActivityFromJSON, ActivityToJSON } from "../models/Activity";
 import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
 import {
+  type AssignProjectLeaderRequest,
+  AssignProjectLeaderRequestFromJSON,
+  AssignProjectLeaderRequestToJSON,
+} from "../models/AssignProjectLeaderRequest";
+import {
   type AssignRoleRequest,
   AssignRoleRequestFromJSON,
   AssignRoleRequestToJSON,
@@ -26,6 +31,11 @@ import {
   AuthResponseFromJSON,
   AuthResponseToJSON,
 } from "../models/AuthResponse";
+import {
+  type CancelProjectRequest,
+  CancelProjectRequestFromJSON,
+  CancelProjectRequestToJSON,
+} from "../models/CancelProjectRequest";
 import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
 import {
   type ClubApplication,
@@ -53,6 +63,11 @@ import {
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
 import {
+  type CreateProjectRequest,
+  CreateProjectRequestFromJSON,
+  CreateProjectRequestToJSON,
+} from "../models/CreateProjectRequest";
+import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -77,6 +92,7 @@ import {
   PermissionDefinitionFromJSON,
   PermissionDefinitionToJSON,
 } from "../models/PermissionDefinition";
+import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -87,6 +103,11 @@ import {
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
 } from "../models/ReviewClubApplicationRequest";
+import {
+  type ReviewProjectRequest,
+  ReviewProjectRequestFromJSON,
+  ReviewProjectRequestToJSON,
+} from "../models/ReviewProjectRequest";
 import {
   type RoleAssignmentResult,
   RoleAssignmentResultFromJSON,
@@ -114,8 +135,18 @@ import {
 } from "../models/UpdateClubRequest";
 import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
 
+export interface AssignProjectLeaderOperationRequest {
+  projectId: number;
+  assignProjectLeaderRequest: AssignProjectLeaderRequest;
+}
+
 export interface AssignUserRoleRequest {
   assignRoleRequest: AssignRoleRequest;
+}
+
+export interface CancelProjectOperationRequest {
+  projectId: number;
+  cancelProjectRequest: CancelProjectRequest;
 }
 
 export interface CheckPermissionRequest {
@@ -135,6 +166,10 @@ export interface CreateClubApplicationOperationRequest {
 export interface CreateClubMemberTermOperationRequest {
   clubId: number;
   createClubMemberTermRequest: CreateClubMemberTermRequest;
+}
+
+export interface CreateProjectOperationRequest {
+  createProjectRequest: CreateProjectRequest;
 }
 
 export interface DissolveClubOperationRequest {
@@ -165,6 +200,16 @@ export interface GetClubsRequest {
   viewerUserId?: number;
 }
 
+export interface GetProjectByIdRequest {
+  projectId: number;
+}
+
+export interface GetProjectsRequest {
+  clubId?: number;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface GetUsersRequest {
   viewerUserId: number;
   clubId?: number;
@@ -181,6 +226,11 @@ export interface RegisterUserRequest {
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
+}
+
+export interface ReviewProjectOperationRequest {
+  projectId: number;
+  reviewProjectRequest: ReviewProjectRequest;
 }
 
 export interface UpdateClubOperationRequest {
@@ -203,6 +253,71 @@ export interface UpdateClubProfileOperationRequest {
  *
  */
 export class DefaultApi extends runtime.BaseAPI {
+  /**
+   * Creates request options for assignProjectLeader without sending the request
+   */
+  async assignProjectLeaderRequestOpts(
+    requestParameters: AssignProjectLeaderOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling assignProjectLeader().',
+      );
+    }
+
+    if (requestParameters["assignProjectLeaderRequest"] == null) {
+      throw new runtime.RequiredError(
+        "assignProjectLeaderRequest",
+        'Required parameter "assignProjectLeaderRequest" was null or undefined when calling assignProjectLeader().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/projects/{projectId}/leader`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: AssignProjectLeaderRequestToJSON(requestParameters["assignProjectLeaderRequest"]),
+    };
+  }
+
+  /**
+   * 分配或调整项目负责人
+   */
+  async assignProjectLeaderRaw(
+    requestParameters: AssignProjectLeaderOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.assignProjectLeaderRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
+  }
+
+  /**
+   * 分配或调整项目负责人
+   */
+  async assignProjectLeader(
+    requestParameters: AssignProjectLeaderOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Project> {
+    const response = await this.assignProjectLeaderRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
   /**
    * Creates request options for assignUserRole without sending the request
    */
@@ -256,6 +371,73 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RoleAssignmentResult> {
     const response = await this.assignUserRoleRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for cancelProject without sending the request
+   */
+  async cancelProjectRequestOpts(
+    requestParameters: CancelProjectOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling cancelProject().',
+      );
+    }
+
+    if (requestParameters["cancelProjectRequest"] == null) {
+      throw new runtime.RequiredError(
+        "cancelProjectRequest",
+        'Required parameter "cancelProjectRequest" was null or undefined when calling cancelProject().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/projects/{projectId}/cancel`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CancelProjectRequestToJSON(requestParameters["cancelProjectRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 撤销待审核或进行中的项目
+   */
+  async cancelProjectRaw(
+    requestParameters: CancelProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.cancelProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
+  }
+
+  /**
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 撤销待审核或进行中的项目
+   */
+  async cancelProject(
+    requestParameters: CancelProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Project> {
+    const response = await this.cancelProjectRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -504,6 +686,60 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubMemberRecord> {
     const response = await this.createClubMemberTermRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createProject without sending the request
+   */
+  async createProjectRequestOpts(
+    requestParameters: CreateProjectOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createProjectRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createProjectRequest",
+        'Required parameter "createProjectRequest" was null or undefined when calling createProject().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/projects`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateProjectRequestToJSON(requestParameters["createProjectRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人或指导老师提交项目立项申请
+   */
+  async createProjectRaw(
+    requestParameters: CreateProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.createProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
+  }
+
+  /**
+   * 社团负责人或指导老师提交项目立项申请
+   */
+  async createProject(
+    requestParameters: CreateProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Project> {
+    const response = await this.createProjectRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -938,6 +1174,117 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getProjectById without sending the request
+   */
+  async getProjectByIdRequestOpts(
+    requestParameters: GetProjectByIdRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectById().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/projects/{projectId}`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取项目详情
+   */
+  async getProjectByIdRaw(
+    requestParameters: GetProjectByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.getProjectByIdRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
+  }
+
+  /**
+   * 获取项目详情
+   */
+  async getProjectById(
+    requestParameters: GetProjectByIdRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Project> {
+    const response = await this.getProjectByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getProjects without sending the request
+   */
+  async getProjectsRequestOpts(
+    requestParameters: GetProjectsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/projects`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取项目列表
+   */
+  async getProjectsRaw(
+    requestParameters: GetProjectsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Project>>> {
+    const requestOptions = await this.getProjectsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ProjectFromJSON));
+  }
+
+  /**
+   * 获取项目列表
+   */
+  async getProjects(
+    requestParameters: GetProjectsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Project>> {
+    const response = await this.getProjectsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getRoleDefinitions without sending the request
    */
   async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -1241,6 +1588,73 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubApplication> {
     const response = await this.reviewClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewProject without sending the request
+   */
+  async reviewProjectRequestOpts(
+    requestParameters: ReviewProjectOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling reviewProject().',
+      );
+    }
+
+    if (requestParameters["reviewProjectRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewProjectRequest",
+        'Required parameter "reviewProjectRequest" was null or undefined when calling reviewProject().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/projects/{projectId}/review`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewProjectRequestToJSON(requestParameters["reviewProjectRequest"]),
+    };
+  }
+
+  /**
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+   * 指导老师审核项目立项申请
+   */
+  async reviewProjectRaw(
+    requestParameters: ReviewProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Project>> {
+    const requestOptions = await this.reviewProjectRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectFromJSON(jsonValue));
+  }
+
+  /**
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+   * 指导老师审核项目立项申请
+   */
+  async reviewProject(
+    requestParameters: ReviewProjectOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Project> {
+    const response = await this.reviewProjectRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
