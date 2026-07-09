@@ -15,6 +15,8 @@ public class ClubHubDbContext : DbContext
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<LearningItem> LearningItems => Set<LearningItem>();
+    public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
     public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
     public DbSet<Recruitment> Recruitments => Set<Recruitment>();
@@ -73,6 +75,10 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Recruitments)
              .WithOne(r => r.Club)
              .HasForeignKey(r => r.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.LearningItems)
+             .WithOne(item => item.Club)
+             .HasForeignKey(item => item.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(c => c.Applicant)
              .WithMany()
@@ -133,6 +139,32 @@ public class ClubHubDbContext : DbContext
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<LearningItem>(e =>
+        {
+            e.HasKey(item => item.ItemId);
+            e.HasOne(item => item.Uploader)
+             .WithMany()
+             .HasForeignKey(item => item.UploaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(item => item.Teacher)
+             .WithMany()
+             .HasForeignKey(item => item.TeacherUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(item => item.Records)
+             .WithOne(record => record.Item)
+             .HasForeignKey(record => record.ItemId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<LearningRecord>(e =>
+        {
+            e.HasKey(record => record.RecordId);
+            e.HasOne(record => record.User)
+             .WithMany()
+             .HasForeignKey(record => record.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 

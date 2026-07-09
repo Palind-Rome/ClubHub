@@ -95,6 +95,7 @@ onUnmounted(() => {
         <el-menu-item v-if="canAccessVenueReservations" index="/venue-reservations">
           场地预约
         </el-menu-item>
+        <el-menu-item index="/learning">课程</el-menu-item>
         <div class="session">
           <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
             roleSummary
