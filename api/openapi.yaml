@@ -682,6 +682,13 @@ paths:
     get:
       summary: 获取活动列表
       operationId: getActivities
+      parameters:
+        - name: currentUserId
+          in: query
+          required: false
+          description: 当前登录用户 ID，用于返回该用户是否已报名
+          schema:
+            type: integer
       responses:
         "200":
           description: 活动列表
@@ -720,6 +727,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: currentUserId
+          in: query
+          required: false
+          description: 当前登录用户 ID，用于返回该用户是否已报名
+          schema:
+            type: integer
       responses:
         "200":
           description: 活动详情
@@ -756,19 +769,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 活动或用户不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ApiError"
         "409":
           description: 报名状态冲突，例如重复报名或名额已满
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ApiError"
 
   /api/activities/{activityId}/review:
     post:
@@ -948,8 +961,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-
-
 
   /api/projects:
     get:
@@ -2320,6 +2331,9 @@ components:
           nullable: true
         currentParticipants:
           type: integer
+        isRegistered:
+          type: boolean
+          description: 当前用户是否已报名；未传 currentUserId 时为 false
       required:
         - id
         - title
@@ -2329,6 +2343,8 @@ components:
         - endTime
         - status
         - currentParticipants
+        - isRegistered
+
     CreateActivityRequest:
       type: object
       properties:
@@ -2665,17 +2681,4 @@ components:
         - registerStatus
         - registeredAt
         - currentParticipants
-        - message
-
-    ErrorResponse:
-      type: object
-      properties:
-        code:
-          type: string
-          example: CAPACITY_FULL
-        message:
-          type: string
-          example: 活动名额已满
-      required:
-        - code
         - message
