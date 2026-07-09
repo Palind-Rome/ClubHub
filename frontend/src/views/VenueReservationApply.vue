@@ -837,8 +837,11 @@ onMounted(refreshVenueData);
           <div class="slot-date">{{ formatDateOnly(slot.startTime) }}</div>
           <div class="slot-bar">
             <span class="slot-dot"></span>
-            <div>
+            <div class="slot-content">
               <div class="slot-range">{{ formatSlotRange(slot) }}</div>
+              <div class="slot-date-range">
+                起始 {{ formatDateOnly(slot.startTime) }} · 终止 {{ formatDateOnly(slot.endTime) }}
+              </div>
               <div class="muted">持续 {{ formatSlotDuration(slot) }}</div>
             </div>
           </div>
@@ -1068,6 +1071,16 @@ onMounted(refreshVenueData);
   font-size: 18px;
   font-weight: 700;
   color: var(--el-text-color-primary);
+}
+.slot-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.slot-date-range {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.35;
 }
 .muted {
   color: var(--el-text-color-secondary);
