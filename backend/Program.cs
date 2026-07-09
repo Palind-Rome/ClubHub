@@ -13,6 +13,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddSingleton<AuthTokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<RecruitmentApplicationService>();
 builder.Services
     .AddAuthentication(AuthTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, AuthTokenAuthenticationHandler>(
