@@ -1151,7 +1151,7 @@ async function readErrorMessage(res: Response) {
 <style scoped>
 .page {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1560px;
   margin: 0 auto;
   padding: 0 12px;
   box-sizing: border-box;
