@@ -318,6 +318,7 @@ async function submitAward() {
     if (awardFormMode.value === "create") {
       await requestJson<ClubEvaluationRecord>(`/api/clubs/${selectedClubId.value}/evaluations`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else if (awardTarget.value) {
@@ -325,6 +326,7 @@ async function submitAward() {
         `/api/clubs/${selectedClubId.value}/evaluations/${awardTarget.value.evaluationId}`,
         {
           method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
       );
