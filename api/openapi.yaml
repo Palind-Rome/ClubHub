@@ -774,6 +774,120 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/evaluations:
+    get:
+      summary: 查询社团成员评价考核记录
+      description: 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+      operationId: getClubEvaluations
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: termName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按 EVALUATIONS.term_name 精确筛选。
+        - name: evaluationType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+      responses:
+        "200":
+          description: 按角色可见范围过滤后的评价考核记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubEvaluationRecord"
+        "403":
+          description: 当前用户没有查看该社团评价考核的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 录入社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+      operationId: createClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubEvaluationRequest"
+      responses:
+        "201":
+          description: 评价考核记录已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有录入该成员评价考核的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/evaluations/{evaluationId}:
+    patch:
+      summary: 更新社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+      operationId: updateClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: evaluationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubEvaluationRequest"
+      responses:
+        "200":
+          description: 评价考核记录已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该评价考核的权限
+        "404":
+          description: 当前用户、社团或评价考核记录不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/recruitments:
     get:
       summary: 查询社团招募列表
@@ -2938,6 +3052,215 @@ components:
         contributionScore:
           type: number
           format: decimal
+          nullable: true
+      required:
+        - currentUserId
+
+    ClubEvaluationRecord:
+      type: object
+      description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
+      properties:
+        evaluationId:
+          type: integer
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+        evaluationTypeText:
+          type: string
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        userId:
+          type: integer
+        userName:
+          type: string
+        studentNo:
+          type: string
+          nullable: true
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        evaluatorUserId:
+          type: integer
+          nullable: true
+        evaluatorName:
+          type: string
+          nullable: true
+        termName:
+          type: string
+        awardTitle:
+          type: string
+          nullable: true
+        awardLevel:
+          type: string
+          nullable: true
+        awardReason:
+          type: string
+          nullable: true
+        activityScore:
+          type: number
+          format: decimal
+        taskScore:
+          type: number
+          format: decimal
+        learningScore:
+          type: number
+          format: decimal
+        awardScore:
+          type: number
+          format: decimal
+        totalScore:
+          type: number
+          format: decimal
+        grade:
+          type: string
+        publicStatus:
+          type: string
+          enum: [draft, published]
+        publicStatusText:
+          type: string
+        commentText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - evaluationId
+        - evaluationType
+        - evaluationTypeText
+        - clubId
+        - clubName
+        - userId
+        - userName
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
+        - publicStatus
+        - publicStatusText
+
+    CreateClubEvaluationRequest:
+      type: object
+      description: 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        evaluationType:
+          type: string
+          enum: [semester, award]
+        userId:
+          type: integer
+          minimum: 1
+        termName:
+          type: string
+          minLength: 1
+        awardTitle:
+          type: string
+          nullable: true
+        awardLevel:
+          type: string
+          nullable: true
+        awardReason:
+          type: string
+          nullable: true
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          default: draft
+        commentText:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - evaluationType
+        - userId
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+
+    UpdateClubEvaluationRequest:
+      type: object
+      description: 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        evaluationType:
+          type: string
+          enum: [semester, award]
+        termName:
+          type: string
+          minLength: 1
+        awardTitle:
+          type: string
+          nullable: true
+        awardLevel:
+          type: string
+          nullable: true
+        awardReason:
+          type: string
+          nullable: true
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+        publicStatus:
+          type: string
+          enum: [draft, published]
+        commentText:
+          type: string
           nullable: true
       required:
         - currentUserId
