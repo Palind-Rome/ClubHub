@@ -1,0 +1,1217 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import {
+  ArrowLeft,
+  Check,
+  Close,
+  Delete,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+  User,
+} from "@element-plus/icons-vue";
+import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
+import { collectManageableClubIds } from "../composables/useManageableClubs";
+
+type RecruitmentStatus = "draft" | "pending_review" | "not_started" | "accepting" | "ended";
+type RecruitmentWorkflowStatus = "draft" | "pending_review";
+type ApplicationStatus = "pending" | "accepted" | "rejected";
+type ReviewDecision = "accepted" | "rejected";
+type RecruitmentReviewDecision = "approved" | "rejected";
+type RecruitmentFormMode = "create" | "edit";
+
+interface Club {
+  id: number;
+  name: string;
+  status: string | null;
+  statusText: string;
+}
+
+interface Recruitment {
+  id: number;
+  clubId: number;
+  clubName: string;
+  title: string;
+  description: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  quota: number | null;
+  requirements: string | null;
+  recruitStatus: RecruitmentStatus;
+  recruitStatusText: string;
+  createdAt: string;
+  applicationCount: number;
+  acceptedCount: number;
+  currentUserApplicationId: number | null;
+  currentUserApplicationStatus: ApplicationStatus | null;
+  currentUserApplicationStatusText: string | null;
+  currentUserIsMember: boolean;
+  isOwnProposal: boolean;
+  canManage: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canReview: boolean;
+}
+
+interface RecruitmentApplication {
+  id: number;
+  recruitId: number;
+  recruitTitle: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  applicantName: string;
+  studentNo: string | null;
+  applicationReason: string;
+  interviewScore: number | null;
+  applicationStatus: ApplicationStatus;
+  applicationStatusText: string;
+  reviewerUserId: number | null;
+  reviewerName: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+const recruitmentManagePermission = "recruitment:manage";
+const recruitmentApplyPermission = "recruitment:apply";
+
+const route = useRoute();
+const router = useRouter();
+const auth = ref<AuthResponse | null>(readAuth());
+const recruitments = ref<Recruitment[]>([]);
+const clubs = ref<Club[]>([]);
+const applications = ref<RecruitmentApplication[]>([]);
+const loading = ref(false);
+const clubLoading = ref(false);
+const applicationLoading = ref(false);
+const saving = ref(false);
+const applying = ref(false);
+const reviewing = ref(false);
+const recruitmentReviewing = ref(false);
+const error = ref("");
+const selectedRecruitment = ref<Recruitment | null>(null);
+const activeRecruitmentTab = ref<"own" | "other">("own");
+
+const filters = reactive({
+  status: "",
+  clubId: undefined as number | undefined,
+});
+
+const recruitmentDialogVisible = ref(false);
+const recruitmentFormRef = ref<FormInstance>();
+const recruitmentFormMode = ref<RecruitmentFormMode>("create");
+const recruitmentTarget = ref<Recruitment | null>(null);
+const recruitmentForm = reactive({
+  clubId: undefined as number | undefined,
+  title: "",
+  description: "",
+  startAt: "",
+  endAt: "",
+  quota: 10,
+  requirements: "",
+});
+
+const applicationDialogVisible = ref(false);
+const applicationFormRef = ref<FormInstance>();
+const applicationTarget = ref<Recruitment | null>(null);
+const applicationForm = reactive({
+  applicationReason: "",
+});
+
+const reviewDialogVisible = ref(false);
+const reviewFormRef = ref<FormInstance>();
+const reviewTarget = ref<RecruitmentApplication | null>(null);
+const reviewForm = reactive({
+  decision: "accepted" as ReviewDecision,
+  interviewScore: null as number | null,
+});
+
+const recruitmentRules: FormRules = {
+  clubId: [{ required: true, message: "请选择发布社团", trigger: "change" }],
+  title: [{ required: true, message: "请填写纳新标题", trigger: "blur" }],
+  startAt: [{ required: true, message: "请选择开始时间", trigger: "change" }],
+  endAt: [{ required: true, message: "请选择结束时间", trigger: "change" }],
+  quota: [{ required: true, message: "请填写计划人数", trigger: "blur" }],
+  requirements: [{ required: true, message: "请填写纳新要求", trigger: "blur" }],
+};
+
+const applicationRules: FormRules = {
+  applicationReason: [{ required: true, message: "请填写入社理由", trigger: "blur" }],
+};
+
+const reviewRules: FormRules = {
+  decision: [{ required: true, message: "请选择筛选结果", trigger: "change" }],
+};
+
+let stopSessionListener: (() => void) | null = null;
+let clubRequestId = 0;
+let recruitmentRequestId = 0;
+let applicationRequestId = 0;
+
+const currentUserId = computed(() => auth.value?.user.id);
+const isStudent = computed(() =>
+  (auth.value?.roles ?? []).some((role) => (role.code ?? "").toLowerCase() === "student"),
+);
+const canApply = computed(
+  () => isStudent.value && hasPermission(recruitmentApplyPermission) && !hasPermission("*"),
+);
+const hasManageAccess = computed(() =>
+  (auth.value?.roles ?? []).some((role) => role.permissions?.includes(recruitmentManagePermission)),
+);
+const manageableClubIdSet = computed(() =>
+  collectManageableClubIds(auth.value?.roles ?? [], recruitmentManagePermission),
+);
+const manageableClubs = computed(() => {
+  const clubIds = manageableClubIdSet.value;
+  return clubs.value.filter((club) => {
+    if (club.status !== "active") return false;
+    return clubIds.has(club.id);
+  });
+});
+const canCreateRecruitment = computed(() => manageableClubs.value.length > 0);
+const activeRecruitmentId = computed(() => {
+  const rawId = route.params.recruitmentId;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+});
+const isApplicationWorkbench = computed(() => activeRecruitmentId.value !== null);
+const sortedRecruitments = computed(() => [...recruitments.value].sort(compareRecruitments));
+const ownRecruitments = computed(() =>
+  sortedRecruitments.value.filter((item) => item.isOwnProposal),
+);
+const otherRecruitments = computed(() =>
+  sortedRecruitments.value.filter((item) => !item.isOwnProposal),
+);
+const displayedRecruitments = computed(() => {
+  if (!hasManageAccess.value) return sortedRecruitments.value;
+  return activeRecruitmentTab.value === "own" ? ownRecruitments.value : otherRecruitments.value;
+});
+
+async function validateForm(form: FormInstance | undefined) {
+  if (!form) return false;
+
+  try {
+    await form.validate();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function loadClubs() {
+  const requestId = ++clubRequestId;
+  if (!currentUserId.value || !hasManageAccess.value) {
+    if (requestId === clubRequestId) clubs.value = [];
+    return;
+  }
+
+  clubLoading.value = true;
+  try {
+    const data = await requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`);
+    if (requestId !== clubRequestId) return;
+    clubs.value = data;
+    syncSelectedClubFilter();
+  } catch (e) {
+    if (requestId === clubRequestId) {
+      ElMessage.error(e instanceof Error ? e.message : "社团加载失败");
+      clubs.value = [];
+    }
+  } finally {
+    if (requestId === clubRequestId) clubLoading.value = false;
+  }
+}
+
+async function loadRecruitments() {
+  const requestId = ++recruitmentRequestId;
+  if (!currentUserId.value) {
+    recruitments.value = [];
+    loading.value = false;
+    return;
+  }
+
+  loading.value = true;
+  error.value = "";
+  try {
+    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    if (filters.status) query.set("status", filters.status);
+    if (filters.clubId) query.set("clubId", String(filters.clubId));
+    const data = await requestJson<Recruitment[]>(`/api/recruitments?${query.toString()}`);
+    if (requestId !== recruitmentRequestId) return;
+    recruitments.value = data;
+    await syncApplicationWorkbench(requestId);
+  } catch (e) {
+    if (requestId === recruitmentRequestId) {
+      error.value = e instanceof Error ? e.message : "纳新信息加载失败";
+      recruitments.value = [];
+      applications.value = [];
+    }
+  } finally {
+    if (requestId === recruitmentRequestId) loading.value = false;
+  }
+}
+
+async function syncApplicationWorkbench(requestId = recruitmentRequestId) {
+  if (requestId !== recruitmentRequestId) return;
+
+  if (!isApplicationWorkbench.value) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    return;
+  }
+
+  const target = recruitments.value.find((item) => item.id === activeRecruitmentId.value) ?? null;
+  if (!target) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    return;
+  }
+
+  if (!target.canManage) {
+    selectedRecruitment.value = null;
+    applications.value = [];
+    ElMessage.warning("当前账号不能管理该纳新申请。");
+    await router.replace("/recruitments");
+    return;
+  }
+
+  selectedRecruitment.value = target;
+  await loadApplications(target);
+}
+
+async function loadApplications(row: Recruitment) {
+  const requestId = ++applicationRequestId;
+  if (!currentUserId.value) return;
+
+  applicationLoading.value = true;
+  try {
+    const data = await requestJson<RecruitmentApplication[]>(
+      `/api/recruitments/${row.id}/applications?viewerUserId=${currentUserId.value}`,
+    );
+    if (requestId === applicationRequestId) applications.value = data;
+  } catch (e) {
+    if (requestId === applicationRequestId) {
+      applications.value = [];
+      ElMessage.error(e instanceof Error ? e.message : "入社申请列表加载失败");
+    }
+  } finally {
+    if (requestId === applicationRequestId) applicationLoading.value = false;
+  }
+}
+
+async function refreshAll() {
+  await loadClubs();
+  await loadRecruitments();
+}
+
+function syncSelectedClubFilter() {
+  if (!filters.clubId) return;
+  if (!manageableClubs.value.some((club) => club.id === filters.clubId)) {
+    filters.clubId = undefined;
+  }
+}
+
+function resetFilters() {
+  filters.status = "";
+  filters.clubId = undefined;
+  void loadRecruitments();
+}
+
+function resetRecruitmentForm() {
+  const start = new Date();
+  start.setHours(start.getHours() + 1, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 14);
+
+  recruitmentForm.clubId = filters.clubId ?? manageableClubs.value[0]?.id;
+  recruitmentForm.title = "";
+  recruitmentForm.description = "";
+  recruitmentForm.startAt = dateTimeInput(start);
+  recruitmentForm.endAt = dateTimeInput(end);
+  recruitmentForm.quota = 10;
+  recruitmentForm.requirements = "";
+  recruitmentFormRef.value?.clearValidate();
+}
+
+function openCreateDialog() {
+  if (!canCreateRecruitment.value) {
+    ElMessage.warning("当前账号没有可发布纳新的运营中社团。");
+    return;
+  }
+
+  recruitmentFormMode.value = "create";
+  recruitmentTarget.value = null;
+  resetRecruitmentForm();
+  recruitmentDialogVisible.value = true;
+}
+
+function openEditDialog(row: Recruitment) {
+  if (!row.canEdit) {
+    ElMessage.warning("只有本社团干部或负责人可以维护草稿纳新。");
+    return;
+  }
+
+  recruitmentFormMode.value = "edit";
+  recruitmentTarget.value = row;
+  recruitmentForm.clubId = row.clubId;
+  recruitmentForm.title = row.title;
+  recruitmentForm.description = row.description ?? "";
+  recruitmentForm.startAt = dateTimeInput(row.startAt);
+  recruitmentForm.endAt = dateTimeInput(row.endAt);
+  recruitmentForm.quota = row.quota ?? 1;
+  recruitmentForm.requirements = row.requirements ?? "";
+  recruitmentFormRef.value?.clearValidate();
+  recruitmentDialogVisible.value = true;
+}
+
+async function submitRecruitment(action: RecruitmentWorkflowStatus) {
+  if (!recruitmentFormRef.value || !currentUserId.value) return;
+  if (!(await validateForm(recruitmentFormRef.value))) return;
+  if (!recruitmentForm.clubId) {
+    ElMessage.warning("请选择发布社团");
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const payload = {
+      currentUserId: currentUserId.value,
+      clubId: recruitmentForm.clubId,
+      title: recruitmentForm.title,
+      description: emptyToNull(recruitmentForm.description),
+      startAt: recruitmentForm.startAt,
+      endAt: recruitmentForm.endAt,
+      quota: recruitmentForm.quota,
+      requirements: recruitmentForm.requirements,
+      recruitStatus: action,
+    };
+
+    if (recruitmentFormMode.value === "create") {
+      await requestJson<Recruitment>("/api/recruitments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
+    } else if (recruitmentTarget.value) {
+      await requestJson<Recruitment>(`/api/recruitments/${recruitmentTarget.value.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          clubId: undefined,
+        }),
+      });
+      ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
+    }
+
+    recruitmentDialogVisible.value = false;
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "保存失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+function openApplicationDialog(row: Recruitment) {
+  const reason = applyDisabledReason(row);
+  if (reason) {
+    ElMessage.warning(reason);
+    return;
+  }
+
+  applicationTarget.value = row;
+  applicationForm.applicationReason = "";
+  applicationFormRef.value?.clearValidate();
+  applicationDialogVisible.value = true;
+}
+
+async function submitApplication() {
+  if (!applicationFormRef.value || !applicationTarget.value || !currentUserId.value) return;
+  if (!(await validateForm(applicationFormRef.value))) return;
+
+  applying.value = true;
+  try {
+    await requestJson<RecruitmentApplication>(
+      `/api/recruitments/${applicationTarget.value.id}/applications`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentUserId: currentUserId.value,
+          applicationReason: applicationForm.applicationReason,
+        }),
+      },
+    );
+    ElMessage.success("入社申请已提交");
+    applicationDialogVisible.value = false;
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "提交申请失败");
+  } finally {
+    applying.value = false;
+  }
+}
+
+async function openApplicationWorkbench(row: Recruitment) {
+  if (!row.canManage) {
+    ElMessage.warning("当前账号不能查看该纳新申请。");
+    return;
+  }
+
+  await router.push(`/recruitments/${row.id}/applications`);
+}
+
+async function backToRecruitments() {
+  await router.push("/recruitments");
+}
+
+async function deleteDraftRecruitment(row: Recruitment) {
+  if (!row.canDelete || !currentUserId.value) {
+    ElMessage.warning("只有本社团干部或负责人可以删除草稿纳新。");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(`确认删除草稿“${row.title}”？`, "删除草稿", {
+      type: "warning",
+      confirmButtonText: "确认删除",
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
+
+  saving.value = true;
+  try {
+    await requestJson<void>(`/api/recruitments/${row.id}?currentUserId=${currentUserId.value}`, {
+      method: "DELETE",
+    });
+    ElMessage.success("草稿已删除");
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "删除失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function reviewRecruitment(row: Recruitment, decision: RecruitmentReviewDecision) {
+  if (!row.canReview || !currentUserId.value) {
+    ElMessage.warning("当前账号不能审核纳新。");
+    return;
+  }
+
+  const actionText = decision === "approved" ? "通过" : "驳回";
+  try {
+    await ElMessageBox.confirm(`确认${actionText}“${row.title}”？`, "纳新审核", {
+      type: decision === "approved" ? "success" : "warning",
+      confirmButtonText: `确认${actionText}`,
+      cancelButtonText: "取消",
+    });
+  } catch {
+    return;
+  }
+
+  recruitmentReviewing.value = true;
+  try {
+    await requestJson<Recruitment>(`/api/recruitments/${row.id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentUserId: currentUserId.value,
+        decision,
+      }),
+    });
+    ElMessage.success(`纳新已${actionText}`);
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "审核失败");
+  } finally {
+    recruitmentReviewing.value = false;
+  }
+}
+
+function openReviewDialog(row: RecruitmentApplication, decision: ReviewDecision) {
+  if (row.applicationStatus !== "pending") {
+    ElMessage.warning("只有待筛选申请可以录入结果。");
+    return;
+  }
+
+  reviewTarget.value = row;
+  reviewForm.decision = decision;
+  reviewForm.interviewScore = row.interviewScore;
+  reviewFormRef.value?.clearValidate();
+  reviewDialogVisible.value = true;
+}
+
+async function submitReview() {
+  if (!reviewFormRef.value || !reviewTarget.value || !currentUserId.value) return;
+  if (!(await validateForm(reviewFormRef.value))) return;
+
+  const actionText = reviewForm.decision === "accepted" ? "录取" : "拒绝";
+  try {
+    await ElMessageBox.confirm(
+      `确认${actionText}“${reviewTarget.value.applicantName}”？`,
+      "筛选确认",
+      {
+        type: reviewForm.decision === "accepted" ? "success" : "warning",
+        confirmButtonText: `确认${actionText}`,
+        cancelButtonText: "取消",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  reviewing.value = true;
+  try {
+    await requestJson<RecruitmentApplication>(
+      `/api/recruitments/applications/${reviewTarget.value.id}/review`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentUserId: currentUserId.value,
+          decision: reviewForm.decision,
+          interviewScore: reviewForm.interviewScore,
+        }),
+      },
+    );
+    ElMessage.success(`申请已${actionText}`);
+    reviewDialogVisible.value = false;
+    await loadRecruitments();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "筛选失败");
+  } finally {
+    reviewing.value = false;
+  }
+}
+
+function applyDisabledReason(row: Recruitment) {
+  if (!canApply.value) return "当前账号不能提交入社申请，请切换到普通学生账号。";
+  if (row.currentUserIsMember) return "你已经是该社团成员。";
+  if (row.currentUserApplicationId) return "你已经提交过该纳新申请。";
+  if (row.recruitStatus !== "accepting") return "该纳新当前不接受申请。";
+  if (row.quota !== null && row.acceptedCount >= row.quota) return "纳新名额已满。";
+  return "";
+}
+
+function shouldShowApplyAction(row: Recruitment) {
+  return canApply.value && !row.currentUserIsMember && !row.currentUserApplicationId;
+}
+
+function compareRecruitments(a: Recruitment, b: Recruitment) {
+  const rankDiff = recruitmentPhaseRank(a) - recruitmentPhaseRank(b);
+  if (rankDiff !== 0) return rankDiff;
+
+  const rank = recruitmentPhaseRank(a);
+  if (rank === 4) {
+    return dateValue(b.endAt ?? b.createdAt) - dateValue(a.endAt ?? a.createdAt);
+  }
+
+  if (rank < 2) {
+    return dateValue(b.createdAt) - dateValue(a.createdAt);
+  }
+
+  return dateValue(a.startAt ?? a.createdAt) - dateValue(b.startAt ?? b.createdAt);
+}
+
+function recruitmentPhaseRank(row: Recruitment) {
+  if (row.recruitStatus === "draft") return 0;
+  if (row.recruitStatus === "pending_review") return 1;
+  if (row.recruitStatus === "accepting") return 2;
+  if (row.recruitStatus === "not_started") return 3;
+  return 4;
+}
+
+function dateValue(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function hasPermission(permission: string) {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes(permission);
+}
+
+function statusTagType(status: RecruitmentStatus) {
+  if (status === "accepting") return "success";
+  if (status === "pending_review" || status === "not_started") return "warning";
+  if (status === "ended") return "info";
+  return "primary";
+}
+
+function recruitmentStatusText(status: RecruitmentStatus) {
+  if (status === "draft") return "草稿";
+  if (status === "pending_review") return "审核中";
+  if (status === "not_started") return "未开始";
+  if (status === "accepting") return "申请中";
+  return "已结束";
+}
+
+function applicationTagType(status: ApplicationStatus | null) {
+  if (status === "accepted") return "success";
+  if (status === "rejected") return "danger";
+  if (status === "pending") return "warning";
+  return "info";
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function dateTimeInput(value: Date | string | null | undefined) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (!date || Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+}
+
+function emptyToNull(value: string) {
+  return value.trim() ? value.trim() : null;
+}
+
+function refreshSession() {
+  auth.value = readAuth();
+  void refreshAll();
+}
+
+watch(
+  () => filters.clubId,
+  () => {
+    void loadRecruitments();
+  },
+);
+
+watch(activeRecruitmentId, () => {
+  void syncApplicationWorkbench();
+});
+
+watch(
+  hasManageAccess,
+  (canManage) => {
+    activeRecruitmentTab.value = canManage ? "own" : "other";
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  stopSessionListener = onSessionChange(refreshSession);
+  void refreshAll();
+});
+
+onUnmounted(() => {
+  stopSessionListener?.();
+});
+</script>
+
+<template>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
+        <p>
+          {{
+            isApplicationWorkbench ? "查看申请并录入筛选结果" : "发布纳新、提交入社申请、筛选录取"
+          }}
+        </p>
+      </div>
+      <div class="header-actions">
+        <el-button v-if="isApplicationWorkbench" :icon="ArrowLeft" @click="backToRecruitments">
+          返回纳新列表
+        </el-button>
+        <template v-else>
+          <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新</el-button>
+          <el-button
+            v-if="hasManageAccess"
+            type="primary"
+            :icon="Plus"
+            :disabled="!canCreateRecruitment"
+            @click="openCreateDialog"
+          >
+            新建纳新
+          </el-button>
+        </template>
+      </div>
+    </div>
+
+    <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" />
+
+    <template v-if="!isApplicationWorkbench">
+      <div class="filters">
+        <el-select
+          v-model="filters.status"
+          clearable
+          placeholder="纳新状态"
+          class="filter-control"
+          @change="loadRecruitments"
+        >
+          <el-option label="草稿" value="draft" />
+          <el-option label="审核中" value="pending_review" />
+          <el-option label="申请中" value="accepting" />
+          <el-option label="未开始" value="not_started" />
+          <el-option label="已结束" value="ended" />
+        </el-select>
+        <el-select
+          v-if="hasManageAccess"
+          v-model="filters.clubId"
+          clearable
+          filterable
+          placeholder="管理社团"
+          class="filter-control"
+          :loading="clubLoading"
+        >
+          <el-option
+            v-for="club in manageableClubs"
+            :key="club.id"
+            :label="club.name"
+            :value="club.id"
+          />
+        </el-select>
+        <el-button :icon="Search" @click="loadRecruitments">查询</el-button>
+        <el-button @click="resetFilters">重置</el-button>
+      </div>
+
+      <el-tabs v-if="hasManageAccess" v-model="activeRecruitmentTab" class="recruitment-tabs">
+        <el-tab-pane :label="`本社团提出 ${ownRecruitments.length}`" name="own" />
+        <el-tab-pane :label="`其他社团 ${otherRecruitments.length}`" name="other" />
+      </el-tabs>
+
+      <el-table v-loading="loading" :data="displayedRecruitments" stripe empty-text="暂无纳新数据">
+        <el-table-column label="纳新信息" min-width="260">
+          <template #default="{ row }">
+            <div class="title-line">{{ row.title }}</div>
+            <div class="muted">{{ row.clubName }}</div>
+            <div v-if="row.description" class="description">{{ row.description }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间范围" min-width="210">
+          <template #default="{ row }">
+            <div>{{ formatDateTime(row.startAt) }}</div>
+            <div class="muted">至 {{ formatDateTime(row.endAt) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="人数" width="110">
+          <template #default="{ row }">
+            <span>{{ row.acceptedCount }} / {{ row.quota ?? "不限" }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="statusTagType(row.recruitStatus)" size="small">
+              {{ row.recruitStatusText || recruitmentStatusText(row.recruitStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="我的申请" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.currentUserIsMember" type="success" size="small"> 已是成员 </el-tag>
+            <el-tag
+              v-else-if="row.currentUserApplicationStatus"
+              :type="applicationTagType(row.currentUserApplicationStatus)"
+              size="small"
+            >
+              {{ row.currentUserApplicationStatusText }}
+            </el-tag>
+            <span v-else class="muted">未申请</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="340" fixed="right">
+          <template #default="{ row }">
+            <template v-if="shouldShowApplyAction(row)">
+              <el-button
+                v-if="!applyDisabledReason(row)"
+                type="primary"
+                link
+                :icon="User"
+                @click="openApplicationDialog(row)"
+              >
+                申请加入
+              </el-button>
+              <el-tooltip v-else :content="applyDisabledReason(row)">
+                <span>
+                  <el-button link disabled :icon="User">申请加入</el-button>
+                </span>
+              </el-tooltip>
+            </template>
+            <el-button
+              v-if="
+                row.canManage &&
+                (row.recruitStatus === 'accepting' || row.recruitStatus === 'ended')
+              "
+              type="primary"
+              link
+              :icon="Search"
+              @click="openApplicationWorkbench(row)"
+            >
+              申请管理
+            </el-button>
+            <el-button
+              v-if="row.canEdit"
+              type="primary"
+              link
+              :icon="Edit"
+              @click="openEditDialog(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="row.canDelete"
+              type="danger"
+              link
+              :icon="Delete"
+              :loading="saving"
+              @click="deleteDraftRecruitment(row)"
+            >
+              删除草稿
+            </el-button>
+            <el-button
+              v-if="row.canReview && row.recruitStatus === 'pending_review'"
+              type="success"
+              link
+              :icon="Check"
+              :loading="recruitmentReviewing"
+              @click="reviewRecruitment(row, 'approved')"
+            >
+              通过
+            </el-button>
+            <el-button
+              v-if="row.canReview && row.recruitStatus === 'pending_review'"
+              type="danger"
+              link
+              :icon="Close"
+              :loading="recruitmentReviewing"
+              @click="reviewRecruitment(row, 'rejected')"
+            >
+              驳回
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </template>
+
+    <div v-else class="applications-panel">
+      <template v-if="selectedRecruitment">
+        <div class="panel-header">
+          <div>
+            <h3>{{ selectedRecruitment.title }} 申请管理</h3>
+            <p>
+              {{ selectedRecruitment.clubName }} / {{ selectedRecruitment.applicationCount }} 份申请
+            </p>
+          </div>
+          <el-button
+            :icon="Refresh"
+            :loading="applicationLoading"
+            @click="loadApplications(selectedRecruitment)"
+          >
+            刷新申请
+          </el-button>
+        </div>
+
+        <el-table
+          v-loading="applicationLoading"
+          :data="applications"
+          stripe
+          empty-text="暂无申请数据"
+        >
+          <el-table-column prop="applicantName" label="学生" min-width="130" />
+          <el-table-column prop="studentNo" label="学号" width="110" />
+          <el-table-column
+            prop="applicationReason"
+            label="入社理由"
+            min-width="260"
+            show-overflow-tooltip
+          />
+          <el-table-column label="面试分" width="100">
+            <template #default="{ row }">
+              {{ row.interviewScore ?? "-" }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="applicationTagType(row.applicationStatus)" size="small">
+                {{ row.applicationStatusText }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="提交时间" width="170">
+            <template #default="{ row }">
+              {{ formatDateTime(row.submittedAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                type="success"
+                link
+                :icon="Check"
+                :disabled="row.applicationStatus !== 'pending'"
+                @click="openReviewDialog(row, 'accepted')"
+              >
+                录取
+              </el-button>
+              <el-button
+                type="danger"
+                link
+                :icon="Close"
+                :disabled="row.applicationStatus !== 'pending'"
+                @click="openReviewDialog(row, 'rejected')"
+              >
+                拒绝
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <el-empty v-else description="未找到可管理的纳新申请" />
+    </div>
+
+    <el-dialog
+      v-model="recruitmentDialogVisible"
+      :title="recruitmentFormMode === 'create' ? '新建纳新' : '编辑草稿'"
+      width="640px"
+    >
+      <el-form
+        ref="recruitmentFormRef"
+        :model="recruitmentForm"
+        :rules="recruitmentRules"
+        label-width="96px"
+      >
+        <el-form-item label="发布社团" prop="clubId">
+          <el-select
+            v-model="recruitmentForm.clubId"
+            filterable
+            :disabled="recruitmentFormMode === 'edit'"
+            placeholder="请选择社团"
+          >
+            <el-option
+              v-for="club in manageableClubs"
+              :key="club.id"
+              :label="club.name"
+              :value="club.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="纳新标题" prop="title">
+          <el-input v-model="recruitmentForm.title" maxlength="80" show-word-limit />
+        </el-form-item>
+        <el-form-item label="纳新说明">
+          <el-input
+            v-model="recruitmentForm.description"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="时间范围" required>
+          <div class="date-row">
+            <el-form-item prop="startAt">
+              <el-date-picker
+                v-model="recruitmentForm.startAt"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="开始时间"
+              />
+            </el-form-item>
+            <el-form-item prop="endAt">
+              <el-date-picker
+                v-model="recruitmentForm.endAt"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="结束时间"
+              />
+            </el-form-item>
+          </div>
+        </el-form-item>
+        <el-form-item label="计划人数" prop="quota">
+          <el-input-number v-model="recruitmentForm.quota" :min="1" :max="999" />
+        </el-form-item>
+        <el-form-item label="纳新要求" prop="requirements">
+          <el-input
+            v-model="recruitmentForm.requirements"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="recruitmentDialogVisible = false">取消</el-button>
+        <el-button :loading="saving" @click="submitRecruitment('draft')">保存草稿</el-button>
+        <el-button type="primary" :loading="saving" @click="submitRecruitment('pending_review')">
+          提交审核
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="applicationDialogVisible" title="提交入社申请" width="560px">
+      <el-form
+        ref="applicationFormRef"
+        :model="applicationForm"
+        :rules="applicationRules"
+        label-width="96px"
+      >
+        <el-form-item label="申请项目">
+          <span>{{ applicationTarget?.title }}</span>
+        </el-form-item>
+        <el-form-item label="入社理由" prop="applicationReason">
+          <el-input
+            v-model="applicationForm.applicationReason"
+            type="textarea"
+            :rows="5"
+            maxlength="800"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="applicationDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="applying" @click="submitApplication"
+          >提交申请</el-button
+        >
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="reviewDialogVisible" title="录入筛选结果" width="520px">
+      <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="96px">
+        <el-form-item label="申请学生">
+          <span>{{ reviewTarget?.applicantName }}</span>
+        </el-form-item>
+        <el-form-item label="面试分">
+          <el-input-number v-model="reviewForm.interviewScore" :min="0" :max="100" :precision="1" />
+        </el-form-item>
+        <el-form-item label="筛选结果" prop="decision">
+          <el-radio-group v-model="reviewForm.decision">
+            <el-radio-button label="accepted">录取</el-radio-button>
+            <el-radio-button label="rejected">拒绝</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reviewing" @click="submitReview">保存结果</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<style scoped>
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.page-header,
+.filters,
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page-header {
+  margin-bottom: 16px;
+}
+
+.page-header h2,
+.panel-header h3 {
+  margin: 0;
+}
+
+.page-header p,
+.panel-header p {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
+}
+
+.header-actions,
+.filters {
+  flex-wrap: wrap;
+}
+
+.filters {
+  justify-content: flex-start;
+  margin: 16px 0;
+}
+
+.recruitment-tabs {
+  margin-top: 8px;
+}
+
+.filter-control {
+  width: 180px;
+}
+
+.title-line {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.muted,
+.description {
+  color: var(--el-text-color-secondary);
+}
+
+.description {
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.applications-panel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--el-border-color-light);
+}
+
+.panel-header {
+  margin-bottom: 12px;
+}
+
+.date-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.date-row :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.date-row :deep(.el-date-editor) {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .page-header,
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .date-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

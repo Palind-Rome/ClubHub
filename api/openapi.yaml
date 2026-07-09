@@ -91,6 +91,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/auth/session:
+    get:
+      summary: 刷新当前用户会话
+      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      operationId: refreshAuthSession
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 已重新计算的用户会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 账号已被禁用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/auth/roles:
     get:
       summary: 获取基础角色定义
@@ -678,6 +711,319 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/clubs/{clubId}/members/self/exit:
+    patch:
+      summary: 学生主动退出社团
+      description: 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+      operationId: exitCurrentClubMember
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExitClubMemberRequest"
+      responses:
+        "204":
+          description: 已退出社团
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有退出该社团的权限或需先移交负责人
+        "404":
+          description: 当前用户、社团或有效成员身份不存在
+        "409":
+          description: 社团状态不允许退出或成员身份已结束
+
+  /api/clubs/{clubId}/members/{memberId}/exit:
+    patch:
+      summary: 移出社团成员
+      description: 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+      operationId: removeClubMember
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExitClubMemberRequest"
+      responses:
+        "204":
+          description: 已移出社团成员
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有移出该成员的权限或需先移交负责人
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态不允许移出或成员身份已结束
+
+  /api/recruitments:
+    get:
+      summary: 查询社团招募列表
+      description: 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
+      operationId: getRecruitments
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, pending_review, not_started, accepting, ended]
+      responses:
+        "200":
+          description: 招募列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求参数不合法
+        "404":
+          description: 当前用户不存在
+    post:
+      summary: 创建社团招募
+      description: 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
+      operationId: createRecruitment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecruitmentRequest"
+      responses:
+        "201":
+          description: 招募已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有管理该社团招募的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许创建招募
+
+  /api/recruitments/{recruitId}:
+    patch:
+      summary: 更新社团招募
+      description: 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
+      operationId: updateRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRecruitmentRequest"
+      responses:
+        "200":
+          description: 招募已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有管理该社团招募的权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 招募状态不允许维护
+    delete:
+      summary: 删除草稿招募
+      description: 目标社团的社团干部、负责人可以删除本社团草稿招募。
+      operationId: deleteRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 草稿已删除
+        "400":
+          description: 当前用户不合法
+        "403":
+          description: 当前用户没有删除该草稿的权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 只有草稿招募可以删除
+
+  /api/recruitments/{recruitId}/review:
+    patch:
+      summary: 审核社团招募
+      description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
+      operationId: reviewRecruitment
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRecruitmentRequest"
+      responses:
+        "200":
+          description: 审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recruitment"
+        "400":
+          description: 审核内容不符合业务规则
+        "403":
+          description: 当前用户没有审核招募的权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 招募状态不允许审核或同一社团同时间已有已通过招募
+
+  /api/recruitments/{recruitId}/applications:
+    get:
+      summary: 查询招募报名列表
+      description: 社团干部可查看本招募全部报名；学生只能查看自己的报名。
+      operationId: getRecruitmentApplications
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 招募报名列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecruitmentApplication"
+        "403":
+          description: 当前用户没有查看该招募报名的权限
+        "404":
+          description: 当前用户或招募不存在
+    post:
+      summary: 提交招募报名
+      description: 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
+      operationId: createRecruitmentApplication
+      parameters:
+        - name: recruitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecruitmentApplicationRequest"
+      responses:
+        "201":
+          description: 报名已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecruitmentApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有报名权限
+        "404":
+          description: 当前用户或招募不存在
+        "409":
+          description: 已报名、已是成员、社团数量达到上限或招募不接受报名
+
+  /api/recruitments/applications/{applicationId}/review:
+    patch:
+      summary: 筛选招募报名
+      description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
+      operationId: reviewRecruitmentApplication
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRecruitmentApplicationRequest"
+      responses:
+        "200":
+          description: 筛选结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecruitmentApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有筛选该报名的权限
+        "404":
+          description: 当前用户或报名不存在
+        "409":
+          description: 报名状态、名额、成员关系或社团数量上限不允许录取
+
   /api/activities:
     get:
       summary: 获取活动列表
@@ -1131,6 +1477,13 @@ paths:
         "404":
           description: 项目不存在
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ClubHub-HMAC
+      description: 登录或注册成功后返回的 ClubHub Bearer 令牌。
+
   schemas:
     ApiError:
       type: object
@@ -1288,8 +1641,8 @@ components:
       properties:
         token:
           type: string
-          description: 登录演示令牌
-          example: demo-token
+          description: 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
+          example: eyJ1c2VySWQiOjF9.abc123signature
         user:
           description: 当前登录用户信息。
           $ref: "#/components/schemas/AuthUser"
@@ -1900,6 +2253,15 @@ components:
       required:
         - currentUserId
 
+    ExitClubMemberRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+      required:
+        - currentUserId
+
     ClubMemberRecord:
       type: object
       properties:
@@ -2154,6 +2516,344 @@ components:
           enum: [approved, rejected]
         reviewComment:
           type: string
+          nullable: true
+      required:
+        - currentUserId
+        - decision
+
+    Recruitment:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 招募记录 ID。
+          example: 1
+        clubId:
+          type: integer
+          description: 发布该纳新的社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 发布该纳新的社团名称。
+          example: 计算机协会
+        title:
+          type: string
+          description: 纳新标题。
+          example: 2026 春季纳新
+        description:
+          type: string
+          description: 纳新的补充说明，可为空。
+          nullable: true
+          example: 面向对编程、竞赛和项目协作感兴趣的同学。
+        startAt:
+          type: string
+          format: date-time
+          description: 纳新开始时间；审核通过后用于计算“未开始/申请中/已结束”。
+          nullable: true
+          example: "2026-03-01T09:00:00Z"
+        endAt:
+          type: string
+          format: date-time
+          description: 纳新结束时间；到期后自动展示为已结束。
+          nullable: true
+          example: "2026-03-20T18:00:00Z"
+        quota:
+          type: integer
+          description: 计划录取人数上限。
+          nullable: true
+          example: 30
+        requirements:
+          type: string
+          description: 报名要求或筛选标准。
+          nullable: true
+          example: 对社团活动有稳定参与时间，愿意参与一次面试。
+        recruitStatus:
+          type: string
+          description: 当前展示状态；draft 和 pending_review 为流程状态，not_started/accepting/ended 由已通过纳新的时间窗口计算得到。
+          enum: [draft, pending_review, not_started, accepting, ended]
+          example: accepting
+        recruitStatusText:
+          type: string
+          description: 当前展示状态的中文文案。
+          example: 申请中
+        createdAt:
+          type: string
+          format: date-time
+          description: 招募创建时间。
+          example: "2026-02-20T08:30:00Z"
+        applicationCount:
+          type: integer
+          description: 当前报名申请总数。
+          example: 18
+        acceptedCount:
+          type: integer
+          description: 当前已录取申请数。
+          example: 8
+        currentUserApplicationId:
+          type: integer
+          description: 当前查看用户在该纳新下的申请 ID；未申请时为空。
+          nullable: true
+          example: 12
+        currentUserApplicationStatus:
+          type: string
+          description: 当前查看用户的申请状态；未申请时为空。
+          nullable: true
+          example: pending
+        currentUserApplicationStatusText:
+          type: string
+          description: 当前查看用户申请状态的中文文案；未申请时为空。
+          nullable: true
+          example: 待筛选
+        currentUserIsMember:
+          type: boolean
+          description: 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
+          example: false
+        isOwnProposal:
+          type: boolean
+          description: 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
+          example: true
+        canManage:
+          type: boolean
+          description: 当前查看用户是否可以管理该纳新和其报名。
+          example: true
+        canEdit:
+          type: boolean
+          description: 当前查看用户是否可以编辑该纳新草稿。
+          example: false
+        canDelete:
+          type: boolean
+          description: 当前查看用户是否可以删除该纳新草稿。
+          example: false
+        canReview:
+          type: boolean
+          description: 当前查看用户是否可以审核该纳新。
+          example: false
+      required:
+        - id
+        - clubId
+        - clubName
+        - title
+        - recruitStatus
+        - recruitStatusText
+        - createdAt
+        - applicationCount
+        - acceptedCount
+        - currentUserIsMember
+        - isOwnProposal
+        - canManage
+        - canEdit
+        - canDelete
+        - canReview
+
+    RecruitmentApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 招募报名申请 ID。
+          example: 101
+        recruitId:
+          type: integer
+          description: 所属招募 ID。
+          example: 1
+        recruitTitle:
+          type: string
+          description: 所属招募标题。
+          example: 2026 春季纳新
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        userId:
+          type: integer
+          description: 申请人用户 ID。
+          example: 23
+        applicantName:
+          type: string
+          description: 申请人展示姓名。
+          example: 陈同学
+        studentNo:
+          type: string
+          description: 申请人学工号。
+          nullable: true
+          example: "2350001"
+        applicationReason:
+          type: string
+          description: 申请人填写的入社理由。
+          example: 希望参与算法竞赛训练和项目实践。
+        interviewScore:
+          type: number
+          format: double
+          description: 面试或筛选评分，0 到 100；未评分时为空。
+          nullable: true
+          example: 86.5
+        applicationStatus:
+          type: string
+          description: 报名申请筛选状态。
+          enum: [pending, accepted, rejected]
+          example: pending
+        applicationStatusText:
+          type: string
+          description: 报名申请筛选状态的中文文案。
+          example: 待筛选
+        reviewerUserId:
+          type: integer
+          description: 审核/筛选人用户 ID；未处理时为空。
+          nullable: true
+          example: 5
+        reviewerName:
+          type: string
+          description: 审核/筛选人展示姓名；未处理时为空。
+          nullable: true
+          example: 王负责人
+        submittedAt:
+          type: string
+          format: date-time
+          description: 报名提交时间。
+          nullable: true
+          example: "2026-03-05T10:15:00Z"
+        reviewedAt:
+          type: string
+          format: date-time
+          description: 报名筛选处理时间；未处理时为空。
+          nullable: true
+          example: "2026-03-08T14:30:00Z"
+      required:
+        - id
+        - recruitId
+        - recruitTitle
+        - clubId
+        - clubName
+        - userId
+        - applicantName
+        - applicationReason
+        - applicationStatus
+        - applicationStatusText
+
+    CreateRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        clubId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        quota:
+          type: integer
+          minimum: 1
+        requirements:
+          type: string
+          minLength: 1
+        recruitStatus:
+          type: string
+          enum: [draft, pending_review]
+          default: draft
+      required:
+        - currentUserId
+        - clubId
+        - title
+        - startAt
+        - endAt
+        - quota
+        - requirements
+
+    RecruitmentWorkflowStatus:
+      type: string
+      description: 纳新草稿可编辑流程状态。
+      enum: [draft, pending_review]
+
+    UpdateRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        quota:
+          type: integer
+          minimum: 1
+          nullable: true
+        requirements:
+          type: string
+          nullable: true
+        recruitStatus:
+          description: 仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。
+          allOf:
+            - $ref: "#/components/schemas/RecruitmentWorkflowStatus"
+          nullable: true
+      required:
+        - currentUserId
+
+    ReviewRecruitmentRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected]
+      required:
+        - currentUserId
+        - decision
+
+    CreateRecruitmentApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        applicationReason:
+          type: string
+          minLength: 1
+      required:
+        - currentUserId
+        - applicationReason
+
+    ReviewRecruitmentApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [accepted, rejected]
+        interviewScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
           nullable: true
       required:
         - currentUserId
