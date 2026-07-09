@@ -55,6 +55,7 @@ interface ClubEvaluationRecord {
 }
 
 const evaluationDraftPermission = "evaluation:draft";
+const evaluationReviewPermission = "evaluation:review";
 
 const auth = ref<AuthResponse | null>(readAuth());
 const clubs = ref<Club[]>([]);
@@ -108,7 +109,10 @@ const hasAllPermissions = computed(
     (auth.value?.roles ?? []).some((role) => role.permissions?.includes("*")),
 );
 const manageableClubIds = computed(() =>
-  collectManageableClubIds(auth.value?.roles ?? [], evaluationDraftPermission),
+  collectManageableClubIds(auth.value?.roles ?? [], [
+    evaluationDraftPermission,
+    evaluationReviewPermission,
+  ]),
 );
 const selectedClub = computed(() => clubs.value.find((club) => club.id === selectedClubId.value));
 const canMaintainSelectedClub = computed(

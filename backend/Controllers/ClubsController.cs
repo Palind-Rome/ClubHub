@@ -1267,14 +1267,13 @@ public class ClubsController : ControllerBase
 
         var canView =
             UsersController.IsPlatformAdmin(viewer) ||
-            UsersController.IsSystemAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId) ||
+            IsClubEvaluationPrincipal(viewer, clubId) ||
             HasClubParticipantRole(viewer, clubId) ||
             GetCadreGroupingScopes(viewer, clubId).Any() ||
             viewer.ClubMemberships.Any(cm => cm.ClubId == clubId && IsCurrentMemberTerm(cm));
         if (!canView)
         {
-            return (StatusCode(403, new { message = "只有本社团成员、干部、负责人或系统管理员可以查看评价考核。" }), club, viewer);
+            return (StatusCode(403, new { message = "只有本社团成员、干部、负责人、指导教师或系统管理员可以查看评价考核。" }), club, viewer);
         }
 
         return (null, club, viewer);
@@ -1324,7 +1323,7 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "被评价用户不是本社团当前有效成员。" }), club, viewer, null);
         }
 
-        if (UsersController.IsSystemAdmin(viewer) || UsersController.IsClubPrincipal(viewer, clubId))
+        if (IsClubEvaluationPrincipal(viewer, clubId))
         {
             return (null, club, viewer, targetMember);
         }
@@ -1332,7 +1331,7 @@ public class ClubsController : ControllerBase
         var scopes = GetCadreGroupingScopes(viewer, clubId).ToList();
         if (scopes.Count == 0)
         {
-            return (StatusCode(403, new { message = "只有本社团负责人或已登记部门、小组的干部可以维护评价考核。" }), club, viewer, targetMember);
+            return (StatusCode(403, new { message = "只有本社团负责人、指导教师或已登记部门、小组的干部可以维护评价考核。" }), club, viewer, targetMember);
         }
 
         var canMaintain = scopes.Any(scope => GroupingMatchesScope(
@@ -2004,8 +2003,7 @@ public class ClubsController : ControllerBase
     private static bool CanViewEvaluationRecord(User viewer, int clubId, Evaluation evaluation)
     {
         if (UsersController.IsPlatformAdmin(viewer) ||
-            UsersController.IsSystemAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId))
+            IsClubEvaluationPrincipal(viewer, clubId))
         {
             return true;
         }
@@ -2035,6 +2033,17 @@ public class ClubsController : ControllerBase
         return evaluation.UserId == viewer.UserId &&
                NormalizeEvaluationPublicStatus(evaluation.PublicStatus) == EvaluationPublished;
     }
+
+    private static bool IsClubEvaluationPrincipal(User viewer, int clubId) =>
+        UsersController.IsSystemAdmin(viewer) ||
+        UsersController.IsClubPrincipal(viewer, clubId) ||
+        IsClubAdvisor(viewer, clubId);
+
+    private static bool IsClubAdvisor(User viewer, int clubId) =>
+        viewer.UserRoles.Any(ur =>
+            ur.ClubId == clubId &&
+            ur.Role is not null &&
+            string.Equals(ur.Role.RoleCode, ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase));
 
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships
