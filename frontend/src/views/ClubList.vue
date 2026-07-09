@@ -160,11 +160,6 @@ interface ClubEvaluationRecord {
   createdAt: string | null;
 }
 
-interface ApiError {
-  message?: string;
-  title?: string;
-}
-
 interface ClubContextOption {
   clubId: number;
   clubName: string;
@@ -1769,14 +1764,6 @@ function memberStatusText(status: string | null | undefined) {
   return "暂停";
 }
 
-function evaluationTypeText(type: EvaluationType) {
-  return type === "award" ? "评优评奖" : "学期考核";
-}
-
-function evaluationTypeTagType(type: EvaluationType) {
-  return type === "award" ? "warning" : "primary";
-}
-
 function evaluationPublicTagType(status: EvaluationPublicStatus) {
   return status === "published" ? "success" : "info";
 }
@@ -1977,9 +1964,12 @@ watch(selectedClubId, () => {
   void Promise.all([loadEvaluationMembers(), loadEvaluations()]);
 });
 
-watch(() => evaluationFilters.termName, () => {
-  void loadEvaluations();
-});
+watch(
+  () => evaluationFilters.termName,
+  () => {
+    void loadEvaluations();
+  },
+);
 
 watch(
   visibleTabs,
