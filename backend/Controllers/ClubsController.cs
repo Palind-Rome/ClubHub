@@ -1266,8 +1266,10 @@ public class ClubsController : ControllerBase
         }
 
         var canView =
+            UsersController.IsPlatformAdmin(viewer) ||
             UsersController.IsSystemAdmin(viewer) ||
             UsersController.IsClubPrincipal(viewer, clubId) ||
+            HasClubParticipantRole(viewer, clubId) ||
             GetCadreGroupingScopes(viewer, clubId).Any() ||
             viewer.ClubMemberships.Any(cm => cm.ClubId == clubId && IsCurrentMemberTerm(cm));
         if (!canView)
@@ -1964,12 +1966,6 @@ public class ClubsController : ControllerBase
         return CadrePositionNames.Contains(normalized);
     }
 
-    private static bool HasClubOfficerRole(User user, int clubId) =>
-        user.UserRoles.Any(ur =>
-            ur.ClubId == clubId &&
-            ur.Role is not null &&
-            string.Equals(ur.Role.RoleCode, "CLUB_OFFICER", StringComparison.OrdinalIgnoreCase));
-
     private static IEnumerable<ClubMember> GetCadreGroupingScopes(User user, int clubId)
     {
         var hasOfficerRole = HasClubOfficerRole(user, clubId);
@@ -2007,7 +2003,17 @@ public class ClubsController : ControllerBase
 
     private static bool CanViewEvaluationRecord(User viewer, int clubId, Evaluation evaluation)
     {
-        if (UsersController.IsSystemAdmin(viewer) || UsersController.IsClubPrincipal(viewer, clubId))
+        if (UsersController.IsPlatformAdmin(viewer) ||
+            UsersController.IsSystemAdmin(viewer) ||
+            UsersController.IsClubPrincipal(viewer, clubId))
+        {
+            return true;
+        }
+
+        if (NormalizeEvaluationType(evaluation.EvaluationType) == EvaluationAward &&
+            NormalizeEvaluationPublicStatus(evaluation.PublicStatus) == EvaluationPublished &&
+            (HasClubParticipantRole(viewer, clubId) ||
+             viewer.ClubMemberships.Any(cm => cm.ClubId == clubId && IsCurrentMemberTerm(cm))))
         {
             return true;
         }
