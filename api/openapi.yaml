@@ -1157,6 +1157,68 @@ paths:
         "404":
           description: 活动不存在
 
+  /api/activities/{activityId}/budget:
+    put:
+      summary: 提交或更新活动经费预算申请
+      description: 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。
+      operationId: applyActivityBudget
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyActivityBudgetRequest"
+      responses:
+        "200":
+          description: 经费预算已提交，进入待审批状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: 预算金额、用途或活动状态不合法
+        "403":
+          description: 当前用户没有该社团的经费申请权限
+        "404":
+          description: 活动不存在
+
+  /api/activities/{activityId}/budget/review:
+    post:
+      summary: 审批活动经费预算
+      description: 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
+      operationId: reviewActivityBudget
+      parameters:
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewActivityBudgetRequest"
+      responses:
+        "200":
+          description: 经费审批结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: 当前经费状态不允许审批或参数不合法
+        "403":
+          description: 当前用户没有该社团的经费审批权限
+        "404":
+          description: 活动不存在
+
   /api/activities/{activityId}/checkin-settings:
     put:
       summary: 设置活动签到签退码和有效时间
@@ -3396,6 +3458,32 @@ components:
         reviewComment:
           type: string
           nullable: true
+        budgetAmount:
+          type: number
+          format: double
+          nullable: true
+          description: 活动经费预算金额，未申请时为空。
+        budgetPurpose:
+          type: string
+          nullable: true
+          description: 活动经费用途，未申请时为空。
+        budgetDetail:
+          type: string
+          nullable: true
+          description: 活动经费预算明细，未申请时为空。
+        budgetStatus:
+          type: string
+          nullable: true
+          enum: [pending, approved, rejected]
+          description: 经费审批状态；为空表示尚未提交经费申请。
+        budgetReviewerId:
+          type: integer
+          nullable: true
+          description: 经费审批人用户 ID。
+        budgetComment:
+          type: string
+          nullable: true
+          description: 经费审批意见。
         publishedAt:
           type: string
           format: date-time
@@ -3488,6 +3576,52 @@ components:
           type: string
           nullable: true
           maxLength: 255
+
+    ApplyActivityBudgetRequest:
+      type: object
+      properties:
+        applicantUserId:
+          type: integer
+          minimum: 1
+          description: 经费申请人用户 ID；用于校验其是否拥有该社团 budget:apply 权限。
+        budgetAmount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: 预算金额，必须大于 0。
+        budgetPurpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费用途，例如物料采购、场地布置或嘉宾交通。
+        budgetDetail:
+          type: string
+          nullable: true
+          description: 经费明细，可填写多项预算说明。
+      required:
+        - applicantUserId
+        - budgetAmount
+        - budgetPurpose
+
+    ReviewActivityBudgetRequest:
+      type: object
+      properties:
+        approved:
+          type: boolean
+          nullable: true
+          description: 经费审批结果，true 为通过，false 为驳回。
+        reviewerUserId:
+          type: integer
+          minimum: 1
+          description: 经费审批人用户 ID；用于校验其是否拥有该社团 budget:review 权限。
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 经费审批意见。
+      required:
+        - approved
+        - reviewerUserId
 
     UpdateCheckinSettingsRequest:
       type: object

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -21,10 +22,18 @@ public class ActivitiesController : ControllerBase
     private const string RegisterStatusPending = "pending";
     private const string RegisterStatusAccepted = "accepted";
     private const string RegisterStatusOnsite = "onsite";
+    private const string BudgetStatusPending = "pending";
+    private const string BudgetStatusApproved = "approved";
+    private const string BudgetStatusRejected = "rejected";
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthService _authService;
 
-    public ActivitiesController(ClubHubDbContext db) => _db = db;
+    public ActivitiesController(ClubHubDbContext db, AuthService authService)
+    {
+        _db = db;
+        _authService = authService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? currentUserId)
@@ -50,6 +59,12 @@ public class ActivitiesController : ControllerBase
                 a.RegistrationDeadline,
                 a.ReviewerUserId,
                 a.ReviewComment,
+                a.BudgetAmount,
+                a.BudgetPurpose,
+                a.BudgetDetail,
+                a.BudgetStatus,
+                a.BudgetReviewerId,
+                a.BudgetComment,
                 a.PublishedAt,
                 a.CheckinStartAt,
                 a.CheckinEndAt,
@@ -153,6 +168,12 @@ public class ActivitiesController : ControllerBase
                 a.RegistrationDeadline,
                 a.ReviewerUserId,
                 a.ReviewComment,
+                a.BudgetAmount,
+                a.BudgetPurpose,
+                a.BudgetDetail,
+                a.BudgetStatus,
+                a.BudgetReviewerId,
+                a.BudgetComment,
                 a.PublishedAt,
                 a.CheckinStartAt,
                 a.CheckinEndAt,
@@ -312,6 +333,95 @@ public class ActivitiesController : ControllerBase
         activity.ReviewComment = req.Comment;
         activity.ActivityStatus = req.Approved.Value ? "published" : "rejected";
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
+
+        await _db.SaveChangesAsync();
+        var currentParticipants = await CountActiveParticipants(activityId);
+        return Ok(ToDto(activity, currentParticipants));
+    }
+
+    [HttpPut("{activityId:int}/budget")]
+    public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.Club)
+            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
+
+        if (activity is null) return NotFound();
+        if (req.ApplicantUserId <= 0)
+        {
+            return BadRequest(new { message = "必须提供经费申请人用户 ID。" });
+        }
+
+        if (req.BudgetAmount <= 0)
+        {
+            return BadRequest(new { message = "预算金额必须大于 0。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(req.BudgetPurpose))
+        {
+            return BadRequest(new { message = "预算用途不能为空。" });
+        }
+
+        if (activity.ActivityStatus is "finished" or "cancelled")
+        {
+            return BadRequest(new { message = "已结束或已取消的活动不能提交经费申请。" });
+        }
+
+        if (string.Equals(activity.BudgetStatus, BudgetStatusApproved, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "经费预算已审批通过，不能重复修改申请。" });
+        }
+
+        var permission = await _authService.CheckPermissionAsync(req.ApplicantUserId, "budget:apply", activity.ClubId);
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
+        }
+
+        activity.BudgetAmount = req.BudgetAmount;
+        activity.BudgetPurpose = req.BudgetPurpose.Trim();
+        activity.BudgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        activity.BudgetStatus = BudgetStatusPending;
+        activity.BudgetReviewerId = null;
+        activity.BudgetComment = null;
+
+        await _db.SaveChangesAsync();
+        var currentParticipants = await CountActiveParticipants(activityId);
+        return Ok(ToDto(activity, currentParticipants));
+    }
+
+    [HttpPost("{activityId:int}/budget/review")]
+    public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.Club)
+            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
+
+        if (activity is null) return NotFound();
+        if (req.Approved is null)
+        {
+            return BadRequest(new { message = "必须提供经费审批结果 approved。" });
+        }
+
+        if (req.ReviewerUserId <= 0)
+        {
+            return BadRequest(new { message = "必须提供经费审批人用户 ID。" });
+        }
+
+        if (!string.Equals(activity.BudgetStatus, BudgetStatusPending, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "只有待审批的经费申请才能审批。" });
+        }
+
+        var permission = await _authService.CheckPermissionAsync(req.ReviewerUserId, "budget:review", activity.ClubId);
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
+        }
+
+        activity.BudgetReviewerId = req.ReviewerUserId;
+        activity.BudgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        activity.BudgetStatus = req.Approved.Value ? BudgetStatusApproved : BudgetStatusRejected;
 
         await _db.SaveChangesAsync();
         var currentParticipants = await CountActiveParticipants(activityId);
@@ -572,6 +682,12 @@ public class ActivitiesController : ControllerBase
             activity.RegistrationDeadline,
             activity.ReviewerUserId,
             activity.ReviewComment,
+            activity.BudgetAmount,
+            activity.BudgetPurpose,
+            activity.BudgetDetail,
+            activity.BudgetStatus,
+            activity.BudgetReviewerId,
+            activity.BudgetComment,
             activity.PublishedAt,
             activity.CheckinStartAt,
             activity.CheckinEndAt,
@@ -616,6 +732,12 @@ public record ActivityDto(
     DateTime? RegistrationDeadline,
     int? ReviewerUserId,
     string? ReviewComment,
+    decimal? BudgetAmount,
+    string? BudgetPurpose,
+    string? BudgetDetail,
+    string? BudgetStatus,
+    int? BudgetReviewerId,
+    string? BudgetComment,
     DateTime? PublishedAt,
     DateTime? CheckinStartAt,
     DateTime? CheckinEndAt,
@@ -662,6 +784,33 @@ public class ReviewActivityRequest
 
     public int? ReviewerUserId { get; set; }
 
+    public string? Comment { get; set; }
+}
+
+public class ApplyActivityBudgetRequest
+{
+    [Required]
+    public int ApplicantUserId { get; set; }
+
+    [Required]
+    public decimal BudgetAmount { get; set; }
+
+    [Required, StringLength(255, MinimumLength = 1)]
+    public string BudgetPurpose { get; set; } = string.Empty;
+
+    [StringLength(4000)]
+    public string? BudgetDetail { get; set; }
+}
+
+public class ReviewActivityBudgetRequest
+{
+    [Required]
+    public bool? Approved { get; set; }
+
+    [Required]
+    public int ReviewerUserId { get; set; }
+
+    [StringLength(255)]
     public string? Comment { get; set; }
 }
 
