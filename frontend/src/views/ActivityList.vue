@@ -197,12 +197,6 @@ const budgetStatusLabel: Record<string, string> = {
   rejected: "已驳回",
 };
 
-const budgetStatusType: Record<string, string> = {
-  pending: "warning",
-  approved: "success",
-  rejected: "danger",
-};
-
 const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -748,21 +742,6 @@ async function readErrorMessage(res: Response) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="经费" width="160">
-        <template #default="{ row }">
-          <div class="budget-cell">
-            <el-tag
-              v-if="row.budgetStatus"
-              :type="budgetStatusType[row.budgetStatus] || 'info'"
-              size="small"
-            >
-              {{ budgetStatusLabel[row.budgetStatus] || row.budgetStatus }}
-            </el-tag>
-            <el-tag v-else type="info" size="small">未申请</el-tag>
-            <span>{{ formatMoney(row.budgetAmount) }}</span>
-          </div>
-        </template>
-      </el-table-column>
       <el-table-column label="操作" width="360" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
@@ -1195,13 +1174,6 @@ async function readErrorMessage(res: Response) {
 .quota-text {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-.budget-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  font-variant-numeric: tabular-nums;
 }
 .action-buttons {
   display: flex;
