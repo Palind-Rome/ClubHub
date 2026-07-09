@@ -23,7 +23,6 @@ public class ClubsController : ControllerBase
     private const string ClubAdvisorRoleCode = "ADVISOR";
     private const int ClubMemberTextMaxLength = 255;
     private const string EvaluationSemester = "semester";
-    private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
     private const string EvaluationPublished = "published";
 
@@ -692,12 +691,13 @@ public class ClubsController : ControllerBase
         var normalizedType = NormalizeEvaluationType(evaluationType);
         if (!string.IsNullOrWhiteSpace(evaluationType) && normalizedType is null)
         {
-            return BadRequest(new { message = "评价类型只能是 semester 或 award。" });
+            return BadRequest(new { message = "评价类型只能是 semester。" });
         }
 
         var normalizedTerm = EmptyToNull(termName);
         var evaluations = await EvaluationQuery()
             .Where(ev => ev.ClubId == clubId)
+            .Where(ev => ev.EvaluationType == EvaluationSemester)
             .Where(ev => normalizedTerm == null || ev.TermName == normalizedTerm)
             .Where(ev => normalizedType == null || ev.EvaluationType == normalizedType)
             .OrderByDescending(ev => ev.CreatedAt)
@@ -723,9 +723,6 @@ public class ClubsController : ControllerBase
             req.UserId,
             req.EvaluationType,
             req.TermName,
-            req.AwardTitle,
-            req.AwardLevel,
-            req.AwardReason,
             req.ActivityScore,
             req.TaskScore,
             req.LearningScore,
@@ -748,14 +745,14 @@ public class ClubsController : ControllerBase
         var evaluation = new Evaluation
         {
             EvaluationId = nextId,
-            EvaluationType = NormalizeEvaluationType(req.EvaluationType)!,
+            EvaluationType = EvaluationSemester,
             ClubId = clubId,
             UserId = req.UserId,
             EvaluatorUserId = req.CurrentUserId,
             TermName = req.TermName.Trim(),
-            AwardTitle = EmptyToNull(req.AwardTitle),
-            AwardLevel = EmptyToNull(req.AwardLevel),
-            AwardReason = EmptyToNull(req.AwardReason),
+            AwardTitle = null,
+            AwardLevel = null,
+            AwardReason = null,
             ActivityScore = activityScore,
             TaskScore = taskScore,
             LearningScore = learningScore,
@@ -783,7 +780,9 @@ public class ClubsController : ControllerBase
         [FromBody] UpdateClubEvaluationRequest req)
     {
         var evaluation = await _db.Evaluations.FirstOrDefaultAsync(ev =>
-            ev.ClubId == clubId && ev.EvaluationId == evaluationId);
+            ev.ClubId == clubId &&
+            ev.EvaluationId == evaluationId &&
+            ev.EvaluationType == EvaluationSemester);
         if (evaluation is null)
         {
             return NotFound(new { message = "评价考核记录不存在。" });
@@ -792,11 +791,8 @@ public class ClubsController : ControllerBase
         var access = await EnsureCanMaintainEvaluationAsync(clubId, req.CurrentUserId, evaluation.UserId);
         if (access.Result is not null) return access.Result;
 
-        var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
+        var nextEvaluationType = req.EvaluationType ?? EvaluationSemester;
         var nextTermName = req.TermName ?? evaluation.TermName;
-        var nextAwardTitle = req.AwardTitle ?? evaluation.AwardTitle;
-        var nextAwardLevel = req.AwardLevel ?? evaluation.AwardLevel;
-        var nextAwardReason = req.AwardReason ?? evaluation.AwardReason;
         var nextActivityScore = req.ActivityScore ?? evaluation.ActivityScore;
         var nextTaskScore = req.TaskScore ?? evaluation.TaskScore;
         var nextLearningScore = req.LearningScore ?? evaluation.LearningScore;
@@ -808,9 +804,6 @@ public class ClubsController : ControllerBase
             evaluation.UserId,
             nextEvaluationType,
             nextTermName,
-            nextAwardTitle,
-            nextAwardLevel,
-            nextAwardReason,
             nextActivityScore,
             nextTaskScore,
             nextLearningScore,
@@ -829,11 +822,11 @@ public class ClubsController : ControllerBase
         var awardScore = nextAwardScore!.Value;
         var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
 
-        evaluation.EvaluationType = NormalizeEvaluationType(nextEvaluationType)!;
+        evaluation.EvaluationType = EvaluationSemester;
         evaluation.TermName = nextTermName!.Trim();
-        evaluation.AwardTitle = EmptyToNull(nextAwardTitle);
-        evaluation.AwardLevel = EmptyToNull(nextAwardLevel);
-        evaluation.AwardReason = EmptyToNull(nextAwardReason);
+        evaluation.AwardTitle = null;
+        evaluation.AwardLevel = null;
+        evaluation.AwardReason = null;
         evaluation.ActivityScore = activityScore;
         evaluation.TaskScore = taskScore;
         evaluation.LearningScore = learningScore;
@@ -1562,9 +1555,6 @@ public class ClubsController : ControllerBase
             evaluation.EvaluatorUserId,
             DisplayUser(evaluation.Evaluator),
             evaluation.TermName ?? string.Empty,
-            evaluation.AwardTitle,
-            evaluation.AwardLevel,
-            evaluation.AwardReason,
             evaluation.ActivityScore ?? 0,
             evaluation.TaskScore ?? 0,
             evaluation.LearningScore ?? 0,
@@ -1615,9 +1605,6 @@ public class ClubsController : ControllerBase
         int userId,
         string? evaluationType,
         string? termName,
-        string? awardTitle,
-        string? awardLevel,
-        string? awardReason,
         decimal? activityScore,
         decimal? taskScore,
         decimal? learningScore,
@@ -1629,20 +1616,10 @@ public class ClubsController : ControllerBase
         if (userId <= 0) return "请选择被评价成员。";
 
         var normalizedType = NormalizeEvaluationType(evaluationType);
-        if (normalizedType is null) return "评价类型只能是 semester 或 award。";
+        if (normalizedType is null) return "评价类型只能是 semester。";
         if (string.IsNullOrWhiteSpace(termName)) return "考核学期不能为空。";
         if (TextTooLong(termName)) return "考核学期不能超过 255 个字符。";
-        if (TextTooLong(awardTitle)) return "奖项标题不能超过 255 个字符。";
-        if (TextTooLong(awardLevel)) return "奖项等级不能超过 255 个字符。";
-        if (TextTooLong(awardReason)) return "获奖原因不能超过 255 个字符。";
         if (TextTooLong(commentText)) return "评价说明不能超过 255 个字符。";
-
-        if (normalizedType == EvaluationAward)
-        {
-            if (string.IsNullOrWhiteSpace(awardTitle)) return "评优评奖标题不能为空。";
-            if (string.IsNullOrWhiteSpace(awardLevel)) return "评优评奖等级不能为空。";
-            if (string.IsNullOrWhiteSpace(awardReason)) return "评优评奖原因不能为空。";
-        }
 
         var status = NormalizeEvaluationPublicStatus(publicStatus);
         if (status is null) return "公示状态只能是 draft 或 published。";
@@ -1803,16 +1780,11 @@ public class ClubsController : ControllerBase
         return evaluationType.Trim().ToLowerInvariant() switch
         {
             "semester" or "term" or "assessment" or "学期考核" or "成员考核" => EvaluationSemester,
-            "award" or "honor" or "prize" or "评优评奖" or "奖项" => EvaluationAward,
             _ => null
         };
     }
 
-    private static string EvaluationTypeText(string evaluationType) => evaluationType switch
-    {
-        EvaluationAward => "评优评奖",
-        _ => "学期考核"
-    };
+    private static string EvaluationTypeText(string evaluationType) => "学期考核";
 
     private static string? NormalizeEvaluationPublicStatus(string? publicStatus)
     {
@@ -2082,9 +2054,6 @@ public record ClubEvaluationRecordDto(
     int? EvaluatorUserId,
     string? EvaluatorName,
     string TermName,
-    string? AwardTitle,
-    string? AwardLevel,
-    string? AwardReason,
     decimal ActivityScore,
     decimal TaskScore,
     decimal LearningScore,
@@ -2102,9 +2071,6 @@ public class CreateClubEvaluationRequest
     public string EvaluationType { get; set; } = string.Empty;
     public int UserId { get; set; }
     public string TermName { get; set; } = string.Empty;
-    public string? AwardTitle { get; set; }
-    public string? AwardLevel { get; set; }
-    public string? AwardReason { get; set; }
     public decimal? ActivityScore { get; set; }
     public decimal? TaskScore { get; set; }
     public decimal? LearningScore { get; set; }
@@ -2118,9 +2084,6 @@ public class UpdateClubEvaluationRequest
     public int CurrentUserId { get; set; }
     public string? EvaluationType { get; set; }
     public string? TermName { get; set; }
-    public string? AwardTitle { get; set; }
-    public string? AwardLevel { get; set; }
-    public string? AwardReason { get; set; }
     public decimal? ActivityScore { get; set; }
     public decimal? TaskScore { get; set; }
     public decimal? LearningScore { get; set; }

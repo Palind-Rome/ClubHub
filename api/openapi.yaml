@@ -730,8 +730,8 @@ paths:
 
   /api/clubs/{clubId}/evaluations:
     get:
-      summary: 查询社团成员评价考核记录
-      description: 普通成员只能查看本人评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。
+      summary: 查询社团成员学期考核记录
+      description: 普通成员只能查看本人已公示考核；干部只能查看本人管辖部门或小组成员考核；负责人和系统管理员可查看本社团全部考核。评优评奖流程使用独立的 award-campaigns 接口。
       operationId: getClubEvaluations
       parameters:
         - name: clubId
@@ -756,11 +756,11 @@ paths:
           required: false
           schema:
             type: string
-            enum: [semester, award]
-          description: semester 表示学期考核，award 表示评优评奖。
+            enum: [semester]
+          description: 仅支持 semester。评优评奖不再混入成绩考核接口。
       responses:
         "200":
-          description: 按角色可见范围过滤后的评价考核记录
+          description: 按角色可见范围过滤后的学期考核记录
           content:
             application/json:
               schema:
@@ -768,13 +768,13 @@ paths:
                 items:
                   $ref: "#/components/schemas/ClubEvaluationRecord"
         "403":
-          description: 当前用户没有查看该社团评价考核的权限
+          description: 当前用户没有查看该社团学期考核的权限
         "404":
           description: 当前用户或社团不存在
 
     post:
-      summary: 录入社团成员评价考核
-      description: 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。总分和等级由后端按四项分数计算。
+      summary: 录入社团成员学期考核
+      description: 负责人和系统管理员可以录入任意成员学期考核；干部只能录入自己管辖部门或小组成员考核。总分和等级由后端按活动、任务、学习和荣誉加分计算。
       operationId: createClubEvaluation
       parameters:
         - name: clubId
@@ -790,7 +790,7 @@ paths:
               $ref: "#/components/schemas/CreateClubEvaluationRequest"
       responses:
         "201":
-          description: 评价考核记录已创建
+          description: 学期考核记录已创建
           content:
             application/json:
               schema:
@@ -798,7 +798,7 @@ paths:
         "400":
           description: 请求内容不符合业务规则
         "403":
-          description: 当前用户没有录入该成员评价考核的权限
+          description: 当前用户没有录入该成员学期考核的权限
         "404":
           description: 当前用户、社团或目标成员不存在
         "409":
@@ -806,8 +806,8 @@ paths:
 
   /api/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
-      summary: 更新社团成员评价考核
-      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算。
+      summary: 更新社团成员学期考核
+      description: 负责人和系统管理员可以更新任意成员学期考核；干部只能更新自己管辖部门或小组成员考核。总分和等级由后端重新计算。
       operationId: updateClubEvaluation
       parameters:
         - name: clubId
@@ -828,7 +828,7 @@ paths:
               $ref: "#/components/schemas/UpdateClubEvaluationRequest"
       responses:
         "200":
-          description: 评价考核记录已更新
+          description: 学期考核记录已更新
           content:
             application/json:
               schema:
@@ -836,11 +836,198 @@ paths:
         "400":
           description: 请求内容不符合业务规则
         "403":
-          description: 当前用户没有维护该评价考核的权限
+          description: 当前用户没有维护该学期考核的权限
         "404":
-          description: 当前用户、社团或评价考核记录不存在
+          description: 当前用户、社团或学期考核记录不存在
         "409":
           description: 社团状态不允许维护
+
+  /api/award-campaigns:
+    get:
+      summary: 查询评优评奖活动
+      description: 负责人、干部、指导老师、管理员和本社团成员按权限查看评优评奖活动。
+      operationId: getAwardCampaigns
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, closed, published]
+      responses:
+        "200":
+          description: 评优评奖活动列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardCampaignRecord"
+        "400":
+          description: 请求参数不符合业务规则
+        "404":
+          description: 当前用户不存在
+    post:
+      summary: 发布评优评奖活动
+      description: 本社团负责人或管理员可以发布评优评奖活动，成员后续在活动下自主申报。
+      operationId: createAwardCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardCampaignRequest"
+      responses:
+        "201":
+          description: 评优评奖活动已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardCampaignRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有发布该社团评优评奖活动的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许发布
+
+  /api/award-campaigns/{campaignId}/applications:
+    get:
+      summary: 查询评优评奖申报
+      description: 审核人可查看活动下全部申报；普通成员只能查看自己的申报。
+      operationId: getAwardApplications
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 评优评奖申报列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户无权查看该评优评奖活动
+        "404":
+          description: 当前用户或评优评奖活动不存在
+
+  /api/award-campaigns/{campaignId}/apply:
+    post:
+      summary: 成员提交评优评奖申报
+      description: 社团在任成员可在开放申报的活动下提交一次个人申报。
+      operationId: createAwardApplication
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardApplicationRequest"
+      responses:
+        "201":
+          description: 评优评奖申报已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户不是本社团在任成员
+        "404":
+          description: 当前用户或评优评奖活动不存在
+        "409":
+          description: 活动状态不允许申报或已重复申报
+
+  /api/award-applications/{applicationId}/review:
+    post:
+      summary: 审核评优评奖申报
+      description: 申报先由负责人或干部初审，再由指导老师、平台管理员或系统管理员终审；任一阶段均可退回。
+      operationId: reviewAwardApplication
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAwardApplicationRequest"
+      responses:
+        "200":
+          description: 评优评奖申报已审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户无权处理该阶段申报
+        "404":
+          description: 当前用户、活动或申报不存在
+
+  /api/award-campaigns/{campaignId}/publish:
+    post:
+      summary: 公示评优评奖结果
+      description: 负责人、指导老师或管理员可以将终审通过的申报统一公示。
+      operationId: publishAwardCampaign
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishAwardCampaignRequest"
+      responses:
+        "200":
+          description: 评优评奖结果已公示
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardCampaignRecord"
+        "403":
+          description: 当前用户无权公示该评优评奖活动
+        "404":
+          description: 当前用户或评优评奖活动不存在
 
   /api/activities:
     get:
@@ -2152,14 +2339,14 @@ components:
 
     ClubEvaluationRecord:
       type: object
-      description: 社团成员学期考核或评优评奖记录，对应 EVALUATIONS 表。
+      description: 社团成员学期成绩与贡献度考核记录，对应 EVALUATIONS 表中的 semester 记录。
       properties:
         evaluationId:
           type: integer
         evaluationType:
           type: string
-          enum: [semester, award]
-          description: semester 表示学期考核，award 表示评优评奖。
+          enum: [semester]
+          description: 仅表示学期考核。评优评奖使用 AwardCampaignRecord 和 AwardApplicationRecord。
         evaluationTypeText:
           type: string
         clubId:
@@ -2190,15 +2377,6 @@ components:
           nullable: true
         termName:
           type: string
-        awardTitle:
-          type: string
-          nullable: true
-        awardLevel:
-          type: string
-          nullable: true
-        awardReason:
-          type: string
-          nullable: true
         activityScore:
           type: number
           format: decimal
@@ -2248,29 +2426,20 @@ components:
 
     CreateClubEvaluationRequest:
       type: object
-      description: 创建社团成员评价考核记录；总分和等级由后端计算。
+      description: 创建社团成员学期成绩与贡献度考核记录；总分和等级由后端计算。
       properties:
         currentUserId:
           type: integer
           minimum: 1
         evaluationType:
           type: string
-          enum: [semester, award]
+          enum: [semester]
         userId:
           type: integer
           minimum: 1
         termName:
           type: string
           minLength: 1
-        awardTitle:
-          type: string
-          nullable: true
-        awardLevel:
-          type: string
-          nullable: true
-        awardReason:
-          type: string
-          nullable: true
         activityScore:
           type: number
           format: decimal
@@ -2310,26 +2479,17 @@ components:
 
     UpdateClubEvaluationRequest:
       type: object
-      description: 更新社团成员评价考核记录；总分和等级由后端重新计算。
+      description: 更新社团成员学期成绩与贡献度考核记录；总分和等级由后端重新计算。
       properties:
         currentUserId:
           type: integer
           minimum: 1
         evaluationType:
           type: string
-          enum: [semester, award]
+          enum: [semester]
         termName:
           type: string
           minLength: 1
-        awardTitle:
-          type: string
-          nullable: true
-        awardLevel:
-          type: string
-          nullable: true
-        awardReason:
-          type: string
-          nullable: true
         activityScore:
           type: number
           format: decimal
@@ -2356,6 +2516,202 @@ components:
         commentText:
           type: string
           nullable: true
+      required:
+        - currentUserId
+
+    AwardCampaignRecord:
+      type: object
+      description: 评优评奖活动记录。当前复用 EVALUATIONS 表中的 award_campaign 类型承载。
+      properties:
+        campaignId:
+          type: integer
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        title:
+          type: string
+        awardType:
+          type: string
+          nullable: true
+        termName:
+          type: string
+        description:
+          type: string
+          nullable: true
+        publisherUserId:
+          type: integer
+        publisherName:
+          type: string
+        campaignStatus:
+          type: string
+          enum: [open, closed, published]
+        campaignStatusText:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        applicationCount:
+          type: integer
+        submittedCount:
+          type: integer
+        approvedCount:
+          type: integer
+        publishedCount:
+          type: integer
+      required:
+        - campaignId
+        - clubId
+        - clubName
+        - title
+        - termName
+        - publisherUserId
+        - publisherName
+        - campaignStatus
+        - campaignStatusText
+        - applicationCount
+        - submittedCount
+        - approvedCount
+        - publishedCount
+
+    AwardApplicationRecord:
+      type: object
+      description: 评优评奖成员申报记录。当前复用 EVALUATIONS 表中的 award_application 类型承载。
+      properties:
+        applicationId:
+          type: integer
+        campaignId:
+          type: integer
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        title:
+          type: string
+        awardLevel:
+          type: string
+          nullable: true
+        termName:
+          type: string
+        applicantUserId:
+          type: integer
+        applicantName:
+          type: string
+        studentNo:
+          type: string
+          nullable: true
+        departmentName:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+        applicationStatus:
+          type: string
+          enum: [submitted, leader_approved, advisor_approved, rejected, published]
+        applicationStatusText:
+          type: string
+        reviewerUserId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - applicationId
+        - campaignId
+        - clubId
+        - clubName
+        - title
+        - termName
+        - applicantUserId
+        - applicantName
+        - applyReason
+        - applicationStatus
+        - applicationStatusText
+
+    CreateAwardCampaignRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        clubId:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+        awardType:
+          type: string
+          nullable: true
+        termName:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        campaignStatus:
+          type: string
+          enum: [open, closed, published]
+          default: open
+      required:
+        - currentUserId
+        - clubId
+        - title
+        - termName
+
+    CreateAwardApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        awardLevel:
+          type: string
+          nullable: true
+        applyReason:
+          type: string
+          minLength: 1
+      required:
+        - currentUserId
+        - applyReason
+
+    ReviewAwardApplicationRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reviewComment:
+          type: string
+          nullable: true
+      required:
+        - currentUserId
+        - decision
+
+    PublishAwardCampaignRequest:
+      type: object
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
       required:
         - currentUserId
 
