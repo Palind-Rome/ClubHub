@@ -2,6 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from "./Activity";
+export * from "./ActivityParticipation";
+export * from "./ActivitySignRequest";
 export * from "./ApiError";
 export * from "./AssignProjectLeaderRequest";
 export * from "./AssignRoleRequest";
@@ -12,6 +14,7 @@ export * from "./CancelProjectRequest";
 export * from "./Club";
 export * from "./ClubApplication";
 export * from "./ClubMemberRecord";
+export * from "./CreateActivityRequest";
 export * from "./CreateClubApplicationRequest";
 export * from "./CreateClubMemberTermRequest";
 export * from "./CreateClubRequest";
@@ -27,10 +30,12 @@ export * from "./PermissionCheckResult";
 export * from "./PermissionDefinition";
 export * from "./Project";
 export * from "./RegisterRequest";
+export * from "./ReviewActivityRequest";
 export * from "./ReviewClubApplicationRequest";
 export * from "./ReviewProjectRequest";
 export * from "./RoleAssignmentResult";
 export * from "./RoleDefinition";
+export * from "./UpdateCheckinSettingsRequest";
 export * from "./UpdateClubMemberTermRequest";
 export * from "./UpdateClubProfileRequest";
 export * from "./UpdateClubRequest";

@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,6 +15,16 @@
 
 import * as runtime from "../runtime";
 import { type Activity, ActivityFromJSON, ActivityToJSON } from "../models/Activity";
+import {
+  type ActivityParticipation,
+  ActivityParticipationFromJSON,
+  ActivityParticipationToJSON,
+} from "../models/ActivityParticipation";
+import {
+  type ActivitySignRequest,
+  ActivitySignRequestFromJSON,
+  ActivitySignRequestToJSON,
+} from "../models/ActivitySignRequest";
 import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
 import {
   type AssignProjectLeaderRequest,
@@ -47,6 +57,11 @@ import {
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
 } from "../models/ClubMemberRecord";
+import {
+  type CreateActivityRequest,
+  CreateActivityRequestFromJSON,
+  CreateActivityRequestToJSON,
+} from "../models/CreateActivityRequest";
 import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
@@ -115,6 +130,11 @@ import {
   RegisterRequestToJSON,
 } from "../models/RegisterRequest";
 import {
+  type ReviewActivityRequest,
+  ReviewActivityRequestFromJSON,
+  ReviewActivityRequestToJSON,
+} from "../models/ReviewActivityRequest";
+import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
@@ -134,6 +154,11 @@ import {
   RoleDefinitionFromJSON,
   RoleDefinitionToJSON,
 } from "../models/RoleDefinition";
+import {
+  type UpdateCheckinSettingsRequest,
+  UpdateCheckinSettingsRequestFromJSON,
+  UpdateCheckinSettingsRequestToJSON,
+} from "../models/UpdateCheckinSettingsRequest";
 import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
@@ -171,6 +196,20 @@ export interface CheckPermissionRequest {
   clubId?: number;
 }
 
+export interface CheckinActivityRequest {
+  activityId: number;
+  activitySignRequest: ActivitySignRequest;
+}
+
+export interface CheckoutActivityRequest {
+  activityId: number;
+  activitySignRequest: ActivitySignRequest;
+}
+
+export interface CreateActivityOperationRequest {
+  createActivityRequest: CreateActivityRequest;
+}
+
 export interface CreateClubOperationRequest {
   createClubRequest: CreateClubRequest;
 }
@@ -198,6 +237,10 @@ export interface DissolveClubOperationRequest {
 }
 
 export interface GetActivityByIdRequest {
+  activityId: number;
+}
+
+export interface GetActivityParticipationsRequest {
   activityId: number;
 }
 
@@ -256,6 +299,11 @@ export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
 }
 
+export interface ReviewActivityOperationRequest {
+  activityId: number;
+  reviewActivityRequest: ReviewActivityRequest;
+}
+
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
@@ -264,6 +312,11 @@ export interface ReviewClubApplicationOperationRequest {
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
+}
+
+export interface UpdateActivityCheckinSettingsRequest {
+  activityId: number;
+  updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
 }
 
 export interface UpdateClubOperationRequest {
@@ -449,8 +502,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
-   * 撤销待审核或进行中的项目
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目�?     * 撤销待审核或进行中的项目
    */
   async cancelProjectRaw(
     requestParameters: CancelProjectOperationRequest,
@@ -463,8 +515,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
-   * 撤销待审核或进行中的项目
+   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目�?     * 撤销待审核或进行中的项目
    */
   async cancelProject(
     requestParameters: CancelProjectOperationRequest,
@@ -521,8 +572,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
-   */
+   * 检查用户是否拥有指定权�?     */
   async checkPermissionRaw(
     requestParameters: CheckPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -536,13 +586,198 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
-   */
+   * 检查用户是否拥有指定权�?     */
   async checkPermission(
     requestParameters: CheckPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<PermissionCheckResult> {
     const response = await this.checkPermissionRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for checkinActivity without sending the request
+   */
+  async checkinActivityRequestOpts(
+    requestParameters: CheckinActivityRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling checkinActivity().',
+      );
+    }
+
+    if (requestParameters["activitySignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "activitySignRequest",
+        'Required parameter "activitySignRequest" was null or undefined when calling checkinActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkin`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签到
+   */
+  async checkinActivityRaw(
+    requestParameters: CheckinActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkinActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityParticipationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 活动签到
+   */
+  async checkinActivity(
+    requestParameters: CheckinActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityParticipation> {
+    const response = await this.checkinActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for checkoutActivity without sending the request
+   */
+  async checkoutActivityRequestOpts(
+    requestParameters: CheckoutActivityRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling checkoutActivity().',
+      );
+    }
+
+    if (requestParameters["activitySignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "activitySignRequest",
+        'Required parameter "activitySignRequest" was null or undefined when calling checkoutActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkout`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ActivitySignRequestToJSON(requestParameters["activitySignRequest"]),
+    };
+  }
+
+  /**
+   * 活动签退
+   */
+  async checkoutActivityRaw(
+    requestParameters: CheckoutActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ActivityParticipation>> {
+    const requestOptions = await this.checkoutActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ActivityParticipationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 活动签退
+   */
+  async checkoutActivity(
+    requestParameters: CheckoutActivityRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ActivityParticipation> {
+    const response = await this.checkoutActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createActivity without sending the request
+   */
+  async createActivityRequestOpts(
+    requestParameters: CreateActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createActivityRequest",
+        'Required parameter "createActivityRequest" was null or undefined when calling createActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateActivityRequestToJSON(requestParameters["createActivityRequest"]),
+    };
+  }
+
+  /**
+   * 创建活动并提交审�?     */
+  async createActivityRaw(
+    requestParameters: CreateActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.createActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 创建活动并提交审�?     */
+  async createActivity(
+    requestParameters: CreateActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.createActivityRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -631,8 +866,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
-   * 提交社团注册申请
+   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请�?     * 提交社团注册申请
    */
   async createClubApplicationRaw(
     requestParameters: CreateClubApplicationOperationRequest,
@@ -645,8 +879,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
-   * 提交社团注册申请
+   * 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请�?     * 提交社团注册申请
    */
   async createClubApplication(
     requestParameters: CreateClubApplicationOperationRequest,
@@ -695,9 +928,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
-   * 新增社团成员或干部任期
-   */
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录�?     * 新增社团成员或干部任�?     */
   async createClubMemberTermRaw(
     requestParameters: CreateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -711,9 +942,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
-   * 新增社团成员或干部任期
-   */
+   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录�?     * 新增社团成员或干部任�?     */
   async createClubMemberTerm(
     requestParameters: CreateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -753,8 +982,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象�?     * 发布公告通知
    */
   async createNoticeRaw(
     requestParameters: CreateNoticeOperationRequest,
@@ -767,8 +995,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象�?     * 发布公告通知
    */
   async createNotice(
     requestParameters: CreateNoticeOperationRequest,
@@ -871,8 +1098,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
-   * 解散社团
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive�?     * 解散社团
    */
   async dissolveClubRaw(
     requestParameters: DissolveClubOperationRequest,
@@ -885,8 +1111,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
-   * 解散社团
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive�?     * 解散社团
    */
   async dissolveClub(
     requestParameters: DissolveClubOperationRequest,
@@ -991,6 +1216,63 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getActivityParticipations without sending the request
+   */
+  async getActivityParticipationsRequestOpts(
+    requestParameters: GetActivityParticipationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling getActivityParticipations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/activities/{activityId}/participations`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取活动参与记录
+   */
+  async getActivityParticipationsRaw(
+    requestParameters: GetActivityParticipationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ActivityParticipation>>> {
+    const requestOptions = await this.getActivityParticipationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ActivityParticipationFromJSON),
+    );
+  }
+
+  /**
+   * 获取活动参与记录
+   */
+  async getActivityParticipations(
+    requestParameters: GetActivityParticipationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ActivityParticipation>> {
+    const response = await this.getActivityParticipationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubApplications without sending the request
    */
   async getClubApplicationsRequestOpts(
@@ -1026,8 +1308,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限查询社团注册申请
-   */
+   * 按当前用户权限查询社团注册申�?     */
   async getClubApplicationsRaw(
     requestParameters: GetClubApplicationsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1041,8 +1322,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限查询社团注册申请
-   */
+   * 按当前用户权限查询社团注册申�?     */
   async getClubApplications(
     requestParameters: GetClubApplicationsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1147,9 +1427,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
-   * 查询社团成员与干部任期记录
-   */
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期�?     * 查询社团成员与干部任期记�?     */
   async getClubMembersRaw(
     requestParameters: GetClubMembersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1163,9 +1441,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
-   * 查询社团成员与干部任期记录
-   */
+   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期�?     * 查询社团成员与干部任期记�?     */
   async getClubMembers(
     requestParameters: GetClubMembersRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1266,8 +1542,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
-   * 查询公告通知
+   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态�?     * 查询公告通知
    */
   async getNoticesRaw(
     requestParameters: GetNoticesRequest,
@@ -1280,8 +1555,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
-   * 查询公告通知
+   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态�?     * 查询公告通知
    */
   async getNotices(
     requestParameters: GetNoticesRequest,
@@ -1562,8 +1836,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 健康检查
-   */
+   * 健康检�?     */
   async healthCheckRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<HealthStatus>> {
@@ -1574,8 +1847,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 健康检查
-   */
+   * 健康检�?     */
   async healthCheck(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<HealthStatus> {
@@ -1677,8 +1949,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
-   * 标记通知已读
+   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录�?     * 标记通知已读
    */
   async markNoticeReadRaw(
     requestParameters: MarkNoticeReadOperationRequest,
@@ -1693,8 +1964,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
-   * 标记通知已读
+   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录�?     * 标记通知已读
    */
   async markNoticeRead(
     requestParameters: MarkNoticeReadOperationRequest,
@@ -1759,6 +2029,71 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewActivity without sending the request
+   */
+  async reviewActivityRequestOpts(
+    requestParameters: ReviewActivityOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling reviewActivity().',
+      );
+    }
+
+    if (requestParameters["reviewActivityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewActivityRequest",
+        'Required parameter "reviewActivityRequest" was null or undefined when calling reviewActivity().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/review`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewActivityRequestToJSON(requestParameters["reviewActivityRequest"]),
+    };
+  }
+
+  /**
+   * 审核活动并发布或驳回
+   */
+  async reviewActivityRaw(
+    requestParameters: ReviewActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.reviewActivityRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 审核活动并发布或驳回
+   */
+  async reviewActivity(
+    requestParameters: ReviewActivityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.reviewActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewClubApplication without sending the request
    */
   async reviewClubApplicationRequestOpts(
@@ -1797,8 +2132,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员审核社团注册申请
-   */
+   * 平台管理员审核社团注册申�?     */
   async reviewClubApplicationRaw(
     requestParameters: ReviewClubApplicationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1810,8 +2144,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 平台管理员审核社团注册申请
-   */
+   * 平台管理员审核社团注册申�?     */
   async reviewClubApplication(
     requestParameters: ReviewClubApplicationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -1862,8 +2195,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
-   * 指导老师审核项目立项申请
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭�?     * 指导老师审核项目立项申请
    */
   async reviewProjectRaw(
     requestParameters: ReviewProjectOperationRequest,
@@ -1876,14 +2208,78 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
-   * 指导老师审核项目立项申请
+   * 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭�?     * 指导老师审核项目立项申请
    */
   async reviewProject(
     requestParameters: ReviewProjectOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Project> {
     const response = await this.reviewProjectRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateActivityCheckinSettings without sending the request
+   */
+  async updateActivityCheckinSettingsRequestOpts(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["activityId"] == null) {
+      throw new runtime.RequiredError(
+        "activityId",
+        'Required parameter "activityId" was null or undefined when calling updateActivityCheckinSettings().',
+      );
+    }
+
+    if (requestParameters["updateCheckinSettingsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateCheckinSettingsRequest",
+        'Required parameter "updateCheckinSettingsRequest" was null or undefined when calling updateActivityCheckinSettings().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/activities/{activityId}/checkin-settings`;
+    urlPath = urlPath.replace(
+      "{activityId}",
+      encodeURIComponent(String(requestParameters["activityId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateCheckinSettingsRequestToJSON(requestParameters["updateCheckinSettingsRequest"]),
+    };
+  }
+
+  /**
+   * 设置活动签到签退码和有效时间
+   */
+  async updateActivityCheckinSettingsRaw(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Activity>> {
+    const requestOptions = await this.updateActivityCheckinSettingsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ActivityFromJSON(jsonValue));
+  }
+
+  /**
+   * 设置活动签到签退码和有效时间
+   */
+  async updateActivityCheckinSettings(
+    requestParameters: UpdateActivityCheckinSettingsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Activity> {
+    const response = await this.updateActivityCheckinSettingsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1999,9 +2395,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
-   * 更新社团成员或干部任期
-   */
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录�?     * 更新社团成员或干部任�?     */
   async updateClubMemberTermRaw(
     requestParameters: UpdateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -2015,9 +2409,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
-   * 更新社团成员或干部任期
-   */
+   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录�?     * 更新社团成员或干部任�?     */
   async updateClubMemberTerm(
     requestParameters: UpdateClubMemberTermOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -2065,8 +2457,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
-   * 维护社团基础信息
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护�?     * 维护社团基础信息
    */
   async updateClubProfileRaw(
     requestParameters: UpdateClubProfileOperationRequest,
@@ -2079,8 +2470,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
-   * 维护社团基础信息
+   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护�?     * 维护社团基础信息
    */
   async updateClubProfile(
     requestParameters: UpdateClubProfileOperationRequest,

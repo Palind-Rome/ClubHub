@@ -137,8 +137,10 @@ paths:
         - name: clubId
           in: query
           required: false
+          description: Optional club id filter.
           schema:
             type: integer
+            minimum: 1
       responses:
         "200":
           description: 权限判断结果
@@ -190,6 +192,145 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户或角色不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/notices:
+    get:
+      summary: 查询公告通知
+      description: 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      operationId: getNotices
+      parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前查看用户 ID。
+          schema:
+            type: integer
+        - name: noticeStatus
+          in: query
+          required: false
+          description: 公告状态筛选；默认返回 published。
+          schema:
+            type: string
+            enum: [draft, published, expired]
+            default: published
+        - name: targetType
+          in: query
+          required: false
+          description: 定向类型筛选。
+          schema:
+            type: string
+            enum: [school, club, department, member]
+        - name: clubId
+          in: query
+          required: false
+          description: 社团上下文筛选。
+          schema:
+            type: integer
+        - name: unreadOnly
+          in: query
+          required: false
+          description: 是否仅返回未读通知。
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: 当前用户可见的公告通知列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notice"
+        "400":
+          description: 查询参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 发布公告通知
+      description: 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+      operationId: createNotice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
+      responses:
+        "201":
+          description: 公告通知已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notice"
+        "400":
+          description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有发布权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 发布人、社团或目标对象不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/notices/{noticeId}/reads:
+    post:
+      summary: 标记通知已读
+      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+      operationId: markNoticeRead
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkNoticeReadRequest"
+      responses:
+        "200":
+          description: 已读记录已存在或已写入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeReadResult"
+        "400":
+          description: 当前用户缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不可阅读该通知
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户或通知不存在
           content:
             application/json:
               schema:
@@ -737,7 +878,7 @@ paths:
           required: false
           schema:
             type: integer
-          description: 当用于维护指定社团成员任期时传入；仅社团负责人或平台管理员可获取可分配用户。
+          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人或干部可获取该社团有效成员。
       responses:
         "200":
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
@@ -759,7 +900,183 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前登录用户或社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
+
+
+  /api/projects:
+    get:
+      summary: 获取项目列表
+      operationId: getProjects
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: 按社团 ID 过滤项目列表。
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 页码，从 1 开始。
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: 每页项目数量，最大 100。
+      responses:
+        "200":
+          description: 项目列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      summary: 社团负责人或指导老师提交项目立项申请
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: 项目立项申请已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 请求参数或业务校验失败
+
+  /api/projects/{projectId}:
+    get:
+      summary: 获取项目详情
+      operationId: getProjectById
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 项目详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/leader:
+    put:
+      summary: 分配或调整项目负责人
+      operationId: assignProjectLeader
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignProjectLeaderRequest"
+      responses:
+        "200":
+          description: 项目负责人已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 负责人不是有效用户或社团成员
+        "403":
+          description: 当前用户不是本社团负责人或干部，无权分配项目负责人
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/review:
+    post:
+      summary: 指导老师审核项目立项申请
+      description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
+      operationId: reviewProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewProjectRequest"
+      responses:
+        "200":
+          description: 项目审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 审核状态或指导老师无效
+        "403":
+          description: 当前用户不是本社团指导老师，无权审核项目立项申请
+        "404":
+          description: 项目不存在
+
+  /api/projects/{projectId}/cancel:
+    post:
+      summary: 撤销待审核或进行中的项目
+      description: 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+      operationId: cancelProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelProjectRequest"
+      responses:
+        "200":
+          description: 项目立项申请已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 项目不是待审核/进行中状态或当前用户无效
+        "403":
+          description: 当前用户无权撤销该项目申请
+        "404":
+          description: 项目不存在
 components:
   schemas:
     ApiError:
@@ -1112,6 +1429,201 @@ components:
         - code
         - name
         - description
+
+    Notice:
+      type: object
+      description: 公告通知及当前用户已读状态。
+      properties:
+        id:
+          type: integer
+          description: 通知 ID。
+          example: 1
+        clubId:
+          type: integer
+          description: 社团 ID；全校通知可为空。
+          nullable: true
+          example: 1
+        clubName:
+          type: string
+          description: 社团名称。
+          nullable: true
+          example: 计算机协会
+        publisherUserId:
+          type: integer
+          description: 发布人用户 ID。
+          example: 2
+        publisherName:
+          type: string
+          description: 发布人展示名称。
+          nullable: true
+          example: 李四
+        noticeType:
+          type: string
+          description: 通知类型，例如 announcement、urgent、event。
+          example: announcement
+        title:
+          type: string
+          description: 通知标题。
+          example: 本周例会通知
+        content:
+          type: string
+          description: 通知正文。
+          example: 请各位成员准时参加本周例会。
+        targetType:
+          type: string
+          description: 定向类型。
+          enum: [school, club, department, member]
+          example: club
+        targetId:
+          type: integer
+          description: 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
+          nullable: true
+          example: 1
+        targetName:
+          type: string
+          description: 前端展示用目标名称。
+          nullable: true
+          example: 计算机协会
+        publishAt:
+          type: string
+          format: date-time
+          description: 发布时间。
+        expireAt:
+          type: string
+          format: date-time
+          description: 过期时间。
+          nullable: true
+        noticeStatus:
+          type: string
+          description: 通知状态。
+          enum: [draft, published, expired]
+          example: published
+        isRead:
+          type: boolean
+          description: 当前查看用户是否已读。
+        readAt:
+          type: string
+          format: date-time
+          description: 当前查看用户已读时间。
+          nullable: true
+        audienceCount:
+          type: integer
+          description: 当前规则下可接收该通知的用户数。
+          nullable: true
+          example: 28
+        readCount:
+          type: integer
+          description: 已读人数。
+          example: 12
+      required:
+        - id
+        - publisherUserId
+        - noticeType
+        - title
+        - content
+        - targetType
+        - publishAt
+        - noticeStatus
+        - isRead
+        - readCount
+
+    CreateNoticeRequest:
+      type: object
+      description: 发布公告通知请求。
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前发布人用户 ID。
+          minimum: 1
+          example: 2
+        noticeType:
+          type: string
+          description: 通知类型，例如 announcement、urgent、event。
+          minLength: 1
+          maxLength: 50
+          example: announcement
+        title:
+          type: string
+          description: 通知标题。
+          minLength: 1
+          maxLength: 120
+          example: 本周例会通知
+        content:
+          type: string
+          description: 通知正文。
+          minLength: 1
+          maxLength: 4000
+          example: 请各位成员准时参加本周例会。
+        targetType:
+          type: string
+          description: 定向类型。
+          enum: [school, club, department, member]
+          example: club
+        clubId:
+          type: integer
+          description: 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
+          nullable: true
+          example: 1
+        targetId:
+          type: integer
+          description: 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
+          nullable: true
+          example: 1
+        expireAt:
+          type: string
+          format: date-time
+          description: 过期时间，必须晚于发布时间。
+          nullable: true
+        noticeStatus:
+          type: string
+          description: 通知状态；默认 published。
+          enum: [draft, published]
+          default: published
+          example: published
+      required:
+        - currentUserId
+        - noticeType
+        - title
+        - content
+        - targetType
+
+    MarkNoticeReadRequest:
+      type: object
+      description: 标记通知已读请求。
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前阅读用户 ID。
+          minimum: 1
+          example: 3
+      required:
+        - currentUserId
+
+    NoticeReadResult:
+      type: object
+      description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
+      properties:
+        noticeId:
+          type: integer
+          description: 通知 ID。
+          example: 1
+        userId:
+          type: integer
+          description: 阅读用户 ID。
+          example: 3
+        isRead:
+          type: boolean
+          description: 是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。
+          example: true
+        readAt:
+          type: string
+          format: date-time
+          description: 已读时间。
+      required:
+        - noticeId
+        - userId
+        - isRead
+        - readAt
 
     PermissionCheckResult:
       type: object
@@ -1766,7 +2278,6 @@ components:
         - endTime
         - status
         - currentParticipants
-
     CreateActivityRequest:
       type: object
       properties:
@@ -1901,3 +2412,175 @@ components:
         - id
         - activityId
         - userId
+
+    Project:
+      type: object
+      description: Project initiation application and review result.
+      properties:
+        id:
+          type: integer
+          description: Project id in PROJECTS.PROJECT_ID.
+          example: 1001
+        clubId:
+          type: integer
+          description: Club that owns the project application.
+          example: 1
+        projectName:
+          type: string
+          description: Project name submitted by the club.
+          example: 校园公益服务项目
+        description:
+          type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
+          nullable: true
+        leaderUserId:
+          type: integer
+          description: Optional project leader user id.
+          example: 12
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
+          nullable: true
+        projectStatus:
+          type: string
+          enum: [pending, running, finished, delayed, closed]
+          description: Current project status.
+          example: pending
+        reviewerUserId:
+          type: integer
+          description: User id of the reviewer after approval or rejection.
+          example: 3
+          nullable: true
+        reviewComment:
+          type: string
+          description: Optional reviewer comment.
+          example: 立项材料完整，同意执行。
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Project application creation time.
+          example: "2026-07-08T12:00:00Z"
+      required:
+        - id
+        - clubId
+        - projectName
+        - startDate
+        - projectStatus
+        - createdAt
+
+    CreateProjectRequest:
+      type: object
+      description: Request body for creating a project initiation application.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前提交立项申请的用户 ID；后端据此校验其是否为本社团负责人或指导老师。
+          minimum: 1
+          example: 12
+        clubId:
+          type: integer
+          description: Club that submits the project application.
+          minimum: 1
+          example: 1
+        projectName:
+          type: string
+          description: Project name.
+          minLength: 1
+          maxLength: 100
+          example: 校园公益服务项目
+        description:
+          type: string
+          description: Optional project description.
+          example: 组织社团成员开展校园公益服务。
+          nullable: true
+        leaderUserId:
+          type: integer
+          description: Optional project leader user id.
+          minimum: 1
+          example: 12
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          description: Planned project start time.
+          example: "2026-07-15T09:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Optional planned project end time.
+          example: "2026-08-15T18:00:00Z"
+          nullable: true
+      required:
+        - currentUserId
+        - clubId
+        - projectName
+        - startDate
+
+    AssignProjectLeaderRequest:
+      type: object
+      description: Request body for assigning or changing a project leader.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
+          minimum: 1
+          example: 7
+        leaderUserId:
+          type: integer
+          description: User id of an active club member.
+          minimum: 1
+          example: 12
+      required:
+        - currentUserId
+        - leaderUserId
+
+    ReviewProjectRequest:
+      type: object
+      description: Request body for reviewing a project initiation application.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前审核操作用户 ID；仅本社团指导老师可审核。
+          minimum: 1
+          example: 3
+        projectStatus:
+          type: string
+          enum: [running, closed]
+          description: Review result. running means approved; closed means rejected or closed.
+          example: running
+        reviewComment:
+          type: string
+          description: Optional review comment.
+          example: 立项材料完整，同意执行。
+          nullable: true
+      required:
+        - currentUserId
+        - projectStatus
+
+    CancelProjectRequest:
+      type: object
+      description: Request body for canceling a pending or running project.
+      properties:
+        currentUserId:
+          type: integer
+          description: 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
+          minimum: 1
+          example: 12
+        cancelReason:
+          type: string
+          description: Optional applicant cancellation reason.
+          maxLength: 200
+          example: 申请材料需要补充，暂时撤销。
+          nullable: true
+      required:
+        - currentUserId

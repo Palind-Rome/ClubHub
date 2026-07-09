@@ -23,28 +23,26 @@ namespace Org.OpenAPITools.Models
     /// 
     /// </summary>
     [DataContract]
-    public partial class ApiError 
+    public partial class ReviewActivityRequest 
     {
         /// <summary>
-        /// Gets or Sets Code
+        /// Gets or Sets Approved
         /// </summary>
-        /* <example>venue_reservation_conflict</example> */
-        [DataMember(Name="code", EmitDefaultValue=true)]
-        public string? Code { get; set; }
+        [DataMember(Name="approved", EmitDefaultValue=true)]
+        public bool? Approved { get; set; }
 
         /// <summary>
-        /// Gets or Sets Message
+        /// Gets or Sets ReviewerUserId
         /// </summary>
-        /* <example>该场地在所选时间段已有已通过预约�?/example> */
-        [Required]
-        [DataMember(Name="message", EmitDefaultValue=false)]
-        public string Message { get; set; }
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        public int? ReviewerUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Detail
+        /// Gets or Sets Comment
         /// </summary>
-        [DataMember(Name="detail", EmitDefaultValue=true)]
-        public string? Detail { get; set; }
+        [MaxLength(255)]
+        [DataMember(Name="comment", EmitDefaultValue=true)]
+        public string? Comment { get; set; }
 
     }
 }

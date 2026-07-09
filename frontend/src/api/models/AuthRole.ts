@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -15,62 +15,52 @@
 
 import { mapValues } from "../runtime";
 /**
- * 用户在认证上下文中的角色及其权限。
- * @export
+ * 用户在认证上下文中的角色及其权限�? * @export
  * @interface AuthRole
  */
 export interface AuthRole {
   /**
-   * 角色 ID。
-   * @type {number}
+   * 角色 ID�?     * @type {number}
    * @memberof AuthRole
    */
   id: number;
   /**
-   * 角色编码。
-   * @type {string}
+   * 角色编码�?     * @type {string}
    * @memberof AuthRole
    */
   code: string;
   /**
-   * 角色名称。
-   * @type {string}
+   * 角色名称�?     * @type {string}
    * @memberof AuthRole
    */
   name: string;
   /**
-   * 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
-   * @type {string}
+   * 前端展示用角色名称，例如“A社团成员”“A社团负责人”�?     * @type {string}
    * @memberof AuthRole
    */
   displayName: string;
   /**
-   * 角色作用域，system 表示全局，club 表示社团范围。
-   * @type {AuthRoleScopeEnum}
+   * 角色作用域，system 表示全局，club 表示社团范围�?     * @type {AuthRoleScopeEnum}
    * @memberof AuthRole
    */
   scope: AuthRoleScopeEnum;
   /**
-   * 当前角色对应的单个社团 ID；全局角色为空。
-   * @type {number}
+   * 当前角色对应的单个社�?ID；全局角色为空�?     * @type {number}
    * @memberof AuthRole
    */
   clubId?: number | null;
   /**
-   * 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
-   * @type {Array<number>}
+   * 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色�?     * @type {Array<number>}
    * @memberof AuthRole
    */
   clubIds: Array<number>;
   /**
-   * 该角色授予的权限编码列表。
-   * @type {Array<string>}
+   * 该角色授予的权限编码列表�?     * @type {Array<string>}
    * @memberof AuthRole
    */
   permissions: Array<string>;
   /**
-   * 角色权限说明。
-   * @type {string}
+   * 角色权限说明�?     * @type {string}
    * @memberof AuthRole
    */
   permissionDesc?: string | null;

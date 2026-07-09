@@ -3,7 +3,7 @@
 /* eslint-disable */
 /**
  * ClubHub API
- * ClubHub 高校社团运营与协同管理平台 API。  **API-first 开发流程**：修改本文件 → push → CI 自动生成前后端代码 → git pull 拉取生成代码 → 在 Controller / Services / Vue 组件中手写业务逻辑。
+ * ClubHub 高校社团运营与协同管理平�?API�? **API-first 开发流�?*：修改本文件 �?push �?CI 自动生成前后端代�?�?git pull 拉取生成代码 �?�?Controller / Services / Vue 组件中手写业务逻辑�?
  *
  * The version of the OpenAPI document: 0.1.0
  *
@@ -23,44 +23,37 @@ import {
 } from "./AuthRole";
 
 /**
- * 权限检查结果。
- * @export
+ * 权限检查结果�? * @export
  * @interface PermissionCheckResult
  */
 export interface PermissionCheckResult {
   /**
-   * 被检查的用户 ID。
-   * @type {number}
+   * 被检查的用户 ID�?     * @type {number}
    * @memberof PermissionCheckResult
    */
   userId: number;
   /**
-   * 被检查的权限编码。
-   * @type {string}
+   * 被检查的权限编码�?     * @type {string}
    * @memberof PermissionCheckResult
    */
   permission: string;
   /**
-   * 权限检查涉及的社团 ID；全局权限可为空。
-   * @type {number}
+   * 权限检查涉及的社团 ID；全局权限可为空�?     * @type {number}
    * @memberof PermissionCheckResult
    */
   clubId?: number | null;
   /**
-   * 是否允许访问。
-   * @type {boolean}
+   * 是否允许访问�?     * @type {boolean}
    * @memberof PermissionCheckResult
    */
   allowed: boolean;
   /**
-   * 命中该权限的角色列表。
-   * @type {Array<AuthRole>}
+   * 命中该权限的角色列表�?     * @type {Array<AuthRole>}
    * @memberof PermissionCheckResult
    */
   matchedRoles: Array<AuthRole>;
   /**
-   * 面向调用方的判定说明。
-   * @type {string}
+   * 面向调用方的判定说明�?     * @type {string}
    * @memberof PermissionCheckResult
    */
   message: string;
