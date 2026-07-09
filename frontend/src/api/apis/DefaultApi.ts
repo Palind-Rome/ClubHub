@@ -42,6 +42,16 @@ import {
   AuthResponseToJSON,
 } from "../models/AuthResponse";
 import {
+  type AwardApplicationRecord,
+  AwardApplicationRecordFromJSON,
+  AwardApplicationRecordToJSON,
+} from "../models/AwardApplicationRecord";
+import {
+  type AwardCampaignRecord,
+  AwardCampaignRecordFromJSON,
+  AwardCampaignRecordToJSON,
+} from "../models/AwardCampaignRecord";
+import {
   type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
@@ -53,6 +63,11 @@ import {
   ClubApplicationToJSON,
 } from "../models/ClubApplication";
 import {
+  type ClubEvaluationRecord,
+  ClubEvaluationRecordFromJSON,
+  ClubEvaluationRecordToJSON,
+} from "../models/ClubEvaluationRecord";
+import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
@@ -63,10 +78,25 @@ import {
   CreateActivityRequestToJSON,
 } from "../models/CreateActivityRequest";
 import {
+  type CreateAwardApplicationRequest,
+  CreateAwardApplicationRequestFromJSON,
+  CreateAwardApplicationRequestToJSON,
+} from "../models/CreateAwardApplicationRequest";
+import {
+  type CreateAwardCampaignRequest,
+  CreateAwardCampaignRequestFromJSON,
+  CreateAwardCampaignRequestToJSON,
+} from "../models/CreateAwardCampaignRequest";
+import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
   CreateClubApplicationRequestToJSON,
 } from "../models/CreateClubApplicationRequest";
+import {
+  type CreateClubEvaluationRequest,
+  CreateClubEvaluationRequestFromJSON,
+  CreateClubEvaluationRequestToJSON,
+} from "../models/CreateClubEvaluationRequest";
 import {
   type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
@@ -139,6 +169,11 @@ import {
   PermissionDefinitionToJSON,
 } from "../models/PermissionDefinition";
 import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
+import {
+  type PublishAwardCampaignRequest,
+  PublishAwardCampaignRequestFromJSON,
+  PublishAwardCampaignRequestToJSON,
+} from "../models/PublishAwardCampaignRequest";
 import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
 import {
   type RecruitmentApplication,
@@ -155,6 +190,11 @@ import {
   ReviewActivityRequestFromJSON,
   ReviewActivityRequestToJSON,
 } from "../models/ReviewActivityRequest";
+import {
+  type ReviewAwardApplicationRequest,
+  ReviewAwardApplicationRequestFromJSON,
+  ReviewAwardApplicationRequestToJSON,
+} from "../models/ReviewAwardApplicationRequest";
 import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
@@ -190,6 +230,11 @@ import {
   UpdateCheckinSettingsRequestFromJSON,
   UpdateCheckinSettingsRequestToJSON,
 } from "../models/UpdateCheckinSettingsRequest";
+import {
+  type UpdateClubEvaluationRequest,
+  UpdateClubEvaluationRequestFromJSON,
+  UpdateClubEvaluationRequestToJSON,
+} from "../models/UpdateClubEvaluationRequest";
 import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
@@ -246,12 +291,26 @@ export interface CreateActivityOperationRequest {
   createActivityRequest: CreateActivityRequest;
 }
 
+export interface CreateAwardApplicationOperationRequest {
+  campaignId: number;
+  createAwardApplicationRequest: CreateAwardApplicationRequest;
+}
+
+export interface CreateAwardCampaignOperationRequest {
+  createAwardCampaignRequest: CreateAwardCampaignRequest;
+}
+
 export interface CreateClubOperationRequest {
   createClubRequest: CreateClubRequest;
 }
 
 export interface CreateClubApplicationOperationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
+}
+
+export interface CreateClubEvaluationOperationRequest {
+  clubId: number;
+  createClubEvaluationRequest: CreateClubEvaluationRequest;
 }
 
 export interface CreateClubMemberTermOperationRequest {
@@ -299,6 +358,17 @@ export interface GetActivityParticipationsRequest {
   activityId: number;
 }
 
+export interface GetAwardApplicationsRequest {
+  campaignId: number;
+  viewerUserId: number;
+}
+
+export interface GetAwardCampaignsRequest {
+  viewerUserId: number;
+  clubId?: number;
+  status?: GetAwardCampaignsStatusEnum;
+}
+
 export interface GetClubApplicationsRequest {
   viewerUserId: number;
   auditStatus?: GetClubApplicationsAuditStatusEnum;
@@ -306,6 +376,13 @@ export interface GetClubApplicationsRequest {
 
 export interface GetClubByIdRequest {
   clubId: number;
+}
+
+export interface GetClubEvaluationsRequest {
+  clubId: number;
+  viewerUserId: number;
+  termName?: string;
+  evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
 export interface GetClubMembersRequest {
@@ -361,6 +438,11 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
+export interface PublishAwardCampaignOperationRequest {
+  campaignId: number;
+  publishAwardCampaignRequest: PublishAwardCampaignRequest;
+}
+
 export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
 }
@@ -374,6 +456,11 @@ export interface RemoveClubMemberRequest {
 export interface ReviewActivityOperationRequest {
   activityId: number;
   reviewActivityRequest: ReviewActivityRequest;
+}
+
+export interface ReviewAwardApplicationOperationRequest {
+  applicationId: number;
+  reviewAwardApplicationRequest: ReviewAwardApplicationRequest;
 }
 
 export interface ReviewClubApplicationOperationRequest {
@@ -404,6 +491,12 @@ export interface UpdateActivityCheckinSettingsRequest {
 export interface UpdateClubOperationRequest {
   clubId: number;
   updateClubRequest: UpdateClubRequest;
+}
+
+export interface UpdateClubEvaluationOperationRequest {
+  clubId: number;
+  evaluationId: number;
+  updateClubEvaluationRequest: UpdateClubEvaluationRequest;
 }
 
 export interface UpdateClubMemberTermOperationRequest {
@@ -875,6 +968,133 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createAwardApplication without sending the request
+   */
+  async createAwardApplicationRequestOpts(
+    requestParameters: CreateAwardApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["campaignId"] == null) {
+      throw new runtime.RequiredError(
+        "campaignId",
+        'Required parameter "campaignId" was null or undefined when calling createAwardApplication().',
+      );
+    }
+
+    if (requestParameters["createAwardApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardApplicationRequest",
+        'Required parameter "createAwardApplicationRequest" was null or undefined when calling createAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/award-campaigns/{campaignId}/apply`;
+    urlPath = urlPath.replace(
+      "{campaignId}",
+      encodeURIComponent(String(requestParameters["campaignId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardApplicationRequestToJSON(requestParameters["createAwardApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 社团在任成员可在开放申报的活动下提交一次个人申报。
+   * 成员提交评优评奖申报
+   */
+  async createAwardApplicationRaw(
+    requestParameters: CreateAwardApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.createAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团在任成员可在开放申报的活动下提交一次个人申报。
+   * 成员提交评优评奖申报
+   */
+  async createAwardApplication(
+    requestParameters: CreateAwardApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.createAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createAwardCampaign without sending the request
+   */
+  async createAwardCampaignRequestOpts(
+    requestParameters: CreateAwardCampaignOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createAwardCampaignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardCampaignRequest",
+        'Required parameter "createAwardCampaignRequest" was null or undefined when calling createAwardCampaign().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/award-campaigns`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardCampaignRequestToJSON(requestParameters["createAwardCampaignRequest"]),
+    };
+  }
+
+  /**
+   * 本社团负责人或管理员可以发布评优评奖活动，成员后续在活动下自主申报。
+   * 发布评优评奖活动
+   */
+  async createAwardCampaignRaw(
+    requestParameters: CreateAwardCampaignOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardCampaignRecord>> {
+    const requestOptions = await this.createAwardCampaignRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardCampaignRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 本社团负责人或管理员可以发布评优评奖活动，成员后续在活动下自主申报。
+   * 发布评优评奖活动
+   */
+  async createAwardCampaign(
+    requestParameters: CreateAwardCampaignOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardCampaignRecord> {
+    const response = await this.createAwardCampaignRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClub without sending the request
    */
   async createClubRequestOpts(
@@ -981,6 +1201,72 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubApplication> {
     const response = await this.createClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubEvaluation without sending the request
+   */
+  async createClubEvaluationRequestOpts(
+    requestParameters: CreateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["createClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubEvaluationRequest",
+        'Required parameter "createClubEvaluationRequest" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubEvaluationRequestToJSON(requestParameters["createClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员学期考核；干部只能录入自己管辖部门或小组成员考核。总分和等级由后端按活动、任务、学习和荣誉加分计算。
+   * 录入社团成员学期考核
+   */
+  async createClubEvaluationRaw(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.createClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员学期考核；干部只能录入自己管辖部门或小组成员考核。总分和等级由后端按活动、任务、学习和荣誉加分计算。
+   * 录入社团成员学期考核
+   */
+  async createClubEvaluation(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1633,6 +1919,143 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getAwardApplications without sending the request
+   */
+  async getAwardApplicationsRequestOpts(
+    requestParameters: GetAwardApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["campaignId"] == null) {
+      throw new runtime.RequiredError(
+        "campaignId",
+        'Required parameter "campaignId" was null or undefined when calling getAwardApplications().',
+      );
+    }
+
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getAwardApplications().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/award-campaigns/{campaignId}/applications`;
+    urlPath = urlPath.replace(
+      "{campaignId}",
+      encodeURIComponent(String(requestParameters["campaignId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 审核人可查看活动下全部申报；普通成员只能查看自己的申报。
+   * 查询评优评奖申报
+   */
+  async getAwardApplicationsRaw(
+    requestParameters: GetAwardApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardApplicationRecord>>> {
+    const requestOptions = await this.getAwardApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardApplicationRecordFromJSON),
+    );
+  }
+
+  /**
+   * 审核人可查看活动下全部申报；普通成员只能查看自己的申报。
+   * 查询评优评奖申报
+   */
+  async getAwardApplications(
+    requestParameters: GetAwardApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardApplicationRecord>> {
+    const response = await this.getAwardApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getAwardCampaigns without sending the request
+   */
+  async getAwardCampaignsRequestOpts(
+    requestParameters: GetAwardCampaignsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getAwardCampaigns().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/award-campaigns`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 负责人、干部、指导老师、管理员和本社团成员按权限查看评优评奖活动。
+   * 查询评优评奖活动
+   */
+  async getAwardCampaignsRaw(
+    requestParameters: GetAwardCampaignsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardCampaignRecord>>> {
+    const requestOptions = await this.getAwardCampaignsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardCampaignRecordFromJSON),
+    );
+  }
+
+  /**
+   * 负责人、干部、指导老师、管理员和本社团成员按权限查看评优评奖活动。
+   * 查询评优评奖活动
+   */
+  async getAwardCampaigns(
+    requestParameters: GetAwardCampaignsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardCampaignRecord>> {
+    const response = await this.getAwardCampaignsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubApplications without sending the request
    */
   async getClubApplicationsRequestOpts(
@@ -1742,6 +2165,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Club> {
     const response = await this.getClubByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubEvaluations without sending the request
+   */
+  async getClubEvaluationsRequestOpts(
+    requestParameters: GetClubEvaluationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubEvaluations().',
+      );
+    }
+
+    if (requestParameters["viewerUserId"] == null) {
+      throw new runtime.RequiredError(
+        "viewerUserId",
+        'Required parameter "viewerUserId" was null or undefined when calling getClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["viewerUserId"] != null) {
+      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    if (requestParameters["evaluationType"] != null) {
+      queryParameters["evaluationType"] = requestParameters["evaluationType"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 普通成员只能查看本人已公示考核；干部只能查看本人管辖部门或小组成员考核；负责人和系统管理员可查看本社团全部考核。评优评奖流程使用独立的 award-campaigns 接口。
+   * 查询社团成员学期考核记录
+   */
+  async getClubEvaluationsRaw(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubEvaluationRecord>>> {
+    const requestOptions = await this.getClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ClubEvaluationRecordFromJSON),
+    );
+  }
+
+  /**
+   * 普通成员只能查看本人已公示考核；干部只能查看本人管辖部门或小组成员考核；负责人和系统管理员可查看本社团全部考核。评优评奖流程使用独立的 award-campaigns 接口。
+   * 查询社团成员学期考核记录
+   */
+  async getClubEvaluations(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ClubEvaluationRecord>> {
+    const response = await this.getClubEvaluationsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2482,6 +2980,75 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for publishAwardCampaign without sending the request
+   */
+  async publishAwardCampaignRequestOpts(
+    requestParameters: PublishAwardCampaignOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["campaignId"] == null) {
+      throw new runtime.RequiredError(
+        "campaignId",
+        'Required parameter "campaignId" was null or undefined when calling publishAwardCampaign().',
+      );
+    }
+
+    if (requestParameters["publishAwardCampaignRequest"] == null) {
+      throw new runtime.RequiredError(
+        "publishAwardCampaignRequest",
+        'Required parameter "publishAwardCampaignRequest" was null or undefined when calling publishAwardCampaign().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/award-campaigns/{campaignId}/publish`;
+    urlPath = urlPath.replace(
+      "{campaignId}",
+      encodeURIComponent(String(requestParameters["campaignId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: PublishAwardCampaignRequestToJSON(requestParameters["publishAwardCampaignRequest"]),
+    };
+  }
+
+  /**
+   * 负责人、指导老师或管理员可以将终审通过的申报统一公示。
+   * 公示评优评奖结果
+   */
+  async publishAwardCampaignRaw(
+    requestParameters: PublishAwardCampaignOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardCampaignRecord>> {
+    const requestOptions = await this.publishAwardCampaignRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardCampaignRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人、指导老师或管理员可以将终审通过的申报统一公示。
+   * 公示评优评奖结果
+   */
+  async publishAwardCampaign(
+    requestParameters: PublishAwardCampaignOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardCampaignRecord> {
+    const response = await this.publishAwardCampaignRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for refreshAuthSession without sending the request
    */
   async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
@@ -2722,6 +3289,75 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.reviewActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewAwardApplication without sending the request
+   */
+  async reviewAwardApplicationRequestOpts(
+    requestParameters: ReviewAwardApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling reviewAwardApplication().',
+      );
+    }
+
+    if (requestParameters["reviewAwardApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewAwardApplicationRequest",
+        'Required parameter "reviewAwardApplicationRequest" was null or undefined when calling reviewAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/award-applications/{applicationId}/review`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewAwardApplicationRequestToJSON(requestParameters["reviewAwardApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 申报先由负责人或干部初审，再由指导老师、平台管理员或系统管理员终审；任一阶段均可退回。
+   * 审核评优评奖申报
+   */
+  async reviewAwardApplicationRaw(
+    requestParameters: ReviewAwardApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.reviewAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申报先由负责人或干部初审，再由指导老师、平台管理员或系统管理员终审；任一阶段均可退回。
+   * 审核评优评奖申报
+   */
+  async reviewAwardApplication(
+    requestParameters: ReviewAwardApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.reviewAwardApplicationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -3120,6 +3756,83 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubEvaluation without sending the request
+   */
+  async updateClubEvaluationRequestOpts(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["evaluationId"] == null) {
+      throw new runtime.RequiredError(
+        "evaluationId",
+        'Required parameter "evaluationId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["updateClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubEvaluationRequest",
+        'Required parameter "updateClubEvaluationRequest" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/{evaluationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{evaluationId}",
+      encodeURIComponent(String(requestParameters["evaluationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubEvaluationRequestToJSON(requestParameters["updateClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员学期考核；干部只能更新自己管辖部门或小组成员考核。总分和等级由后端重新计算。
+   * 更新社团成员学期考核
+   */
+  async updateClubEvaluationRaw(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.updateClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员学期考核；干部只能更新自己管辖部门或小组成员考核。总分和等级由后端重新计算。
+   * 更新社团成员学期考核
+   */
+  async updateClubEvaluation(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubMemberTerm without sending the request
    */
   async updateClubMemberTermRequestOpts(
@@ -3331,6 +4044,16 @@ export class DefaultApi extends runtime.BaseAPI {
 /**
  * @export
  */
+export const GetAwardCampaignsStatusEnum = {
+  Open: "open",
+  Closed: "closed",
+  Published: "published",
+} as const;
+export type GetAwardCampaignsStatusEnum =
+  (typeof GetAwardCampaignsStatusEnum)[keyof typeof GetAwardCampaignsStatusEnum];
+/**
+ * @export
+ */
 export const GetClubApplicationsAuditStatusEnum = {
   Pending: "pending",
   Approved: "approved",
@@ -3338,6 +4061,14 @@ export const GetClubApplicationsAuditStatusEnum = {
 } as const;
 export type GetClubApplicationsAuditStatusEnum =
   (typeof GetClubApplicationsAuditStatusEnum)[keyof typeof GetClubApplicationsAuditStatusEnum];
+/**
+ * @export
+ */
+export const GetClubEvaluationsEvaluationTypeEnum = {
+  Semester: "semester",
+} as const;
+export type GetClubEvaluationsEvaluationTypeEnum =
+  (typeof GetClubEvaluationsEvaluationTypeEnum)[keyof typeof GetClubEvaluationsEvaluationTypeEnum];
 /**
  * @export
  */
