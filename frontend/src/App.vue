@@ -23,6 +23,15 @@ const roleSummary = computed(() => {
 const activeMenu = computed(() =>
   route.path.startsWith("/recruitments") ? "/recruitments" : route.path,
 );
+const canManageVenues = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("venue:create") ||
+    permissions.includes("venue:update") ||
+    permissions.includes("venue:disable")
+  );
+});
 
 function refreshSession() {
   auth.value = readAuth();
@@ -64,6 +73,7 @@ onUnmounted(() => {
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
+        <el-menu-item v-if="canManageVenues" index="/venues">场地管理</el-menu-item>
         <el-menu-item index="/venue-reservations">场地预约</el-menu-item>
         <div class="session">
           <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{

@@ -5,6 +5,7 @@ import RecruitmentList from "../views/RecruitmentList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
+import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
 import { hasCompletedSession } from "../authSession";
 
@@ -19,6 +20,7 @@ const router = createRouter({
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },
+    { path: "/venues", component: VenueManage },
     { path: "/venue-reservations", component: VenueReservationApply },
   ],
 });

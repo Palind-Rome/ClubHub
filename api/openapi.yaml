@@ -1498,6 +1498,34 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Venue"
+    post:
+      summary: 创建场地
+      operationId: createVenue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVenueRequest"
+      responses:
+        "201":
+          description: 场地已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有创建场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/venues/{venueId}:
     get:
@@ -1516,6 +1544,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Venue"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      summary: 更新场地信息
+      operationId: updateVenue
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVenueRequest"
+      responses:
+        "200":
+          description: 场地已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有维护场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 场地不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/venues/{venueId}/status:
+    patch:
+      summary: 更新场地状态
+      operationId: updateVenueStatus
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVenueStatusRequest"
+      responses:
+        "200":
+          description: 场地状态已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venue"
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有停用或恢复场地权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 场地不存在
           content:
@@ -1809,7 +1919,7 @@ components:
           example: 2
         roleCode:
           type: string
-          description: 角色编码，例如 STUDENT、CLUB_MEMBER、SYSTEM_ADMIN。
+          description: 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。
           maxLength: 50
           example: CLUB_MEMBER
         clubId:
@@ -3398,6 +3508,79 @@ components:
         - capacity
         - status
         - createdAt
+
+    CreateVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行创建操作的用户 ID，用于校验 venue:create 权限。
+        name:
+          type: string
+          maxLength: 255
+        building:
+          type: string
+          nullable: true
+          maxLength: 255
+        roomNo:
+          type: string
+          nullable: true
+          maxLength: 255
+        capacity:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [available, disabled, maintenance]
+          default: available
+        managerUserId:
+          type: integer
+          nullable: true
+      required:
+        - operatorUserId
+        - name
+        - capacity
+
+    UpdateVenueRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行维护操作的用户 ID，用于校验 venue:update 权限。
+        name:
+          type: string
+          maxLength: 255
+        building:
+          type: string
+          nullable: true
+          maxLength: 255
+        roomNo:
+          type: string
+          nullable: true
+          maxLength: 255
+        capacity:
+          type: integer
+          minimum: 1
+        managerUserId:
+          type: integer
+          nullable: true
+      required:
+        - operatorUserId
+        - name
+        - capacity
+
+    UpdateVenueStatusRequest:
+      type: object
+      properties:
+        operatorUserId:
+          type: integer
+          description: 执行状态变更操作的用户 ID，用于校验 venue:disable 权限。
+        status:
+          type: string
+          enum: [available, disabled, maintenance]
+      required:
+        - operatorUserId
+        - status
 
     VenueReservation:
       type: object
