@@ -361,10 +361,6 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
-export interface RefreshAuthSessionRequest {
-  userId: number;
-}
-
 export interface RegisterUserRequest {
   registerRequest: RegisterRequest;
 }
@@ -2488,23 +2484,19 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for refreshAuthSession without sending the request
    */
-  async refreshAuthSessionRequestOpts(
-    requestParameters: RefreshAuthSessionRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["userId"] == null) {
-      throw new runtime.RequiredError(
-        "userId",
-        'Required parameter "userId" was null or undefined when calling refreshAuthSession().',
-      );
-    }
-
+  async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
-    if (requestParameters["userId"] != null) {
-      queryParameters["userId"] = requestParameters["userId"];
-    }
-
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/auth/session`;
 
@@ -2517,28 +2509,26 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSessionRaw(
-    requestParameters: RefreshAuthSessionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<AuthResponse>> {
-    const requestOptions = await this.refreshAuthSessionRequestOpts(requestParameters);
+    const requestOptions = await this.refreshAuthSessionRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => AuthResponseFromJSON(jsonValue));
   }
 
   /**
-   * 依据用户 ID 重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSession(
-    requestParameters: RefreshAuthSessionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<AuthResponse> {
-    const response = await this.refreshAuthSessionRaw(requestParameters, initOverrides);
+    const response = await this.refreshAuthSessionRaw(initOverrides);
     return await response.value();
   }
 

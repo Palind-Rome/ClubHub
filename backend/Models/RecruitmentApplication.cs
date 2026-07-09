@@ -26,77 +26,98 @@ namespace Org.OpenAPITools.Models
     public partial class RecruitmentApplication 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// 招募报名申请 ID。
         /// </summary>
+        /// <value>招募报名申请 ID。</value>
+        /* <example>101</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or Sets RecruitId
+        /// 所属招募 ID。
         /// </summary>
+        /// <value>所属招募 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="recruitId", EmitDefaultValue=true)]
         public int RecruitId { get; set; }
 
         /// <summary>
-        /// Gets or Sets RecruitTitle
+        /// 所属招募标题。
         /// </summary>
+        /// <value>所属招募标题。</value>
+        /* <example>2026 春季纳新</example> */
         [Required]
         [DataMember(Name="recruitTitle", EmitDefaultValue=false)]
         public string RecruitTitle { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// 所属社团名称。
         /// </summary>
+        /// <value>所属社团名称。</value>
+        /* <example>计算机协会</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserId
+        /// 申请人用户 ID。
         /// </summary>
+        /// <value>申请人用户 ID。</value>
+        /* <example>23</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantName
+        /// 申请人展示姓名。
         /// </summary>
+        /// <value>申请人展示姓名。</value>
+        /* <example>陈同学</example> */
         [Required]
         [DataMember(Name="applicantName", EmitDefaultValue=false)]
         public string ApplicantName { get; set; }
 
         /// <summary>
-        /// Gets or Sets StudentNo
+        /// 申请人学工号。
         /// </summary>
+        /// <value>申请人学工号。</value>
+        /* <example>2350001</example> */
         [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationReason
+        /// 申请人填写的入社理由。
         /// </summary>
+        /// <value>申请人填写的入社理由。</value>
+        /* <example>希望参与算法竞赛训练和项目实践。</example> */
         [Required]
         [DataMember(Name="applicationReason", EmitDefaultValue=false)]
         public string ApplicationReason { get; set; }
 
         /// <summary>
-        /// Gets or Sets InterviewScore
+        /// 面试或筛选评分，0 到 100；未评分时为空。
         /// </summary>
+        /// <value>面试或筛选评分，0 到 100；未评分时为空。</value>
+        /* <example>86.5</example> */
         [DataMember(Name="interviewScore", EmitDefaultValue=true)]
         public double? InterviewScore { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets ApplicationStatus
+        /// 报名申请筛选状态。
         /// </summary>
+        /// <value>报名申请筛选状态。</value>
         
         public enum ApplicationStatusEnum
         {
@@ -121,40 +142,52 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets ApplicationStatus
+        /// 报名申请筛选状态。
         /// </summary>
+        /// <value>报名申请筛选状态。</value>
+        /* <example>pending</example> */
         [Required]
         [DataMember(Name="applicationStatus", EmitDefaultValue=true)]
         public ApplicationStatusEnum ApplicationStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationStatusText
+        /// 报名申请筛选状态的中文文案。
         /// </summary>
+        /// <value>报名申请筛选状态的中文文案。</value>
+        /* <example>待筛选</example> */
         [Required]
         [DataMember(Name="applicationStatusText", EmitDefaultValue=false)]
         public string ApplicationStatusText { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewerUserId
+        /// 审核/筛选人用户 ID；未处理时为空。
         /// </summary>
+        /// <value>审核/筛选人用户 ID；未处理时为空。</value>
+        /* <example>5</example> */
         [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
         public int? ReviewerUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewerName
+        /// 审核/筛选人展示姓名；未处理时为空。
         /// </summary>
+        /// <value>审核/筛选人展示姓名；未处理时为空。</value>
+        /* <example>王负责人</example> */
         [DataMember(Name="reviewerName", EmitDefaultValue=true)]
         public string? ReviewerName { get; set; }
 
         /// <summary>
-        /// Gets or Sets SubmittedAt
+        /// 报名提交时间。
         /// </summary>
+        /// <value>报名提交时间。</value>
+        /* <example>2026-03-05T10:15Z</example> */
         [DataMember(Name="submittedAt", EmitDefaultValue=true)]
         public DateTime? SubmittedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewedAt
+        /// 报名筛选处理时间；未处理时为空。
         /// </summary>
+        /// <value>报名筛选处理时间；未处理时为空。</value>
+        /* <example>2026-03-08T14:30Z</example> */
         [DataMember(Name="reviewedAt", EmitDefaultValue=true)]
         public DateTime? ReviewedAt { get; set; }
 

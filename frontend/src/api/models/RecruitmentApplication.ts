@@ -21,97 +21,97 @@ import { mapValues } from "../runtime";
  */
 export interface RecruitmentApplication {
   /**
-   *
+   * 招募报名申请 ID。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   id: number;
   /**
-   *
+   * 所属招募 ID。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   recruitId: number;
   /**
-   *
+   * 所属招募标题。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   recruitTitle: string;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   clubId: number;
   /**
-   *
+   * 所属社团名称。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   clubName: string;
   /**
-   *
+   * 申请人用户 ID。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   userId: number;
   /**
-   *
+   * 申请人展示姓名。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   applicantName: string;
   /**
-   *
+   * 申请人学工号。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   studentNo?: string | null;
   /**
-   *
+   * 申请人填写的入社理由。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   applicationReason: string;
   /**
-   *
+   * 面试或筛选评分，0 到 100；未评分时为空。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   interviewScore?: number | null;
   /**
-   *
+   * 报名申请筛选状态。
    * @type {RecruitmentApplicationApplicationStatusEnum}
    * @memberof RecruitmentApplication
    */
   applicationStatus: RecruitmentApplicationApplicationStatusEnum;
   /**
-   *
+   * 报名申请筛选状态的中文文案。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   applicationStatusText: string;
   /**
-   *
+   * 审核/筛选人用户 ID；未处理时为空。
    * @type {number}
    * @memberof RecruitmentApplication
    */
   reviewerUserId?: number | null;
   /**
-   *
+   * 审核/筛选人展示姓名；未处理时为空。
    * @type {string}
    * @memberof RecruitmentApplication
    */
   reviewerName?: string | null;
   /**
-   *
+   * 报名提交时间。
    * @type {Date}
    * @memberof RecruitmentApplication
    */
   submittedAt?: Date | null;
   /**
-   *
+   * 报名筛选处理时间；未处理时为空。
    * @type {Date}
    * @memberof RecruitmentApplication
    */

@@ -21,103 +21,103 @@ import { mapValues } from "../runtime";
  */
 export interface Recruitment {
   /**
-   *
+   * 招募记录 ID。
    * @type {number}
    * @memberof Recruitment
    */
   id: number;
   /**
-   *
+   * 发布该纳新的社团 ID。
    * @type {number}
    * @memberof Recruitment
    */
   clubId: number;
   /**
-   *
+   * 发布该纳新的社团名称。
    * @type {string}
    * @memberof Recruitment
    */
   clubName: string;
   /**
-   *
+   * 纳新标题。
    * @type {string}
    * @memberof Recruitment
    */
   title: string;
   /**
-   *
+   * 纳新的补充说明，可为空。
    * @type {string}
    * @memberof Recruitment
    */
   description?: string | null;
   /**
-   *
+   * 纳新开始时间；审核通过后用于计算“未开始/申请中/已结束”。
    * @type {Date}
    * @memberof Recruitment
    */
   startAt?: Date | null;
   /**
-   *
+   * 纳新结束时间；到期后自动展示为已结束。
    * @type {Date}
    * @memberof Recruitment
    */
   endAt?: Date | null;
   /**
-   *
+   * 计划录取人数上限。
    * @type {number}
    * @memberof Recruitment
    */
   quota?: number | null;
   /**
-   *
+   * 报名要求或筛选标准。
    * @type {string}
    * @memberof Recruitment
    */
   requirements?: string | null;
   /**
-   *
+   * 当前展示状态；draft 和 pending_review 为流程状态，not_started/accepting/ended 由已通过纳新的时间窗口计算得到。
    * @type {RecruitmentRecruitStatusEnum}
    * @memberof Recruitment
    */
   recruitStatus: RecruitmentRecruitStatusEnum;
   /**
-   *
+   * 当前展示状态的中文文案。
    * @type {string}
    * @memberof Recruitment
    */
   recruitStatusText: string;
   /**
-   *
+   * 招募创建时间。
    * @type {Date}
    * @memberof Recruitment
    */
   createdAt: Date;
   /**
-   *
+   * 当前报名申请总数。
    * @type {number}
    * @memberof Recruitment
    */
   applicationCount: number;
   /**
-   *
+   * 当前已录取申请数。
    * @type {number}
    * @memberof Recruitment
    */
   acceptedCount: number;
   /**
-   *
+   * 当前查看用户在该纳新下的申请 ID；未申请时为空。
    * @type {number}
    * @memberof Recruitment
    */
   currentUserApplicationId?: number | null;
   /**
-   *
+   * 当前查看用户的申请状态；未申请时为空。
    * @type {string}
    * @memberof Recruitment
    */
   currentUserApplicationStatus?: string | null;
   /**
-   *
+   * 当前查看用户申请状态的中文文案；未申请时为空。
    * @type {string}
    * @memberof Recruitment
    */
@@ -135,25 +135,25 @@ export interface Recruitment {
    */
   isOwnProposal: boolean;
   /**
-   *
+   * 当前查看用户是否可以管理该纳新和其报名。
    * @type {boolean}
    * @memberof Recruitment
    */
   canManage: boolean;
   /**
-   *
+   * 当前查看用户是否可以编辑该纳新草稿。
    * @type {boolean}
    * @memberof Recruitment
    */
   canEdit: boolean;
   /**
-   *
+   * 当前查看用户是否可以删除该纳新草稿。
    * @type {boolean}
    * @memberof Recruitment
    */
   canDelete: boolean;
   /**
-   *
+   * 当前查看用户是否可以审核该纳新。
    * @type {boolean}
    * @memberof Recruitment
    */
