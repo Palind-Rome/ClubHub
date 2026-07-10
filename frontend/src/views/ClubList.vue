@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   Check,
@@ -185,6 +186,15 @@ interface MemberGroupingScope {
   label: string;
 }
 
+const props = withDefaults(
+  defineProps<{
+    workspace?: "club" | "members";
+  }>(),
+  {
+    workspace: "club",
+  },
+);
+
 const principalRoleCodes = new Set(["club_president", "club_leader", "club_manager", "president"]);
 const principalPositionNames = new Set([
   "负责人",
@@ -225,6 +235,8 @@ const clubMemberManagePermission = "club:member:manage";
 const clubInternalViewPermission = "club:internal:view";
 const clubOperationViewPermission = "club:operation:view";
 
+const route = useRoute();
+const router = useRouter();
 const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
 const dialogUsers = ref<UserSummary[]>([]);
@@ -249,8 +261,12 @@ const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
 const error = ref("");
-const activeTab = ref("workspace");
-const selectedClubId = ref<number>();
+const isMemberWorkspace = computed(() => props.workspace === "members");
+const activeTab = ref(isMemberWorkspace.value ? "members" : "workspace");
+const routeClubId = Number(route.query.clubId);
+const selectedClubId = ref<number | undefined>(
+  Number.isFinite(routeClubId) && routeClubId > 0 ? routeClubId : undefined,
+);
 const includeHistory = ref(false);
 
 const filters = reactive({
@@ -648,16 +664,20 @@ const visibleIdentityRows = computed(() => {
 const visibleTabs = computed(() => {
   const tabs: string[] = [];
 
-  if (isGlobalClubGovernance.value) {
-    if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
-    if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
+  if (isMemberWorkspace.value) {
     if (memberViewClubs.value.length > 0) tabs.push("members");
     if (visibleIdentityRows.value.length > 0) tabs.push("identity");
     return tabs;
   }
 
+  if (isGlobalClubGovernance.value) {
+    if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
+    if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
+    if (visibleIdentityRows.value.length > 0) tabs.push("identity");
+    return tabs;
+  }
+
   if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
-  if (memberViewClubs.value.length > 0) tabs.push("members");
   if (visibleIdentityRows.value.length > 0) tabs.push("identity");
   if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
   return tabs;
@@ -1830,11 +1850,22 @@ function goProfile() {
 }
 
 function goMembers() {
+  if (!isMemberWorkspace.value) {
+    const query = selectedClubId.value ? { clubId: String(selectedClubId.value) } : undefined;
+    void router.push({ path: "/club-members", query });
+    return;
+  }
+
   activeTab.value = "members";
   syncSelectedClub();
 }
 
 function openClubMembers(clubId: number) {
+  if (!isMemberWorkspace.value) {
+    void router.push({ path: "/club-members", query: { clubId: String(clubId) } });
+    return;
+  }
+
   selectedClubId.value = clubId;
   activeTab.value = "members";
 }
@@ -1979,8 +2010,14 @@ onUnmounted(() => {
   <div class="page">
     <section class="toolbar">
       <div>
-        <h2>社团组织管理</h2>
-        <div class="subtitle">社团注册审核、档案维护、成员任期与干部换届</div>
+        <h2>{{ isMemberWorkspace ? "成员管理" : "社团组织管理" }}</h2>
+        <div class="subtitle">
+          {{
+            isMemberWorkspace
+              ? "成员名册、任期维护、干部换届与成员退出"
+              : "社团注册审核、档案维护与我的社团身份"
+          }}
+        </div>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -2031,14 +2068,25 @@ onUnmounted(() => {
           <el-tag v-if="profileRows.length > 0" type="primary" effect="plain">
             可维护社团档案
           </el-tag>
-          <el-tag v-if="memberViewClubs.length > 0" effect="plain">可查看成员任期</el-tag>
+          <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
+            可查看成员任期
+          </el-tag>
           <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
         </div>
         <div class="identity-actions">
-          <el-button v-if="clubInfoRows.length > 0" type="primary" plain @click="goProfile">
+          <el-button
+            v-if="!isMemberWorkspace && clubInfoRows.length > 0"
+            type="primary"
+            plain
+            @click="goProfile"
+          >
             查看社团
           </el-button>
-          <el-button v-if="memberViewClubs.length > 0" plain @click="goMembers">
+          <el-button
+            v-if="isMemberWorkspace && memberViewClubs.length > 0"
+            plain
+            @click="goMembers"
+          >
             查看任期
           </el-button>
         </div>
@@ -2047,7 +2095,7 @@ onUnmounted(() => {
 
     <el-empty
       v-if="!hasClubWorkspace"
-      description="当前账号暂无社团相关任务"
+      :description="isMemberWorkspace ? '当前账号暂无成员管理相关任务' : '当前账号暂无社团相关任务'"
       class="empty-workspace"
     />
 
@@ -2335,7 +2383,11 @@ onUnmounted(() => {
         </div>
       </el-tab-pane>
 
-      <el-tab-pane v-if="memberViewClubs.length > 0" label="成员分组与任期" name="members">
+      <el-tab-pane
+        v-if="isMemberWorkspace && memberViewClubs.length > 0"
+        label="成员分组与任期"
+        name="members"
+      >
         <el-empty v-if="memberViewClubs.length === 0" description="当前账号暂无可查看的社团任期" />
 
         <div v-else>
@@ -2682,7 +2734,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right">
+          <el-table-column v-if="isMemberWorkspace" label="操作" width="210" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
                 查看
@@ -2887,6 +2939,7 @@ onUnmounted(() => {
     </el-dialog>
 
     <el-dialog
+      v-if="isMemberWorkspace"
       v-model="memberTermDialogVisible"
       :title="memberTermMode === 'create' ? '新增成员任期' : '编辑成员任期'"
       width="660px"

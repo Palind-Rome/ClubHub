@@ -17,6 +17,7 @@ const router = createRouter({
     { path: "/", redirect: "/auth" },
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
+    { path: "/club-members", component: ClubList, props: { workspace: "members" } },
     { path: "/recruitments", component: RecruitmentList },
     { path: "/recruitments/:recruitmentId/applications", component: RecruitmentList },
     { path: "/awards", component: AwardList },
