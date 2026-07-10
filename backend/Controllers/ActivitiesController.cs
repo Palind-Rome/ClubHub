@@ -876,11 +876,6 @@ public class ActivitiesController : ControllerBase
         );
     }
 
-    private async Task<bool> UserExists(int userId)
-    {
-        return await _db.Users.AnyAsync(u => u.UserId == userId);
-    }
-
     private static ObjectResult Error(int statusCode, string code, string message)
     {
         return new ObjectResult(new ApiError
