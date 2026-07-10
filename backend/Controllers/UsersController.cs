@@ -1,5 +1,7 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +9,7 @@ namespace ClubHub.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly ClubHubDbContext _db;
@@ -36,18 +39,19 @@ public class UsersController : ControllerBase
     public UsersController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? viewerUserId, [FromQuery] int? clubId)
+    public async Task<IActionResult> GetAll([FromQuery] int? clubId)
     {
-        if (viewerUserId is null or <= 0)
+        var userId = User.GetUserId();
+        if (userId is null)
         {
-            return BadRequest(new { message = "请提供当前登录用户。" });
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
         }
 
         var viewer = await _db.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
             .Include(u => u.ClubMemberships)
-            .FirstOrDefaultAsync(u => u.UserId == viewerUserId.Value);
+            .FirstOrDefaultAsync(u => u.UserId == userId.Value);
         if (viewer is null)
         {
             return NotFound(new { message = "当前登录用户不存在。" });

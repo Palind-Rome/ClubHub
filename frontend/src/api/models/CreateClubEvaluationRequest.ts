@@ -21,11 +21,12 @@ import { mapValues } from "../runtime";
  */
 export interface CreateClubEvaluationRequest {
   /**
-   * 当前操作人用户 ID。
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
   /**
    * semester 表示学期考核，award 表示评优评奖结果。
    * @type {CreateClubEvaluationRequestEvaluationTypeEnum}
@@ -126,7 +127,6 @@ export type CreateClubEvaluationRequestPublicStatusEnum =
 export function instanceOfCreateClubEvaluationRequest(
   value: object,
 ): value is CreateClubEvaluationRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("evaluationType" in value) || value["evaluationType"] === undefined) return false;
   if (!("userId" in value) || value["userId"] === undefined) return false;
   if (!("termName" in value) || value["termName"] === undefined) return false;
@@ -149,7 +149,7 @@ export function CreateClubEvaluationRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     evaluationType: json["evaluationType"],
     userId: json["userId"],
     termName: json["termName"],

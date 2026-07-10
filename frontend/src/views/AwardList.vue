@@ -239,7 +239,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`);
+    clubs.value = await requestJson<Club[]>(`/api/clubs`);
     if (!selectedClubId.value || !clubs.value.some((club) => club.id === selectedClubId.value)) {
       selectedClubId.value = clubs.value[0]?.id;
     }
@@ -251,9 +251,8 @@ async function loadClubs() {
 
 async function loadAwards() {
   const requestId = ++awardRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
-  if (!userId || !clubId) {
+  if (!currentUserId.value || !clubId) {
     if (requestId === awardRequestId) awards.value = [];
     return;
   }
@@ -261,7 +260,6 @@ async function loadAwards() {
   loading.value = true;
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(userId),
       evaluationType: "award",
     });
     const data = await requestJson<ClubEvaluationRecord[]>(
@@ -280,9 +278,8 @@ async function loadAwards() {
 
 async function loadMembers() {
   const requestId = ++memberRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
-  if (!userId || !clubId || !canMaintainSelectedClub.value) {
+  if (!currentUserId.value || !clubId || !canMaintainSelectedClub.value) {
     if (requestId === memberRequestId) members.value = [];
     return;
   }
@@ -290,7 +287,6 @@ async function loadMembers() {
   memberLoading.value = true;
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(userId),
       includeHistory: "false",
     });
     const data = await requestJson<ClubMemberRecord[]>(
@@ -370,7 +366,6 @@ async function submitAward() {
   saving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       evaluationType: "award",
       userId: awardForm.userId,
       termName: awardForm.termName,

@@ -212,7 +212,7 @@ async function loadClubs() {
 
   clubLoading.value = true;
   try {
-    const data = await requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`);
+    const data = await requestJson<Club[]>(`/api/clubs`);
     if (requestId !== clubRequestId) return;
     clubs.value = data;
     syncSelectedClubFilter();

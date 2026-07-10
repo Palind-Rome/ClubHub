@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface CreateNoticeRequest {
   /**
-   * 当前发布人用户 ID。
+   *
    * @type {number}
    * @memberof CreateNoticeRequest
    */

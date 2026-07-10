@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class MarkNoticeReadRequest 
     {
         /// <summary>
-        /// 当前阅读用户 ID。
+        /// Gets or Sets CurrentUserId
         /// </summary>
-        /// <value>当前阅读用户 ID。</value>
         /* <example>3</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]

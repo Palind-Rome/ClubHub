@@ -319,8 +319,7 @@ async function loadVenues() {
 }
 
 async function loadReservationOptions() {
-  const userId = auth.value?.user.id;
-  if (!userId) {
+  if (!auth.value?.user.id) {
     clubs.value = [];
     activities.value = [];
     return;
@@ -328,8 +327,8 @@ async function loadReservationOptions() {
 
   try {
     const [clubRes, activityRes] = await Promise.all([
-      fetch(`/api/clubs?viewerUserId=${userId}`),
-      fetch(`/api/activities?currentUserId=${userId}`),
+      fetch(`/api/clubs`),
+      fetch(`/api/activities`),
     ]);
     if (!clubRes.ok) throw new Error(await readErrorMessage(clubRes));
     if (!activityRes.ok) throw new Error(await readErrorMessage(activityRes));

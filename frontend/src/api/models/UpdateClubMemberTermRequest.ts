@@ -21,11 +21,12 @@ import { mapValues } from "../runtime";
  */
 export interface UpdateClubMemberTermRequest {
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof UpdateClubMemberTermRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
   /**
    *
    * @type {string}
@@ -93,7 +94,6 @@ export type UpdateClubMemberTermRequestMemberStatusEnum =
 export function instanceOfUpdateClubMemberTermRequest(
   value: object,
 ): value is UpdateClubMemberTermRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   return true;
 }
 
@@ -109,7 +109,7 @@ export function UpdateClubMemberTermRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
     groupName: json["groupName"] == null ? undefined : json["groupName"],
     positionName: json["positionName"] == null ? undefined : json["positionName"],

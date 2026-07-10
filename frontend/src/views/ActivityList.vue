@@ -461,7 +461,7 @@ async function loadClubOptions() {
   }
 
   try {
-    clubOptions.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
+    clubOptions.value = await requestJson<ClubOption[]>(`/api/clubs`);
   } catch (e) {
     clubOptions.value = [];
     ElMessage.error(e instanceof Error ? e.message : "社团列表加载失败");

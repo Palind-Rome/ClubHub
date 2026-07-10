@@ -207,7 +207,7 @@ async function loadManagerOptions() {
   };
 
   try {
-    const res = await fetch(`/api/users?viewerUserId=${user.id}`);
+    const res = await fetch(`/api/users`);
     if (!res.ok) throw new Error(await readErrorMessage(res));
     const users = (await res.json()) as UserOption[];
     managerOptions.value = users.some((option) => option.id === user.id)

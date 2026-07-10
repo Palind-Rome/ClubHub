@@ -239,9 +239,10 @@ paths:
         - name: viewerUserId
           in: query
           required: true
-          description: 当前查看用户 ID。
+          description: 当前登录用户 ID（临时兼容，待 NoticesController 迁移至 JWT 后移除）。
           schema:
             type: integer
+            minimum: 1
         - name: noticeStatus
           in: query
           required: false
@@ -373,13 +374,6 @@ paths:
     get:
       summary: 获取社团列表
       operationId: getClubs
-      parameters:
-        - name: viewerUserId
-          in: query
-          required: false
-          description: 当前查看用户，用于返回与角色相关的社团视图。
-          schema:
-            type: integer
       responses:
         "200":
           description: 社团列表
@@ -419,12 +413,6 @@ paths:
       summary: 按当前用户权限查询社团注册申请
       operationId: getClubApplications
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前用户。学生只能查看自己的申请，平台管理员可以查看全部申请。
-          schema:
-            type: integer
         - name: auditStatus
           in: query
           required: false
@@ -614,12 +602,6 @@ paths:
           required: true
           schema:
             type: integer
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
         - name: includeHistory
           in: query
           required: false
@@ -785,12 +767,6 @@ paths:
           required: true
           schema:
             type: integer
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
         - name: termName
           in: query
           required: false
@@ -897,6 +873,7 @@ paths:
         - name: viewerUserId
           in: query
           required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
           schema:
             type: integer
             minimum: 1
@@ -987,17 +964,18 @@ paths:
       description: 目标社团的社团干部、负责人可以删除本社团草稿招募。
       operationId: deleteRecruitment
       parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
+          schema:
+            type: integer
+            minimum: 1
         - name: recruitId
           in: path
           required: true
           schema:
             type: integer
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
       responses:
         "204":
           description: 草稿已删除
@@ -1049,17 +1027,18 @@ paths:
       description: 社团干部可查看本招募全部报名；学生只能查看自己的报名。
       operationId: getRecruitmentApplications
       parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
+          schema:
+            type: integer
+            minimum: 1
         - name: recruitId
           in: path
           required: true
           schema:
             type: integer
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
       responses:
         "200":
           description: 招募报名列表
@@ -1487,12 +1466,6 @@ paths:
       summary: 获取当前账号可查看或可分配的用户列表
       operationId: getUsers
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: 当前登录用户 ID，用于按角色限制可见用户范围。
         - name: clubId
           in: query
           required: false
@@ -2883,7 +2856,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前发布人用户 ID。
           minimum: 1
           example: 2
         noticeType:
@@ -2943,12 +2915,10 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前阅读用户 ID。
           minimum: 1
           example: 3
       required:
         - currentUserId
-
     NoticeReadResult:
       type: object
       description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
@@ -2970,6 +2940,7 @@ components:
           format: date-time
           description: 已读时间。
       required:
+        - currentUserId
         - noticeId
         - userId
         - isRead
@@ -3124,6 +3095,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         name:
           type: string
@@ -3134,7 +3107,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
 
@@ -3155,6 +3127,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         name:
           type: string
@@ -3184,7 +3158,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
 
@@ -3193,19 +3166,17 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-      required:
-        - currentUserId
-
     ExitClubMemberRequest:
       type: object
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-      required:
-        - currentUserId
-
     ClubMemberRecord:
       type: object
       properties:
@@ -3268,6 +3239,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         userId:
           type: integer
@@ -3303,7 +3276,6 @@ components:
           type: boolean
           default: true
       required:
-        - currentUserId
         - userId
         - positionName
         - termName
@@ -3314,6 +3286,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         departmentName:
           type: string
@@ -3342,9 +3316,6 @@ components:
           type: number
           format: decimal
           nullable: true
-      required:
-        - currentUserId
-
     ClubEvaluationRecord:
       type: object
       description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
@@ -3500,8 +3471,9 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-          description: 当前操作人用户 ID。
           example: 3
         evaluationType:
           type: string
@@ -3573,7 +3545,6 @@ components:
           description: 考核说明、获奖补充说明或负责人备注。
           example: 综合表现稳定，参与度高。
       required:
-        - currentUserId
         - evaluationType
         - userId
         - termName
@@ -3588,8 +3559,9 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-          description: 当前操作人用户 ID。
           example: 3
         evaluationType:
           type: string
@@ -3654,9 +3626,6 @@ components:
           nullable: true
           description: 考核说明、获奖补充说明或负责人备注。
           example: 综合表现稳定，参与度高。
-      required:
-        - currentUserId
-
     ClubApplication:
       type: object
       properties:
@@ -3725,8 +3694,9 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-          description: 当前学生用户 ID，后端据此写入申请人并校验角色权限。
         name:
           type: string
           minLength: 1
@@ -3755,7 +3725,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
         - applyReason
@@ -3766,6 +3735,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         decision:
           type: string
@@ -3774,7 +3745,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - decision
 
     Recruitment:
@@ -4069,7 +4039,6 @@ components:
           nullable: true
       required:
         - currentUserId
-
     ReviewRecruitmentRequest:
       type: object
       properties:
@@ -4323,6 +4292,11 @@ components:
       properties:
         clubId:
           type: integer
+        creatorUserId:
+          type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
+          nullable: true
         title:
           type: string
           minLength: 1
@@ -4364,6 +4338,11 @@ components:
       properties:
         approved:
           type: boolean
+          nullable: true
+        reviewerUserId:
+          type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           nullable: true
         comment:
           type: string
@@ -4832,7 +4811,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前提交立项申请的用户 ID；后端据此校验其是否为本社团负责人或指导老师。
           minimum: 1
           example: 12
         clubId:
@@ -4880,7 +4858,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
           minimum: 1
           example: 7
         leaderUserId:
@@ -4898,7 +4875,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前审核操作用户 ID；仅本社团指导老师可审核。
           minimum: 1
           example: 3
         projectStatus:
@@ -4921,7 +4897,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
           minimum: 1
           example: 12
         cancelReason:

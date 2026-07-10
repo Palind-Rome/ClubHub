@@ -26,11 +26,11 @@ namespace Org.OpenAPITools.Models
     public partial class CreateClubRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
+        /// 已废弃，服务端从 JWT 读取身份。
         /// </summary>
-        [Required]
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
+        public int? CurrentUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets Name

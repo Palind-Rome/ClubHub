@@ -33,6 +33,13 @@ namespace Org.OpenAPITools.Models
         public int ClubId { get; set; }
 
         /// <summary>
+        /// 已废弃，服务端从 JWT 读取身份。
+        /// </summary>
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
+        [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
+        public int? CreatorUserId { get; set; }
+
+        /// <summary>
         /// Gets or Sets Title
         /// </summary>
         [Required]

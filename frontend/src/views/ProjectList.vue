@@ -222,10 +222,7 @@ async function loadLeaderCandidates(clubId?: number | null, options: { silent?: 
 
   leaderCandidateLoading.value = true;
   try {
-    leaderCandidates.value = await api.getUsers({
-      viewerUserId: currentUserId.value,
-      clubId,
-    });
+    leaderCandidates.value = await api.getUsers({ clubId });
     leaderCandidatesByClub.value = {
       ...leaderCandidatesByClub.value,
       [clubId]: leaderCandidates.value,

@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class CancelProjectRequest 
     {
         /// <summary>
-        /// 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
+        /// Gets or Sets CurrentUserId
         /// </summary>
-        /// <value>当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]

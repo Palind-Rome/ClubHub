@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface CreateProjectRequest {
   /**
-   * 当前提交立项申请的用户 ID；后端据此校验其是否为本社团负责人或指导老师。
+   *
    * @type {number}
    * @memberof CreateProjectRequest
    */
