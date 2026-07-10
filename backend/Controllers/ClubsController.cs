@@ -67,6 +67,13 @@ public class ClubsController : ControllerBase
         "minister",
         "group leader"
     };
+    private static readonly HashSet<string> DepartmentManagerPositionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\u90e8\u957f",
+        "\u526f\u90e8\u957f",
+        "\u90e8\u95e8\u8d1f\u8d23\u4eba",
+        "minister"
+    };
 
     public ClubsController(ClubHubDbContext db) => _db = db;
 
@@ -1279,7 +1286,7 @@ public class ClubsController : ControllerBase
             scope.GroupName));
         if (!canAssignToOwnGroup)
         {
-            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在的小组。" }), null);
+            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在小组，部长只能维护本部门小组。" }), null);
         }
 
         return (null, member);
@@ -1995,14 +2002,19 @@ public class ClubsController : ControllerBase
         return CadrePositionNames.Contains(normalized);
     }
 
-    private static IEnumerable<ClubMember> GetCadreGroupingScopes(User user, int clubId)
+    private static IEnumerable<GroupingScope> GetCadreGroupingScopes(User user, int clubId)
     {
         var hasOfficerRole = HasClubOfficerRole(user, clubId);
-        return user.ClubMemberships.Where(cm =>
-            cm.ClubId == clubId &&
-            IsCurrentMemberTerm(cm) &&
-            !string.IsNullOrWhiteSpace(cm.GroupName) &&
-            (hasOfficerRole || IsCadrePosition(cm.PositionName)));
+        return user.ClubMemberships
+            .Where(cm =>
+                cm.ClubId == clubId &&
+                IsCurrentMemberTerm(cm) &&
+                (hasOfficerRole || IsCadrePosition(cm.PositionName)) &&
+                (!string.IsNullOrWhiteSpace(cm.GroupName) ||
+                 (IsDepartmentManagerPosition(cm.PositionName) && !string.IsNullOrWhiteSpace(cm.DepartmentName))))
+            .Select(cm => IsDepartmentManagerPosition(cm.PositionName)
+                ? new GroupingScope(cm.DepartmentName, null)
+                : new GroupingScope(cm.DepartmentName, cm.GroupName));
     }
 
     private static bool GroupingMatchesScope(
@@ -2011,7 +2023,16 @@ public class ClubsController : ControllerBase
         string? scopeDepartment,
         string? scopeGroup)
     {
-        if (string.IsNullOrWhiteSpace(targetGroup) || string.IsNullOrWhiteSpace(scopeGroup))
+        if (string.IsNullOrWhiteSpace(scopeGroup))
+        {
+            return !string.IsNullOrWhiteSpace(scopeDepartment) &&
+                   string.Equals(
+                       (targetDepartment ?? string.Empty).Trim(),
+                       scopeDepartment.Trim(),
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (string.IsNullOrWhiteSpace(targetGroup))
         {
             return false;
         }
@@ -2028,6 +2049,14 @@ public class ClubsController : ControllerBase
                 StringComparison.OrdinalIgnoreCase);
 
         return groupMatches && departmentMatches;
+    }
+
+    private static bool IsDepartmentManagerPosition(string? positionName)
+    {
+        if (string.IsNullOrWhiteSpace(positionName)) return false;
+
+        var normalized = positionName.Trim();
+        return DepartmentManagerPositionNames.Contains(normalized);
     }
 
     private static bool CanViewEvaluationRecord(User viewer, int clubId, Evaluation evaluation)
@@ -2077,6 +2106,8 @@ public class ClubsController : ControllerBase
 
     private static bool IsClubPrincipal(User viewer, Club club) =>
         club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
+
+    private sealed record GroupingScope(string? DepartmentName, string? GroupName);
 
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships

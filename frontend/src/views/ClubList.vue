@@ -26,7 +26,7 @@ type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
 type MemberStatus = "active" | "ended" | "suspended";
 type TermMode = "create" | "edit";
-type GroupingMode = "free" | "own";
+type GroupingMode = "free" | "own" | "department";
 type GroupingField = "departmentName" | "groupName";
 type EvaluationType = "semester" | "award";
 type EvaluationPublicStatus = "draft" | "published";
@@ -186,6 +186,11 @@ interface MemberGroupingScope {
   label: string;
 }
 
+interface MemberGroupOption {
+  departmentName: string;
+  groupName: string;
+}
+
 type ClubWorkspace = "club" | "members" | "registration";
 type MemberWorkspaceMode = "current" | "history" | "transition";
 
@@ -255,6 +260,8 @@ const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
 const evaluationMembers = ref<ClubMemberRecord[]>([]);
 const evaluations = ref<ClubEvaluationRecord[]>([]);
+const manualDepartmentOptions = ref<Record<number, string[]>>({});
+const manualGroupOptions = ref<Record<number, MemberGroupOption[]>>({});
 const loading = ref(true);
 const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
@@ -290,6 +297,9 @@ const memberFilters = reactive({
   departmentName: "",
   groupName: "",
 });
+const newDepartmentName = ref("");
+const newGroupDepartmentName = ref("");
+const newGroupName = ref("");
 
 const evaluationFilters = reactive({
   termName: "",
@@ -593,19 +603,29 @@ const memberTermUserLocked = computed(
     memberTermMode.value === "create" &&
     memberTermTarget.value !== null,
 );
+const selectedManualDepartmentOptions = computed(() =>
+  selectedClubId.value ? (manualDepartmentOptions.value[selectedClubId.value] ?? []) : [],
+);
+const selectedManualGroupOptions = computed(() =>
+  selectedClubId.value ? (manualGroupOptions.value[selectedClubId.value] ?? []) : [],
+);
+const memberGroupEntries = computed<MemberGroupOption[]>(() => [
+  ...clubMembers.value
+    .map((member) => ({
+      departmentName: member.departmentName?.trim() ?? "",
+      groupName: member.groupName?.trim() ?? "",
+    }))
+    .filter((entry) => entry.groupName),
+  ...selectedManualGroupOptions.value,
+]);
 const memberDepartmentOptions = computed(() =>
-  uniqueTextOptions(clubMembers.value.map((member) => member.departmentName)),
+  uniqueTextOptions([
+    ...clubMembers.value.map((member) => member.departmentName),
+    ...selectedManualDepartmentOptions.value,
+    ...selectedManualGroupOptions.value.map((group) => group.departmentName),
+  ]),
 );
-const memberGroupOptions = computed(() =>
-  uniqueTextOptions(
-    clubMembers.value
-      .filter(
-        (member) =>
-          !memberFilters.departmentName || member.departmentName === memberFilters.departmentName,
-      )
-      .map((member) => member.groupName),
-  ),
-);
+const memberGroupOptions = computed(() => groupOptionsForDepartment(memberFilters.departmentName));
 const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const user = currentUser.value;
   const clubId = selectedClubId.value;
@@ -622,22 +642,51 @@ const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
       (membership) =>
         membership.clubId === clubId &&
         isActiveStatus(membership.memberStatus) &&
-        Boolean(membership.groupName?.trim()) &&
-        (hasOfficerRole || isCadrePosition(membership.positionName)),
+        (hasOfficerRole || isCadrePosition(membership.positionName)) &&
+        (Boolean(membership.groupName?.trim()) ||
+          (isDepartmentManagerPosition(membership.positionName) &&
+            Boolean(membership.departmentName?.trim()))),
     )
     .forEach((membership) => {
       const departmentName = membership.departmentName?.trim() ?? "";
-      const groupName = membership.groupName?.trim() ?? "";
+      const groupName = isDepartmentManagerPosition(membership.positionName)
+        ? ""
+        : (membership.groupName?.trim() ?? "");
       const key = `${departmentName}\n${groupName}`;
       scopeMap.set(key, {
         departmentName,
         groupName,
-        label: departmentName ? `${departmentName} / ${groupName}` : groupName,
+        label: groupName
+          ? departmentName
+            ? `${departmentName} / ${groupName}`
+            : groupName
+          : departmentName,
       });
     });
 
   return Array.from(scopeMap.values());
 });
+const selectedDepartmentManagerScopes = computed(() =>
+  selectedCadreGroupingScopes.value.filter(
+    (scope) => scope.departmentName.trim() && !scope.groupName.trim(),
+  ),
+);
+const canCreateMemberDepartment = computed(
+  () => memberWorkspaceMode.value === "current" && canManageSelectedClub.value,
+);
+const canCreateMemberGroup = computed(
+  () =>
+    memberWorkspaceMode.value === "current" &&
+    (canManageSelectedClub.value || selectedDepartmentManagerScopes.value.length > 0),
+);
+const groupCreateDepartmentOptions = computed(() =>
+  canManageSelectedClub.value
+    ? memberDepartmentOptions.value
+    : uniqueTextOptions(selectedDepartmentManagerScopes.value.map((scope) => scope.departmentName)),
+);
+const memberGroupingGroupOptions = computed(() =>
+  groupOptionsForDepartment(memberGroupingForm.departmentName),
+);
 const academicTermOptions = computed<AcademicTermOption[]>(() => {
   const currentYear = academicYearStart(new Date());
   return [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
@@ -1487,11 +1536,17 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
     memberGroupingForm.departmentName = row.departmentName ?? "";
     memberGroupingForm.groupName = row.groupName ?? "";
   } else {
-    const scope = selectedCadreGroupingScopes.value[0];
-    memberGroupingMode.value = "own";
+    const scope =
+      selectedCadreGroupingScopes.value.find(
+        (item) => !item.groupName && item.departmentName === (row.departmentName ?? ""),
+      ) ??
+      selectedCadreGroupingScopes.value.find((item) => !item.groupName) ??
+      selectedCadreGroupingScopes.value[0];
+    memberGroupingMode.value = scope.groupName ? "own" : "department";
     memberGroupingForm.departmentName = scope.departmentName;
-    memberGroupingForm.groupName = scope.groupName;
+    memberGroupingForm.groupName = scope.groupName || row.groupName || "";
   }
+  handleMemberGroupingDepartmentChange();
   memberGroupingDialogVisible.value = true;
 }
 
@@ -1578,19 +1633,22 @@ async function editMemberPosition(row: ClubMemberRecord) {
 async function submitMemberGrouping() {
   if (!memberGroupingTarget.value || !selectedClubId.value || !currentUserId.value) return;
 
-  if (memberGroupingMode.value === "own" && !memberGroupingForm.groupName.trim()) {
-    ElMessage.warning("干部账号需要先登记自己的小组，才能把成员纳入本组。");
+  if (memberGroupingField.value === "groupName" && !memberGroupingForm.groupName.trim()) {
+    ElMessage.warning("请选择小组。");
     return;
   }
 
-  const nextDepartment =
-    memberGroupingMode.value === "own" || memberGroupingField.value === "departmentName"
-      ? memberGroupingForm.departmentName
-      : (memberGroupingTarget.value.departmentName ?? "");
-  const nextGroup =
-    memberGroupingMode.value === "own" || memberGroupingField.value === "groupName"
-      ? memberGroupingForm.groupName
-      : (memberGroupingTarget.value.groupName ?? "");
+  if (memberGroupingMode.value !== "free" && !memberGroupingForm.groupName.trim()) {
+    ElMessage.warning(
+      memberGroupingMode.value === "own"
+        ? "干部账号需要先登记自己的小组，才能把成员纳入本组。"
+        : "请选择本部门下的小组。",
+    );
+    return;
+  }
+
+  const nextDepartment = memberGroupingForm.departmentName;
+  const nextGroup = memberGroupingForm.groupName;
 
   groupingSaving.value = true;
   try {
@@ -1608,9 +1666,11 @@ async function submitMemberGrouping() {
     ElMessage.success(
       memberGroupingMode.value === "own"
         ? "成员已纳入我的小组"
-        : memberGroupingField.value === "departmentName"
-          ? "成员部门已更新"
-          : "成员小组已更新",
+        : memberGroupingMode.value === "department"
+          ? "成员已纳入本部门小组"
+          : memberGroupingField.value === "departmentName"
+            ? "成员部门已更新"
+            : "成员小组已更新",
     );
     memberGroupingDialogVisible.value = false;
     await Promise.all([loadUsers(), loadMembers()]);
@@ -1694,7 +1754,13 @@ function groupingMatchesScope(
   scopeDepartment: string | null | undefined,
   scopeGroup: string | null | undefined,
 ) {
-  if (!targetGroup?.trim() || !scopeGroup?.trim()) return false;
+  if (!scopeGroup?.trim()) {
+    return (
+      Boolean(scopeDepartment?.trim()) &&
+      (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment!.trim().toLowerCase()
+    );
+  }
+  if (!targetGroup?.trim()) return false;
   const groupMatches = targetGroup.trim().toLowerCase() === scopeGroup.trim().toLowerCase();
   const departmentMatches =
     !scopeDepartment?.trim() ||
@@ -1818,6 +1884,96 @@ function clearMemberFilters() {
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
   void loadMembers();
+}
+
+function addMemberDepartmentOption() {
+  const clubId = selectedClubId.value;
+  const departmentName = newDepartmentName.value.trim();
+  if (!clubId || !canCreateMemberDepartment.value) return;
+  if (!departmentName) {
+    ElMessage.warning("请填写部门名称。");
+    return;
+  }
+  if (memberDepartmentOptions.value.includes(departmentName)) {
+    ElMessage.info("该部门已存在。");
+    return;
+  }
+
+  manualDepartmentOptions.value = {
+    ...manualDepartmentOptions.value,
+    [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
+  };
+  if (!newGroupDepartmentName.value) newGroupDepartmentName.value = departmentName;
+  newDepartmentName.value = "";
+  ElMessage.success("部门已加入可选项");
+}
+
+function addMemberGroupOption() {
+  const clubId = selectedClubId.value;
+  const groupName = newGroupName.value.trim();
+  if (!clubId || !canCreateMemberGroup.value) return;
+
+  const departmentOptions = groupCreateDepartmentOptions.value;
+  const departmentName =
+    newGroupDepartmentName.value.trim() ||
+    (departmentOptions.length === 1 ? departmentOptions[0] : "");
+  if (!departmentName) {
+    ElMessage.warning("请选择小组所属部门。");
+    return;
+  }
+  if (!groupName) {
+    ElMessage.warning("请填写小组名称。");
+    return;
+  }
+  if (!canManageSelectedClub.value && !departmentOptions.includes(departmentName)) {
+    ElMessage.warning("部长只能在自己所在部门新增小组。");
+    return;
+  }
+  if (groupOptionExists(departmentName, groupName)) {
+    ElMessage.info("该部门下已存在同名小组。");
+    return;
+  }
+
+  const nextGroups = [...(manualGroupOptions.value[clubId] ?? []), { departmentName, groupName }];
+  manualGroupOptions.value = {
+    ...manualGroupOptions.value,
+    [clubId]: nextGroups,
+  };
+  if (!memberDepartmentOptions.value.includes(departmentName)) {
+    manualDepartmentOptions.value = {
+      ...manualDepartmentOptions.value,
+      [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
+    };
+  }
+  newGroupName.value = "";
+  newGroupDepartmentName.value = departmentName;
+  ElMessage.success("小组已加入可选项");
+}
+
+function groupOptionExists(departmentName: string, groupName: string) {
+  return memberGroupEntries.value.some(
+    (entry) =>
+      entry.departmentName.trim() === departmentName.trim() &&
+      entry.groupName.trim() === groupName.trim(),
+  );
+}
+
+function handleMemberGroupingDepartmentChange() {
+  if (
+    memberGroupingForm.groupName &&
+    !memberGroupingGroupOptions.value.includes(memberGroupingForm.groupName)
+  ) {
+    memberGroupingForm.groupName = "";
+  }
+}
+
+function handleMemberTermDepartmentChange() {
+  if (
+    memberTermForm.groupName &&
+    !groupOptionsForDepartment(memberTermForm.departmentName).includes(memberTermForm.groupName)
+  ) {
+    memberTermForm.groupName = "";
+  }
 }
 
 function formatDate(value: string | null | undefined) {
@@ -2089,6 +2245,12 @@ function isCadrePosition(positionName: string | null | undefined) {
   return cadrePositionNames.has(normalized) || cadrePositionNames.has(positionName.trim());
 }
 
+function isDepartmentManagerPosition(positionName: string | null | undefined) {
+  if (!positionName) return false;
+  const normalized = positionName.trim().toLowerCase();
+  return ["部长", "副部长", "部门负责人", "minister"].includes(normalized);
+}
+
 function isActiveStatus(status: string | null | undefined) {
   if (!status) return true;
   const normalized = status.trim().toLowerCase();
@@ -2113,6 +2275,15 @@ function uniqueTextOptions(values: Array<string | null | undefined>) {
   ).sort((left, right) => left.localeCompare(right, "zh-CN"));
 }
 
+function groupOptionsForDepartment(departmentName: string | null | undefined) {
+  const normalizedDepartment = departmentName?.trim() ?? "";
+  return uniqueTextOptions(
+    memberGroupEntries.value
+      .filter((entry) => !normalizedDepartment || entry.departmentName === normalizedDepartment)
+      .map((entry) => entry.groupName),
+  );
+}
+
 watch(currentUserId, () => {
   void loadData();
 });
@@ -2121,8 +2292,26 @@ watch(selectedClubId, () => {
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
   memberFilters.termName = "";
+  newDepartmentName.value = "";
+  newGroupDepartmentName.value = "";
+  newGroupName.value = "";
   evaluationFilters.termName = "";
 });
+
+watch(
+  groupCreateDepartmentOptions,
+  (options) => {
+    if (!newGroupDepartmentName.value && options.length === 1) {
+      newGroupDepartmentName.value = options[0];
+      return;
+    }
+
+    if (newGroupDepartmentName.value && !options.includes(newGroupDepartmentName.value)) {
+      newGroupDepartmentName.value = options[0] ?? "";
+    }
+  },
+  { immediate: true },
+);
 
 watch(
   [
@@ -2673,6 +2862,55 @@ onUnmounted(() => {
             <span>有效任期 {{ memberGroupSummary.current }} 条</span>
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
+            <div v-if="canCreateMemberDepartment" class="taxonomy-add">
+              <el-input
+                v-model="newDepartmentName"
+                size="small"
+                maxlength="60"
+                placeholder="新增部门"
+                @keyup.enter="addMemberDepartmentOption"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addMemberDepartmentOption"
+              >
+                新增部门
+              </el-button>
+            </div>
+            <div v-if="canCreateMemberGroup" class="taxonomy-add group-add">
+              <el-select
+                v-model="newGroupDepartmentName"
+                size="small"
+                placeholder="所属部门"
+                :disabled="!canManageSelectedClub && groupCreateDepartmentOptions.length <= 1"
+              >
+                <el-option
+                  v-for="department in groupCreateDepartmentOptions"
+                  :key="department"
+                  :label="department"
+                  :value="department"
+                />
+              </el-select>
+              <el-input
+                v-model="newGroupName"
+                size="small"
+                maxlength="60"
+                placeholder="新增小组"
+                @keyup.enter="addMemberGroupOption"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addMemberGroupOption"
+              >
+                新增小组
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -3224,24 +3462,49 @@ onUnmounted(() => {
         :closable="false"
         title="干部只能将成员纳入自己所在的小组，不能调整到其他部门或小组。"
       />
+      <el-alert
+        v-else-if="memberGroupingMode === 'department'"
+        class="dialog-alert"
+        type="info"
+        show-icon
+        :closable="false"
+        title="部长只能在自己所在部门内选择小组。"
+      />
       <el-form label-width="90px">
         <el-form-item label="成员">
           <el-input :model-value="memberGroupingTarget?.userName" disabled />
         </el-form-item>
-        <el-form-item v-if="memberGroupingField === 'departmentName'" label="部门">
-          <el-input
+        <el-form-item label="部门">
+          <el-select
             v-model="memberGroupingForm.departmentName"
-            maxlength="60"
-            placeholder="例如：活动部"
-          />
+            class="full-width"
+            :disabled="memberGroupingMode !== 'free'"
+            placeholder="选择部门"
+            @change="handleMemberGroupingDepartmentChange"
+          >
+            <el-option
+              v-for="department in memberDepartmentOptions"
+              :key="department"
+              :label="department"
+              :value="department"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item v-else label="小组">
-          <el-input
+        <el-form-item label="小组">
+          <el-select
             v-model="memberGroupingForm.groupName"
             :disabled="memberGroupingMode === 'own'"
-            maxlength="60"
-            placeholder="例如：赛事组"
-          />
+            class="full-width"
+            clearable
+            placeholder="选择小组"
+          >
+            <el-option
+              v-for="group in memberGroupingGroupOptions"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -3293,10 +3556,35 @@ onUnmounted(() => {
           <el-input :model-value="memberTermTarget?.userName" disabled />
         </el-form-item>
         <el-form-item v-if="memberTermMode === 'create'" label="部门">
-          <el-input v-model="memberTermForm.departmentName" maxlength="60" />
+          <el-select
+            v-model="memberTermForm.departmentName"
+            class="full-width"
+            clearable
+            placeholder="选择部门"
+            @change="handleMemberTermDepartmentChange"
+          >
+            <el-option
+              v-for="department in memberDepartmentOptions"
+              :key="department"
+              :label="department"
+              :value="department"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item v-if="memberTermMode === 'create'" label="小组">
-          <el-input v-model="memberTermForm.groupName" maxlength="60" />
+          <el-select
+            v-model="memberTermForm.groupName"
+            class="full-width"
+            clearable
+            placeholder="选择小组"
+          >
+            <el-option
+              v-for="group in groupOptionsForDepartment(memberTermForm.departmentName)"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item v-if="memberTermMode === 'create'" label="职位" prop="positionName">
           <el-input v-model="memberTermForm.positionName" maxlength="60" />
@@ -3691,6 +3979,21 @@ onUnmounted(() => {
   padding: 4px 8px;
 }
 
+.taxonomy-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.taxonomy-add .el-input,
+.taxonomy-add .el-select {
+  width: 132px;
+}
+
+.taxonomy-add.group-add .el-select {
+  width: 150px;
+}
+
 .transition-panel {
   display: flex;
   flex-direction: column;
@@ -3781,9 +4084,16 @@ onUnmounted(() => {
   .member-controls,
   .member-filter-row,
   .filter-bar,
+  .taxonomy-add,
   .transition-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .taxonomy-add .el-input,
+  .taxonomy-add .el-select,
+  .taxonomy-add.group-add .el-select {
+    width: 100%;
   }
 
   .identity-tags,
