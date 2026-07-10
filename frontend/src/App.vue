@@ -109,19 +109,22 @@ onUnmounted(() => {
         </el-menu-item>
         <el-menu-item index="/learning">课程</el-menu-item>
       </el-menu>
-      <div class="header-aside">
-        <div class="role-tags" :title="roleSummary">
-          <el-tag
-            v-for="(label, index) in roleLabels"
-            :key="`${label}-${index}`"
-            class="role-tag"
-            type="success"
-            size="small"
-          >
-            {{ label }}
-          </el-tag>
+      <div class="header-actions">
+        <div class="session">
+          <div class="role-list" :title="roleSummary" aria-label="当前职务">
+            <el-tag
+              v-for="role in roleLabels"
+              :key="role"
+              class="role-tag"
+              type="success"
+              size="small"
+              :title="role"
+            >
+              {{ role }}
+            </el-tag>
+          </div>
+          <el-button class="logout-button" link type="danger" @click="logout">退出</el-button>
         </div>
-        <el-button class="logout-button" link type="danger" @click="logout">退出</el-button>
         <el-tag
           class="health-tag"
           :type="healthOk ? 'success' : 'danger'"
@@ -151,8 +154,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--el-border-color-light);
-  padding: 0 16px;
+  min-height: 60px;
+  height: auto;
+  padding: 8px 16px;
 }
 .brand {
   font-size: 18px;
@@ -165,36 +171,44 @@ onUnmounted(() => {
   min-width: 0;
   border-bottom: none !important;
 }
-.header-aside {
+.header-actions {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 480px;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.role-tags {
-  display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  margin-left: 16px;
+}
+.session {
+  display: flex;
+  flex: 0 1 auto;
   align-items: center;
-  gap: 6px;
-  width: 320px;
-  max-height: 52px;
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(100%, 680px);
 }
 .logout-button {
   flex: 0 0 auto;
 }
+.role-list {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .role-tag {
-  max-width: 100%;
-  overflow: hidden;
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
   white-space: nowrap;
 }
 .role-tag :deep(.el-tag__content) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   white-space: nowrap;
 }
 .health-tag {
