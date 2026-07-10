@@ -88,10 +88,10 @@ export interface CreateLearningItemRequest {
   capacity: number;
   /**
    * Course audience; club or public.
-   * @type {string}
+   * @type {CreateLearningItemRequestVisibilityEnum}
    * @memberof CreateLearningItemRequest
    */
-  visibility: string;
+  visibility: CreateLearningItemRequestVisibilityEnum;
   /**
    * Initial course status.
    * @type {CreateLearningItemRequestItemStatusEnum}
@@ -99,6 +99,16 @@ export interface CreateLearningItemRequest {
    */
   itemStatus: CreateLearningItemRequestItemStatusEnum;
 }
+
+/**
+ * @export
+ */
+export const CreateLearningItemRequestVisibilityEnum = {
+  Club: "club",
+  Public: "public",
+} as const;
+export type CreateLearningItemRequestVisibilityEnum =
+  (typeof CreateLearningItemRequestVisibilityEnum)[keyof typeof CreateLearningItemRequestVisibilityEnum];
 
 /**
  * @export

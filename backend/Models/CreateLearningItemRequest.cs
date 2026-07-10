@@ -118,14 +118,36 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="capacity", EmitDefaultValue=true)]
         public int Capacity { get; set; }
 
+
+        /// <summary>
+        /// Course audience; club or public.
+        /// </summary>
+        /// <value>Course audience; club or public.</value>
+        
+        public enum VisibilityEnum
+        {
+            
+            /// <summary>
+            /// Enum ClubEnum for club
+            /// </summary>
+            [EnumMember(Value = "club")]
+            ClubEnum = 1,
+            
+            /// <summary>
+            /// Enum PublicEnum for public
+            /// </summary>
+            [EnumMember(Value = "public")]
+            PublicEnum = 2
+        }
+
         /// <summary>
         /// Course audience; club or public.
         /// </summary>
         /// <value>Course audience; club or public.</value>
         /* <example>club</example> */
         [Required]
-        [DataMember(Name="visibility", EmitDefaultValue=false)]
-        public string Visibility { get; set; }
+        [DataMember(Name="visibility", EmitDefaultValue=true)]
+        public VisibilityEnum Visibility { get; set; }
 
 
         /// <summary>

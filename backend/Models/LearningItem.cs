@@ -125,14 +125,36 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="capacity", EmitDefaultValue=true)]
         public int Capacity { get; set; }
 
+
+        /// <summary>
+        /// Course audience; club means active club members, public means all active school accounts.
+        /// </summary>
+        /// <value>Course audience; club means active club members, public means all active school accounts.</value>
+        
+        public enum VisibilityEnum
+        {
+            
+            /// <summary>
+            /// Enum ClubEnum for club
+            /// </summary>
+            [EnumMember(Value = "club")]
+            ClubEnum = 1,
+            
+            /// <summary>
+            /// Enum PublicEnum for public
+            /// </summary>
+            [EnumMember(Value = "public")]
+            PublicEnum = 2
+        }
+
         /// <summary>
         /// Course audience; club means active club members, public means all active school accounts.
         /// </summary>
         /// <value>Course audience; club means active club members, public means all active school accounts.</value>
         /* <example>club</example> */
         [Required]
-        [DataMember(Name="visibility", EmitDefaultValue=false)]
-        public string Visibility { get; set; }
+        [DataMember(Name="visibility", EmitDefaultValue=true)]
+        public VisibilityEnum Visibility { get; set; }
 
 
         /// <summary>
@@ -191,7 +213,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>Current viewer&#39;s learning record status.</value>
         [DataMember(Name="currentUserRecordStatus", EmitDefaultValue=true)]
-        public string? CurrentUserRecordStatus { get; set; }
+        public CurrentUserRecordStatusEnum? CurrentUserRecordStatus { get; set; }
 
         /// <summary>
         /// Whether the current viewer may edit this course and view its roster.

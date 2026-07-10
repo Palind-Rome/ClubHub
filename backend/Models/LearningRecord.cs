@@ -67,14 +67,48 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="userNumber", EmitDefaultValue=true)]
         public string? UserNumber { get; set; }
 
+
+        /// <summary>
+        /// Enrollment and learning status.
+        /// </summary>
+        /// <value>Enrollment and learning status.</value>
+        
+        public enum EnrollStatusEnum
+        {
+            
+            /// <summary>
+            /// Enum EnrolledEnum for enrolled
+            /// </summary>
+            [EnumMember(Value = "enrolled")]
+            EnrolledEnum = 1,
+            
+            /// <summary>
+            /// Enum LearningEnum for learning
+            /// </summary>
+            [EnumMember(Value = "learning")]
+            LearningEnum = 2,
+            
+            /// <summary>
+            /// Enum CompletedEnum for completed
+            /// </summary>
+            [EnumMember(Value = "completed")]
+            CompletedEnum = 3,
+            
+            /// <summary>
+            /// Enum CancelledEnum for cancelled
+            /// </summary>
+            [EnumMember(Value = "cancelled")]
+            CancelledEnum = 4
+        }
+
         /// <summary>
         /// Enrollment and learning status.
         /// </summary>
         /// <value>Enrollment and learning status.</value>
         /* <example>learning</example> */
         [Required]
-        [DataMember(Name="enrollStatus", EmitDefaultValue=false)]
-        public string EnrollStatus { get; set; }
+        [DataMember(Name="enrollStatus", EmitDefaultValue=true)]
+        public EnrollStatusEnum EnrollStatus { get; set; }
 
         /// <summary>
         /// Enrollment time.

@@ -52,10 +52,10 @@ export interface LearningRecord {
   userNumber?: string | null;
   /**
    * Enrollment and learning status.
-   * @type {string}
+   * @type {LearningRecordEnrollStatusEnum}
    * @memberof LearningRecord
    */
-  enrollStatus: string;
+  enrollStatus: LearningRecordEnrollStatusEnum;
   /**
    * Enrollment time.
    * @type {Date}
@@ -87,6 +87,18 @@ export interface LearningRecord {
    */
   completedAt?: Date | null;
 }
+
+/**
+ * @export
+ */
+export const LearningRecordEnrollStatusEnum = {
+  Enrolled: "enrolled",
+  Learning: "learning",
+  Completed: "completed",
+  Cancelled: "cancelled",
+} as const;
+export type LearningRecordEnrollStatusEnum =
+  (typeof LearningRecordEnrollStatusEnum)[keyof typeof LearningRecordEnrollStatusEnum];
 
 /**
  * Check if a given object implements the LearningRecord interface.

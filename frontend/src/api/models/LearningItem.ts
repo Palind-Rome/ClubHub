@@ -94,10 +94,10 @@ export interface LearningItem {
   capacity: number;
   /**
    * Course audience; club means active club members, public means all active school accounts.
-   * @type {string}
+   * @type {LearningItemVisibilityEnum}
    * @memberof LearningItem
    */
-  visibility: string;
+  visibility: LearningItemVisibilityEnum;
   /**
    * Current course publication status.
    * @type {LearningItemItemStatusEnum}
@@ -112,10 +112,10 @@ export interface LearningItem {
   currentEnrollments: number;
   /**
    * Current viewer's learning record status.
-   * @type {string}
+   * @type {LearningItemCurrentUserRecordStatusEnum}
    * @memberof LearningItem
    */
-  currentUserRecordStatus?: string | null;
+  currentUserRecordStatus?: LearningItemCurrentUserRecordStatusEnum | null;
   /**
    * Whether the current viewer may edit this course and view its roster.
    * @type {boolean}
@@ -145,6 +145,16 @@ export interface LearningItem {
 /**
  * @export
  */
+export const LearningItemVisibilityEnum = {
+  Club: "club",
+  Public: "public",
+} as const;
+export type LearningItemVisibilityEnum =
+  (typeof LearningItemVisibilityEnum)[keyof typeof LearningItemVisibilityEnum];
+
+/**
+ * @export
+ */
 export const LearningItemItemStatusEnum = {
   Draft: "draft",
   Published: "published",
@@ -153,6 +163,18 @@ export const LearningItemItemStatusEnum = {
 } as const;
 export type LearningItemItemStatusEnum =
   (typeof LearningItemItemStatusEnum)[keyof typeof LearningItemItemStatusEnum];
+
+/**
+ * @export
+ */
+export const LearningItemCurrentUserRecordStatusEnum = {
+  Enrolled: "enrolled",
+  Learning: "learning",
+  Completed: "completed",
+  Cancelled: "cancelled",
+} as const;
+export type LearningItemCurrentUserRecordStatusEnum =
+  (typeof LearningItemCurrentUserRecordStatusEnum)[keyof typeof LearningItemCurrentUserRecordStatusEnum];
 
 /**
  * Check if a given object implements the LearningItem interface.
