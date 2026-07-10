@@ -131,6 +131,16 @@ interface ClubMemberRecord {
   isCurrent: boolean;
 }
 
+interface IdentityRow {
+  clubId: number;
+  clubName: string;
+  departmentName: string | null;
+  groupName: string | null;
+  positionName: string | null;
+  termName: string | null;
+  memberStatus: string | null;
+}
+
 interface ClubEvaluationRecord {
   evaluationId: number;
   evaluationType: EvaluationType;
@@ -810,7 +820,6 @@ const visibleTabs = computed(() => {
 
   if (isMemberWorkspace.value) {
     if (memberViewClubs.value.length > 0) tabs.push("members");
-    if (visibleIdentityRows.value.length > 0) tabs.push("identity");
     return tabs;
   }
 
@@ -2449,7 +2458,7 @@ onUnmounted(() => {
           <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
             可查看成员任期
           </el-tag>
-          <el-tag v-if="!isRegistrationWorkspace && identityRows.length > 0" effect="plain">
+          <el-tag v-if="isClubWorkspace && identityRows.length > 0" effect="plain">
             我的社团身份
           </el-tag>
         </div>
@@ -3259,7 +3268,7 @@ onUnmounted(() => {
       </el-tab-pane>
 
       <el-tab-pane
-        v-if="!isRegistrationWorkspace && visibleIdentityRows.length > 0"
+        v-if="isClubWorkspace && visibleIdentityRows.length > 0"
         label="我的社团身份"
         name="identity"
       >
