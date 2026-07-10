@@ -237,11 +237,6 @@ const budgetStatusLabel: Record<string, string> = {
   rejected: "已驳回",
 };
 
-const canAccessMaterialBorrows = computed(() => {
-  const permissions = auth.value?.permissions ?? [];
-  return permissions.includes("*") || permissions.includes("material:borrow:manage");
-});
-
 const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -430,7 +425,11 @@ function canReviewBudget(activity: Activity) {
 }
 
 function canManageMaterial(activity: Activity) {
-  return hasScopedPermission("material:borrow:manage", activity.clubId);
+  return (
+    hasScopedPermission("material:borrow:use", activity.clubId) ||
+    hasScopedPermission("material:borrow:record", activity.clubId) ||
+    hasScopedPermission("material:inventory:manage", activity.clubId)
+  );
 }
 
 function showBudgetMenu(activity: Activity) {

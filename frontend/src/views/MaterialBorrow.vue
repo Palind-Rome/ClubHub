@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
-import { Box, Check, Plus, Refresh, Warning } from "@element-plus/icons-vue";
+import { Box, Check, Edit, Plus, Refresh, Warning } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
@@ -57,6 +57,7 @@ interface MaterialForm {
   totalQuantity: number;
   availableQuantity?: number;
   storageLocation: string;
+  status: string;
 }
 
 interface BorrowForm {
@@ -85,6 +86,7 @@ const borrowStatus = ref("");
 const materialDialogVisible = ref(false);
 const borrowDialogVisible = ref(false);
 const damageDialogVisible = ref(false);
+const editingMaterial = ref<Material | null>(null);
 const currentMaterial = ref<Material | null>(null);
 const currentBorrow = ref<MaterialBorrow | null>(null);
 const materialFormRef = ref<FormInstance>();
@@ -98,6 +100,7 @@ const materialForm = reactive<MaterialForm>({
   totalQuantity: 1,
   availableQuantity: undefined,
   storageLocation: "",
+  status: "active",
 });
 
 const borrowForm = reactive<BorrowForm>({
@@ -112,37 +115,98 @@ const damageForm = reactive<DamageForm>({
   compensationAmount: 0,
 });
 
+const borrowUsePermission = "material:borrow:use";
+const borrowRecordPermission = "material:borrow:record";
+const inventoryManagePermission = "material:inventory:manage";
+const materialAccessPermissions = [
+  borrowUsePermission,
+  borrowRecordPermission,
+  inventoryManagePermission,
+];
+const maxBorrowDays = 7;
+
 const hasGlobalAccess = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return permissions.includes("*");
 });
 
-const manageableClubIds = computed(() => {
+function roleHasPermission(role: { permissions: string[] }, permission: string) {
+  return role.permissions.includes("*") || role.permissions.includes(permission);
+}
+
+function hasSystemPermission(permission: string) {
+  const roles = auth.value?.roles ?? [];
+  return (
+    hasGlobalAccess.value ||
+    roles.some((role) => role.scope === "system" && roleHasPermission(role, permission))
+  );
+}
+
+function clubIdsForPermission(permission: string) {
   const roles = auth.value?.roles ?? [];
   return [
     ...new Set(
       roles
-        .filter(
-          (role) =>
-            role.permissions.includes("*") || role.permissions.includes("material:borrow:manage"),
-        )
+        .filter((role) => role.scope !== "system" && roleHasPermission(role, permission))
         .flatMap((role) => role.clubIds ?? [])
         .filter((clubId) => Number.isFinite(clubId)),
     ),
   ].sort((a, b) => a - b);
-});
+}
 
-const canManageMaterials = computed(
-  () => hasGlobalAccess.value || manageableClubIds.value.length > 0,
+function canUseMaterialForClub(clubId: number) {
+  return (
+    hasSystemPermission(borrowUsePermission) ||
+    clubIdsForPermission(borrowUsePermission).includes(clubId)
+  );
+}
+
+function canRecordBorrowForClub(clubId: number) {
+  return (
+    hasSystemPermission(borrowRecordPermission) ||
+    clubIdsForPermission(borrowRecordPermission).includes(clubId)
+  );
+}
+
+function canManageInventoryForClub(clubId: number) {
+  return (
+    hasSystemPermission(inventoryManagePermission) ||
+    clubIdsForPermission(inventoryManagePermission).includes(clubId)
+  );
+}
+
+const canViewAllMaterials = computed(() =>
+  materialAccessPermissions.some((permission) => hasSystemPermission(permission)),
 );
 
+const visibleMaterialClubIds = computed(() => [
+  ...new Set(materialAccessPermissions.flatMap((permission) => clubIdsForPermission(permission))),
+]);
+
+const canAccessMaterials = computed(
+  () => canViewAllMaterials.value || visibleMaterialClubIds.value.length > 0,
+);
+
+const canViewBorrowRecords = computed(
+  () =>
+    hasSystemPermission(borrowRecordPermission) ||
+    hasSystemPermission(inventoryManagePermission) ||
+    clubIdsForPermission(borrowRecordPermission).length > 0 ||
+    clubIdsForPermission(inventoryManagePermission).length > 0,
+);
+
+const canManageInventoryForActiveClub = computed(() => {
+  if (activeClubId.value === 0) return hasSystemPermission(inventoryManagePermission);
+  return activeClubId.value !== undefined && canManageInventoryForClub(activeClubId.value);
+});
+
 const visibleClubs = computed(() => {
-  if (hasGlobalAccess.value) return clubs.value;
-  return clubs.value.filter((club) => manageableClubIds.value.includes(club.id));
+  if (canViewAllMaterials.value) return clubs.value;
+  return clubs.value.filter((club) => visibleMaterialClubIds.value.includes(club.id));
 });
 
 const activeClubOptions = computed(() => [
-  ...(hasGlobalAccess.value ? [{ id: 0, name: "全部社团" }] : []),
+  ...(canViewAllMaterials.value ? [{ id: 0, name: "全部社团" }] : []),
   ...visibleClubs.value,
 ]);
 
@@ -187,6 +251,7 @@ const materialRules: FormRules<MaterialForm> = {
     { type: "number", min: 1, message: "总数量必须大于 0", trigger: "change" },
   ],
   availableQuantity: [{ type: "number", min: 0, message: "可用数量不能小于 0", trigger: "change" }],
+  status: [{ required: true, message: "请选择物资状态", trigger: "change" }],
 };
 
 const borrowRules: FormRules<BorrowForm> = {
@@ -196,12 +261,25 @@ const borrowRules: FormRules<BorrowForm> = {
     { type: "number", min: 1, message: "借用数量必须大于 0", trigger: "change" },
   ],
   expectedReturnAt: [
+    { required: true, message: "请选择预计归还时间", trigger: "change" },
     {
       validator: (_rule, value, callback) => {
-        if (value && beijingDateTimeTimestamp(value) <= Date.now()) {
+        if (!value) {
+          callback(new Error("请选择预计归还时间"));
+          return;
+        }
+
+        const timestamp = beijingDateTimeTimestamp(value);
+        if (timestamp <= Date.now()) {
           callback(new Error("预计归还时间必须晚于当前时间"));
           return;
         }
+
+        if (timestamp > Date.now() + maxBorrowDays * 24 * 60 * 60 * 1000) {
+          callback(new Error("预计归还时间不能超过 7 天"));
+          return;
+        }
+
         callback();
       },
       trigger: "change",
@@ -248,13 +326,13 @@ function ensureActiveClub() {
   const preferredClubId = initialClubIdFromRoute();
   if (
     preferredClubId &&
-    (hasGlobalAccess.value || visibleClubs.value.some((club) => club.id === preferredClubId))
+    (canViewAllMaterials.value || visibleClubs.value.some((club) => club.id === preferredClubId))
   ) {
     activeClubId.value = preferredClubId;
     return;
   }
 
-  activeClubId.value = hasGlobalAccess.value ? 0 : visibleClubs.value[0]?.id;
+  activeClubId.value = canViewAllMaterials.value ? 0 : visibleClubs.value[0]?.id;
 }
 
 async function loadClubs() {
@@ -269,7 +347,7 @@ async function loadClubs() {
 }
 
 async function loadMaterials() {
-  if (!canManageMaterials.value) return;
+  if (!canAccessMaterials.value) return;
   loading.value = true;
   try {
     const query =
@@ -284,7 +362,7 @@ async function loadMaterials() {
 }
 
 async function loadBorrows() {
-  if (!canManageMaterials.value) return;
+  if (!canViewBorrowRecords.value) return;
   borrowLoading.value = true;
   try {
     const params = new URLSearchParams();
@@ -306,6 +384,12 @@ async function refreshData() {
 }
 
 function openCreateMaterial() {
+  if (!canManageInventoryForActiveClub.value) {
+    ElMessage.warning("当前账号没有维护该社团物资库存的权限");
+    return;
+  }
+
+  editingMaterial.value = null;
   materialForm.clubId =
     activeClubId.value && activeClubId.value !== 0 ? activeClubId.value : visibleClubs.value[0]?.id;
   materialForm.name = "";
@@ -313,19 +397,47 @@ function openCreateMaterial() {
   materialForm.totalQuantity = 1;
   materialForm.availableQuantity = undefined;
   materialForm.storageLocation = "";
+  materialForm.status = "active";
+  materialDialogVisible.value = true;
+}
+
+function openEditMaterial(material: Material) {
+  if (!canManageInventoryForClub(material.clubId)) {
+    ElMessage.warning("当前账号没有维护该社团物资库存的权限");
+    return;
+  }
+
+  editingMaterial.value = material;
+  materialForm.clubId = material.clubId;
+  materialForm.name = material.name;
+  materialForm.specification = material.specification ?? "";
+  materialForm.totalQuantity = material.totalQuantity;
+  materialForm.availableQuantity = material.availableQuantity;
+  materialForm.storageLocation = material.storageLocation ?? "";
+  materialForm.status = material.status;
   materialDialogVisible.value = true;
 }
 
 function openBorrow(material: Material) {
+  if (!canUseMaterialForClub(material.clubId)) {
+    ElMessage.warning("当前账号没有借用该社团物资的权限");
+    return;
+  }
+
   currentMaterial.value = material;
   borrowForm.materialId = material.id;
   borrowForm.clubId = material.clubId;
   borrowForm.quantity = 1;
-  borrowForm.expectedReturnAt = "";
+  borrowForm.expectedReturnAt = defaultExpectedReturnAt();
   borrowDialogVisible.value = true;
 }
 
 function openDamage(borrow: MaterialBorrow) {
+  if (!canRecordBorrowForClub(borrow.clubId)) {
+    ElMessage.warning("当前账号没有处理该社团借还记录的权限");
+    return;
+  }
+
   currentBorrow.value = borrow;
   damageForm.damageDescription = "";
   damageForm.compensationAmount = 0;
@@ -347,24 +459,28 @@ async function submitMaterial() {
 
   submitting.value = true;
   try {
-    await requestJson<Material>("/api/materials", {
-      method: "POST",
+    const payload = {
+      clubId: materialForm.clubId,
+      name: materialForm.name.trim(),
+      specification: materialForm.specification.trim() || null,
+      totalQuantity: materialForm.totalQuantity,
+      availableQuantity: materialForm.availableQuantity ?? materialForm.totalQuantity,
+      storageLocation: materialForm.storageLocation.trim() || null,
+      status: materialForm.status,
+    };
+    const requestUrl = editingMaterial.value
+      ? `/api/materials/${editingMaterial.value.id}`
+      : "/api/materials";
+    await requestJson<Material>(requestUrl, {
+      method: editingMaterial.value ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clubId: materialForm.clubId,
-        name: materialForm.name.trim(),
-        specification: materialForm.specification.trim() || null,
-        totalQuantity: materialForm.totalQuantity,
-        availableQuantity: materialForm.availableQuantity ?? null,
-        storageLocation: materialForm.storageLocation.trim() || null,
-        status: "active",
-      }),
+      body: JSON.stringify(payload),
     });
     materialDialogVisible.value = false;
-    ElMessage.success("物资已新增");
+    ElMessage.success(editingMaterial.value ? "物资已更新" : "物资已新增");
     await refreshData();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "新增物资失败");
+    ElMessage.error(e instanceof Error ? e.message : "保存物资失败");
   } finally {
     submitting.value = false;
   }
@@ -389,9 +505,7 @@ async function submitBorrow() {
         materialId: borrowForm.materialId,
         clubId: borrowForm.clubId,
         quantity: borrowForm.quantity,
-        expectedReturnAt: borrowForm.expectedReturnAt
-          ? beijingDateTimeToUtcIso(borrowForm.expectedReturnAt)
-          : null,
+        expectedReturnAt: beijingDateTimeToUtcIso(borrowForm.expectedReturnAt),
       }),
     });
     borrowDialogVisible.value = false;
@@ -405,6 +519,11 @@ async function submitBorrow() {
 }
 
 async function returnBorrow(borrow: MaterialBorrow) {
+  if (!canRecordBorrowForClub(borrow.clubId)) {
+    ElMessage.warning("当前账号没有处理该社团借还记录的权限");
+    return;
+  }
+
   try {
     await ElMessageBox.confirm(
       `确认登记「${borrow.materialName}」已归还？归还后库存会回补 ${borrow.quantity} 件。`,
@@ -462,6 +581,29 @@ function formatDateTime(value?: string | null) {
   return value ? formatVenueReservationDateTime(value) : "-";
 }
 
+function formatDateTimeForPicker(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function defaultExpectedReturnAt() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setSeconds(0, 0);
+  return formatDateTimeForPicker(date);
+}
+
+function disableBorrowDate(date: Date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const latest = new Date();
+  latest.setDate(latest.getDate() + maxBorrowDays);
+  latest.setHours(23, 59, 59, 999);
+  return date < today || date > latest;
+}
+
 function materialStatusName(status: string) {
   return materialStatusLabel[status] || status;
 }
@@ -503,7 +645,7 @@ async function changeBorrowStatus() {
 }
 
 onMounted(async () => {
-  if (!canManageMaterials.value) return;
+  if (!canAccessMaterials.value) return;
   await loadClubs();
   ensureActiveClub();
   await refreshData();
@@ -532,9 +674,9 @@ onMounted(async () => {
           />
         </el-select>
         <el-button
+          v-if="canManageInventoryForActiveClub"
           :icon="Plus"
           type="primary"
-          :disabled="!canManageMaterials"
           @click="openCreateMaterial"
         >
           新增物资
@@ -546,14 +688,14 @@ onMounted(async () => {
     </div>
 
     <el-alert
-      v-if="!canManageMaterials"
+      v-if="!canAccessMaterials"
       title="当前账号没有物资借还管理权限。"
       type="warning"
       show-icon
       class="notice"
     />
 
-    <div v-else class="stats">
+    <div v-else-if="canAccessMaterials" class="stats">
       <div class="stat-item">
         <span class="stat-label">库存</span>
         <strong>{{ materialSummary }}</strong>
@@ -568,7 +710,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <section v-if="canManageMaterials" class="section">
+    <section v-if="canAccessMaterials" class="section">
       <div class="section-head">
         <div>
           <h3>物资库存</h3>
@@ -610,31 +752,50 @@ onMounted(async () => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
-            <el-tooltip
-              :disabled="row.status === 'active' && row.availableQuantity > 0"
-              content="物资停用或库存不足"
-              placement="top"
-            >
-              <span>
-                <el-button
-                  :icon="Box"
-                  type="primary"
-                  size="small"
-                  :disabled="row.status !== 'active' || row.availableQuantity <= 0"
-                  @click="openBorrow(row)"
-                >
-                  借用
-                </el-button>
-              </span>
-            </el-tooltip>
+            <div class="row-actions">
+              <el-tooltip
+                :disabled="
+                  row.status === 'active' &&
+                  row.availableQuantity > 0 &&
+                  canUseMaterialForClub(row.clubId)
+                "
+                content="无借用权限、物资停用或库存不足"
+                placement="top"
+              >
+                <span>
+                  <el-button
+                    :icon="Box"
+                    type="primary"
+                    size="small"
+                    :disabled="
+                      row.status !== 'active' ||
+                      row.availableQuantity <= 0 ||
+                      !canUseMaterialForClub(row.clubId)
+                    "
+                    @click="openBorrow(row)"
+                  >
+                    借用
+                  </el-button>
+                </span>
+              </el-tooltip>
+              <el-button
+                v-if="canManageInventoryForClub(row.clubId)"
+                :icon="Edit"
+                size="small"
+                plain
+                @click="openEditMaterial(row)"
+              >
+                编辑
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </section>
 
-    <section v-if="canManageMaterials" class="section">
+    <section v-if="canViewBorrowRecords" class="section">
       <div class="section-head">
         <div>
           <h3>借用记录</h3>
@@ -701,9 +862,9 @@ onMounted(async () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
-            <div class="row-actions">
+            <div v-if="canRecordBorrowForClub(row.clubId)" class="row-actions">
               <el-button
                 :icon="Check"
                 type="success"
@@ -724,12 +885,17 @@ onMounted(async () => {
                 损坏
               </el-button>
             </div>
+            <span v-else class="muted">无权限</span>
           </template>
         </el-table-column>
       </el-table>
     </section>
 
-    <el-dialog v-model="materialDialogVisible" title="新增物资" width="520px">
+    <el-dialog
+      v-model="materialDialogVisible"
+      :title="editingMaterial ? '编辑物资' : '新增物资'"
+      width="520px"
+    >
       <el-form
         ref="materialFormRef"
         :model="materialForm"
@@ -787,6 +953,12 @@ onMounted(async () => {
             placeholder="如：学生活动中心 A102"
           />
         </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="materialForm.status" class="full-width">
+            <el-option label="可借用" value="active" />
+            <el-option label="停用" value="disabled" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="materialDialogVisible = false">取消</el-button>
@@ -817,7 +989,8 @@ onMounted(async () => {
             type="datetime"
             value-format="YYYY-MM-DDTHH:mm:ss"
             format="YYYY-MM-DD HH:mm"
-            placeholder="可选"
+            placeholder="请选择，最多 7 天"
+            :disabled-date="disableBorrowDate"
             class="full-width"
           />
         </el-form-item>
@@ -883,7 +1056,7 @@ onMounted(async () => {
 .toolbar-actions,
 .row-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 .subtitle {
@@ -967,6 +1140,10 @@ onMounted(async () => {
   .search-input {
     width: 100%;
     max-width: none;
+  }
+
+  .row-actions {
+    flex-wrap: wrap;
   }
 }
 </style>

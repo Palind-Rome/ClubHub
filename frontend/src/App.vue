@@ -57,7 +57,12 @@ const canAccessVenueReservations = computed(() => {
 });
 const canAccessMaterialBorrows = computed(() => {
   const permissions = auth.value?.permissions ?? [];
-  return permissions.includes("*") || permissions.includes("material:borrow:manage");
+  return (
+    permissions.includes("*") ||
+    permissions.includes("material:borrow:use") ||
+    permissions.includes("material:borrow:record") ||
+    permissions.includes("material:inventory:manage")
+  );
 });
 
 function refreshSession() {

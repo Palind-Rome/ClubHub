@@ -53,9 +53,12 @@ router.beforeEach((to) => {
 
   if (to.path === "/materials") {
     const permissions = readAuth()?.permissions ?? [];
-    const canAccess = ["*", "material:borrow:manage"].some((permission) =>
-      permissions.includes(permission),
-    );
+    const canAccess = [
+      "*",
+      "material:borrow:use",
+      "material:borrow:record",
+      "material:inventory:manage",
+    ].some((permission) => permissions.includes(permission));
     if (!canAccess) return { path: "/clubs" };
   }
 });

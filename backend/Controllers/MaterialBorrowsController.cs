@@ -15,7 +15,10 @@ namespace ClubHub.Api.Controllers;
 [Route("api")]
 public class MaterialBorrowsController : ControllerBase
 {
-    private const string ManagePermission = "material:borrow:manage";
+    private const string BorrowUsePermission = "material:borrow:use";
+    private const string BorrowRecordPermission = "material:borrow:record";
+    private const string InventoryManagePermission = "material:inventory:manage";
+    private static readonly TimeSpan MaxBorrowDuration = TimeSpan.FromDays(7);
     private const string MaterialStatusActive = "active";
     private const string MaterialStatusDisabled = "disabled";
     private const string BorrowStatusBorrowed = "borrowed";
@@ -56,11 +59,15 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
         }
 
-        var access = await GetMaterialAccessAsync(currentUserId.Value);
+        var access = await GetMaterialAccessAsync(
+            currentUserId.Value,
+            BorrowUsePermission,
+            BorrowRecordPermission,
+            InventoryManagePermission);
         if (access.Error is not null) return access.Error;
         if (!access.CanManageAll && access.ClubIds.Count == 0)
         {
-            return StatusCode(403, Error("material_view_forbidden", "当前用户没有物资借还管理权限。"));
+            return StatusCode(403, Error("material_view_forbidden", "当前用户没有物资借还查看权限。"));
         }
 
         var query = MaterialQuery().AsNoTracking();
@@ -99,7 +106,7 @@ public class MaterialBorrowsController : ControllerBase
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, req.ClubId);
+        var permission = await RequireClubPermissionAsync(currentUserId.Value, InventoryManagePermission, req.ClubId);
         if (permission is not null) return permission;
 
         var name = NormalizeText(req.Name);
@@ -146,6 +153,62 @@ public class MaterialBorrowsController : ControllerBase
         return CreatedAtAction(nameof(GetMaterials), new { clubId = material.ClubId }, ToDto(material));
     }
 
+    [HttpPut("materials/{materialId:int}")]
+    public async Task<IActionResult> UpdateMaterial(int materialId, [FromBody] UpdateMaterialRequest req)
+    {
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var material = await MaterialQuery().FirstOrDefaultAsync(m => m.MaterialId == materialId);
+        if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
+
+        var permission = await RequireClubPermissionAsync(currentUserId.Value, InventoryManagePermission, material.ClubId);
+        if (permission is not null) return permission;
+
+        var name = NormalizeText(req.Name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(Error("material_name_required", "物资名称不能为空。"));
+        }
+
+        if (req.TotalQuantity <= 0)
+        {
+            return BadRequest(Error("material_quantity_invalid", "物资总数量必须大于 0。"));
+        }
+
+        if (req.AvailableQuantity < 0 || req.AvailableQuantity > req.TotalQuantity)
+        {
+            return BadRequest(Error("material_available_quantity_invalid", "可用数量必须在 0 到总数量之间。"));
+        }
+
+        var borrowedQuantity = Math.Max(0, (material.TotalQty ?? 0) - (material.AvailableQty ?? 0));
+        if (req.TotalQuantity < borrowedQuantity)
+        {
+            return BadRequest(Error("material_total_quantity_invalid", "总数量不能小于当前借出数量。"));
+        }
+
+        if (req.AvailableQuantity > req.TotalQuantity - borrowedQuantity)
+        {
+            return BadRequest(Error("material_available_quantity_invalid", "可用数量不能超过扣除当前借出数量后的库存余量。"));
+        }
+
+        if (!IsValidStatus(req.Status, AllowedMaterialStatuses, out var normalizedStatus) || normalizedStatus is null)
+        {
+            return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
+        }
+
+        material.MaterialName = name;
+        material.Specification = NullIfBlank(req.Specification);
+        material.TotalQty = req.TotalQuantity;
+        material.AvailableQty = req.AvailableQuantity;
+        material.StorageLocation = NullIfBlank(req.StorageLocation);
+        material.MaterialStatus = normalizedStatus;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(material));
+    }
+
     [HttpGet("material-borrows")]
     public async Task<IActionResult> GetBorrows(
         [FromQuery] int? clubId,
@@ -161,11 +224,14 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("borrow_status_invalid", "借用状态参数不合法。"));
         }
 
-        var access = await GetMaterialAccessAsync(currentUserId.Value);
+        var access = await GetMaterialAccessAsync(
+            currentUserId.Value,
+            BorrowRecordPermission,
+            InventoryManagePermission);
         if (access.Error is not null) return access.Error;
         if (!access.CanManageAll && access.ClubIds.Count == 0)
         {
-            return StatusCode(403, Error("borrow_view_forbidden", "当前用户没有物资借还管理权限。"));
+            return StatusCode(403, Error("borrow_view_forbidden", "当前用户没有查看物资借还记录权限。"));
         }
 
         var query = BorrowQuery().AsNoTracking();
@@ -218,12 +284,21 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("borrow_quantity_invalid", "借用数量必须大于 0。"));
         }
 
-        DateTime? expectedReturnAt = req.ExpectedReturnAt is null
-            ? null
-            : RequestTimeToUtc(req.ExpectedReturnAt.Value);
-        if (expectedReturnAt is not null && expectedReturnAt.Value <= DateTime.UtcNow)
+        if (req.ExpectedReturnAt is null)
+        {
+            return BadRequest(Error("expected_return_time_required", "预计归还时间不能为空。"));
+        }
+
+        var now = DateTime.UtcNow;
+        var expectedReturnAt = RequestTimeToUtc(req.ExpectedReturnAt.Value);
+        if (expectedReturnAt <= now)
         {
             return BadRequest(Error("expected_return_time_invalid", "预计归还时间必须晚于当前时间。"));
+        }
+
+        if (expectedReturnAt > now.Add(MaxBorrowDuration))
+        {
+            return BadRequest(Error("expected_return_time_too_late", "预计归还时间不能超过 7 天。"));
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -236,7 +311,7 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_club_mismatch", "物资不属于所选社团。"));
         }
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, req.ClubId);
+        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowUsePermission, req.ClubId);
         if (permission is not null) return permission;
 
         if (NormalizeStatus(material.MaterialStatus) != MaterialStatusActive)
@@ -288,7 +363,7 @@ public class MaterialBorrowsController : ControllerBase
         var borrow = await BorrowQuery().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
         if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, borrow.ClubId);
+        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
         if (permission is not null) return permission;
 
         if (NormalizeStatus(borrow.BorrowStatus) != BorrowStatusBorrowed)
@@ -333,7 +408,7 @@ public class MaterialBorrowsController : ControllerBase
         var borrow = await BorrowQuery().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
         if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, borrow.ClubId);
+        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
         if (permission is not null) return permission;
 
         if (NormalizeStatus(borrow.BorrowStatus) != BorrowStatusBorrowed)
@@ -365,9 +440,9 @@ public class MaterialBorrowsController : ControllerBase
             .Include(b => b.BorrowerUser);
     }
 
-    private async Task<IActionResult?> RequireClubPermissionAsync(int userId, int clubId)
+    private async Task<IActionResult?> RequireClubPermissionAsync(int userId, string permissionCode, int clubId)
     {
-        var permission = await _authService.CheckPermissionAsync(userId, ManagePermission, clubId);
+        var permission = await _authService.CheckPermissionAsync(userId, permissionCode, clubId);
         if (!permission.Succeeded)
         {
             return StatusCode(permission.StatusCode, Error(
@@ -385,31 +460,46 @@ public class MaterialBorrowsController : ControllerBase
         return null;
     }
 
-    private async Task<(IActionResult? Error, bool CanManageAll, IReadOnlyList<int> ClubIds)> GetMaterialAccessAsync(int userId)
+    private async Task<(IActionResult? Error, bool CanManageAll, IReadOnlyList<int> ClubIds)> GetMaterialAccessAsync(
+        int userId,
+        params string[] permissionCodes)
     {
-        var globalPermission = await _authService.CheckPermissionAsync(userId, ManagePermission, null);
-        if (!globalPermission.Succeeded)
+        var canManageAll = false;
+        var clubIds = new HashSet<int>();
+
+        foreach (var permissionCode in permissionCodes)
         {
-            return (
-                StatusCode(globalPermission.StatusCode, Error(
-                    "material_permission_check_failed",
-                    globalPermission.ErrorMessage ?? "物资借还权限校验失败。")),
-                false,
-                []);
+            var globalPermission = await _authService.CheckPermissionAsync(userId, permissionCode, null);
+            if (!globalPermission.Succeeded)
+            {
+                return (
+                    StatusCode(globalPermission.StatusCode, Error(
+                        "material_permission_check_failed",
+                        globalPermission.ErrorMessage ?? "物资借还权限校验失败。")),
+                    false,
+                    []);
+            }
+
+            canManageAll = canManageAll || globalPermission.Value?.Allowed == true;
+
+            var clubPermission = await _authService.GetPermissionClubIdsAsync(userId, permissionCode);
+            if (!clubPermission.Succeeded)
+            {
+                return (
+                    StatusCode(clubPermission.StatusCode, Error(
+                        "material_permission_check_failed",
+                        clubPermission.ErrorMessage ?? "物资借还权限校验失败。")),
+                    false,
+                    []);
+            }
+
+            foreach (var clubId in clubPermission.Value ?? [])
+            {
+                clubIds.Add(clubId);
+            }
         }
 
-        var clubPermission = await _authService.GetPermissionClubIdsAsync(userId, ManagePermission);
-        if (!clubPermission.Succeeded)
-        {
-            return (
-                StatusCode(clubPermission.StatusCode, Error(
-                    "material_permission_check_failed",
-                    clubPermission.ErrorMessage ?? "物资借还权限校验失败。")),
-                false,
-                []);
-        }
-
-        return (null, globalPermission.Value?.Allowed == true, clubPermission.Value ?? []);
+        return (null, canManageAll, clubIds.OrderBy(id => id).ToList());
     }
 
     private static MaterialDto ToDto(Material material)
@@ -587,6 +677,14 @@ public record BorrowMaterialRequest(
     int ClubId,
     int Quantity,
     DateTime? ExpectedReturnAt);
+
+public record UpdateMaterialRequest(
+    string Name,
+    string? Specification,
+    int TotalQuantity,
+    int AvailableQuantity,
+    string? StorageLocation,
+    string Status);
 
 public record RegisterMaterialDamageRequest(
     string DamageDescription,
