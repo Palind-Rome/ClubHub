@@ -193,11 +193,9 @@ public class AuthService
 
         var roles = await GetBaseRoleRowsAsync();
         var now = DateTime.UtcNow;
-        var userId = (await _db.Users.MaxAsync(u => (int?)u.UserId) ?? 0) + 1;
 
         var user = new User
         {
-            UserId = userId,
             Username = username,
             PasswordHash = PasswordHasher.Hash(password),
             RealName = realName,
@@ -214,10 +212,11 @@ public class AuthService
         };
 
         _db.Users.Add(user);
-        await EnsureIdentityRoleAsync(user, roles, now);
 
         try
         {
+            await _db.SaveChangesAsync();
+            await EnsureIdentityRoleAsync(user, roles, now);
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
         }
@@ -252,7 +251,7 @@ public class AuthService
         var roles = await GetBaseRoleRowsAsync();
         if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
         {
-            await _db.SaveChangesAsync();
+            await SaveIdentityRoleAsync();
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -279,7 +278,7 @@ public class AuthService
         var roles = await GetBaseRoleRowsAsync();
         if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
         {
-            await _db.SaveChangesAsync();
+            await SaveIdentityRoleAsync();
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -394,16 +393,38 @@ public class AuthService
                 "用户已经拥有该角色。"));
         }
 
-        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
-        _db.UserRoles.Add(new UserRole
+        var assignment = new UserRole
         {
-            UserRoleId = userRoleId,
             UserId = request.TargetUserId,
             RoleId = role.RoleId,
             ClubId = clubId,
             AssignedAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync();
+        };
+        _db.UserRoles.Add(assignment);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _db.Entry(assignment).State = EntityState.Detached;
+            var concurrentAssignmentExists = await _db.UserRoles
+                .AsNoTracking()
+                .AnyAsync(ur =>
+                    ur.UserId == request.TargetUserId &&
+                    ur.RoleId == role.RoleId &&
+                    ur.ClubId == clubId);
+            if (!concurrentAssignmentExists)
+            {
+                throw;
+            }
+
+            return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
+                request.TargetUserId,
+                authRole,
+                true,
+                "用户已经拥有该角色。"));
+        }
 
         return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
             request.TargetUserId,
@@ -797,16 +818,30 @@ public class AuthService
             return false;
         }
 
-        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = userRoleId,
             UserId = user.UserId,
             RoleId = role.RoleId,
             ClubId = null,
             AssignedAt = now
         });
         return true;
+    }
+
+    private async Task SaveIdentityRoleAsync()
+    {
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            foreach (var entry in _db.ChangeTracker.Entries<UserRole>()
+                .Where(entry => entry.State == EntityState.Added))
+            {
+                entry.State = EntityState.Detached;
+            }
+        }
     }
 
     private static string BuildPermissionDesc(RoleDefinition roleDef)

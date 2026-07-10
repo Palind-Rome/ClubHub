@@ -30,6 +30,15 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.UserId);
+            e.Property(u => u.UserId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_USERS.NEXTVAL");
+            e.HasIndex(u => u.Username)
+             .IsUnique()
+             .HasDatabaseName("UQ_USERS_USERNAME");
+            e.HasIndex(u => u.StudentNo)
+             .IsUnique()
+             .HasDatabaseName("UQ_USERS_STUDENT_NO");
             e.HasMany(u => u.UserRoles)
              .WithOne(ur => ur.User)
              .HasForeignKey(ur => ur.UserId)
@@ -56,6 +65,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<UserRole>(e =>
         {
             e.HasKey(ur => ur.UserRoleId);
+            e.Property(ur => ur.UserRoleId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_USER_ROLES.NEXTVAL");
             e.HasOne(ur => ur.Club)
              .WithMany(c => c.UserRoles)
              .HasForeignKey(ur => ur.ClubId)
