@@ -472,17 +472,20 @@ const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermiss
 // Member evaluations now live in EvaluationList.vue; keep the legacy club tab disabled explicitly.
 const showLegacyEvaluationTab = false;
 const canManageMemberTerms = computed(() => hasPermission(clubMemberManagePermission));
+const canViewAllClubWorkspaces = computed(() => hasAllPermissions.value || isReviewer.value);
 const canAdministerMemberTerms = computed(
-  () => hasAllPermissions.value || isReviewer.value || canManageMemberTerms.value,
+  () => hasAllPermissions.value || canManageMemberTerms.value,
 );
 const canViewMemberDirectory = computed(
   () =>
-    isReviewer.value ||
+    canViewAllClubWorkspaces.value ||
     canManageMemberTerms.value ||
     hasPermission(clubInternalViewPermission) ||
     hasPermission(clubOperationViewPermission),
 );
-const canViewClubProfiles = computed(() => isReviewer.value || canViewMemberDirectory.value);
+const canViewClubProfiles = computed(
+  () => canViewAllClubWorkspaces.value || canViewMemberDirectory.value,
+);
 const myApplications = computed(() =>
   applications.value.filter((item) => item.applicantUserId === currentUserId.value),
 );
@@ -496,7 +499,7 @@ const selectedClub = computed(
 const clubInfoRows = computed(() =>
   canViewClubProfiles.value ? clubs.value.filter((club) => canViewClubInfo(club)) : [],
 );
-const isGlobalClubGovernance = computed(() => false);
+const isGlobalClubGovernance = computed(() => canViewAllClubWorkspaces.value);
 const focusedClubRows = computed(() => {
   const club = selectedClub.value;
   return club && canViewClubInfo(club) ? [club] : [];
@@ -942,16 +945,16 @@ function canRemoveClubMember(club: Club) {
 }
 
 function canDissolveClub(club: Club) {
-  return (hasAllPermissions.value || isReviewer.value) && club.status === "active";
+  return hasAllPermissions.value && club.status === "active";
 }
 
 function canViewClubInfo(club: Club) {
-  if (hasAllPermissions.value || isReviewer.value) return true;
+  if (canViewAllClubWorkspaces.value) return true;
   return canManageClub(club) || canViewClubDirectory(club);
 }
 
 function canViewClubDirectory(club: Club) {
-  if (hasAllPermissions.value) return true;
+  if (canViewAllClubWorkspaces.value) return true;
   if (canManageClub(club)) return true;
 
   const user = currentUser.value;
