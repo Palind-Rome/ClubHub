@@ -9,6 +9,7 @@ import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
 import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
+import LearningCenter from "../views/LearningCenter.vue";
 import { hasCompletedSession, readAuth } from "../authSession";
 
 const router = createRouter({
@@ -26,6 +27,7 @@ const router = createRouter({
     { path: "/projects", component: ProjectList },
     { path: "/venues", component: VenueManage },
     { path: "/venue-reservations", component: VenueReservationApply },
+    { path: "/learning", component: LearningCenter },
   ],
 });
 

@@ -98,6 +98,11 @@ import {
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
 import {
+  type CreateLearningItemRequest,
+  CreateLearningItemRequestFromJSON,
+  CreateLearningItemRequestToJSON,
+} from "../models/CreateLearningItemRequest";
+import {
   type CreateNoticeRequest,
   CreateNoticeRequestFromJSON,
   CreateNoticeRequestToJSON,
@@ -138,6 +143,11 @@ import {
   DissolveClubRequestToJSON,
 } from "../models/DissolveClubRequest";
 import {
+  type EnrollLearningItemRequest,
+  EnrollLearningItemRequestFromJSON,
+  EnrollLearningItemRequestToJSON,
+} from "../models/EnrollLearningItemRequest";
+import {
   type ExitClubMemberRequest,
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
@@ -147,6 +157,21 @@ import {
   HealthStatusFromJSON,
   HealthStatusToJSON,
 } from "../models/HealthStatus";
+import {
+  type LearningItem,
+  LearningItemFromJSON,
+  LearningItemToJSON,
+} from "../models/LearningItem";
+import {
+  type LearningRecord,
+  LearningRecordFromJSON,
+  LearningRecordToJSON,
+} from "../models/LearningRecord";
+import {
+  type LearningTeacherCandidate,
+  LearningTeacherCandidateFromJSON,
+  LearningTeacherCandidateToJSON,
+} from "../models/LearningTeacherCandidate";
 import {
   type LoginRequest,
   LoginRequestFromJSON,
@@ -261,6 +286,16 @@ import {
   UpdateClubRequestToJSON,
 } from "../models/UpdateClubRequest";
 import {
+  type UpdateLearningItemRequest,
+  UpdateLearningItemRequestFromJSON,
+  UpdateLearningItemRequestToJSON,
+} from "../models/UpdateLearningItemRequest";
+import {
+  type UpdateLearningProgressRequest,
+  UpdateLearningProgressRequestFromJSON,
+  UpdateLearningProgressRequestToJSON,
+} from "../models/UpdateLearningProgressRequest";
+import {
   type UpdateRecruitmentRequest,
   UpdateRecruitmentRequestFromJSON,
   UpdateRecruitmentRequestToJSON,
@@ -300,6 +335,11 @@ export interface AssignProjectLeaderOperationRequest {
 
 export interface AssignUserRoleRequest {
   assignRoleRequest: AssignRoleRequest;
+}
+
+export interface CancelLearningEnrollmentRequest {
+  itemId: number;
+  enrollLearningItemRequest: EnrollLearningItemRequest;
 }
 
 export interface CancelProjectOperationRequest {
@@ -343,6 +383,10 @@ export interface CreateClubEvaluationOperationRequest {
 export interface CreateClubMemberTermOperationRequest {
   clubId: number;
   createClubMemberTermRequest: CreateClubMemberTermRequest;
+}
+
+export interface CreateLearningItemOperationRequest {
+  createLearningItemRequest: CreateLearningItemRequest;
 }
 
 export interface CreateNoticeOperationRequest {
@@ -389,6 +433,11 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
+export interface EnrollLearningItemOperationRequest {
+  itemId: number;
+  enrollLearningItemRequest: EnrollLearningItemRequest;
+}
+
 export interface ExitCurrentClubMemberRequest {
   clubId: number;
   exitClubMemberRequest: ExitClubMemberRequest;
@@ -431,6 +480,21 @@ export interface GetClubMembersRequest {
 
 export interface GetClubsRequest {
   viewerUserId?: number;
+}
+
+export interface GetLearningItemsRequest {
+  currentUserId: number;
+  clubId?: number;
+}
+
+export interface GetLearningRecordsRequest {
+  currentUserId: number;
+  itemId?: number;
+}
+
+export interface GetLearningTeacherCandidatesRequest {
+  currentUserId: number;
+  clubId: number;
 }
 
 export interface GetNoticesRequest {
@@ -575,6 +639,16 @@ export interface UpdateClubMemberTermOperationRequest {
 export interface UpdateClubProfileOperationRequest {
   clubId: number;
   updateClubProfileRequest: UpdateClubProfileRequest;
+}
+
+export interface UpdateLearningItemOperationRequest {
+  itemId: number;
+  updateLearningItemRequest: UpdateLearningItemRequest;
+}
+
+export interface UpdateLearningProgressOperationRequest {
+  recordId: number;
+  updateLearningProgressRequest: UpdateLearningProgressRequest;
 }
 
 export interface UpdateRecruitmentOperationRequest {
@@ -781,6 +855,70 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RoleAssignmentResult> {
     const response = await this.assignUserRoleRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for cancelLearningEnrollment without sending the request
+   */
+  async cancelLearningEnrollmentRequestOpts(
+    requestParameters: CancelLearningEnrollmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling cancelLearningEnrollment().',
+      );
+    }
+
+    if (requestParameters["enrollLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "enrollLearningItemRequest",
+        'Required parameter "enrollLearningItemRequest" was null or undefined when calling cancelLearningEnrollment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ???????????????????????????????????????
+   * ??????
+   */
+  async cancelLearningEnrollmentRaw(
+    requestParameters: CancelLearningEnrollmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.cancelLearningEnrollmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ???????????????????????????????????????
+   * ??????
+   */
+  async cancelLearningEnrollment(
+    requestParameters: CancelLearningEnrollmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.cancelLearningEnrollmentRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1350,6 +1488,62 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubMemberRecord> {
     const response = await this.createClubMemberTermRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createLearningItem without sending the request
+   */
+  async createLearningItemRequestOpts(
+    requestParameters: CreateLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createLearningItemRequest",
+        'Required parameter "createLearningItemRequest" was null or undefined when calling createLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateLearningItemRequestToJSON(requestParameters["createLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ?????????
+   */
+  async createLearningItemRaw(
+    requestParameters: CreateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.createLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ?????????
+   */
+  async createLearningItem(
+    requestParameters: CreateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.createLearningItemRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1967,6 +2161,70 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for enrollLearningItem without sending the request
+   */
+  async enrollLearningItemRequestOpts(
+    requestParameters: EnrollLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling enrollLearningItem().',
+      );
+    }
+
+    if (requestParameters["enrollLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "enrollLearningItemRequest",
+        'Required parameter "enrollLearningItemRequest" was null or undefined when calling enrollLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????????????????????
+   * ??????
+   */
+  async enrollLearningItemRaw(
+    requestParameters: EnrollLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.enrollLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????????????????????
+   * ??????
+   */
+  async enrollLearningItem(
+    requestParameters: EnrollLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.enrollLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for exitCurrentClubMember without sending the request
    */
   async exitCurrentClubMemberRequestOpts(
@@ -2495,6 +2753,202 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Club>> {
     const response = await this.getClubsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItems without sending the request
+   */
+  async getLearningItemsRequestOpts(
+    requestParameters: GetLearningItemsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningItems().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/items`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????????
+   * ????????
+   */
+  async getLearningItemsRaw(
+    requestParameters: GetLearningItemsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningItem>>> {
+    const requestOptions = await this.getLearningItemsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningItemFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????????
+   * ????????
+   */
+  async getLearningItems(
+    requestParameters: GetLearningItemsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningItem>> {
+    const response = await this.getLearningItemsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningRecords without sending the request
+   */
+  async getLearningRecordsRequestOpts(
+    requestParameters: GetLearningRecordsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningRecords().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["itemId"] != null) {
+      queryParameters["itemId"] = requestParameters["itemId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/records`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????
+   * ??????
+   */
+  async getLearningRecordsRaw(
+    requestParameters: GetLearningRecordsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningRecord>>> {
+    const requestOptions = await this.getLearningRecordsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningRecordFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????
+   * ??????
+   */
+  async getLearningRecords(
+    requestParameters: GetLearningRecordsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningRecord>> {
+    const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningTeacherCandidates without sending the request
+   */
+  async getLearningTeacherCandidatesRequestOpts(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningTeacherCandidates().',
+      );
+    }
+
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getLearningTeacherCandidates().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/teacher-candidates`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????????????????
+   * ????????
+   */
+  async getLearningTeacherCandidatesRaw(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
+    const requestOptions = await this.getLearningTeacherCandidatesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningTeacherCandidateFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????????????????
+   * ????????
+   */
+  async getLearningTeacherCandidates(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningTeacherCandidate>> {
+    const response = await this.getLearningTeacherCandidatesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4483,6 +4937,137 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Club> {
     const response = await this.updateClubProfileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateLearningItem without sending the request
+   */
+  async updateLearningItemRequestOpts(
+    requestParameters: UpdateLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling updateLearningItem().',
+      );
+    }
+
+    if (requestParameters["updateLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateLearningItemRequest",
+        'Required parameter "updateLearningItemRequest" was null or undefined when calling updateLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateLearningItemRequestToJSON(requestParameters["updateLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ??????
+   */
+  async updateLearningItemRaw(
+    requestParameters: UpdateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.updateLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ??????
+   */
+  async updateLearningItem(
+    requestParameters: UpdateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.updateLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateLearningProgress without sending the request
+   */
+  async updateLearningProgressRequestOpts(
+    requestParameters: UpdateLearningProgressOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recordId"] == null) {
+      throw new runtime.RequiredError(
+        "recordId",
+        'Required parameter "recordId" was null or undefined when calling updateLearningProgress().',
+      );
+    }
+
+    if (requestParameters["updateLearningProgressRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateLearningProgressRequest",
+        'Required parameter "updateLearningProgressRequest" was null or undefined when calling updateLearningProgress().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/records/{recordId}/progress`;
+    urlPath = urlPath.replace(
+      "{recordId}",
+      encodeURIComponent(String(requestParameters["recordId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateLearningProgressRequestToJSON(requestParameters["updateLearningProgressRequest"]),
+    };
+  }
+
+  /**
+   * ?????????????????? 100 ????????
+   * ??????
+   */
+  async updateLearningProgressRaw(
+    requestParameters: UpdateLearningProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.updateLearningProgressRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ?????????????????? 100 ????????
+   * ??????
+   */
+  async updateLearningProgress(
+    requestParameters: UpdateLearningProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.updateLearningProgressRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

@@ -2131,6 +2131,256 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/learning/teacher-candidates:
+    get:
+      summary: ????????
+      description: ?????????????????????????????????????????????
+      operationId: getLearningTeacherCandidates
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ?????? ID???????????????????????????
+        - name: clubId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ????????? ID?
+      responses:
+        "200":
+          description: ????????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: ?????????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ??????????
+
+  /api/learning/items:
+    get:
+      summary: ????????
+      description: ?????????????????????????????????????
+      operationId: getLearningItems
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ?????? ID??????????????????????
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: ??? ID ?????
+      responses:
+        "200":
+          description: ??????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ???? ID??? ID ???????
+        "404":
+          description: ???????
+    post:
+      summary: ?????????
+      description: ??????????????????????????????????????
+      operationId: createLearningItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLearningItemRequest"
+      responses:
+        "201":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ?????????????
+        "403":
+          description: ?????????????
+
+  /api/learning/items/{itemId}:
+    put:
+      summary: ??????
+      description: ??????????????????????????????????????
+      operationId: updateLearningItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLearningItemRequest"
+      responses:
+        "200":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ?????????????????
+        "403":
+          description: ???????????
+        "404":
+          description: ?????
+        "409":
+          description: ?????????????
+
+  /api/learning/items/{itemId}/enrollments:
+    post:
+      summary: ??????
+      description: ??????????????????????????????????????????????????????
+      operationId: enrollLearningItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollLearningItemRequest"
+      responses:
+        "201":
+          description: ????????????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ????????????????
+        "403":
+          description: ???????????????????????????
+        "409":
+          description: ????????????
+        "404":
+          description: ??????????
+    delete:
+      summary: ??????
+      description: ???????????????????????????????????????
+      operationId: cancelLearningEnrollment
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollLearningItemRequest"
+      responses:
+        "200":
+          description: ?????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ??????????????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ??????????
+
+  /api/learning/records:
+    get:
+      summary: ??????
+      description: ?????????????????????????????????
+      operationId: getLearningRecords
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: itemId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: ??????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ???? ID ??
+
+  /api/learning/records/{recordId}/progress:
+    put:
+      summary: ??????
+      description: ?????????????????? 100 ????????
+      operationId: updateLearningProgress
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLearningProgressRequest"
+      responses:
+        "200":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ???????
 components:
   securitySchemes:
     bearerAuth:
@@ -4658,6 +4908,366 @@ components:
           nullable: true
       required:
         - currentUserId
+
+    LearningTeacherCandidate:
+      type: object
+      description: User-facing instructor option used by the learning course form.
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: integer
+          description: Internal user id submitted by the client after the user selects an instructor.
+          example: 30
+        realName:
+          type: string
+          nullable: true
+          description: Instructor real name.
+          example: ???
+        studentNo:
+          type: string
+          nullable: true
+          description: Instructor staff number.
+          example: "10001"
+        displayName:
+          type: string
+          description: User-facing label containing the instructor name and staff number.
+          example: ????10001?
+
+    LearningItem:
+      type: object
+      description: Training course or learning resource published by a club.
+      properties:
+        id:
+          type: integer
+          description: Learning item id in LEARNING_ITEMS.ITEM_ID.
+          example: 2001
+        clubId:
+          type: integer
+          description: Club that publishes the course.
+          example: 1
+        uploaderUserId:
+          type: integer
+          nullable: true
+          description: User who created or uploaded the learning item.
+          example: 12
+        teacherUserId:
+          type: integer
+          nullable: true
+          description: Instructor user id.
+          example: 30
+        title:
+          type: string
+          description: Course title.
+          example: ???????
+        itemType:
+          type: string
+          nullable: true
+          description: Course type, video, document, or other learning resource type.
+          example: course
+        categoryName:
+          type: string
+          nullable: true
+          description: Course category.
+          example: ????
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+          example: ???????????????
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time; learning progress cannot be updated before this time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; when omitted, users may join at any time.
+        capacity:
+          type: integer
+          description: Maximum number of users who may join the course.
+          example: 40
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club means active club members, public means all active school accounts.
+          example: club
+        itemStatus:
+          type: string
+          enum: [draft, published, closed, finished]
+          description: Current course publication status.
+          example: published
+        currentEnrollments:
+          type: integer
+          description: Number of users currently joined.
+          example: 8
+        currentUserRecordStatus:
+          type: string
+          enum: [none, enrolled, learning, completed, cancelled]
+          description: Current viewer's learning record status; none means not enrolled.
+        canManage:
+          type: boolean
+          description: Whether the current viewer may edit this course and view its roster.
+        canEnroll:
+          type: boolean
+          description: Whether the current viewer may join the course now.
+        canCancelEnrollment:
+          type: boolean
+          description: Whether the current viewer may exit the course now.
+        enrollmentUnavailableReason:
+          type: string
+          nullable: true
+          description: Chinese explanation shown when enrollment is unavailable.
+      required:
+        - id
+        - clubId
+        - title
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+        - currentEnrollments
+        - currentUserRecordStatus
+        - canManage
+        - canEnroll
+        - canCancelEnrollment
+
+    CreateLearningItemRequest:
+      type: object
+      description: Request body for creating a club training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current operator user id.
+          example: 12
+        clubId:
+          type: integer
+          minimum: 1
+          description: Club that publishes the course.
+          example: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Course title.
+          example: ???????
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+        teacherUserId:
+          type: integer
+          minimum: 1
+          description: Instructor user id.
+        itemType:
+          type: string
+          maxLength: 30
+          description: Course type.
+          example: course
+        categoryName:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Course category.
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
+        capacity:
+          type: integer
+          minimum: 1
+          description: Enrollment capacity.
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club or public.
+          example: club
+        itemStatus:
+          type: string
+          enum: [draft, published]
+          default: draft
+          description: Initial course status.
+      required:
+        - currentUserId
+        - clubId
+        - title
+        - teacherUserId
+        - itemType
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+
+    UpdateLearningItemRequest:
+      type: object
+      description: Request body for updating a club training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current operator user id.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Course title.
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+        teacherUserId:
+          type: integer
+          minimum: 1
+          description: Instructor user id.
+        itemType:
+          type: string
+          maxLength: 30
+          description: Course type.
+        categoryName:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Course category.
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
+        capacity:
+          type: integer
+          minimum: 1
+          description: Enrollment capacity.
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club or public.
+        itemStatus:
+          type: string
+          enum: [draft, published, closed]
+          description: Updated course publication status.
+      required:
+        - currentUserId
+        - title
+        - teacherUserId
+        - itemType
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+
+    EnrollLearningItemRequest:
+      type: object
+      description: Request body for joining or exiting a training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current user id.
+          example: 21
+      required:
+        - currentUserId
+
+    LearningRecord:
+      type: object
+      description: Course enrollment and learning progress record.
+      properties:
+        id:
+          type: integer
+          description: Learning record id in LEARNING_RECORDS.RECORD_ID.
+          example: 3001
+        itemId:
+          type: integer
+          description: Related learning item id.
+          example: 2001
+        userId:
+          type: integer
+          description: Learning user id.
+          example: 21
+        userDisplayName:
+          type: string
+          description: Learning user's display name.
+        userNumber:
+          type: string
+          nullable: true
+          description: Learning user's student or staff number.
+        enrollStatus:
+          type: string
+          enum: [enrolled, learning, completed, cancelled]
+          description: Enrollment and learning status.
+          example: learning
+        enrolledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Enrollment time.
+        progress:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: Learning progress percentage.
+          example: 60
+        durationSeconds:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Accumulated learning duration in seconds.
+          example: 1800
+        lastLearnAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last learning time.
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Completion time.
+      required:
+        - id
+        - itemId
+        - userId
+        - userDisplayName
+        - enrollStatus
+
+    UpdateLearningProgressRequest:
+      type: object
+      description: Request body for updating learning progress.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current learning user id.
+          example: 21
+        progress:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Latest learning progress percentage.
+          example: 100
+        durationSeconds:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Latest accumulated learning duration in seconds.
+          example: 3600
+      required:
+        - currentUserId
+        - progress
 
     ActivityRegistrationResult:
       type: object
