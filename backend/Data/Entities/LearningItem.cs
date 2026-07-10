@@ -32,6 +32,9 @@ public class LearningItem
     [Column("FILE_URL")]
     public string? FileUrl { get; set; }
 
+    [Column("ENROLL_DEADLINE")]
+    public DateTime EnrollmentDeadline { get; set; }
+
     [Column("START_AT")]
     public DateTime? StartAt { get; set; }
 
