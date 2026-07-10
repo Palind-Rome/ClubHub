@@ -3,6 +3,7 @@ using System.Data;
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Extensions;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -101,7 +102,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateActivityRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -221,7 +222,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Register(int activityId)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Error(StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "登录状态已失效，请重新登录。");
@@ -327,7 +328,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -372,7 +373,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -440,7 +441,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -483,7 +484,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateCheckinSettings(int activityId, [FromBody] UpdateCheckinSettingsRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -561,7 +562,7 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetParticipations(int activityId)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -626,7 +627,7 @@ public class ActivitiesController : ControllerBase
 
     private async Task<IActionResult> Sign(int activityId, ActivitySignRequest req, bool isCheckin)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -773,11 +774,6 @@ public class ActivitiesController : ControllerBase
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
-    private int? GetAuthenticatedUserId()
-    {
-        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(rawUserId, out var userId) && userId > 0 ? userId : null;
-    }
 
     private async Task<IActionResult?> EnsurePermissionAsync(
         int userId,

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
@@ -9,6 +11,7 @@ namespace ClubHub.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ClubsController : ControllerBase
 {
     private const string AuditPending = "pending";
@@ -67,16 +70,15 @@ public class ClubsController : ControllerBase
     public ClubsController(ClubHubDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? viewerUserId)
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll()
     {
         var query = ClubQuery();
-
-        if (viewerUserId is not null)
+        var userId = User.GetUserId();
+        if (userId is not null)
         {
-            var viewer = await LoadUserAsync(viewerUserId.Value);
-            if (viewer is null) return NotFound(new { message = "当前用户不存在。" });
-
-            if (!UsersController.IsPlatformAdmin(viewer))
+            var viewer = await LoadUserAsync(userId.Value);
+            if (viewer is not null && !UsersController.IsPlatformAdmin(viewer))
             {
                 query = query.Where(c =>
                     c.ApplicantUserId == viewer.UserId ||
@@ -95,12 +97,13 @@ public class ClubsController : ControllerBase
 
     [HttpGet("applications")]
     public async Task<IActionResult> GetApplications(
-        [FromQuery] int viewerUserId,
         [FromQuery] string? auditStatus)
     {
-        if (viewerUserId <= 0) return BadRequest(new { message = "请选择当前用户。" });
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(viewerUserId);
+        var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null) return NotFound(new { message = "当前用户不存在。" });
 
         var query = ClubQuery()
@@ -133,13 +136,17 @@ public class ClubsController : ControllerBase
     [HttpPost("applications")]
     public async Task<IActionResult> CreateApplication([FromBody] CreateClubApplicationRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
         var validationError = ValidateApplicationRequest(req);
         if (validationError is not null)
         {
             return BadRequest(new { message = validationError });
         }
 
-        var applicant = await LoadUserAsync(req.CurrentUserId);
+        var applicant = await LoadUserAsync(currentUserId.Value);
         if (applicant is null)
         {
             return NotFound(new { message = "当前用户不存在，请先选择有效的学生用户。" });
@@ -213,11 +220,11 @@ public class ClubsController : ControllerBase
     [HttpPatch("applications/{clubId:int}/review")]
     public async Task<IActionResult> ReviewApplication(int clubId, [FromBody] ReviewClubApplicationRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
         var decision = req.Decision?.Trim().ToLowerInvariant();
-        if (req.CurrentUserId <= 0)
-        {
-            return BadRequest(new { message = "请选择当前审核用户。" });
-        }
 
         if (decision is not AuditApproved and not AuditRejected)
         {
@@ -229,7 +236,7 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = "退回申请时必须填写审核意见。" });
         }
 
-        var reviewer = await LoadUserAsync(req.CurrentUserId);
+        var reviewer = await LoadUserAsync(currentUserId.Value);
         if (reviewer is null)
         {
             return NotFound(new { message = "当前用户不存在，请确认审核用户是否正确。" });
@@ -293,10 +300,9 @@ public class ClubsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateClubRequest req)
     {
-        if (req.CurrentUserId <= 0)
-        {
-            return BadRequest(new { message = "请选择当前操作用户。" });
-        }
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
         if (string.IsNullOrWhiteSpace(req.Name))
         {
@@ -308,7 +314,7 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = "社团类别不能为空。" });
         }
 
-        var creator = await LoadUserAsync(req.CurrentUserId);
+        var creator = await LoadUserAsync(currentUserId.Value);
         if (creator is null)
         {
             return NotFound(new { message = "当前操作用户不存在。" });
@@ -372,7 +378,11 @@ public class ClubsController : ControllerBase
     [HttpPatch("{clubId:int}/profile")]
     public async Task<IActionResult> UpdateProfile(int clubId, [FromBody] UpdateClubProfileRequest req)
     {
-        var access = await EnsureCanMaintainClubAsync(clubId, req.CurrentUserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
         var club = access.Club!;
@@ -464,12 +474,15 @@ public class ClubsController : ControllerBase
     [HttpGet("{clubId:int}/members")]
     public async Task<IActionResult> GetMembers(
         int clubId,
-        [FromQuery] int viewerUserId,
         [FromQuery] bool includeHistory = false,
         [FromQuery] string? departmentName = null,
         [FromQuery] string? groupName = null)
     {
-        var access = await EnsureCanViewMembersAsync(clubId, viewerUserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewMembersAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
         var today = BusinessToday();
@@ -516,7 +529,11 @@ public class ClubsController : ControllerBase
         int memberId,
         [FromBody] UpdateClubMemberTermRequest req)
     {
-        var access = await EnsureCanUpdateMemberGroupingAsync(clubId, memberId, req);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanUpdateMemberGroupingAsync(clubId, memberId, currentUserId.Value, req);
         if (access.Result is not null) return access.Result;
 
         var member = access.Member!;
@@ -532,7 +549,11 @@ public class ClubsController : ControllerBase
     [HttpPost("{clubId:int}/members/terms")]
     public async Task<IActionResult> CreateMemberTerm(int clubId, [FromBody] CreateClubMemberTermRequest req)
     {
-        var access = await EnsureCanMaintainClubAsync(clubId, req.CurrentUserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
         var club = access.Club!;
@@ -633,7 +654,7 @@ public class ClubsController : ControllerBase
 
         var created = await MemberQuery().FirstAsync(cm => cm.MemberId == member.MemberId);
         return Created(
-            $"/api/clubs/{clubId}/members?viewerUserId={req.CurrentUserId}&includeHistory=true",
+            $"/api/clubs/{clubId}/members?includeHistory=true",
             ToMemberRecordDto(created));
     }
 
@@ -643,7 +664,11 @@ public class ClubsController : ControllerBase
         int memberId,
         [FromBody] UpdateClubMemberTermRequest req)
     {
-        var access = await EnsureCanMaintainMemberTermAsync(clubId, memberId, req.CurrentUserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainMemberTermAsync(clubId, memberId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
         var club = access.Club!;
@@ -710,12 +735,11 @@ public class ClubsController : ControllerBase
     [HttpPatch("{clubId:int}/members/self/exit")]
     public async Task<IActionResult> ExitCurrentMember(int clubId, [FromBody] ExitClubMemberRequest req)
     {
-        if (req.CurrentUserId <= 0)
-        {
-            return BadRequest(new { message = "请选择当前操作用户。" });
-        }
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(req.CurrentUserId);
+        var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null)
         {
             return NotFound(new { message = "当前用户不存在。" });
@@ -727,12 +751,11 @@ public class ClubsController : ControllerBase
     [HttpPatch("{clubId:int}/members/{memberId:int}/exit")]
     public async Task<IActionResult> RemoveMember(int clubId, int memberId, [FromBody] ExitClubMemberRequest req)
     {
-        if (req.CurrentUserId <= 0)
-        {
-            return BadRequest(new { message = "请选择当前操作用户。" });
-        }
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(req.CurrentUserId);
+        var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null)
         {
             return NotFound(new { message = "当前用户不存在。" });
@@ -755,11 +778,14 @@ public class ClubsController : ControllerBase
     [HttpGet("{clubId:int}/evaluations")]
     public async Task<IActionResult> GetEvaluations(
         int clubId,
-        [FromQuery] int viewerUserId,
         [FromQuery] string? termName = null,
         [FromQuery] string? evaluationType = null)
     {
-        var access = await EnsureCanViewEvaluationsAsync(clubId, viewerUserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewEvaluationsAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
         var normalizedType = NormalizeEvaluationType(evaluationType);
@@ -789,7 +815,11 @@ public class ClubsController : ControllerBase
         int clubId,
         [FromBody] CreateClubEvaluationRequest req)
     {
-        var access = await EnsureCanMaintainEvaluationAsync(clubId, req.CurrentUserId, req.UserId);
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, req.UserId);
         if (access.Result is not null) return access.Result;
 
         var validationError = ValidateEvaluationRequest(
@@ -824,7 +854,7 @@ public class ClubsController : ControllerBase
             EvaluationType = NormalizeEvaluationType(req.EvaluationType)!,
             ClubId = clubId,
             UserId = req.UserId,
-            EvaluatorUserId = req.CurrentUserId,
+            EvaluatorUserId = currentUserId.Value,
             TermName = req.TermName.Trim(),
             AwardTitle = EmptyToNull(req.AwardTitle),
             AwardLevel = EmptyToNull(req.AwardLevel),
@@ -845,7 +875,7 @@ public class ClubsController : ControllerBase
 
         var created = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluation.EvaluationId);
         return Created(
-            $"/api/clubs/{clubId}/evaluations?viewerUserId={req.CurrentUserId}",
+            $"/api/clubs/{clubId}/evaluations",
             ToEvaluationRecordDto(created));
     }
 
@@ -855,6 +885,10 @@ public class ClubsController : ControllerBase
         int evaluationId,
         [FromBody] UpdateClubEvaluationRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
         var evaluation = await _db.Evaluations.FirstOrDefaultAsync(ev =>
             ev.ClubId == clubId && ev.EvaluationId == evaluationId);
         if (evaluation is null)
@@ -862,7 +896,7 @@ public class ClubsController : ControllerBase
             return NotFound(new { message = "评价考核记录不存在。" });
         }
 
-        var access = await EnsureCanMaintainEvaluationAsync(clubId, req.CurrentUserId, evaluation.UserId);
+        var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, evaluation.UserId);
         if (access.Result is not null) return access.Result;
 
         var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
@@ -915,7 +949,7 @@ public class ClubsController : ControllerBase
         evaluation.Grade = EvaluationGrade(totalScore);
         evaluation.PublicStatus = NormalizeEvaluationPublicStatus(nextPublicStatus) ?? EvaluationDraft;
         evaluation.CommentText = EmptyToNull(nextCommentText);
-        evaluation.EvaluatorUserId = req.CurrentUserId;
+        evaluation.EvaluatorUserId = currentUserId.Value;
 
         await _db.SaveChangesAsync();
 
@@ -926,12 +960,11 @@ public class ClubsController : ControllerBase
     [HttpPatch("{clubId:int}/dissolve")]
     public async Task<IActionResult> Dissolve(int clubId, [FromBody] DissolveClubRequest req)
     {
-        if (req.CurrentUserId <= 0)
-        {
-            return BadRequest(new { message = "请选择当前操作用户。" });
-        }
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(req.CurrentUserId);
+        var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null)
         {
             return NotFound(new { message = "当前用户不存在。" });
@@ -1166,14 +1199,10 @@ public class ClubsController : ControllerBase
     private async Task<(IActionResult? Result, ClubMember? Member)> EnsureCanUpdateMemberGroupingAsync(
         int clubId,
         int memberId,
+        int currentUserId,
         UpdateClubMemberTermRequest req)
     {
-        if (req.CurrentUserId <= 0)
-        {
-            return (BadRequest(new { message = "请选择当前操作用户。" }), null);
-        }
-
-        var viewer = await LoadUserAsync(req.CurrentUserId);
+        var viewer = await LoadUserAsync(currentUserId);
         if (viewer is null)
         {
             return (NotFound(new { message = "当前用户不存在。" }), null);
@@ -1781,7 +1810,6 @@ public class ClubsController : ControllerBase
 
     private static string? ValidateApplicationRequest(CreateClubApplicationRequest req)
     {
-        if (req.CurrentUserId <= 0) return "请选择当前申请人。";
         if (string.IsNullOrWhiteSpace(req.Name)) return "社团名称不能为空。";
         if (string.IsNullOrWhiteSpace(req.Category)) return "社团类别不能为空。";
         if (string.IsNullOrWhiteSpace(req.ApplyReason)) return "申请理由不能为空。";

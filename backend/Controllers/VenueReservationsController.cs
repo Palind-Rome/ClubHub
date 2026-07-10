@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +53,7 @@ public class VenueReservationsController : ControllerBase
         [FromQuery] int? applicantUserId,
         [FromQuery] int? reviewerUserId)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         if (!IsValidStatus(status, AllowedReservationStatuses, out var normalizedStatus))
@@ -110,7 +111,7 @@ public class VenueReservationsController : ControllerBase
     [HttpGet("{reservationId:int}")]
     public async Task<IActionResult> GetById(int reservationId)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         var access = await GetReservationAccessAsync(currentUserId.Value);
@@ -138,7 +139,7 @@ public class VenueReservationsController : ControllerBase
     [HttpGet("occupied-slots")]
     public async Task<IActionResult> GetOccupiedSlots([FromQuery] int? venueId)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         var access = await GetReservationAccessAsync(currentUserId.Value);
@@ -180,7 +181,7 @@ public class VenueReservationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVenueReservationRequest req)
     {
-        var applicantUserId = GetAuthenticatedUserId();
+        var applicantUserId = User.GetUserId();
         if (applicantUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         var permission = await _authService.CheckPermissionAsync(applicantUserId.Value, ReservePermission, req.ClubId);
@@ -270,7 +271,7 @@ public class VenueReservationsController : ControllerBase
     [HttpPost("{reservationId:int}/review")]
     public async Task<IActionResult> Review(int reservationId, [FromBody] ReviewVenueReservationRequest req)
     {
-        var reviewerUserId = GetAuthenticatedUserId();
+        var reviewerUserId = User.GetUserId();
         if (reviewerUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         var permission = await _authService.CheckPermissionAsync(reviewerUserId.Value, ReviewPermission, null);
@@ -337,7 +338,7 @@ public class VenueReservationsController : ControllerBase
     [HttpDelete("{reservationId:int}")]
     public async Task<IActionResult> Delete(int reservationId)
     {
-        var operatorUserId = GetAuthenticatedUserId();
+        var operatorUserId = User.GetUserId();
         if (operatorUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
         var operatorUser = await _db.Users.FindAsync(operatorUserId.Value);
@@ -537,12 +538,6 @@ public class VenueReservationsController : ControllerBase
 
         var now = DateTime.UtcNow;
         return StoredTimeToUtc(reservation.StartAt.Value) <= now && StoredTimeToUtc(reservation.EndAt.Value) > now;
-    }
-
-    private int? GetAuthenticatedUserId()
-    {
-        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(rawUserId, out var userId) && userId > 0 ? userId : null;
     }
 
     private async Task<(IActionResult? Error, bool CanReview, IReadOnlyList<int> ClubIds)> GetReservationAccessAsync(int userId)

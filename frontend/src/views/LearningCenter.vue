@@ -258,7 +258,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await api.getClubs({ viewerUserId: currentUserId.value });
+    clubs.value = await api.getClubs();
   } catch (error) {
     clubs.value = [];
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));

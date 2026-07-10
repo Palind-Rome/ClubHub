@@ -263,15 +263,14 @@ async function loadPendingReservations() {
 }
 
 async function loadHistoryReservations() {
-  const reviewerId = reviewerUserId.value;
-  if (!reviewerId) return;
+  if (!reviewerUserId.value) return;
 
   historyLoading.value = true;
   historyError.value = "";
   try {
     const [approved, rejected] = await Promise.all([
-      fetchReservationsByStatus("approved", reviewerId),
-      fetchReservationsByStatus("rejected", reviewerId),
+      fetchReservationsByStatus("approved"),
+      fetchReservationsByStatus("rejected"),
     ]);
     historyReservations.value = [...approved, ...rejected];
   } catch (e) {
@@ -281,11 +280,8 @@ async function loadHistoryReservations() {
   }
 }
 
-async function fetchReservationsByStatus(status: "approved" | "rejected", reviewerId: number) {
-  const params = new URLSearchParams({
-    status,
-    reviewerUserId: String(reviewerId),
-  });
+async function fetchReservationsByStatus(status: "approved" | "rejected") {
+  const params = new URLSearchParams({ status });
   return requestJson<VenueReservation[]>(`/api/venue-reservations?${params.toString()}`);
 }
 
@@ -311,8 +307,7 @@ function openReview(reservation: VenueReservation, approved: boolean) {
 }
 
 async function submitReview() {
-  const reviewerId = reviewerUserId.value;
-  if (!reviewTarget.value || !reviewerId) {
+  if (!reviewTarget.value || !reviewerUserId.value) {
     ElMessage.error("缺少审批人或预约信息，无法提交审批。");
     return;
   }

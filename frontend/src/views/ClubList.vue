@@ -701,8 +701,7 @@ async function loadUsers() {
 
   usersLoading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
-    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    const data = await requestJson<UserSummary[]>(`/api/users`);
     if (requestId === usersRequestId) users.value = data;
   } catch (e) {
     if (requestId === usersRequestId) {
@@ -724,9 +723,8 @@ async function loadDialogUsers(clubId?: number) {
 
   dialogUsersLoading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
-    if (clubId) query.set("clubId", String(clubId));
-    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    const query = clubId ? `?clubId=${clubId}` : "";
+    const data = await requestJson<UserSummary[]>(`/api/users${query}`);
     if (requestId === dialogUsersRequestId) dialogUsers.value = data;
   } catch (e) {
     if (requestId === dialogUsersRequestId) {
@@ -755,7 +753,7 @@ async function loadData() {
   loading.value = true;
   error.value = "";
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    const query = new URLSearchParams();
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
     const shouldLoadApplications = canSubmitApplication.value || isReviewer.value;
     const shouldLoadClubs = canViewClubProfiles.value || canManageClubProfiles.value;
@@ -764,9 +762,7 @@ async function loadData() {
       shouldLoadApplications
         ? requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`)
         : Promise.resolve([]),
-      shouldLoadClubs
-        ? requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`)
-        : Promise.resolve([]),
+      shouldLoadClubs ? requestJson<Club[]>(`/api/clubs`) : Promise.resolve([]),
     ]);
     if (requestId !== dataRequestId) return;
     applications.value = applicationData;
@@ -789,10 +785,9 @@ async function loadData() {
 
 async function loadMembers() {
   const requestId = ++membersRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
   const include = includeHistory.value;
-  if (!userId || !clubId || !canViewSelectedClub()) {
+  if (!currentUserId.value || !clubId || !canViewSelectedClub()) {
     if (requestId === membersRequestId) {
       clubMembers.value = [];
     }
@@ -802,7 +797,6 @@ async function loadMembers() {
   memberLoading.value = true;
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(userId),
       includeHistory: String(include),
     });
     if (memberFilters.departmentName) query.set("departmentName", memberFilters.departmentName);
@@ -823,16 +817,14 @@ async function loadMembers() {
 
 async function loadEvaluationMembers() {
   const requestId = ++evaluationMembersRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
-  if (!userId || !clubId || !canViewSelectedClub()) {
+  if (!currentUserId.value || !clubId || !canViewSelectedClub()) {
     if (requestId === evaluationMembersRequestId) evaluationMembers.value = [];
     return;
   }
 
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(userId),
       includeHistory: "false",
     });
     const data = await requestJson<ClubMemberRecord[]>(
@@ -846,16 +838,15 @@ async function loadEvaluationMembers() {
 
 async function loadEvaluations() {
   const requestId = ++evaluationsRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
-  if (!userId || !clubId || evaluationViewClubs.value.length === 0) {
+  if (!currentUserId.value || !clubId || evaluationViewClubs.value.length === 0) {
     if (requestId === evaluationsRequestId) evaluations.value = [];
     return;
   }
 
   evaluationLoading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(userId) });
+    const query = new URLSearchParams();
     if (evaluationFilters.termName) query.set("termName", evaluationFilters.termName);
     query.set("evaluationType", "semester");
     const data = await requestJson<ClubEvaluationRecord[]>(
@@ -1022,7 +1013,6 @@ async function submitApplication() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         ...applicationForm,
       }),
     });
@@ -1077,7 +1067,6 @@ async function submitReview() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         ...reviewForm,
       }),
     });
@@ -1121,7 +1110,6 @@ async function submitProfile() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         name: profileForm.name,
         category: profileForm.category,
         description: emptyToNull(profileForm.description),
@@ -1166,7 +1154,7 @@ async function dissolveClub(row: Club) {
     await requestJson<void>(`/api/clubs/${row.id}/dissolve`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("社团已解散");
     await Promise.all([loadUsers(), loadData()]);
@@ -1202,7 +1190,7 @@ async function exitCurrentClub(row: IdentityRow) {
     await requestJson<void>(`/api/clubs/${row.clubId}/members/self/exit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("已退出社团");
     await refreshAuthSessionQuietly();
@@ -1239,7 +1227,7 @@ async function removeClubMember(row: ClubMemberRecord) {
     await requestJson<void>(`/api/clubs/${row.clubId}/members/${row.memberId}/exit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("成员已移出");
     await Promise.all([loadUsers(), loadData()]);
@@ -1384,7 +1372,6 @@ async function updateMemberTermFields(
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           ...fields,
         }),
       },
@@ -1468,7 +1455,6 @@ async function submitMemberGrouping() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           departmentName: emptyToNull(nextDepartment),
           groupName: emptyToNull(nextGroup),
         }),
@@ -1497,7 +1483,6 @@ async function submitMemberTerm() {
   termSaving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       userId: memberTermForm.userId,
       departmentName: emptyToNull(memberTermForm.departmentName),
       groupName: emptyToNull(memberTermForm.groupName),
@@ -1632,7 +1617,6 @@ async function submitEvaluation() {
   evaluationSaving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       evaluationType: evaluationForm.evaluationType,
       userId: evaluationForm.userId,
       termName: evaluationForm.termName,
