@@ -561,7 +561,7 @@ paths:
   /api/clubs/{clubId}/profile:
     patch:
       summary: 维护社团基础信息
-      description: 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+      description: 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
       operationId: updateClubProfile
       parameters:
         - name: clubId
@@ -1477,7 +1477,7 @@ paths:
           required: false
           schema:
             type: integer
-          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人或干部可获取该社团有效成员。
+          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人、干部或指导老师可获取该社团有效成员。
       responses:
         "200":
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表

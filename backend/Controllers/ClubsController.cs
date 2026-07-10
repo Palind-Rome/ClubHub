@@ -1042,7 +1042,7 @@ public class ClubsController : ControllerBase
         }
 
         if (!UsersController.IsSystemAdmin(viewer) &&
-            !UsersController.IsClubPrincipal(viewer, clubId) &&
+            !IsClubPrincipal(viewer, club) &&
             !IsClubAdvisor(viewer, clubId))
         {
             return (StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以维护该社团。" }), club, viewer);
@@ -1091,7 +1091,7 @@ public class ClubsController : ControllerBase
             return (null, club, viewer, member);
         }
 
-        if (!UsersController.IsClubPrincipal(viewer, clubId) && !IsClubAdvisor(viewer, clubId))
+        if (!IsClubPrincipal(viewer, club) && !IsClubAdvisor(viewer, clubId))
         {
             return (StatusCode(403, new { message = "只有社团管理员、系统管理员、本社团负责人或指导老师可以维护成员任期。" }), club, viewer, member);
         }
@@ -1127,7 +1127,7 @@ public class ClubsController : ControllerBase
 
         var canView =
             UsersController.IsPlatformAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId) ||
+            IsClubPrincipal(viewer, club) ||
             HasClubParticipantRole(viewer, clubId) ||
             viewer.ClubMemberships.Any(cm =>
                 cm.ClubId == clubId &&
@@ -1165,7 +1165,7 @@ public class ClubsController : ControllerBase
 
         var canRemove =
             UsersController.IsSystemAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId) ||
+            IsClubPrincipal(viewer, club) ||
             HasClubOfficerRole(viewer, clubId);
         if (!isSelfExit && !canRemove)
         {
@@ -1252,7 +1252,9 @@ public class ClubsController : ControllerBase
             return (BadRequest(new { message = validationError }), null);
         }
 
-        if (UsersController.IsPlatformAdmin(viewer) || UsersController.IsClubPrincipal(viewer, clubId))
+        if (UsersController.IsPlatformAdmin(viewer) ||
+            IsClubPrincipal(viewer, club) ||
+            IsClubAdvisor(viewer, clubId))
         {
             return (null, member);
         }
@@ -1267,7 +1269,7 @@ public class ClubsController : ControllerBase
         var scopes = GetCadreGroupingScopes(viewer, clubId).ToList();
         if (scopes.Count == 0)
         {
-            return (StatusCode(403, new { message = "只有本社团负责人或已登记部门、小组的干部可以维护成员分组。" }), null);
+            return (StatusCode(403, new { message = "只有本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null);
         }
 
         var canAssignToOwnGroup = scopes.Any(scope => GroupingMatchesScope(
@@ -2072,6 +2074,9 @@ public class ClubsController : ControllerBase
             ur.ClubId == clubId &&
             ur.Role is not null &&
             string.Equals(ur.Role.RoleCode, ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsClubPrincipal(User viewer, Club club) =>
+        club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
 
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships
