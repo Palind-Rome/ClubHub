@@ -123,11 +123,6 @@ import {
   DeleteVenueRequestToJSON,
 } from "../models/DeleteVenueRequest";
 import {
-  type DeleteVenueReservationRequest,
-  DeleteVenueReservationRequestFromJSON,
-  DeleteVenueReservationRequestToJSON,
-} from "../models/DeleteVenueReservationRequest";
-import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -268,6 +263,11 @@ import {
 import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
 import { type Venue, VenueFromJSON, VenueToJSON } from "../models/Venue";
 import {
+  type VenueOccupiedSlot,
+  VenueOccupiedSlotFromJSON,
+  VenueOccupiedSlotToJSON,
+} from "../models/VenueOccupiedSlot";
+import {
   type VenueReservation,
   VenueReservationFromJSON,
   VenueReservationToJSON,
@@ -360,9 +360,8 @@ export interface DeleteVenueOperationRequest {
   deleteVenueRequest: DeleteVenueRequest;
 }
 
-export interface DeleteVenueReservationOperationRequest {
+export interface DeleteVenueReservationRequest {
   reservationId: number;
-  deleteVenueReservationRequest: DeleteVenueReservationRequest;
 }
 
 export interface DissolveClubOperationRequest {
@@ -443,6 +442,10 @@ export interface GetUsersRequest {
 
 export interface GetVenueByIdRequest {
   venueId: number;
+}
+
+export interface GetVenueOccupiedSlotsRequest {
+  venueId?: number;
 }
 
 export interface GetVenueReservationByIdRequest {
@@ -1561,6 +1564,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/venue-reservations`;
 
     return {
@@ -1733,7 +1745,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for deleteVenueReservation without sending the request
    */
   async deleteVenueReservationRequestOpts(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
@@ -1742,18 +1754,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["deleteVenueReservationRequest"] == null) {
-      throw new runtime.RequiredError(
-        "deleteVenueReservationRequest",
-        'Required parameter "deleteVenueReservationRequest" was null or undefined when calling deleteVenueReservation().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
@@ -1766,7 +1778,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: DeleteVenueReservationRequestToJSON(requestParameters["deleteVenueReservationRequest"]),
     };
   }
 
@@ -1774,7 +1785,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地预约
    */
   async deleteVenueReservationRaw(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
     const requestOptions = await this.deleteVenueReservationRequestOpts(requestParameters);
@@ -1787,7 +1798,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地预约
    */
   async deleteVenueReservation(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteVenueReservationRaw(requestParameters, initOverrides);
@@ -2827,6 +2838,67 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getVenueOccupiedSlots without sending the request
+   */
+  async getVenueOccupiedSlotsRequestOpts(
+    requestParameters: GetVenueOccupiedSlotsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["venueId"] != null) {
+      queryParameters["venueId"] = requestParameters["venueId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/venue-reservations/occupied-slots`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+   * 获取场地已占用时段
+   */
+  async getVenueOccupiedSlotsRaw(
+    requestParameters: GetVenueOccupiedSlotsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<VenueOccupiedSlot>>> {
+    const requestOptions = await this.getVenueOccupiedSlotsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(VenueOccupiedSlotFromJSON),
+    );
+  }
+
+  /**
+   * 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+   * 获取场地已占用时段
+   */
+  async getVenueOccupiedSlots(
+    requestParameters: GetVenueOccupiedSlotsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<VenueOccupiedSlot>> {
+    const response = await this.getVenueOccupiedSlotsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getVenueReservationById without sending the request
    */
   async getVenueReservationByIdRequestOpts(
@@ -2842,6 +2914,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
@@ -2912,6 +2993,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations`;
 
@@ -3826,6 +3916,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations/{reservationId}/review`;
     urlPath = urlPath.replace(

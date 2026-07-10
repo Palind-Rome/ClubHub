@@ -33,6 +33,14 @@ const canManageVenues = computed(() => {
     permissions.includes("venue:disable")
   );
 });
+const canAccessVenueReservations = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("venue:reserve") ||
+    permissions.includes("venue:review")
+  );
+});
 
 function refreshSession() {
   auth.value = readAuth();
@@ -79,7 +87,9 @@ onUnmounted(() => {
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
         <el-menu-item v-if="canManageVenues" index="/venues">场地管理</el-menu-item>
-        <el-menu-item index="/venue-reservations">场地预约</el-menu-item>
+        <el-menu-item v-if="canAccessVenueReservations" index="/venue-reservations">
+          场地预约
+        </el-menu-item>
         <div class="session">
           <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
             roleSummary

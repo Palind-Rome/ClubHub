@@ -13,6 +13,7 @@ import {
   matchesVenueSearch,
   type VenueSearchIndex,
 } from "../venueSearch";
+import { requestJson } from "../composables/useApiRequest";
 
 interface Venue {
   id: number;
@@ -405,9 +406,7 @@ async function updateVenueStatus(
 }
 
 async function fetchVenueReservations(venueId: number) {
-  const res = await fetch(`/api/venue-reservations?venueId=${venueId}`);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as VenueReservation[];
+  return requestJson<VenueReservation[]>(`/api/venue-reservations?venueId=${venueId}`);
 }
 
 function findStatusConflictReservations(

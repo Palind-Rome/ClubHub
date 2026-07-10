@@ -1745,6 +1745,8 @@ paths:
     get:
       summary: 获取场地预约列表
       operationId: getVenueReservations
+      security:
+        - bearerAuth: []
       parameters:
         - name: status
           in: query
@@ -1786,9 +1788,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VenueReservation"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有查看相应预约数据的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
     post:
       summary: 提交场地预约申请
       operationId: createVenueReservation
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1808,8 +1824,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有为该社团提交场地预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
-          description: 场地、社团、活动或申请人不存在
+          description: 场地、社团或关联活动不存在
           content:
             application/json:
               schema:
@@ -1821,10 +1849,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/venue-reservations/occupied-slots:
+    get:
+      summary: 获取场地已占用时段
+      description: 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+      operationId: getVenueOccupiedSlots
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: venueId
+          in: query
+          required: false
+          description: 按场地筛选。
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 当前及未来仍有效的已通过预约时段
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VenueOccupiedSlot"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有场地预约申请或审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/venue-reservations/{reservationId}:
     get:
       summary: 获取场地预约详情
       operationId: getVenueReservationById
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
@@ -1838,6 +1904,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VenueReservation"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有查看该预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 预约不存在
           content:
@@ -1847,21 +1925,23 @@ paths:
     delete:
       summary: 删除场地预约
       operationId: deleteVenueReservation
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DeleteVenueReservationRequest"
       responses:
         "204":
           description: 预约已删除
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有删除该预约的权限
           content:
@@ -1885,6 +1965,8 @@ paths:
     post:
       summary: 审批场地预约
       operationId: reviewVenueReservation
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
@@ -1910,14 +1992,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "404":
-          description: 预约或审批人不存在
+        "401":
+          description: 登录状态无效
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有场地预约审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 预约不存在
           content:
             application/json:
               schema:
@@ -3827,15 +3915,6 @@ components:
       required:
         - operatorUserId
 
-    DeleteVenueReservationRequest:
-      type: object
-      properties:
-        operatorUserId:
-          type: integer
-          description: 执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。
-      required:
-        - operatorUserId
-
     VenueReservation:
       type: object
       properties:
@@ -3900,6 +3979,31 @@ components:
         - status
         - createdAt
 
+    VenueOccupiedSlot:
+      type: object
+      description: 已通过预约的脱敏占用时段，仅用于场地状态展示和前端冲突提示。
+      properties:
+        reservationId:
+          type: integer
+        venueId:
+          type: integer
+        venueName:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+          description: 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+        endTime:
+          type: string
+          format: date-time
+          description: 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+      required:
+        - reservationId
+        - venueId
+        - venueName
+        - startTime
+        - endTime
+
     CreateVenueReservationRequest:
       type: object
       properties:
@@ -3910,8 +4014,6 @@ components:
         activityId:
           type: integer
           nullable: true
-        applicantUserId:
-          type: integer
         startTime:
           type: string
           format: date-time
@@ -3927,7 +4029,6 @@ components:
       required:
         - venueId
         - clubId
-        - applicantUserId
         - startTime
         - endTime
         - purpose
@@ -3935,8 +4036,6 @@ components:
     ReviewVenueReservationRequest:
       type: object
       properties:
-        reviewerUserId:
-          type: integer
         approved:
           type: boolean
         reviewComment:
@@ -3944,7 +4043,6 @@ components:
           nullable: true
           maxLength: 255
       required:
-        - reviewerUserId
         - approved
 
     Project:
