@@ -3781,6 +3781,281 @@ paths:
           description: 当前用户无权更新该学习记录。
         "404":
           description: 学习记录或当前用户不存在。
+  /api/materials:
+    get:
+      summary: List activity materials
+      operationId: getMaterials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, disabled]
+      responses:
+        "200":
+          description: Materials visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Material"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Create an activity material
+      operationId: createMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMaterialRequest"
+      responses:
+        "201":
+          description: Material created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows:
+    get:
+      summary: List material borrow records
+      operationId: getMaterialBorrows
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: materialId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: borrowerUserId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [borrowed, returned, damaged]
+      responses:
+        "200":
+          description: Borrow records visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaterialBorrow"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Register a material borrow
+      operationId: borrowMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowMaterialRequest"
+      responses:
+        "201":
+          description: Borrow registered and available quantity reduced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Material or borrower not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Available material stock is not enough.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/return:
+    post:
+      summary: Register material return
+      operationId: returnMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Return registered and available quantity restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Borrow record is not in borrowed status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record or material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/damage:
+    post:
+      summary: Register material damage
+      operationId: damageMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMaterialDamageRequest"
+      responses:
+        "200":
+          description: Damage registered with compensation amount.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid damage payload or borrow status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+
 components:
   securitySchemes:
     bearerAuth:
@@ -6587,6 +6862,171 @@ components:
           maxLength: 255
       required:
         - approved
+
+    Material:
+      type: object
+      properties:
+        id:
+          type: integer
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        name:
+          type: string
+        specification:
+          type: string
+          nullable: true
+        totalQuantity:
+          type: integer
+        availableQuantity:
+          type: integer
+        borrowedQuantity:
+          type: integer
+        storageLocation:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, disabled]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clubId
+        - clubName
+        - name
+        - totalQuantity
+        - availableQuantity
+        - borrowedQuantity
+        - status
+        - createdAt
+
+    MaterialBorrow:
+      type: object
+      properties:
+        id:
+          type: integer
+        materialId:
+          type: integer
+        materialName:
+          type: string
+        specification:
+          type: string
+          nullable: true
+        clubId:
+          type: integer
+        clubName:
+          type: string
+        borrowerUserId:
+          type: integer
+        borrowerName:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        borrowAt:
+          type: string
+          format: date-time
+        expectedReturnAt:
+          type: string
+          format: date-time
+          nullable: true
+        returnAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [borrowed, returned, damaged]
+        damageDescription:
+          type: string
+          nullable: true
+        compensationAmount:
+          type: number
+          format: double
+        overdue:
+          type: boolean
+      required:
+        - id
+        - materialId
+        - materialName
+        - clubId
+        - clubName
+        - borrowerUserId
+        - quantity
+        - borrowAt
+        - status
+        - compensationAmount
+        - overdue
+
+    CreateMaterialRequest:
+      type: object
+      properties:
+        clubId:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        specification:
+          type: string
+          nullable: true
+          maxLength: 255
+        totalQuantity:
+          type: integer
+          minimum: 1
+        availableQuantity:
+          type: integer
+          nullable: true
+          minimum: 0
+        storageLocation:
+          type: string
+          nullable: true
+          maxLength: 255
+        status:
+          type: string
+          nullable: true
+          enum: [active, disabled]
+      required:
+        - clubId
+        - name
+        - totalQuantity
+
+    BorrowMaterialRequest:
+      type: object
+      properties:
+        materialId:
+          type: integer
+        clubId:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        expectedReturnAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - materialId
+        - clubId
+        - quantity
+
+    RegisterMaterialDamageRequest:
+      type: object
+      properties:
+        damageDescription:
+          type: string
+          minLength: 1
+          maxLength: 255
+        compensationAmount:
+          type: number
+          format: double
+          minimum: 0
+      required:
+        - damageDescription
+        - compensationAmount
 
     Project:
       type: object

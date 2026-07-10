@@ -11,6 +11,7 @@ import ProjectWorkspace from "../views/ProjectWorkspace.vue";
 import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
 import LearningCenter from "../views/LearningCenter.vue";
+import MaterialBorrow from "../views/MaterialBorrow.vue";
 import { hasCompletedSession, readAuth } from "../authSession";
 
 const router = createRouter({
@@ -33,6 +34,7 @@ const router = createRouter({
     { path: "/venues", component: VenueManage },
     { path: "/venue-reservations", component: VenueReservationApply },
     { path: "/learning", component: LearningCenter },
+    { path: "/materials", component: MaterialBorrow },
   ],
 });
 
@@ -44,6 +46,14 @@ router.beforeEach((to) => {
   if (to.path === "/venue-reservations") {
     const permissions = readAuth()?.permissions ?? [];
     const canAccess = ["*", "venue:reserve", "venue:review"].some((permission) =>
+      permissions.includes(permission),
+    );
+    if (!canAccess) return { path: "/clubs" };
+  }
+
+  if (to.path === "/materials") {
+    const permissions = readAuth()?.permissions ?? [];
+    const canAccess = ["*", "material:borrow:manage"].some((permission) =>
       permissions.includes(permission),
     );
     if (!canAccess) return { path: "/clubs" };

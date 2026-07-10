@@ -55,6 +55,10 @@ const canAccessVenueReservations = computed(() => {
     permissions.includes("venue:review")
   );
 });
+const canAccessMaterialBorrows = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes("material:borrow:manage");
+});
 
 function refreshSession() {
   const nextAuth = readAuth();
@@ -117,6 +121,7 @@ onUnmounted(() => {
           场地预约
         </el-menu-item>
         <el-menu-item index="/learning">学习中心</el-menu-item>
+        <el-menu-item v-if="canAccessMaterialBorrows" index="/materials"> 物资借还 </el-menu-item>
       </el-menu>
       <div class="header-actions">
         <div class="session">

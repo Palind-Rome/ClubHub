@@ -31,6 +31,8 @@ public class ClubHubDbContext : DbContext
     public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
+    public DbSet<Material> Materials => Set<Material>();
+    public DbSet<MaterialBorrow> MaterialBorrows => Set<MaterialBorrow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -488,33 +490,30 @@ public class ClubHubDbContext : DbContext
              .OnDelete(DeleteBehavior.NoAction);
         });
 
-        modelBuilder.Entity<Venue>(e =>
+
+        modelBuilder.Entity<Material>(e =>
         {
-            e.HasKey(v => v.VenueId);
+            e.HasKey(m => m.MaterialId);
+            e.HasOne(m => m.Club)
+             .WithMany()
+             .HasForeignKey(m => m.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(m => m.Borrows)
+             .WithOne(b => b.Material)
+             .HasForeignKey(b => b.MaterialId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
-        modelBuilder.Entity<VenueReservation>(e =>
+        modelBuilder.Entity<MaterialBorrow>(e =>
         {
-            e.HasKey(r => r.ReservationId);
-            e.HasOne(r => r.Venue)
-             .WithMany(v => v.Reservations)
-             .HasForeignKey(r => r.VenueId)
-             .OnDelete(DeleteBehavior.NoAction);
-            e.HasOne(r => r.Club)
+            e.HasKey(b => b.BorrowId);
+            e.HasOne(b => b.Club)
              .WithMany()
-             .HasForeignKey(r => r.ClubId)
+             .HasForeignKey(b => b.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
-            e.HasOne(r => r.Activity)
+            e.HasOne(b => b.BorrowerUser)
              .WithMany()
-             .HasForeignKey(r => r.ActivityId)
-             .OnDelete(DeleteBehavior.NoAction);
-            e.HasOne(r => r.ApplicantUser)
-             .WithMany()
-             .HasForeignKey(r => r.ApplicantUserId)
-             .OnDelete(DeleteBehavior.NoAction);
-            e.HasOne(r => r.ReviewerUser)
-             .WithMany()
-             .HasForeignKey(r => r.ReviewerUserId)
+             .HasForeignKey(b => b.BorrowerUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }
