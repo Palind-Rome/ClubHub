@@ -251,7 +251,7 @@ public class AuthService
         var roles = await GetBaseRoleRowsAsync();
         if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
         {
-            await SaveIdentityRoleAsync();
+            await SaveIdentityRoleAsync(user, roles);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -278,7 +278,7 @@ public class AuthService
         var roles = await GetBaseRoleRowsAsync();
         if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
         {
-            await SaveIdentityRoleAsync();
+            await SaveIdentityRoleAsync(user, roles);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -828,7 +828,7 @@ public class AuthService
         return true;
     }
 
-    private async Task SaveIdentityRoleAsync()
+    private async Task SaveIdentityRoleAsync(User user, IReadOnlyList<Role> roles)
     {
         try
         {
@@ -840,6 +840,19 @@ public class AuthService
                 .Where(entry => entry.State == EntityState.Added))
             {
                 entry.State = EntityState.Detached;
+            }
+
+            var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
+            var role = roles.Single(candidate => candidate.RoleCode == roleCode);
+            var concurrentAssignmentExists = await _db.UserRoles
+                .AsNoTracking()
+                .AnyAsync(ur =>
+                    ur.UserId == user.UserId &&
+                    ur.RoleId == role.RoleId &&
+                    ur.ClubId == null);
+            if (!concurrentAssignmentExists)
+            {
+                throw;
             }
         }
     }
