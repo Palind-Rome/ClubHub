@@ -15,17 +15,11 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 活动签到/签退请求。签到用户由服务端从登录态确定，客户端只需提交签到或签退码。
  * @export
  * @interface ActivitySignRequest
  */
 export interface ActivitySignRequest {
-  /**
-   *
-   * @type {number}
-   * @memberof ActivitySignRequest
-   */
-  userId: number;
   /**
    *
    * @type {string}
@@ -38,7 +32,6 @@ export interface ActivitySignRequest {
  * Check if a given object implements the ActivitySignRequest interface.
  */
 export function instanceOfActivitySignRequest(value: object): value is ActivitySignRequest {
-  if (!("userId" in value) || value["userId"] === undefined) return false;
   if (!("code" in value) || value["code"] === undefined) return false;
   return true;
 }
@@ -55,7 +48,6 @@ export function ActivitySignRequestFromJSONTyped(
     return json;
   }
   return {
-    userId: json["userId"],
     code: json["code"],
   };
 }
@@ -73,7 +65,6 @@ export function ActivitySignRequestToJSONTyped(
   }
 
   return {
-    userId: value["userId"],
     code: value["code"],
   };
 }

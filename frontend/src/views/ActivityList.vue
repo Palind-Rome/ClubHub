@@ -54,8 +54,7 @@ interface ClubOption {
 }
 
 interface CreateActivityForm {
-  clubId: number;
-  creatorUserId: number | null;
+  clubId: number | null;
   title: string;
   activityType: string;
   description: string;
@@ -68,7 +67,6 @@ interface CreateActivityForm {
 
 interface ReviewActivityForm {
   approved: boolean;
-  reviewerUserId: number | null;
   comment: string;
 }
 
@@ -117,10 +115,39 @@ const currentUserDisplay = computed(() => {
   if (!user) return "未登录";
   return user.realName?.trim() || user.username?.trim() || "未知用户";
 });
+const currentRoles = computed(() => auth.value?.roles ?? []);
+const creatableClubs = computed<ClubOption[]>(() => {
+  const fromRoles = clubIdsWithPermission("activity:create");
+
+  if ((auth.value?.permissions ?? []).includes("*")) {
+    return [...clubOptions.value].sort((a, b) => a.id - b.id);
+  }
+
+  const clubMap = new Map<number, string>(
+    activities.value.map((activity) => [
+      activity.clubId,
+      activity.clubName || `社团 ${activity.clubId}`,
+    ]),
+  );
+
+  return fromRoles.map((id) => ({
+    id,
+    name: clubMap.get(id) ?? clubOptions.value.find((club) => club.id === id)?.name ?? `社团 ${id}`,
+  }));
+});
+const canCreateActivity = computed(() => hasPermission("activity:create"));
+const pageTitle = computed(() =>
+  canCreateActivity.value ||
+  hasPermission("activity:review") ||
+  hasPermission("activity:checkin:manage") ||
+  hasPermission("budget:apply") ||
+  hasPermission("budget:review")
+    ? "活动管理"
+    : "活动",
+);
 
 const createForm = ref<CreateActivityForm>({
-  clubId: 0,
-  creatorUserId: null,
+  clubId: null,
   title: "",
   activityType: "",
   description: "",
@@ -133,7 +160,6 @@ const createForm = ref<CreateActivityForm>({
 
 const reviewForm = ref<ReviewActivityForm>({
   approved: true,
-  reviewerUserId: null,
   comment: "",
 });
 
@@ -311,6 +337,99 @@ function emptyToNull(value: string) {
   return value ? value : null;
 }
 
+function hasPermission(permission: string) {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes(permission);
+}
+
+function clubIdsWithPermission(permission: string) {
+  return [
+    ...new Set(
+      currentRoles.value
+        .filter(
+          (role) =>
+            (role.permissions ?? []).includes("*") || (role.permissions ?? []).includes(permission),
+        )
+        .flatMap((role) => role.clubIds ?? [])
+        .filter((clubId): clubId is number => Number.isFinite(clubId)),
+    ),
+  ].sort((a, b) => a - b);
+}
+
+function hasScopedPermission(permission: string, clubId: number) {
+  if ((auth.value?.permissions ?? []).includes("*")) return true;
+
+  return currentRoles.value.some((role) => {
+    const permissions = role.permissions ?? [];
+    if (permissions.includes("*")) return true;
+    if (!permissions.includes(permission)) return false;
+
+    const code = (role.code ?? "").toUpperCase();
+    const scope = (role.scope ?? "").toLowerCase();
+    const clubIds = role.clubIds ?? [];
+    const matchesClub = clubIds.includes(clubId) || role.clubId === clubId;
+
+    // 与后端 AuthService.RoleAllows 对齐：指导老师、社团范围角色必须匹配社团。
+    if (code === "ADVISOR" || scope === "club") {
+      return matchesClub;
+    }
+
+    // 系统范围角色（如社团管理员的审核权限）可跨社团生效。
+    if (scope === "system") {
+      return true;
+    }
+
+    return matchesClub;
+  });
+}
+
+function canReviewActivity(activity: Activity) {
+  return (
+    activity.status === "pending_review" && hasScopedPermission("activity:review", activity.clubId)
+  );
+}
+
+function canManageCheckin(activity: Activity) {
+  return (
+    (activity.status === "published" || activity.status === "ongoing") &&
+    hasScopedPermission("activity:checkin:manage", activity.clubId)
+  );
+}
+
+function canSignActivity(activity: Activity) {
+  return (
+    (activity.status === "published" || activity.status === "ongoing") &&
+    hasScopedPermission("activity:checkin", activity.clubId)
+  );
+}
+
+function canViewParticipations(activity: Activity) {
+  return (
+    hasScopedPermission("activity:checkin:manage", activity.clubId) ||
+    hasScopedPermission("activity:review", activity.clubId) ||
+    hasPermission("own:records:view") ||
+    hasScopedPermission("activity:checkin", activity.clubId)
+  );
+}
+
+function canApplyBudget(activity: Activity) {
+  return hasScopedPermission("budget:apply", activity.clubId);
+}
+
+function canReviewBudget(activity: Activity) {
+  return (
+    activity.budgetStatus === "pending" && hasScopedPermission("budget:review", activity.clubId)
+  );
+}
+
+function canManageMaterial(activity: Activity) {
+  return hasScopedPermission("material:borrow:manage", activity.clubId);
+}
+
+function showBudgetMenu(activity: Activity) {
+  return canApplyBudget(activity) || canReviewBudget(activity);
+}
+
 async function loadActivities() {
   loading.value = true;
   error.value = "";
@@ -321,10 +440,8 @@ async function loadActivities() {
     }
 
     const url = query.toString() ? `/api/activities?${query}` : "/api/activities";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as Activity[];
-    activities.value = data.map((activity) => ({
+    activities.value = await requestJson<Activity[]>(url);
+    activities.value = activities.value.map((activity) => ({
       ...activity,
       currentParticipants: activity.currentParticipants ?? 0,
       isRegistered: activity.isRegistered ?? false,
@@ -371,10 +488,14 @@ function registerButtonText(activity: Activity) {
 }
 
 function openCreate() {
+  if (!canCreateActivity.value) {
+    ElMessage.warning("当前账号没有创建活动权限。");
+    return;
+  }
+
   const defaults = buildDefaultCreateTimes();
   createForm.value = {
-    clubId: clubOptions.value[0]?.id ?? 0,
-    creatorUserId: currentUserId.value,
+    clubId: creatableClubs.value[0]?.id ?? null,
     title: "",
     activityType: "",
     description: "",
@@ -388,25 +509,25 @@ function openCreate() {
 }
 
 async function createActivity() {
-  if (
-    !createForm.value.clubId ||
-    !createForm.value.title ||
-    !createForm.value.startTime ||
-    !createForm.value.endTime
-  ) {
-    error.value = "请选择主办社团，并填写活动标题、开始时间和结束时间。";
+  if (!createForm.value.clubId) {
+    error.value = "请选择可管理的主办社团。";
+    ElMessage.error(error.value);
+    return;
+  }
+
+  if (!createForm.value.title || !createForm.value.startTime || !createForm.value.endTime) {
+    error.value = "请填写活动标题、开始时间和结束时间。";
     ElMessage.error(error.value);
     return;
   }
 
   saving.value = true;
   try {
-    const res = await fetch("/api/activities", {
+    await requestJson<Activity>("/api/activities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clubId: createForm.value.clubId,
-        creatorUserId: currentUserId.value,
         title: createForm.value.title,
         activityType: emptyToNull(createForm.value.activityType),
         description: emptyToNull(createForm.value.description),
@@ -417,7 +538,6 @@ async function createActivity() {
         registrationDeadline: emptyToNull(createForm.value.registrationDeadline),
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
     createDialogVisible.value = false;
     ElMessage.success("活动已提交审核");
     await loadActivities();
@@ -430,22 +550,20 @@ async function createActivity() {
 }
 
 async function registerActivity(activity: Activity) {
-  const userId = currentUserId.value;
-  if (!userId) {
+  if (!currentUserId.value) {
     ElMessage.warning("请先登录后再报名");
     return;
   }
 
   registeringActivityId.value = activity.id;
   try {
-    const res = await fetch(`/api/activities/${activity.id}/registrations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    if (!res.ok) throw new Error(await readErrorMessage(res));
+    const result = await requestJson<{ currentParticipants?: number; message?: string }>(
+      `/api/activities/${activity.id}/registrations`,
+      {
+        method: "POST",
+      },
+    );
 
-    const result = (await res.json()) as { currentParticipants?: number; message?: string };
     activity.currentParticipants = result.currentParticipants ?? activity.currentParticipants + 1;
     activity.isRegistered = true;
     ElMessage.success(result.message || "报名成功");
@@ -457,15 +575,14 @@ async function registerActivity(activity: Activity) {
 }
 
 function openReview(activity: Activity) {
-  if (!currentUserId.value) {
-    ElMessage.warning("请先登录后再审核活动");
+  if (!canReviewActivity(activity)) {
+    ElMessage.warning("当前账号没有审核该活动的权限。");
     return;
   }
 
   currentActivity.value = activity;
   reviewForm.value = {
     approved: true,
-    reviewerUserId: currentUserId.value,
     comment: "",
   };
   reviewDialogVisible.value = true;
@@ -476,15 +593,14 @@ async function reviewActivity() {
 
   saving.value = true;
   try {
-    const res = await fetch(`/api/activities/${currentActivity.value.id}/review`, {
+    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...reviewForm.value,
-        reviewerUserId: currentUserId.value,
+        approved: reviewForm.value.approved,
+        comment: emptyToNull(reviewForm.value.comment),
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
     reviewDialogVisible.value = false;
     ElMessage.success("审核结果已保存");
     await loadActivities();
@@ -497,8 +613,8 @@ async function reviewActivity() {
 }
 
 function openBudget(activity: Activity) {
-  if (!currentUserId.value) {
-    ElMessage.warning("请先登录后再提交经费申请");
+  if (!canApplyBudget(activity)) {
+    ElMessage.warning("当前账号没有该社团的经费申请权限。");
     return;
   }
 
@@ -542,8 +658,8 @@ async function applyBudget() {
 }
 
 function openBudgetReview(activity: Activity) {
-  if (!currentUserId.value) {
-    ElMessage.warning("请先登录后再审批经费申请");
+  if (!canReviewBudget(activity)) {
+    ElMessage.warning("当前账号没有该社团的经费审批权限。");
     return;
   }
 
@@ -556,6 +672,11 @@ function openBudgetReview(activity: Activity) {
 }
 
 function openMaterialPlaceholder(activity: Activity) {
+  if (!canManageMaterial(activity)) {
+    ElMessage.warning("当前账号没有该社团的物资借用管理权限。");
+    return;
+  }
+
   currentActivity.value = activity;
   ElMessage.info("活动物资借用、归还与损坏登记将在 #23 接入。");
 }
@@ -585,6 +706,11 @@ async function reviewBudget() {
 }
 
 function openSettings(activity: Activity) {
+  if (!canManageCheckin(activity)) {
+    ElMessage.warning("当前账号没有该社团的签到管理权限。");
+    return;
+  }
+
   currentActivity.value = activity;
   const recommended = buildRecommendedCheckinSettings(activity);
   const useRecommended = !hasExistingCheckinSettings(activity);
@@ -643,12 +769,11 @@ async function saveCheckinSettings() {
 
   saving.value = true;
   try {
-    const res = await fetch(`/api/activities/${currentActivity.value.id}/checkin-settings`, {
+    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/checkin-settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settingsForm.value),
     });
-    if (!res.ok) throw new Error(await res.text());
     settingsDialogVisible.value = false;
     ElMessage.success("签到签退设置已保存");
     await loadActivities();
@@ -661,16 +786,14 @@ async function saveCheckinSettings() {
 }
 
 function openSign(activity: Activity, type: "checkin" | "checkout") {
-  const userId = currentUserId.value;
-  if (!userId) {
-    ElMessage.warning("请先登录后再签到签退");
+  if (!canSignActivity(activity)) {
+    ElMessage.warning("当前账号没有该社团的签到签退权限。");
     return;
   }
 
   currentActivity.value = activity;
   signForm.value = {
     type,
-    userId,
     code: "",
   };
   signDialogVisible.value = true;
@@ -681,15 +804,13 @@ async function submitSign() {
 
   saving.value = true;
   try {
-    const res = await fetch(`/api/activities/${currentActivity.value.id}/${signForm.value.type}`, {
+    await requestJson(`/api/activities/${currentActivity.value.id}/${signForm.value.type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: signForm.value.userId,
         code: signForm.value.code,
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
     signDialogVisible.value = false;
     ElMessage.success(signForm.value.type === "checkin" ? "签到成功" : "签退成功");
     await loadActivities();
@@ -702,13 +823,18 @@ async function submitSign() {
 }
 
 async function openParticipations(activity: Activity) {
+  if (!canViewParticipations(activity)) {
+    ElMessage.warning("当前账号没有查看参与记录的权限。");
+    return;
+  }
+
   currentActivity.value = activity;
   participationsDialogVisible.value = true;
   participationLoading.value = true;
   try {
-    const res = await fetch(`/api/activities/${activity.id}/participations`);
-    if (!res.ok) throw new Error(await res.text());
-    participations.value = await res.json();
+    participations.value = await requestJson<ActivityParticipation[]>(
+      `/api/activities/${activity.id}/participations`,
+    );
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载参与记录失败";
     ElMessage.error(error.value);
@@ -716,26 +842,12 @@ async function openParticipations(activity: Activity) {
     participationLoading.value = false;
   }
 }
-
-async function readErrorMessage(res: Response) {
-  const body = await res.text();
-  if (!body) {
-    return `请求失败（${res.status}）`;
-  }
-
-  try {
-    const parsed = JSON.parse(body) as { message?: string };
-    return parsed.message || `请求失败（${res.status}）`;
-  } catch {
-    return body;
-  }
-}
 </script>
 
 <template>
   <div class="page">
     <div class="toolbar">
-      <h2>活动管理</h2>
+      <h2>{{ pageTitle }}</h2>
       <div class="toolbar-actions">
         <el-select v-model="statusFilter" placeholder="筛选状态" class="status-filter">
           <el-option
@@ -745,7 +857,7 @@ async function readErrorMessage(res: Response) {
             :value="option.value"
           />
         </el-select>
-        <el-button type="primary" @click="openCreate">创建活动</el-button>
+        <el-button v-if="canCreateActivity" type="primary" @click="openCreate">创建活动</el-button>
       </div>
     </div>
 
@@ -781,14 +893,19 @@ async function readErrorMessage(res: Response) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="360" align="center">
+      <el-table-column label="操作" min-width="420" width="420" align="center" fixed="right">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
               <el-button size="small" plain>活动详情</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="openParticipations(row)">参与记录</el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="canViewParticipations(row)"
+                    @click="openParticipations(row)"
+                  >
+                    参与记录
+                  </el-dropdown-item>
                   <el-dropdown-item
                     v-if="row.status === 'published'"
                     :disabled="!canRegister(row) || registeringActivityId === row.id"
@@ -796,49 +913,54 @@ async function readErrorMessage(res: Response) {
                   >
                     {{ registerButtonText(row) }}
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="row.status === 'pending_review'" @click="openReview(row)">
+                  <el-dropdown-item v-if="canReviewActivity(row)" @click="openReview(row)">
                     活动审核
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
 
-            <el-dropdown trigger="click">
+            <el-dropdown v-if="showBudgetMenu(row)" trigger="click">
               <el-button size="small" type="primary" plain>经费管理</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
+                    v-if="canApplyBudget(row)"
                     :disabled="row.budgetStatus === 'approved'"
                     @click="openBudget(row)"
                   >
                     经费申请
                   </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="row.budgetStatus === 'pending'"
-                    @click="openBudgetReview(row)"
-                  >
+                  <el-dropdown-item v-if="canReviewBudget(row)" @click="openBudgetReview(row)">
                     经费审批
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
 
-            <el-button size="small" plain @click="openMaterialPlaceholder(row)">
+            <el-button
+              v-if="canManageMaterial(row)"
+              size="small"
+              plain
+              @click="openMaterialPlaceholder(row)"
+            >
               物资借用
             </el-button>
 
-            <el-dropdown trigger="click">
-              <el-button
-                size="small"
-                type="success"
-                plain
-                :disabled="row.status !== 'published' && row.status !== 'ongoing'"
-              >
-                签到管理
-              </el-button>
+            <el-button
+              v-if="canManageCheckin(row)"
+              size="small"
+              type="warning"
+              plain
+              @click="openSettings(row)"
+            >
+              签到设置
+            </el-button>
+
+            <el-dropdown v-if="canSignActivity(row)" trigger="click">
+              <el-button size="small" type="success" plain>签到签退</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="openSettings(row)">签到设置</el-dropdown-item>
                   <el-dropdown-item @click="openSign(row, 'checkin')">签到</el-dropdown-item>
                   <el-dropdown-item @click="openSign(row, 'checkout')">签退</el-dropdown-item>
                 </el-dropdown-menu>
@@ -852,9 +974,13 @@ async function readErrorMessage(res: Response) {
     <el-dialog v-model="createDialogVisible" title="创建活动" width="620px">
       <el-form label-position="top">
         <el-form-item label="主办社团" required>
-          <el-select v-model="createForm.clubId" filterable placeholder="请选择主办社团">
+          <el-select
+            v-model="createForm.clubId"
+            placeholder="请选择可管理的社团"
+            style="width: 100%"
+          >
             <el-option
-              v-for="club in clubOptions"
+              v-for="club in creatableClubs"
               :key="club.id"
               :label="club.name"
               :value="club.id"
@@ -1184,6 +1310,7 @@ async function readErrorMessage(res: Response) {
   margin: 0 auto;
   padding: 0 12px;
   box-sizing: border-box;
+  scrollbar-gutter: stable;
 }
 .toolbar {
   display: flex;
@@ -1204,6 +1331,9 @@ async function readErrorMessage(res: Response) {
 }
 .activity-table {
   width: 100%;
+}
+.activity-table :deep(.el-table__inner-wrapper) {
+  overflow-x: auto;
 }
 .time-range {
   display: inline-block;
@@ -1232,15 +1362,20 @@ async function readErrorMessage(res: Response) {
 }
 .action-buttons {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
   gap: 6px;
+  min-width: 400px;
+  min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {
   display: inline-flex;
+  flex-shrink: 0;
 }
 .action-buttons :deep(.el-button) {
   margin-left: 0;
+  flex-shrink: 0;
 }
 .settings-hint {
   margin-bottom: 12px;

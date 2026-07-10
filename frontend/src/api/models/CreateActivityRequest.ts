@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
  * @export
  * @interface CreateActivityRequest
  */
@@ -26,12 +26,6 @@ export interface CreateActivityRequest {
    * @memberof CreateActivityRequest
    */
   clubId: number;
-  /**
-   *
-   * @type {number}
-   * @memberof CreateActivityRequest
-   */
-  creatorUserId?: number | null;
   /**
    *
    * @type {string}
@@ -106,7 +100,6 @@ export function CreateActivityRequestFromJSONTyped(
   }
   return {
     clubId: json["clubId"],
-    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
     title: json["title"],
     activityType: json["activityType"] == null ? undefined : json["activityType"],
     description: json["description"] == null ? undefined : json["description"],
@@ -133,7 +126,6 @@ export function CreateActivityRequestToJSONTyped(
 
   return {
     clubId: value["clubId"],
-    creatorUserId: value["creatorUserId"],
     title: value["title"],
     activityType: value["activityType"],
     description: value["description"],
