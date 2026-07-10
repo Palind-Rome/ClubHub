@@ -180,10 +180,8 @@ public class ClubsController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var maxId = await _db.Clubs.MaxAsync(c => (int?)c.ClubId) ?? 0;
         var club = new Club
         {
-            ClubId = maxId + 1,
             ClubName = name,
             Category = category,
             Description = EmptyToNull(req.Description),
@@ -206,13 +204,24 @@ public class ClubsController : ControllerBase
             club.AdvisorName = DisplayUser(advisor.User);
         }
 
-        _db.Clubs.Add(club);
-        if (advisor.User is not null)
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
-        }
+            _db.Clubs.Add(club);
+            await _db.SaveChangesAsync();
+            if (advisor.User is not null)
+            {
+                await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+                await _db.SaveChangesAsync();
+            }
 
-        await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
 
         return CreatedAtAction(nameof(GetById), new { clubId = club.ClubId }, ToApplicationDto(club));
     }
@@ -340,11 +349,9 @@ public class ClubsController : ControllerBase
             return Conflict(new { message = "社团名称已存在，或已有待审核/已通过的注册申请。" });
         }
 
-        var maxId = await _db.Clubs.MaxAsync(c => (int?)c.ClubId) ?? 0;
         var now = DateTime.UtcNow;
         var club = new Club
         {
-            ClubId = maxId + 1,
             ClubName = req.Name.Trim(),
             Category = req.Category.Trim(),
             Description = EmptyToNull(req.Description),
@@ -613,10 +620,8 @@ public class ClubsController : ControllerBase
             }
         }
 
-        var maxId = await _db.ClubMembers.MaxAsync(cm => (int?)cm.MemberId) ?? 0;
         var member = new ClubMember
         {
-            MemberId = maxId + 1,
             ClubId = clubId,
             UserId = req.UserId,
             DepartmentName = EmptyToNull(req.DepartmentName),
@@ -1503,7 +1508,6 @@ public class ClubsController : ControllerBase
 
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -1569,7 +1573,6 @@ public class ClubsController : ControllerBase
 
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -1610,7 +1613,6 @@ public class ClubsController : ControllerBase
 
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -1656,18 +1658,6 @@ public class ClubsController : ControllerBase
         var maxAdded = _db.ChangeTracker.Entries<Role>()
             .Where(entry => entry.State == EntityState.Added)
             .Select(entry => entry.Entity.RoleId)
-            .DefaultIfEmpty(0)
-            .Max();
-
-        return Math.Max(maxSaved, maxAdded) + 1;
-    }
-
-    private async Task<int> NextUserRoleIdAsync()
-    {
-        var maxSaved = await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0;
-        var maxAdded = _db.ChangeTracker.Entries<UserRole>()
-            .Where(entry => entry.State == EntityState.Added)
-            .Select(entry => entry.Entity.UserRoleId)
             .DefaultIfEmpty(0)
             .Max();
 
@@ -1723,10 +1713,8 @@ public class ClubsController : ControllerBase
 
         if (!hasMember)
         {
-            var nextMemberId = (await _db.ClubMembers.MaxAsync(cm => (int?)cm.MemberId) ?? 0) + 1;
             _db.ClubMembers.Add(new ClubMember
             {
-                MemberId = nextMemberId,
                 ClubId = club.ClubId,
                 UserId = club.ApplicantUserId.Value,
                 PositionName = "负责人",

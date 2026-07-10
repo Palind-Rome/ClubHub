@@ -77,6 +77,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Club>(e =>
         {
             e.HasKey(c => c.ClubId);
+            e.Property(c => c.ClubId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUBS.NEXTVAL");
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
@@ -135,6 +138,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ClubMember>(e =>
         {
             e.HasKey(cm => cm.MemberId);
+            e.Property(cm => cm.MemberId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUB_MEMBERS.NEXTVAL");
             e.HasOne(cm => cm.Club)
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
