@@ -21,9 +21,12 @@ const roleSummary = computed(() => {
   if (roles.length === 0) return "暂无角色";
   return roles.map((role) => role.displayName || role.name).join("、");
 });
-const activeMenu = computed(() =>
-  route.path.startsWith("/recruitments") ? "/recruitments" : route.path,
-);
+const activeMenu = computed(() => {
+  if (route.path.startsWith("/recruitments")) return "/recruitments";
+  if (route.path.startsWith("/evaluations")) return "/evaluations";
+  if (route.path.startsWith("/awards")) return "/awards";
+  return route.path;
+});
 const canManageVenues = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return (
@@ -83,6 +86,8 @@ onUnmounted(() => {
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">社团</el-menu-item>
         <el-menu-item index="/recruitments">纳新</el-menu-item>
+        <el-menu-item index="/evaluations">成员考核</el-menu-item>
+        <el-menu-item index="/awards">评奖评优</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
@@ -108,7 +113,8 @@ onUnmounted(() => {
             :aria-busy="healthChecking"
             @click="checkHealth"
             @keyup.enter="checkHealth"
-            @keyup.space.prevent="checkHealth"
+            @keydown.space.prevent
+            @keyup.space="checkHealth"
           >
             {{ healthChecking ? "检测中..." : healthOk ? "后端已连接" : "点击检测" }}
           </el-tag>

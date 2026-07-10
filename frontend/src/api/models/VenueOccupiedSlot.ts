@@ -21,19 +21,19 @@ import { mapValues } from "../runtime";
  */
 export interface VenueOccupiedSlot {
   /**
-   *
+   * 预约记录 ID。
    * @type {number}
    * @memberof VenueOccupiedSlot
    */
   reservationId: number;
   /**
-   *
+   * 场地 ID。
    * @type {number}
    * @memberof VenueOccupiedSlot
    */
   venueId: number;
   /**
-   *
+   * 场地名称。
    * @type {string}
    * @memberof VenueOccupiedSlot
    */

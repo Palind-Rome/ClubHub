@@ -26,22 +26,28 @@ namespace Org.OpenAPITools.Models
     public partial class VenueOccupiedSlot 
     {
         /// <summary>
-        /// Gets or Sets ReservationId
+        /// 预约记录 ID。
         /// </summary>
+        /// <value>预约记录 ID。</value>
+        /* <example>301</example> */
         [Required]
         [DataMember(Name="reservationId", EmitDefaultValue=true)]
         public int ReservationId { get; set; }
 
         /// <summary>
-        /// Gets or Sets VenueId
+        /// 场地 ID。
         /// </summary>
+        /// <value>场地 ID。</value>
+        /* <example>5</example> */
         [Required]
         [DataMember(Name="venueId", EmitDefaultValue=true)]
         public int VenueId { get; set; }
 
         /// <summary>
-        /// Gets or Sets VenueName
+        /// 场地名称。
         /// </summary>
+        /// <value>场地名称。</value>
+        /* <example>大学生活动中心 201</example> */
         [Required]
         [DataMember(Name="venueName", EmitDefaultValue=false)]
         public string VenueName { get; set; }
@@ -50,6 +56,7 @@ namespace Org.OpenAPITools.Models
         /// 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
         /// <value>占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
+        /* <example>2026-07-10T10:00Z</example> */
         [Required]
         [DataMember(Name="startTime", EmitDefaultValue=true)]
         public DateTime StartTime { get; set; }
@@ -58,6 +65,7 @@ namespace Org.OpenAPITools.Models
         /// 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
         /// <value>占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
+        /* <example>2026-07-10T12:00Z</example> */
         [Required]
         [DataMember(Name="endTime", EmitDefaultValue=true)]
         public DateTime EndTime { get; set; }

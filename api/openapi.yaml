@@ -774,6 +774,120 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/evaluations:
+    get:
+      summary: 查询社团成员评价考核记录
+      description: 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+      operationId: getClubEvaluations
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: termName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按 EVALUATIONS.term_name 精确筛选。
+        - name: evaluationType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+      responses:
+        "200":
+          description: 按角色可见范围过滤后的评价考核记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubEvaluationRecord"
+        "403":
+          description: 当前用户没有查看该社团评价考核的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 录入社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+      operationId: createClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubEvaluationRequest"
+      responses:
+        "201":
+          description: 评价考核记录已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有录入该成员评价考核的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/evaluations/{evaluationId}:
+    patch:
+      summary: 更新社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+      operationId: updateClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: evaluationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubEvaluationRequest"
+      responses:
+        "200":
+          description: 评价考核记录已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该评价考核的权限
+        "404":
+          description: 当前用户、社团或评价考核记录不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/recruitments:
     get:
       summary: 查询社团招募列表
@@ -2942,6 +3056,318 @@ components:
       required:
         - currentUserId
 
+    ClubEvaluationRecord:
+      type: object
+      description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
+      properties:
+        evaluationId:
+          type: integer
+          description: 评价记录 ID。
+          example: 501
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        evaluationTypeText:
+          type: string
+          description: 评价类型中文文案。
+          example: 学期考核
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        userId:
+          type: integer
+          description: 被考核或获奖成员用户 ID。
+          example: 12
+        userName:
+          type: string
+          description: 被考核或获奖成员姓名。
+          example: 张三
+        studentNo:
+          type: string
+          nullable: true
+          description: 被考核或获奖成员学号。
+          example: "2450001"
+        departmentName:
+          type: string
+          nullable: true
+          description: 成员当前所属部门。
+          example: 技术部
+        groupName:
+          type: string
+          nullable: true
+          description: 成员当前所属小组。
+          example: 后端组
+        positionName:
+          type: string
+          nullable: true
+          description: 成员当前职位。
+          example: 干部
+        evaluatorUserId:
+          type: integer
+          nullable: true
+          description: 录入或最后维护该记录的用户 ID。
+          example: 3
+        evaluatorName:
+          type: string
+          nullable: true
+          description: 录入或最后维护该记录的用户姓名。
+          example: 李老师
+        termName:
+          type: string
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核时为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核时为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核时为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          description: 活动参与得分，取值范围 0-100。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          description: 项目任务得分，取值范围 0-100。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          description: 学习记录得分，取值范围 0-100。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          description: 奖项或附加贡献得分，取值范围 0-100。
+          example: 80
+        totalScore:
+          type: number
+          format: decimal
+          description: 后端汇总计算的总分，满分 400。
+          example: 355
+        grade:
+          type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
+        publicStatusText:
+          type: string
+          description: 公示状态中文文案。
+          example: 已公示
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 记录创建时间。
+          example: "2026-07-10T08:30:00Z"
+      required:
+        - evaluationId
+        - evaluationType
+        - evaluationTypeText
+        - clubId
+        - clubName
+        - userId
+        - userName
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
+        - publicStatus
+        - publicStatusText
+
+    CreateClubEvaluationRequest:
+      type: object
+      description: 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: 当前操作人用户 ID。
+          example: 3
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        userId:
+          type: integer
+          minimum: 1
+          description: 被考核或获奖成员用户 ID。
+          example: 12
+        termName:
+          type: string
+          minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 活动参与得分。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 项目任务得分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 学习记录得分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          default: draft
+          description: 公示状态；默认保存为草稿。
+          example: draft
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
+      required:
+        - currentUserId
+        - evaluationType
+        - userId
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+
+    UpdateClubEvaluationRequest:
+      type: object
+      description: 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: 当前操作人用户 ID。
+          example: 3
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        termName:
+          type: string
+          minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 活动参与得分。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 项目任务得分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 学习记录得分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
+      required:
+        - currentUserId
+
     ClubApplication:
       type: object
       properties:
@@ -3993,18 +4419,26 @@ components:
       properties:
         reservationId:
           type: integer
+          description: 预约记录 ID。
+          example: 301
         venueId:
           type: integer
+          description: 场地 ID。
+          example: 5
         venueName:
           type: string
+          description: 场地名称。
+          example: 大学生活动中心 201
         startTime:
           type: string
           format: date-time
           description: 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T10:00:00Z"
         endTime:
           type: string
           format: date-time
           description: 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T12:00:00Z"
       required:
         - reservationId
         - venueId

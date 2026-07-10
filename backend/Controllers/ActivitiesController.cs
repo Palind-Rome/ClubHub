@@ -29,6 +29,9 @@ public class ActivitiesController : ControllerBase
     private const string BudgetStatusPending = "pending";
     private const string BudgetStatusApproved = "approved";
     private const string BudgetStatusRejected = "rejected";
+    private const int BudgetPurposeMaxLength = 255;
+    private const int BudgetCommentMaxLength = 255;
+    private const int BudgetDetailMaxLength = 4000;
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
@@ -353,6 +356,28 @@ public class ActivitiesController : ControllerBase
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
         }
 
+        var budgetPurpose = req.BudgetPurpose?.Trim();
+        var budgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        if (req.BudgetAmount < 0.01)
+        {
+            return BadRequest(new { message = "预算金额必须大于 0。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(budgetPurpose))
+        {
+            return BadRequest(new { message = "预算用途不能为空。" });
+        }
+
+        if (budgetPurpose.Length > BudgetPurposeMaxLength)
+        {
+            return BadRequest(new { message = $"预算用途不能超过 {BudgetPurposeMaxLength} 个字符。" });
+        }
+
+        if (budgetDetail?.Length > BudgetDetailMaxLength)
+        {
+            return BadRequest(new { message = $"经费明细不能超过 {BudgetDetailMaxLength} 个字符。" });
+        }
+
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
         var activity = await LockActivityForRegistration(activityId);
@@ -363,21 +388,6 @@ public class ActivitiesController : ControllerBase
         if (permission.Value?.Allowed != true)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
-        }
-
-        if (req.BudgetAmount < 0.01)
-        {
-            return BadRequest(new { message = "预算金额必须大于 0。" });
-        }
-
-        if (string.IsNullOrWhiteSpace(req.BudgetPurpose))
-        {
-            return BadRequest(new { message = "预算用途不能为空。" });
-        }
-
-        if (req.BudgetDetail?.Length > 4000)
-        {
-            return BadRequest(new { message = "经费明细不能超过 4000 个字符。" });
         }
 
         if (activity.ActivityStatus is "finished" or "cancelled")
@@ -391,8 +401,8 @@ public class ActivitiesController : ControllerBase
         }
 
         activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
-        activity.BudgetPurpose = req.BudgetPurpose.Trim();
-        activity.BudgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        activity.BudgetPurpose = budgetPurpose;
+        activity.BudgetDetail = budgetDetail;
         activity.BudgetStatus = BudgetStatusPending;
         activity.BudgetReviewerId = null;
         activity.BudgetComment = null;
@@ -414,6 +424,12 @@ public class ActivitiesController : ControllerBase
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
         }
 
+        var budgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        if (budgetComment?.Length > BudgetCommentMaxLength)
+        {
+            return BadRequest(new { message = $"审批意见不能超过 {BudgetCommentMaxLength} 个字符。" });
+        }
+
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
         var activity = await LockActivityForRegistration(activityId);
@@ -431,7 +447,7 @@ public class ActivitiesController : ControllerBase
         }
 
         activity.BudgetReviewerId = currentUserId.Value;
-        activity.BudgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        activity.BudgetComment = budgetComment;
         activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
 
         await _db.SaveChangesAsync();
@@ -669,7 +685,9 @@ public class ActivitiesController : ControllerBase
             return null;
         }
 
-        return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
+        return await _db.Activities
+            .Include(a => a.Club)
+            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
     private int? GetAuthenticatedUserId()
