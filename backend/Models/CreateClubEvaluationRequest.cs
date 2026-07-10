@@ -26,16 +26,19 @@ namespace Org.OpenAPITools.Models
     public partial class CreateClubEvaluationRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
+        /// 当前操作人用户 ID。
         /// </summary>
+        /// <value>当前操作人用户 ID。</value>
+        /* <example>3</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
         public int CurrentUserId { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets EvaluationType
+        /// semester 表示学期考核，award 表示评优评奖结果。
         /// </summary>
+        /// <value>semester 表示学期考核，award 表示评优评奖结果。</value>
         
         public enum EvaluationTypeEnum
         {
@@ -54,72 +57,92 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets EvaluationType
+        /// semester 表示学期考核，award 表示评优评奖结果。
         /// </summary>
+        /// <value>semester 表示学期考核，award 表示评优评奖结果。</value>
+        /* <example>semester</example> */
         [Required]
         [DataMember(Name="evaluationType", EmitDefaultValue=true)]
         public EvaluationTypeEnum EvaluationType { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserId
+        /// 被考核或获奖成员用户 ID。
         /// </summary>
+        /// <value>被考核或获奖成员用户 ID。</value>
+        /* <example>12</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets TermName
+        /// 考核或评奖所属学期。
         /// </summary>
+        /// <value>考核或评奖所属学期。</value>
+        /* <example>2026 学年春季学期</example> */
         [Required]
         [MinLength(1)]
         [DataMember(Name="termName", EmitDefaultValue=false)]
         public string TermName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardTitle
+        /// 评奖评优标题；学期考核可为空。
         /// </summary>
+        /// <value>评奖评优标题；学期考核可为空。</value>
+        /* <example>优秀社团干部</example> */
         [DataMember(Name="awardTitle", EmitDefaultValue=true)]
         public string? AwardTitle { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardLevel
+        /// 奖项等级；学期考核可为空。
         /// </summary>
+        /// <value>奖项等级；学期考核可为空。</value>
+        /* <example>校级</example> */
         [DataMember(Name="awardLevel", EmitDefaultValue=true)]
         public string? AwardLevel { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardReason
+        /// 获奖原因或推荐理由；学期考核可为空。
         /// </summary>
+        /// <value>获奖原因或推荐理由；学期考核可为空。</value>
+        /* <example>组织多次技术分享并承担核心项目管理工作。</example> */
         [DataMember(Name="awardReason", EmitDefaultValue=true)]
         public string? AwardReason { get; set; }
 
         /// <summary>
-        /// Gets or Sets ActivityScore
+        /// 活动参与得分。
         /// </summary>
+        /// <value>活动参与得分。</value>
+        /* <example>92</example> */
         [Required]
         [Range(0, 100)]
         [DataMember(Name="activityScore", EmitDefaultValue=true)]
         public decimal ActivityScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets TaskScore
+        /// 项目任务得分。
         /// </summary>
+        /// <value>项目任务得分。</value>
+        /* <example>88</example> */
         [Required]
         [Range(0, 100)]
         [DataMember(Name="taskScore", EmitDefaultValue=true)]
         public decimal TaskScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets LearningScore
+        /// 学习记录得分。
         /// </summary>
+        /// <value>学习记录得分。</value>
+        /* <example>95</example> */
         [Required]
         [Range(0, 100)]
         [DataMember(Name="learningScore", EmitDefaultValue=true)]
         public decimal LearningScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardScore
+        /// 奖项或附加贡献得分。
         /// </summary>
+        /// <value>奖项或附加贡献得分。</value>
+        /* <example>80</example> */
         [Required]
         [Range(0, 100)]
         [DataMember(Name="awardScore", EmitDefaultValue=true)]
@@ -127,8 +150,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态；默认保存为草稿。
         /// </summary>
+        /// <value>公示状态；默认保存为草稿。</value>
         
         public enum PublicStatusEnum
         {
@@ -147,14 +171,18 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态；默认保存为草稿。
         /// </summary>
+        /// <value>公示状态；默认保存为草稿。</value>
+        /* <example>draft</example> */
         [DataMember(Name="publicStatus", EmitDefaultValue=true)]
         public PublicStatusEnum PublicStatus { get; set; } = PublicStatusEnum.DraftEnum;
 
         /// <summary>
-        /// Gets or Sets CommentText
+        /// 考核说明、获奖补充说明或负责人备注。
         /// </summary>
+        /// <value>考核说明、获奖补充说明或负责人备注。</value>
+        /* <example>综合表现稳定，参与度高。</example> */
         [DataMember(Name="commentText", EmitDefaultValue=true)]
         public string? CommentText { get; set; }
 

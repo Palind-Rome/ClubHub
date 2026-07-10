@@ -26,8 +26,10 @@ namespace Org.OpenAPITools.Models
     public partial class ClubEvaluationRecord 
     {
         /// <summary>
-        /// Gets or Sets EvaluationId
+        /// 评价记录 ID。
         /// </summary>
+        /// <value>评价记录 ID。</value>
+        /* <example>501</example> */
         [Required]
         [DataMember(Name="evaluationId", EmitDefaultValue=true)]
         public int EvaluationId { get; set; }
@@ -58,152 +60,196 @@ namespace Org.OpenAPITools.Models
         /// semester 表示学期考核，award 表示评优评奖结果。
         /// </summary>
         /// <value>semester 表示学期考核，award 表示评优评奖结果。</value>
+        /* <example>semester</example> */
         [Required]
         [DataMember(Name="evaluationType", EmitDefaultValue=true)]
         public EvaluationTypeEnum EvaluationType { get; set; }
 
         /// <summary>
-        /// Gets or Sets EvaluationTypeText
+        /// 评价类型中文文案。
         /// </summary>
+        /// <value>评价类型中文文案。</value>
+        /* <example>学期考核</example> */
         [Required]
         [DataMember(Name="evaluationTypeText", EmitDefaultValue=false)]
         public string EvaluationTypeText { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// 所属社团名称。
         /// </summary>
+        /// <value>所属社团名称。</value>
+        /* <example>计算机协会</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserId
+        /// 被考核或获奖成员用户 ID。
         /// </summary>
+        /// <value>被考核或获奖成员用户 ID。</value>
+        /* <example>12</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserName
+        /// 被考核或获奖成员姓名。
         /// </summary>
+        /// <value>被考核或获奖成员姓名。</value>
+        /* <example>张三</example> */
         [Required]
         [DataMember(Name="userName", EmitDefaultValue=false)]
         public string UserName { get; set; }
 
         /// <summary>
-        /// Gets or Sets StudentNo
+        /// 被考核或获奖成员学号。
         /// </summary>
+        /// <value>被考核或获奖成员学号。</value>
+        /* <example>2450001</example> */
         [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentName
+        /// 成员当前所属部门。
         /// </summary>
+        /// <value>成员当前所属部门。</value>
+        /* <example>技术部</example> */
         [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
-        /// Gets or Sets GroupName
+        /// 成员当前所属小组。
         /// </summary>
+        /// <value>成员当前所属小组。</value>
+        /* <example>后端组</example> */
         [DataMember(Name="groupName", EmitDefaultValue=true)]
         public string? GroupName { get; set; }
 
         /// <summary>
-        /// Gets or Sets PositionName
+        /// 成员当前职位。
         /// </summary>
+        /// <value>成员当前职位。</value>
+        /* <example>干部</example> */
         [DataMember(Name="positionName", EmitDefaultValue=true)]
         public string? PositionName { get; set; }
 
         /// <summary>
-        /// Gets or Sets EvaluatorUserId
+        /// 录入或最后维护该记录的用户 ID。
         /// </summary>
+        /// <value>录入或最后维护该记录的用户 ID。</value>
+        /* <example>3</example> */
         [DataMember(Name="evaluatorUserId", EmitDefaultValue=true)]
         public int? EvaluatorUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets EvaluatorName
+        /// 录入或最后维护该记录的用户姓名。
         /// </summary>
+        /// <value>录入或最后维护该记录的用户姓名。</value>
+        /* <example>李老师</example> */
         [DataMember(Name="evaluatorName", EmitDefaultValue=true)]
         public string? EvaluatorName { get; set; }
 
         /// <summary>
-        /// Gets or Sets TermName
+        /// 考核或评奖所属学期。
         /// </summary>
+        /// <value>考核或评奖所属学期。</value>
+        /* <example>2026 学年春季学期</example> */
         [Required]
         [DataMember(Name="termName", EmitDefaultValue=false)]
         public string TermName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardTitle
+        /// 评奖评优标题；学期考核时为空。
         /// </summary>
+        /// <value>评奖评优标题；学期考核时为空。</value>
+        /* <example>优秀社团干部</example> */
         [DataMember(Name="awardTitle", EmitDefaultValue=true)]
         public string? AwardTitle { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardLevel
+        /// 奖项等级；学期考核时为空。
         /// </summary>
+        /// <value>奖项等级；学期考核时为空。</value>
+        /* <example>校级</example> */
         [DataMember(Name="awardLevel", EmitDefaultValue=true)]
         public string? AwardLevel { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardReason
+        /// 获奖原因或推荐理由；学期考核时为空。
         /// </summary>
+        /// <value>获奖原因或推荐理由；学期考核时为空。</value>
+        /* <example>组织多次技术分享并承担核心项目管理工作。</example> */
         [DataMember(Name="awardReason", EmitDefaultValue=true)]
         public string? AwardReason { get; set; }
 
         /// <summary>
-        /// Gets or Sets ActivityScore
+        /// 活动参与得分，取值范围 0-100。
         /// </summary>
+        /// <value>活动参与得分，取值范围 0-100。</value>
+        /* <example>92</example> */
         [Required]
         [DataMember(Name="activityScore", EmitDefaultValue=true)]
         public decimal ActivityScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets TaskScore
+        /// 项目任务得分，取值范围 0-100。
         /// </summary>
+        /// <value>项目任务得分，取值范围 0-100。</value>
+        /* <example>88</example> */
         [Required]
         [DataMember(Name="taskScore", EmitDefaultValue=true)]
         public decimal TaskScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets LearningScore
+        /// 学习记录得分，取值范围 0-100。
         /// </summary>
+        /// <value>学习记录得分，取值范围 0-100。</value>
+        /* <example>95</example> */
         [Required]
         [DataMember(Name="learningScore", EmitDefaultValue=true)]
         public decimal LearningScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardScore
+        /// 奖项或附加贡献得分，取值范围 0-100。
         /// </summary>
+        /// <value>奖项或附加贡献得分，取值范围 0-100。</value>
+        /* <example>80</example> */
         [Required]
         [DataMember(Name="awardScore", EmitDefaultValue=true)]
         public decimal AwardScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets TotalScore
+        /// 后端汇总计算的总分，满分 400。
         /// </summary>
+        /// <value>后端汇总计算的总分，满分 400。</value>
+        /* <example>355</example> */
         [Required]
         [DataMember(Name="totalScore", EmitDefaultValue=true)]
         public decimal TotalScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets Grade
+        /// 后端根据总分计算的等级。
         /// </summary>
+        /// <value>后端根据总分计算的等级。</value>
+        /* <example>优秀</example> */
         [Required]
         [DataMember(Name="grade", EmitDefaultValue=false)]
         public string Grade { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态；draft 为草稿，published 为已公示。
         /// </summary>
+        /// <value>公示状态；draft 为草稿，published 为已公示。</value>
         
         public enum PublicStatusEnum
         {
@@ -222,28 +268,36 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态；draft 为草稿，published 为已公示。
         /// </summary>
+        /// <value>公示状态；draft 为草稿，published 为已公示。</value>
+        /* <example>published</example> */
         [Required]
         [DataMember(Name="publicStatus", EmitDefaultValue=true)]
         public PublicStatusEnum PublicStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicStatusText
+        /// 公示状态中文文案。
         /// </summary>
+        /// <value>公示状态中文文案。</value>
+        /* <example>已公示</example> */
         [Required]
         [DataMember(Name="publicStatusText", EmitDefaultValue=false)]
         public string PublicStatusText { get; set; }
 
         /// <summary>
-        /// Gets or Sets CommentText
+        /// 考核说明、获奖补充说明或负责人备注。
         /// </summary>
+        /// <value>考核说明、获奖补充说明或负责人备注。</value>
+        /* <example>综合表现稳定，参与度高。</example> */
         [DataMember(Name="commentText", EmitDefaultValue=true)]
         public string? CommentText { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 记录创建时间。
         /// </summary>
+        /// <value>记录创建时间。</value>
+        /* <example>2026-07-10T08:30Z</example> */
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime? CreatedAt { get; set; }
 

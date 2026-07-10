@@ -21,73 +21,73 @@ import { mapValues } from "../runtime";
  */
 export interface UpdateClubEvaluationRequest {
   /**
-   *
+   * 当前操作人用户 ID。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
   currentUserId: number;
   /**
-   *
+   * semester 表示学期考核，award 表示评优评奖结果。
    * @type {UpdateClubEvaluationRequestEvaluationTypeEnum}
    * @memberof UpdateClubEvaluationRequest
    */
   evaluationType?: UpdateClubEvaluationRequestEvaluationTypeEnum;
   /**
-   *
+   * 考核或评奖所属学期。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
   termName?: string;
   /**
-   *
+   * 评奖评优标题；学期考核可为空。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
   awardTitle?: string | null;
   /**
-   *
+   * 奖项等级；学期考核可为空。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
   awardLevel?: string | null;
   /**
-   *
+   * 获奖原因或推荐理由；学期考核可为空。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
   awardReason?: string | null;
   /**
-   *
+   * 活动参与得分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
   activityScore?: number;
   /**
-   *
+   * 项目任务得分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
   taskScore?: number;
   /**
-   *
+   * 学习记录得分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
   learningScore?: number;
   /**
-   *
+   * 奖项或附加贡献得分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
   awardScore?: number;
   /**
-   *
+   * 公示状态；draft 为草稿，published 为已公示。
    * @type {UpdateClubEvaluationRequestPublicStatusEnum}
    * @memberof UpdateClubEvaluationRequest
    */
   publicStatus?: UpdateClubEvaluationRequestPublicStatusEnum;
   /**
-   *
+   * 考核说明、获奖补充说明或负责人备注。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
