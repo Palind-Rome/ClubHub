@@ -7,7 +7,7 @@ import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
 import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
-import { hasCompletedSession } from "../authSession";
+import { hasCompletedSession, readAuth } from "../authSession";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -28,6 +28,14 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.path !== "/auth" && !hasCompletedSession()) {
     return { path: "/auth", query: { redirect: to.fullPath } };
+  }
+
+  if (to.path === "/venue-reservations") {
+    const permissions = readAuth()?.permissions ?? [];
+    const canAccess = ["*", "venue:reserve", "venue:review"].some((permission) =>
+      permissions.includes(permission),
+    );
+    if (!canAccess) return { path: "/clubs" };
   }
 });
 

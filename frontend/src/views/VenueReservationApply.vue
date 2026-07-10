@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
 import {
   beijingCalendarDateTimestamp,
   beijingDateTimeTimestamp,
@@ -48,6 +49,14 @@ interface VenueReservation {
   createdAt?: string;
 }
 
+interface VenueOccupiedSlotPayload {
+  reservationId: number;
+  venueId: number;
+  venueName: string;
+  startTime: string;
+  endTime: string;
+}
+
 interface VenueRow {
   venue: Venue;
   searchIndex: VenueSearchIndex;
@@ -87,10 +96,20 @@ const auth = ref(readAuth());
 const venueSearch = ref("");
 const approvedSlotSearch = ref("");
 
-const firstClubId = computed(() => {
-  const roleClubIds = auth.value?.roles.flatMap((role) => role.clubIds ?? []) ?? [];
-  return roleClubIds.find((clubId) => Number.isFinite(clubId));
+const reserveClubIds = computed(() => {
+  const roles = auth.value?.roles ?? [];
+  return [
+    ...new Set(
+      roles
+        .filter(
+          (role) => role.permissions.includes("venue:reserve") || role.permissions.includes("*"),
+        )
+        .flatMap((role) => role.clubIds ?? [])
+        .filter((clubId) => Number.isFinite(clubId)),
+    ),
+  ].sort((a, b) => a - b);
 });
+const firstClubId = computed(() => reserveClubIds.value[0]);
 
 const form = reactive<ReservationForm>({
   venueId: undefined,
@@ -139,7 +158,10 @@ const venueSearchSummary = computed(() => {
   return `已匹配 ${filteredVenues.value.length} / ${venues.value.length} 个场地`;
 });
 const applicantName = computed(() => auth.value?.user.realName ?? "未登录");
-const canSubmit = computed(() => Boolean(auth.value?.user.id));
+const canSubmit = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("venue:reserve") || permissions.includes("*");
+});
 const canReview = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return permissions.includes("venue:review") || permissions.includes("*");
@@ -279,10 +301,18 @@ async function loadVenues() {
 
 async function loadApprovedReservations() {
   try {
-    const res = await fetch("/api/venue-reservations?status=approved");
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    const reservations = (await res.json()) as VenueReservation[];
-    approvedReservations.value = reservations.filter(isActiveApprovedReservation);
+    const slots = await requestJson<VenueOccupiedSlotPayload[]>(
+      "/api/venue-reservations/occupied-slots",
+    );
+    approvedReservations.value = slots.map((slot) => ({
+      id: slot.reservationId,
+      venueId: slot.venueId,
+      venueName: slot.venueName,
+      applicantUserId: 0,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      status: "approved",
+    }));
   } catch {
     approvedReservations.value = [];
   }
@@ -297,9 +327,9 @@ async function loadMyReservations() {
 
   myReservationsLoading.value = true;
   try {
-    const res = await fetch(`/api/venue-reservations?applicantUserId=${applicantUserId}`);
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    myReservations.value = await res.json();
+    myReservations.value = await requestJson<VenueReservation[]>(
+      `/api/venue-reservations?applicantUserId=${applicantUserId}`,
+    );
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "加载我的预约失败");
     myReservations.value = [];
@@ -360,22 +390,18 @@ async function submitReservation() {
       return;
     }
 
-    const res = await fetch("/api/venue-reservations", {
+    latestReservation.value = await requestJson<VenueReservation>("/api/venue-reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         venueId: form.venueId,
         clubId: form.clubId,
         activityId: form.activityId || null,
-        applicantUserId,
         startTime: beijingDateTimeToUtcIso(form.startTime),
         endTime: beijingDateTimeToUtcIso(form.endTime),
         purpose: form.purpose.trim(),
       }),
     });
-
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    latestReservation.value = await res.json();
     if (myReservationsVisible.value) await loadMyReservations();
     dialogVisible.value = false;
     ElMessage.success("预约申请已提交，等待管理员审批。");
@@ -410,12 +436,9 @@ async function deleteReservation(reservation: VenueReservation) {
 
   deletingReservationId.value = reservation.id;
   try {
-    const res = await fetch(`/api/venue-reservations/${reservation.id}`, {
+    await requestJson<void>(`/api/venue-reservations/${reservation.id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ operatorUserId }),
     });
-    if (!res.ok) throw new Error(await readErrorMessage(res));
 
     if (latestReservation.value?.id === reservation.id) {
       latestReservation.value = null;
@@ -557,7 +580,7 @@ function canReserveVenue(venue: Venue) {
 }
 
 function reserveDisabledReason(venue: Venue) {
-  if (!canSubmit.value) return "请先登录后再提交预约";
+  if (!canSubmit.value) return "仅社团干部或负责人可以提交场地预约";
   if (venue.status === "maintenance") return maintenanceUntilText(venue) || "场地维护中";
   if (venue.status === "disabled") return "场地已停用";
   return "";
@@ -638,7 +661,7 @@ onMounted(refreshVenueData);
 
     <el-alert
       v-if="!canSubmit"
-      title="当前未读取到登录用户，请先完成登录后再提交预约。"
+      title="当前账号没有场地预约申请权限，仅社团干部或负责人可以为本社团提交申请。"
       type="warning"
       show-icon
       class="notice"
@@ -756,9 +779,22 @@ onMounted(refreshVenueData);
         <el-form-item label="申请人">
           <el-input :model-value="applicantName" disabled />
         </el-form-item>
-        <el-form-item label="申请社团 ID" prop="clubId">
-          <el-input-number v-model="form.clubId" :min="1" :controls="false" />
-          <span v-if="firstClubId" class="field-hint">已默认使用当前角色关联社团。</span>
+        <el-form-item label="申请社团" prop="clubId">
+          <el-select
+            v-if="reserveClubIds.length > 0"
+            v-model="form.clubId"
+            placeholder="选择有预约权限的社团"
+            class="full-width"
+          >
+            <el-option
+              v-for="clubId in reserveClubIds"
+              :key="clubId"
+              :label="`社团 ${clubId}`"
+              :value="clubId"
+            />
+          </el-select>
+          <el-input-number v-else v-model="form.clubId" :min="1" :controls="false" />
+          <span v-if="firstClubId" class="field-hint">仅显示当前角色有权预约的社团。</span>
         </el-form-item>
         <el-form-item label="关联活动 ID（可选）" prop="activityId">
           <el-input-number v-model="form.activityId" :min="1" :controls="false" />

@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { readAuth } from "../authSession";
 import { formatVenueReservationDateTime, venueReservationTimestamp } from "../beijingTime";
+import { requestJson } from "../composables/useApiRequest";
 import {
   createVenueSearchIndex,
   formatVenueLocation,
@@ -250,9 +251,9 @@ async function loadPendingReservations() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/venue-reservations?status=pending");
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    pendingReservations.value = await res.json();
+    pendingReservations.value = await requestJson<VenueReservation[]>(
+      "/api/venue-reservations?status=pending",
+    );
     syncSelectedVenue();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载待审批预约失败";
@@ -285,9 +286,7 @@ async function fetchReservationsByStatus(status: "approved" | "rejected", review
     status,
     reviewerUserId: String(reviewerId),
   });
-  const res = await fetch(`/api/venue-reservations?${params.toString()}`);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as VenueReservation[];
+  return requestJson<VenueReservation[]>(`/api/venue-reservations?${params.toString()}`);
 }
 
 function syncSelectedVenue() {
@@ -325,18 +324,17 @@ async function submitReview() {
 
   reviewing.value = true;
   try {
-    const res = await fetch(`/api/venue-reservations/${reviewTarget.value.id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reviewerUserId: reviewerId,
-        approved: reviewForm.approved,
-        reviewComment: reviewForm.reviewComment.trim() || null,
-      }),
-    });
-
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    const reviewedReservation = (await res.json()) as VenueReservation;
+    const reviewedReservation = await requestJson<VenueReservation>(
+      `/api/venue-reservations/${reviewTarget.value.id}/review`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved: reviewForm.approved,
+          reviewComment: reviewForm.reviewComment.trim() || null,
+        }),
+      },
+    );
     pendingReservations.value = pendingReservations.value.filter(
       (reservation) => reservation.id !== reviewedReservation.id,
     );
