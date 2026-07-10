@@ -507,21 +507,24 @@ public class ActivitiesController : ControllerBase
         var activityExists = await _db.Activities.AnyAsync(a => a.ActivityId == activityId);
         if (!activityExists) return NotFound();
 
-        var participations = await _db.ActivityParticipations
-            .Where(p => p.ActivityId == activityId)
-            .OrderBy(p => p.ParticipationId)
-            .Select(p => new ActivityParticipationDto(
-                p.ParticipationId,
-                p.ActivityId,
-                p.UserId,
-                p.RegisterStatus,
-                p.RegisteredAt,
-                p.CheckinAt,
-                p.CheckoutAt,
-                p.SignStatus,
-                p.Remark
-            ))
-            .ToListAsync();
+        var participations = await (
+            from participation in _db.ActivityParticipations
+            join user in _db.Users on participation.UserId equals user.UserId
+            where participation.ActivityId == activityId
+            orderby participation.ParticipationId
+            select new ActivityParticipationDto(
+                participation.ParticipationId,
+                participation.ActivityId,
+                participation.UserId,
+                string.IsNullOrWhiteSpace(user.RealName) ? user.Username : user.RealName,
+                user.StudentNo,
+                participation.RegisterStatus,
+                participation.RegisteredAt,
+                participation.CheckinAt,
+                participation.CheckoutAt,
+                participation.SignStatus,
+                participation.Remark
+            )).ToListAsync();
 
         return Ok(participations);
     }
@@ -556,7 +559,15 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "只有已发布或进行中的活动可以签到或签退。" });
         }
 
-        if (!await UserExists(req.UserId))
+        var participantUser = await _db.Users
+            .Where(user => user.UserId == req.UserId)
+            .Select(user => new
+            {
+                UserName = string.IsNullOrWhiteSpace(user.RealName) ? user.Username : user.RealName,
+                user.StudentNo
+            })
+            .FirstOrDefaultAsync();
+        if (participantUser is null)
         {
             return BadRequest(new { message = "用户不存在，不能签到或签退。" });
         }
@@ -629,6 +640,8 @@ public class ActivitiesController : ControllerBase
             participation.ParticipationId,
             participation.ActivityId,
             participation.UserId,
+            participantUser.UserName,
+            participantUser.StudentNo,
             participation.RegisterStatus,
             participation.RegisteredAt,
             participation.CheckinAt,
@@ -840,6 +853,8 @@ public record ActivityParticipationDto(
     int Id,
     int ActivityId,
     int UserId,
+    string UserName,
+    string? StudentNo,
     string? RegisterStatus,
     DateTime? RegisteredAt,
     DateTime? CheckinAt,

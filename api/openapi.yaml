@@ -3762,6 +3762,13 @@ components:
           type: integer
         userId:
           type: integer
+        userName:
+          type: string
+          description: 参与者姓名；姓名为空时回退为用户名。
+        studentNo:
+          type: string
+          nullable: true
+          description: 参与者学号或工号。
         registerStatus:
           type: string
           nullable: true
@@ -3787,6 +3794,7 @@ components:
         - id
         - activityId
         - userId
+        - userName
 
     Venue:
       type: object

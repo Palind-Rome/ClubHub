@@ -38,12 +38,19 @@ interface Activity {
 interface ActivityParticipation {
   id: number;
   userId: number;
+  userName: string;
+  studentNo: string | null;
   registerStatus: string | null;
   registeredAt: string | null;
   checkinAt: string | null;
   checkoutAt: string | null;
   signStatus: string | null;
   remark: string | null;
+}
+
+interface ClubOption {
+  id: number;
+  name: string;
 }
 
 interface CreateActivityForm {
@@ -77,6 +84,7 @@ interface BudgetReviewForm {
 }
 
 const activities = ref<Activity[]>([]);
+const clubOptions = ref<ClubOption[]>([]);
 const auth = ref(readAuth());
 const statusFilter = ref("all");
 const loading = ref(true);
@@ -101,11 +109,11 @@ const currentUserId = computed(() => auth.value?.user.id ?? null);
 const currentUserDisplay = computed(() => {
   const user = auth.value?.user;
   if (!user) return "未登录";
-  return user.realName || user.username || `用户 #${user.id}`;
+  return user.realName || user.username || "未知用户";
 });
 
 const createForm = ref<CreateActivityForm>({
-  clubId: 1,
+  clubId: 0,
   creatorUserId: null,
   title: "",
   activityType: "",
@@ -203,9 +211,9 @@ const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 onMounted(async () => {
   stopSessionListener = onSessionChange(() => {
     auth.value = readAuth();
-    void loadActivities();
+    void Promise.all([loadActivities(), loadClubOptions()]);
   });
-  await loadActivities();
+  await Promise.all([loadActivities(), loadClubOptions()]);
 });
 
 onUnmounted(() => {
@@ -324,6 +332,21 @@ async function loadActivities() {
   }
 }
 
+async function loadClubOptions() {
+  const userId = currentUserId.value;
+  if (!userId) {
+    clubOptions.value = [];
+    return;
+  }
+
+  try {
+    clubOptions.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
+  } catch (e) {
+    clubOptions.value = [];
+    ElMessage.error(e instanceof Error ? e.message : "社团列表加载失败");
+  }
+}
+
 function canRegister(activity: Activity) {
   const deadlinePassed =
     activity.registrationDeadline != null &&
@@ -346,8 +369,8 @@ function registerButtonText(activity: Activity) {
 function openCreate() {
   const defaults = buildDefaultCreateTimes();
   createForm.value = {
-    clubId: 1,
-    creatorUserId: null,
+    clubId: clubOptions.value[0]?.id ?? 0,
+    creatorUserId: currentUserId.value,
     title: "",
     activityType: "",
     description: "",
@@ -361,8 +384,13 @@ function openCreate() {
 }
 
 async function createActivity() {
-  if (!createForm.value.title || !createForm.value.startTime || !createForm.value.endTime) {
-    error.value = "请填写活动标题、开始时间和结束时间。";
+  if (
+    !createForm.value.clubId ||
+    !createForm.value.title ||
+    !createForm.value.startTime ||
+    !createForm.value.endTime
+  ) {
+    error.value = "请选择主办社团，并填写活动标题、开始时间和结束时间。";
     ElMessage.error(error.value);
     return;
   }
@@ -374,7 +402,7 @@ async function createActivity() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clubId: createForm.value.clubId,
-        creatorUserId: createForm.value.creatorUserId,
+        creatorUserId: currentUserId.value,
         title: createForm.value.title,
         activityType: emptyToNull(createForm.value.activityType),
         description: emptyToNull(createForm.value.description),
@@ -425,24 +453,32 @@ async function registerActivity(activity: Activity) {
 }
 
 function openReview(activity: Activity) {
+  if (!currentUserId.value) {
+    ElMessage.warning("请先登录后再审核活动");
+    return;
+  }
+
   currentActivity.value = activity;
   reviewForm.value = {
     approved: true,
-    reviewerUserId: null,
+    reviewerUserId: currentUserId.value,
     comment: "",
   };
   reviewDialogVisible.value = true;
 }
 
 async function reviewActivity() {
-  if (!currentActivity.value) return;
+  if (!currentActivity.value || !currentUserId.value) return;
 
   saving.value = true;
   try {
     const res = await fetch(`/api/activities/${currentActivity.value.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reviewForm.value),
+      body: JSON.stringify({
+        ...reviewForm.value,
+        reviewerUserId: currentUserId.value,
+      }),
     });
     if (!res.ok) throw new Error(await res.text());
     reviewDialogVisible.value = false;
@@ -719,7 +755,6 @@ async function readErrorMessage(res: Response) {
       empty-text="暂无活动数据"
       class="activity-table"
     >
-      <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column prop="clubName" label="主办社团" width="120" />
       <el-table-column label="时间" min-width="260">
@@ -812,11 +847,18 @@ async function readErrorMessage(res: Response) {
 
     <el-dialog v-model="createDialogVisible" title="创建活动" width="620px">
       <el-form label-position="top">
-        <el-form-item label="社团 ID" required>
-          <el-input-number v-model="createForm.clubId" :min="1" />
+        <el-form-item label="主办社团" required>
+          <el-select v-model="createForm.clubId" filterable placeholder="请选择主办社团">
+            <el-option
+              v-for="club in clubOptions"
+              :key="club.id"
+              :label="club.name"
+              :value="club.id"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="创建人用户 ID（可留空）">
-          <el-input-number v-model="createForm.creatorUserId" :min="1" placeholder="可留空" />
+        <el-form-item label="创建人">
+          <span class="readonly-user">{{ currentUserDisplay }}</span>
         </el-form-item>
         <el-form-item label="活动标题" required>
           <el-input v-model="createForm.title" placeholder="请输入活动标题" />
@@ -899,8 +941,8 @@ async function readErrorMessage(res: Response) {
             <el-radio :value="false">驳回</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="审核人用户 ID（可留空）">
-          <el-input-number v-model="reviewForm.reviewerUserId" :min="1" placeholder="可留空" />
+        <el-form-item label="审核人">
+          <span class="readonly-user">{{ currentUserDisplay }}</span>
         </el-form-item>
         <el-form-item label="审核意见">
           <el-input
@@ -1108,8 +1150,12 @@ async function readErrorMessage(res: Response) {
         stripe
         empty-text="暂无参与记录"
       >
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="userId" label="用户 ID" width="90" />
+        <el-table-column label="参与者" min-width="150">
+          <template #default="{ row }">
+            <div>{{ row.userName || "未知用户" }}</div>
+            <div v-if="row.studentNo" class="participant-secondary">{{ row.studentNo }}</div>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             {{ signStatusLabel[row.signStatus] || row.signStatus || "-" }}
@@ -1170,6 +1216,11 @@ async function readErrorMessage(res: Response) {
 .readonly-user {
   color: var(--el-text-color-primary);
   font-weight: 500;
+}
+.participant-secondary {
+  margin-top: 2px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 .quota-text {
   font-variant-numeric: tabular-nums;
