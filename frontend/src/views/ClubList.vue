@@ -186,9 +186,11 @@ interface MemberGroupingScope {
   label: string;
 }
 
+type ClubWorkspace = "club" | "members" | "registration";
+
 const props = withDefaults(
   defineProps<{
-    workspace?: "club" | "members";
+    workspace?: ClubWorkspace;
   }>(),
   {
     workspace: "club",
@@ -261,8 +263,10 @@ const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
 const error = ref("");
+const isClubWorkspace = computed(() => props.workspace === "club");
 const isMemberWorkspace = computed(() => props.workspace === "members");
-const activeTab = ref(isMemberWorkspace.value ? "members" : "workspace");
+const isRegistrationWorkspace = computed(() => props.workspace === "registration");
+const activeTab = ref(defaultActiveTab(props.workspace));
 const routeClubId = Number(route.query.clubId);
 const selectedClubId = ref<number | undefined>(
   Number.isFinite(routeClubId) && routeClubId > 0 ? routeClubId : undefined,
@@ -424,6 +428,12 @@ const evaluationRules: FormRules = {
   ],
 };
 
+function defaultActiveTab(workspace: ClubWorkspace) {
+  if (workspace === "members") return "members";
+  if (workspace === "registration") return "workspace";
+  return "profile";
+}
+
 let stopSessionListener: (() => void) | null = null;
 let usersRequestId = 0;
 let dialogUsersRequestId = 0;
@@ -486,7 +496,7 @@ const selectedClub = computed(
 const clubInfoRows = computed(() =>
   canViewClubProfiles.value ? clubs.value.filter((club) => canViewClubInfo(club)) : [],
 );
-const isGlobalClubGovernance = computed(() => isReviewer.value || hasAllPermissions.value);
+const isGlobalClubGovernance = computed(() => false);
 const focusedClubRows = computed(() => {
   const club = selectedClub.value;
   return club && canViewClubInfo(club) ? [club] : [];
@@ -657,6 +667,21 @@ const evaluationFormTotal = computed(() =>
   ),
 );
 const evaluationFormGrade = computed(() => evaluationGrade(evaluationFormTotal.value));
+const workspaceTitle = computed(() => {
+  if (isMemberWorkspace.value) return "成员管理";
+  if (isRegistrationWorkspace.value) return "社团注册";
+  return "我的社团";
+});
+const workspaceSubtitle = computed(() => {
+  if (isMemberWorkspace.value) return "成员名册、任期维护、干部换届与成员退出";
+  if (isRegistrationWorkspace.value) return "社团注册申请、我的申请进度与负责人审核";
+  return "社团基本信息与我的社团身份";
+});
+const workspaceEmptyDescription = computed(() => {
+  if (isMemberWorkspace.value) return "当前账号暂无成员管理相关任务";
+  if (isRegistrationWorkspace.value) return "当前账号暂无社团注册相关任务";
+  return "当前账号暂无社团身份或可查看的社团信息";
+});
 const visibleIdentityRows = computed(() => {
   if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
   return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
@@ -664,22 +689,19 @@ const visibleIdentityRows = computed(() => {
 const visibleTabs = computed(() => {
   const tabs: string[] = [];
 
+  if (isRegistrationWorkspace.value) {
+    if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
+    return tabs;
+  }
+
   if (isMemberWorkspace.value) {
     if (memberViewClubs.value.length > 0) tabs.push("members");
     if (visibleIdentityRows.value.length > 0) tabs.push("identity");
     return tabs;
   }
 
-  if (isGlobalClubGovernance.value) {
-    if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
-    if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
-    if (visibleIdentityRows.value.length > 0) tabs.push("identity");
-    return tabs;
-  }
-
   if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
   if (visibleIdentityRows.value.length > 0) tabs.push("identity");
-  if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
   return tabs;
 });
 const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
@@ -775,8 +797,10 @@ async function loadData() {
   try {
     const query = new URLSearchParams();
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
-    const shouldLoadApplications = canSubmitApplication.value || isReviewer.value;
-    const shouldLoadClubs = canViewClubProfiles.value || canManageClubProfiles.value;
+    const shouldLoadApplications =
+      isRegistrationWorkspace.value && (canSubmitApplication.value || isReviewer.value);
+    const shouldLoadClubs =
+      !isRegistrationWorkspace.value && (canViewClubProfiles.value || canManageClubProfiles.value);
 
     const [applicationData, clubData] = await Promise.all([
       shouldLoadApplications
@@ -1966,6 +1990,17 @@ watch(
   },
 );
 
+watch(
+  () => props.workspace,
+  () => {
+    activeTab.value = defaultActiveTab(props.workspace);
+    applications.value = [];
+    clubs.value = [];
+    clubMembers.value = [];
+    void loadData();
+  },
+);
+
 watch(selectedClubId, () => {
   void Promise.all([loadEvaluationMembers(), loadEvaluations()]);
 });
@@ -2010,14 +2045,8 @@ onUnmounted(() => {
   <div class="page">
     <section class="toolbar">
       <div>
-        <h2>{{ isMemberWorkspace ? "成员管理" : "社团组织管理" }}</h2>
-        <div class="subtitle">
-          {{
-            isMemberWorkspace
-              ? "成员名册、任期维护、干部换届与成员退出"
-              : "社团注册审核、档案维护与我的社团身份"
-          }}
-        </div>
+        <h2>{{ workspaceTitle }}</h2>
+        <div class="subtitle">{{ workspaceSubtitle }}</div>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -2035,7 +2064,10 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="identity-side">
-        <div v-if="clubContextOptions.length > 0" class="identity-switch">
+        <div
+          v-if="!isRegistrationWorkspace && clubContextOptions.length > 0"
+          class="identity-switch"
+        >
           <span>{{ isGlobalClubGovernance ? "快速定位社团" : "当前社团" }}</span>
           <el-select
             v-model="selectedClubId"
@@ -2058,24 +2090,36 @@ onUnmounted(() => {
           <small v-if="selectedClubContext">{{ selectedClubContext.statusText }}</small>
         </div>
         <div class="identity-tags">
-          <el-tag v-if="currentUser.canSubmitClubApplication" type="success" effect="plain">
+          <el-tag
+            v-if="isRegistrationWorkspace && currentUser.canSubmitClubApplication"
+            type="success"
+            effect="plain"
+          >
             可提交注册申请
           </el-tag>
-          <el-tag v-if="currentUser.canReviewClubApplication" type="warning" effect="plain">
+          <el-tag
+            v-if="isRegistrationWorkspace && currentUser.canReviewClubApplication"
+            type="warning"
+            effect="plain"
+          >
             可审核注册申请
           </el-tag>
-          <el-tag v-if="clubInfoRows.length > 0" effect="plain">可查看社团信息</el-tag>
-          <el-tag v-if="profileRows.length > 0" type="primary" effect="plain">
+          <el-tag v-if="isClubWorkspace && clubInfoRows.length > 0" effect="plain">
+            可查看社团信息
+          </el-tag>
+          <el-tag v-if="isClubWorkspace && profileRows.length > 0" type="primary" effect="plain">
             可维护社团档案
           </el-tag>
           <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
             可查看成员任期
           </el-tag>
-          <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
+          <el-tag v-if="!isRegistrationWorkspace && identityRows.length > 0" effect="plain">
+            我的社团身份
+          </el-tag>
         </div>
         <div class="identity-actions">
           <el-button
-            v-if="!isMemberWorkspace && clubInfoRows.length > 0"
+            v-if="isClubWorkspace && clubInfoRows.length > 0"
             type="primary"
             plain
             @click="goProfile"
@@ -2095,12 +2139,16 @@ onUnmounted(() => {
 
     <el-empty
       v-if="!hasClubWorkspace"
-      :description="isMemberWorkspace ? '当前账号暂无成员管理相关任务' : '当前账号暂无社团相关任务'"
+      :description="workspaceEmptyDescription"
       class="empty-workspace"
     />
 
     <el-tabs v-else v-model="activeTab" class="workspace-tabs">
-      <el-tab-pane v-if="canSubmitApplication || isReviewer" label="当前工作台" name="workspace">
+      <el-tab-pane
+        v-if="isRegistrationWorkspace && (canSubmitApplication || isReviewer)"
+        label="当前工作台"
+        name="workspace"
+      >
         <div class="workspace-head">
           <div>
             <h3>{{ isReviewer ? "申请审核池" : "我的注册申请" }}</h3>
@@ -2215,7 +2263,11 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="visibleClubInfoRows.length > 0" label="社团信息" name="profile">
+      <el-tab-pane
+        v-if="isClubWorkspace && visibleClubInfoRows.length > 0"
+        label="社团信息"
+        name="profile"
+      >
         <div class="workspace-head">
           <div>
             <h3>{{ isGlobalClubGovernance ? "社团治理" : selectedClub?.name }}</h3>
@@ -2720,7 +2772,11 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="visibleIdentityRows.length > 0" label="我的社团身份" name="identity">
+      <el-tab-pane
+        v-if="!isRegistrationWorkspace && visibleIdentityRows.length > 0"
+        label="我的社团身份"
+        name="identity"
+      >
         <el-table :data="visibleIdentityRows" border stripe empty-text="暂无社团成员身份">
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
@@ -2755,7 +2811,12 @@ onUnmounted(() => {
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="applicationDialogVisible" title="提交社团注册申请" width="620px">
+    <el-dialog
+      v-if="isRegistrationWorkspace"
+      v-model="applicationDialogVisible"
+      title="提交社团注册申请"
+      width="620px"
+    >
       <el-form
         ref="applicationFormRef"
         :model="applicationForm"
@@ -2802,7 +2863,12 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reviewDialogVisible" title="审核社团注册申请" width="560px">
+    <el-dialog
+      v-if="isRegistrationWorkspace"
+      v-model="reviewDialogVisible"
+      title="审核社团注册申请"
+      width="560px"
+    >
       <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="90px">
         <el-form-item label="社团">
           <el-input :model-value="reviewTarget?.name" disabled />
