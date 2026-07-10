@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
@@ -90,6 +91,7 @@ interface SignForm {
 const activities = ref<Activity[]>([]);
 const clubOptions = ref<ClubOption[]>([]);
 const auth = ref(readAuth());
+const router = useRouter();
 const statusFilter = ref("all");
 const loading = ref(true);
 const error = ref("");
@@ -234,6 +236,11 @@ const budgetStatusLabel: Record<string, string> = {
   approved: "已通过",
   rejected: "已驳回",
 };
+
+const canAccessMaterialBorrows = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes("material:borrow:manage");
+});
 
 const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -671,14 +678,17 @@ function openBudgetReview(activity: Activity) {
   budgetReviewDialogVisible.value = true;
 }
 
-function openMaterialPlaceholder(activity: Activity) {
+async function openMaterialBorrows(activity: Activity) {
   if (!canManageMaterial(activity)) {
     ElMessage.warning("当前账号没有该社团的物资借用管理权限。");
     return;
   }
 
   currentActivity.value = activity;
-  ElMessage.info("活动物资借用、归还与损坏登记将在 #23 接入。");
+  await router.push({
+    path: "/materials",
+    query: { clubId: String(activity.clubId) },
+  });
 }
 
 async function reviewBudget() {
@@ -942,7 +952,7 @@ async function openParticipations(activity: Activity) {
               v-if="canManageMaterial(row)"
               size="small"
               plain
-              @click="openMaterialPlaceholder(row)"
+              @click="openMaterialBorrows(row)"
             >
               物资借用
             </el-button>

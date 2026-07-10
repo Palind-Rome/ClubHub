@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import { Box, Check, Plus, Refresh, Warning } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
@@ -71,6 +72,7 @@ interface DamageForm {
 }
 
 const auth = ref(readAuth());
+const route = useRoute();
 const clubs = ref<ClubOption[]>([]);
 const materials = ref<Material[]>([]);
 const borrows = ref<MaterialBorrow[]>([]);
@@ -235,8 +237,23 @@ const borrowStatusType: Record<string, "success" | "warning" | "danger" | "info"
   damaged: "danger",
 };
 
+function initialClubIdFromRoute() {
+  const raw = Array.isArray(route.query.clubId) ? route.query.clubId[0] : route.query.clubId;
+  const clubId = Number(raw);
+  return Number.isInteger(clubId) && clubId > 0 ? clubId : undefined;
+}
+
 function ensureActiveClub() {
   if (activeClubId.value !== undefined) return;
+  const preferredClubId = initialClubIdFromRoute();
+  if (
+    preferredClubId &&
+    (hasGlobalAccess.value || visibleClubs.value.some((club) => club.id === preferredClubId))
+  ) {
+    activeClubId.value = preferredClubId;
+    return;
+  }
+
   activeClubId.value = hasGlobalAccess.value ? 0 : visibleClubs.value[0]?.id;
 }
 
