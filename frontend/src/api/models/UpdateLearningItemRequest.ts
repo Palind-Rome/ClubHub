@@ -57,23 +57,17 @@ export interface UpdateLearningItemRequest {
    */
   categoryName?: string | null;
   /**
-   * Enrollment deadline, which must not be later than the course start time.
-   * @type {Date}
-   * @memberof UpdateLearningItemRequest
-   */
-  enrollmentDeadline: Date;
-  /**
-   * Course start time.
+   * Required course start time.
    * @type {Date}
    * @memberof UpdateLearningItemRequest
    */
   startAt: Date;
   /**
-   * Course end time.
+   * Optional course end time; omit it for a long-running course.
    * @type {Date}
    * @memberof UpdateLearningItemRequest
    */
-  endAt: Date;
+  endAt?: Date | null;
   /**
    * Enrollment capacity.
    * @type {number}
@@ -125,9 +119,7 @@ export function instanceOfUpdateLearningItemRequest(
   if (!("title" in value) || value["title"] === undefined) return false;
   if (!("teacherUserId" in value) || value["teacherUserId"] === undefined) return false;
   if (!("itemType" in value) || value["itemType"] === undefined) return false;
-  if (!("enrollmentDeadline" in value) || value["enrollmentDeadline"] === undefined) return false;
   if (!("startAt" in value) || value["startAt"] === undefined) return false;
-  if (!("endAt" in value) || value["endAt"] === undefined) return false;
   if (!("capacity" in value) || value["capacity"] === undefined) return false;
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
@@ -152,9 +144,8 @@ export function UpdateLearningItemRequestFromJSONTyped(
     teacherUserId: json["teacherUserId"],
     itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
-    enrollmentDeadline: new Date(json["enrollmentDeadline"]),
     startAt: new Date(json["startAt"]),
-    endAt: new Date(json["endAt"]),
+    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
     capacity: json["capacity"],
     visibility: json["visibility"],
     itemStatus: json["itemStatus"],
@@ -180,9 +171,8 @@ export function UpdateLearningItemRequestToJSONTyped(
     teacherUserId: value["teacherUserId"],
     itemType: value["itemType"],
     categoryName: value["categoryName"],
-    enrollmentDeadline: value["enrollmentDeadline"].toISOString(),
     startAt: value["startAt"].toISOString(),
-    endAt: value["endAt"].toISOString(),
+    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     capacity: value["capacity"],
     visibility: value["visibility"],
     itemStatus: value["itemStatus"],

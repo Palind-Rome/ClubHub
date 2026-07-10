@@ -75,28 +75,19 @@ namespace Org.OpenAPITools.Models
         public string? CategoryName { get; set; }
 
         /// <summary>
-        /// Enrollment deadline, which must not be later than the course start time.
+        /// Required course start time.
         /// </summary>
-        /// <value>Enrollment deadline, which must not be later than the course start time.</value>
-        [Required]
-        [DataMember(Name="enrollmentDeadline", EmitDefaultValue=true)]
-        public DateTime EnrollmentDeadline { get; set; }
-
-        /// <summary>
-        /// Course start time.
-        /// </summary>
-        /// <value>Course start time.</value>
+        /// <value>Required course start time.</value>
         [Required]
         [DataMember(Name="startAt", EmitDefaultValue=true)]
         public DateTime StartAt { get; set; }
 
         /// <summary>
-        /// Course end time.
+        /// Optional course end time; omit it for a long-running course.
         /// </summary>
-        /// <value>Course end time.</value>
-        [Required]
+        /// <value>Optional course end time; omit it for a long-running course.</value>
         [DataMember(Name="endAt", EmitDefaultValue=true)]
-        public DateTime EndAt { get; set; }
+        public DateTime? EndAt { get; set; }
 
         /// <summary>
         /// Enrollment capacity.

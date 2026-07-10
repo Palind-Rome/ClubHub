@@ -897,8 +897,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 报名用户可以在课程开始前取消自己的报名并释放名额。
-   * 取消培训课程报名
+   * 用户可以在课程结束前退出未完成课程并释放名额；未设置结束时间的课程可随时退出。
+   * 退出培训课程
    */
   async cancelLearningEnrollmentRaw(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -911,8 +911,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 报名用户可以在课程开始前取消自己的报名并释放名额。
-   * 取消培训课程报名
+   * 用户可以在课程结束前退出未完成课程并释放名额；未设置结束时间的课程可随时退出。
+   * 退出培训课程
    */
   async cancelLearningEnrollment(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -2199,8 +2199,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 用户按课程开放范围报名尚未开始且未满员的课程；取消后再次报名会恢复原学习记录。
-   * 报名培训课程
+   * 用户按课程开放范围加入尚未结束且未满员的课程；未设置结束时间的课程长期开放，退出后再次加入会恢复原学习记录。
+   * 加入培训课程
    */
   async enrollLearningItemRaw(
     requestParameters: EnrollLearningItemOperationRequest,
@@ -2213,8 +2213,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 用户按课程开放范围报名尚未开始且未满员的课程；取消后再次报名会恢复原学习记录。
-   * 报名培训课程
+   * 用户按课程开放范围加入尚未结束且未满员的课程；未设置结束时间的课程长期开放，退出后再次加入会恢复原学习记录。
+   * 加入培训课程
    */
   async enrollLearningItem(
     requestParameters: EnrollLearningItemOperationRequest,

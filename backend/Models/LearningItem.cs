@@ -93,33 +93,24 @@ namespace Org.OpenAPITools.Models
         public string? Description { get; set; }
 
         /// <summary>
-        /// Enrollment deadline. Enrollment and cancellation close at this time.
+        /// Required course start time; learning progress cannot be updated before this time.
         /// </summary>
-        /// <value>Enrollment deadline. Enrollment and cancellation close at this time.</value>
-        [Required]
-        [DataMember(Name="enrollmentDeadline", EmitDefaultValue=true)]
-        public DateTime EnrollmentDeadline { get; set; }
-
-        /// <summary>
-        /// Course start time.
-        /// </summary>
-        /// <value>Course start time.</value>
+        /// <value>Required course start time; learning progress cannot be updated before this time.</value>
         [Required]
         [DataMember(Name="startAt", EmitDefaultValue=true)]
-        public DateTime? StartAt { get; set; }
+        public DateTime StartAt { get; set; }
 
         /// <summary>
-        /// Course end time.
+        /// Optional course end time; when omitted, users may join at any time.
         /// </summary>
-        /// <value>Course end time.</value>
-        [Required]
+        /// <value>Optional course end time; when omitted, users may join at any time.</value>
         [DataMember(Name="endAt", EmitDefaultValue=true)]
         public DateTime? EndAt { get; set; }
 
         /// <summary>
-        /// Enrollment capacity.
+        /// Maximum number of users who may join the course.
         /// </summary>
-        /// <value>Enrollment capacity.</value>
+        /// <value>Maximum number of users who may join the course.</value>
         /* <example>40</example> */
         [Required]
         [DataMember(Name="capacity", EmitDefaultValue=true)]
@@ -200,9 +191,9 @@ namespace Org.OpenAPITools.Models
         public ItemStatusEnum ItemStatus { get; set; }
 
         /// <summary>
-        /// Active enrollment count.
+        /// Number of users currently joined.
         /// </summary>
-        /// <value>Active enrollment count.</value>
+        /// <value>Number of users currently joined.</value>
         /* <example>8</example> */
         [Required]
         [DataMember(Name="currentEnrollments", EmitDefaultValue=true)]
@@ -265,17 +256,17 @@ namespace Org.OpenAPITools.Models
         public bool CanManage { get; set; }
 
         /// <summary>
-        /// Whether the current viewer may enroll now.
+        /// Whether the current viewer may join the course now.
         /// </summary>
-        /// <value>Whether the current viewer may enroll now.</value>
+        /// <value>Whether the current viewer may join the course now.</value>
         [Required]
         [DataMember(Name="canEnroll", EmitDefaultValue=true)]
         public bool CanEnroll { get; set; }
 
         /// <summary>
-        /// Whether the current viewer may cancel the current enrollment now.
+        /// Whether the current viewer may exit the course now.
         /// </summary>
-        /// <value>Whether the current viewer may cancel the current enrollment now.</value>
+        /// <value>Whether the current viewer may exit the course now.</value>
         [Required]
         [DataMember(Name="canCancelEnrollment", EmitDefaultValue=true)]
         public bool CanCancelEnrollment { get; set; }

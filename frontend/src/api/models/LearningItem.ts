@@ -69,25 +69,19 @@ export interface LearningItem {
    */
   description?: string | null;
   /**
-   * Enrollment deadline. Enrollment and cancellation close at this time.
+   * Required course start time; learning progress cannot be updated before this time.
    * @type {Date}
    * @memberof LearningItem
    */
-  enrollmentDeadline: Date;
+  startAt: Date;
   /**
-   * Course start time.
+   * Optional course end time; when omitted, users may join at any time.
    * @type {Date}
    * @memberof LearningItem
    */
-  startAt: Date | null;
+  endAt?: Date | null;
   /**
-   * Course end time.
-   * @type {Date}
-   * @memberof LearningItem
-   */
-  endAt: Date | null;
-  /**
-   * Enrollment capacity.
+   * Maximum number of users who may join the course.
    * @type {number}
    * @memberof LearningItem
    */
@@ -105,7 +99,7 @@ export interface LearningItem {
    */
   itemStatus: LearningItemItemStatusEnum;
   /**
-   * Active enrollment count.
+   * Number of users currently joined.
    * @type {number}
    * @memberof LearningItem
    */
@@ -123,13 +117,13 @@ export interface LearningItem {
    */
   canManage: boolean;
   /**
-   * Whether the current viewer may enroll now.
+   * Whether the current viewer may join the course now.
    * @type {boolean}
    * @memberof LearningItem
    */
   canEnroll: boolean;
   /**
-   * Whether the current viewer may cancel the current enrollment now.
+   * Whether the current viewer may exit the course now.
    * @type {boolean}
    * @memberof LearningItem
    */
@@ -184,9 +178,7 @@ export function instanceOfLearningItem(value: object): value is LearningItem {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
-  if (!("enrollmentDeadline" in value) || value["enrollmentDeadline"] === undefined) return false;
   if (!("startAt" in value) || value["startAt"] === undefined) return false;
-  if (!("endAt" in value) || value["endAt"] === undefined) return false;
   if (!("capacity" in value) || value["capacity"] === undefined) return false;
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
@@ -216,9 +208,8 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     itemType: json["itemType"] == null ? undefined : json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
     description: json["description"] == null ? undefined : json["description"],
-    enrollmentDeadline: new Date(json["enrollmentDeadline"]),
-    startAt: json["startAt"] == null ? null : new Date(json["startAt"]),
-    endAt: json["endAt"] == null ? null : new Date(json["endAt"]),
+    startAt: new Date(json["startAt"]),
+    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
     capacity: json["capacity"],
     visibility: json["visibility"],
     itemStatus: json["itemStatus"],
@@ -253,8 +244,7 @@ export function LearningItemToJSONTyped(
     itemType: value["itemType"],
     categoryName: value["categoryName"],
     description: value["description"],
-    enrollmentDeadline: value["enrollmentDeadline"].toISOString(),
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
+    startAt: value["startAt"].toISOString(),
     endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     capacity: value["capacity"],
     visibility: value["visibility"],

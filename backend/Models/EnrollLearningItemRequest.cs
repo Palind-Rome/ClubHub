@@ -20,15 +20,15 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// Request body for enrolling in a training course.
+    /// Request body for joining or exiting a training course.
     /// </summary>
     [DataContract]
     public partial class EnrollLearningItemRequest 
     {
         /// <summary>
-        /// Current enrolling user id.
+        /// Current user id.
         /// </summary>
-        /// <value>Current enrolling user id.</value>
+        /// <value>Current user id.</value>
         /* <example>21</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]

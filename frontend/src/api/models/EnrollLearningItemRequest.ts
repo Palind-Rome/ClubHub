@@ -15,13 +15,13 @@
 
 import { mapValues } from "../runtime";
 /**
- * Request body for enrolling in a training course.
+ * Request body for joining or exiting a training course.
  * @export
  * @interface EnrollLearningItemRequest
  */
 export interface EnrollLearningItemRequest {
   /**
-   * Current enrolling user id.
+   * Current user id.
    * @type {number}
    * @memberof EnrollLearningItemRequest
    */
