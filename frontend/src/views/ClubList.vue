@@ -279,7 +279,7 @@ const selectedClubId = ref<number | undefined>(
   Number.isFinite(routeClubId) && routeClubId > 0 ? routeClubId : undefined,
 );
 const memberWorkspaceMode = ref<MemberWorkspaceMode>("current");
-const transitionTermForm = reactive(currentAcademicTermOption(1));
+const transitionTermForm = reactive(currentAcademicTermOption());
 
 const filters = reactive({
   auditStatus: "",
@@ -1809,14 +1809,14 @@ function dateOnly(value: string | null | undefined) {
 
 function academicYearStart(date: Date) {
   const year = date.getFullYear();
-  return date.getMonth() >= 8 ? year : year - 1;
+  return date.getMonth() >= 6 ? year : year - 1;
 }
 
 function academicTermOption(startYear: number): AcademicTermOption {
   return {
     label: `${startYear}-${startYear + 1}学年`,
-    termStart: `${startYear}-09-01`,
-    termEnd: `${startYear + 1}-08-31`,
+    termStart: `${startYear}-07-01`,
+    termEnd: `${startYear + 1}-06-30`,
   };
 }
 

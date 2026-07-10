@@ -235,8 +235,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 1 AS member_id, 1 AS club_id, 3 AS user_id, '主席团' AS department_name,
          '负责人组' AS group_name, '负责人' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 30 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 30 AS join_at, 95 AS contribution_score
   FROM dual
 ) source
@@ -261,8 +261,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 2 AS member_id, 1 AS club_id, 4 AS user_id, '技术部' AS department_name,
          '开发组' AS group_name, '社员' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 20 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 20 AS join_at, 72 AS contribution_score
   FROM dual
 ) source
@@ -287,8 +287,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 3 AS member_id, 1 AS club_id, 6 AS user_id, '活动部' AS department_name,
          '赛事组' AS group_name, '部长' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 25 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 25 AS join_at, 88 AS contribution_score
   FROM dual
 ) source
@@ -313,8 +313,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 4 AS member_id, 1 AS club_id, 7 AS user_id, '算法部' AS department_name,
          '训练组' AS group_name, '社员' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 18 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 18 AS join_at, 66 AS contribution_score
   FROM dual
 ) source
@@ -339,8 +339,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 5 AS member_id, 2 AS club_id, 7 AS user_id, '活动部' AS department_name,
          '影展组' AS group_name, '部长' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 16 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 16 AS join_at, 82 AS contribution_score
   FROM dual
 ) source
@@ -365,8 +365,8 @@ MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 6 AS member_id, 3 AS club_id, 7 AS user_id, '主席团' AS department_name,
          '负责人组' AS group_name, '负责人' AS position_name,
-         '当前演示任期' AS term_name, TRUNC(SYSDATE) - 14 AS term_start,
-         ADD_MONTHS(TRUNC(SYSDATE), 12) AS term_end, 'active' AS member_status,
+         '2026-2027学年' AS term_name, DATE '2026-07-01' AS term_start,
+         DATE '2027-06-30' AS term_end, 'active' AS member_status,
          TRUNC(SYSDATE) - 14 AS join_at, 91 AS contribution_score
   FROM dual
 ) source
