@@ -1160,7 +1160,10 @@ paths:
                   $ref: "#/components/schemas/Activity"
     post:
       summary: 创建活动并提交审核
+      description: 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
       operationId: createActivity
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1176,6 +1179,10 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 请求参数或业务规则不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的活动创建权限
 
   /api/activities/{activityId}:
     get:
@@ -1246,7 +1253,10 @@ paths:
   /api/activities/{activityId}/review:
     post:
       summary: 审核活动并发布或驳回
+      description: 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
       operationId: reviewActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1268,6 +1278,10 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 当前活动状态不允许审核
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的活动审核权限
         "404":
           description: 活动不存在
 
@@ -1340,7 +1354,10 @@ paths:
   /api/activities/{activityId}/checkin-settings:
     put:
       summary: 设置活动签到签退码和有效时间
+      description: 需要登录，并具备目标社团的 activity:checkin:manage 权限。
       operationId: updateActivityCheckinSettings
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1362,13 +1379,20 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 签到或签退时间段不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的签到管理权限
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/participations:
     get:
       summary: 获取活动参与记录
+      description: 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
       operationId: getActivityParticipations
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1384,13 +1408,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityParticipation"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有查看参与记录的权限
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/checkin:
     post:
       summary: 活动签到
+      description: 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
       operationId: checkinActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1412,13 +1443,20 @@ paths:
                 $ref: "#/components/schemas/ActivityParticipation"
         "400":
           description: 签到码、时间窗口或活动状态不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有活动签到权限
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/checkout:
     post:
       summary: 活动签退
+      description: 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
       operationId: checkoutActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1440,6 +1478,10 @@ paths:
                 $ref: "#/components/schemas/ActivityParticipation"
         "400":
           description: 签退码、时间窗口或活动状态不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有活动签退权限
         "404":
           description: 活动不存在
 
@@ -4289,12 +4331,10 @@ components:
 
     CreateActivityRequest:
       type: object
+      description: 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
       properties:
         clubId:
           type: integer
-        creatorUserId:
-          type: integer
-          nullable: true
         title:
           type: string
           minLength: 1
@@ -4332,12 +4372,10 @@ components:
 
     ReviewActivityRequest:
       type: object
+      description: 审核活动请求。审核人由服务端从登录态写入，客户端无需也不应提交 reviewerUserId。
       properties:
         approved:
           type: boolean
-          nullable: true
-        reviewerUserId:
-          type: integer
           nullable: true
         comment:
           type: string
@@ -4418,15 +4456,13 @@ components:
 
     ActivitySignRequest:
       type: object
+      description: 活动签到/签退请求。签到用户由服务端从登录态确定，客户端只需提交签到或签退码。
       properties:
-        userId:
-          type: integer
         code:
           type: string
           minLength: 1
           maxLength: 255
       required:
-        - userId
         - code
 
     ActivityParticipation:
