@@ -841,7 +841,7 @@ onMounted(refreshVenueData);
             class="full-width"
           >
             <el-option
-              v-for="club in clubs.filter(c => reserveClubIds.includes(c.id))"
+              v-for="club in clubs.filter((c) => reserveClubIds.includes(c.id))"
               :key="club.id"
               :label="club.name"
               :value="club.id"
