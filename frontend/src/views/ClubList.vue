@@ -187,6 +187,13 @@ interface MemberGroupingScope {
 }
 
 type ClubWorkspace = "club" | "members" | "registration";
+type MemberWorkspaceMode = "current" | "history" | "transition";
+
+interface AcademicTermOption {
+  label: string;
+  termStart: string;
+  termEnd: string;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -271,7 +278,8 @@ const routeClubId = Number(route.query.clubId);
 const selectedClubId = ref<number | undefined>(
   Number.isFinite(routeClubId) && routeClubId > 0 ? routeClubId : undefined,
 );
-const includeHistory = ref(false);
+const memberWorkspaceMode = ref<MemberWorkspaceMode>("current");
+const transitionTermForm = reactive(currentAcademicTermOption(1));
 
 const filters = reactive({
   auditStatus: "",
@@ -327,9 +335,9 @@ const memberTermForm = reactive({
   departmentName: "",
   groupName: "",
   positionName: "",
-  termName: "",
-  termStart: todayInput(),
-  termEnd: "",
+  termName: currentAcademicTermOption().label,
+  termStart: currentAcademicTermOption().termStart,
+  termEnd: currentAcademicTermOption().termEnd,
   memberStatus: "active" as MemberStatus,
   contributionScore: 0,
   closeCurrentTerm: true,
@@ -623,13 +631,39 @@ const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
 
   return Array.from(scopeMap.values());
 });
+const academicTermOptions = computed<AcademicTermOption[]>(() => {
+  const currentYear = academicYearStart(new Date());
+  return [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
+    academicTermOption(year),
+  );
+});
+const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
+  const options = [...academicTermOptions.value];
+  const currentLabel = memberTermForm.termName.trim();
+  if (currentLabel && !options.some((option) => option.label === currentLabel)) {
+    options.unshift({
+      label: currentLabel,
+      termStart: memberTermForm.termStart,
+      termEnd: memberTermForm.termEnd,
+    });
+  }
+  return options;
+});
+const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
+const memberTableRows = computed(() =>
+  memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value,
+);
+const transitionSourceRows = computed(() =>
+  currentClubMembers.value.filter((member) => isActiveStatus(member.memberStatus)),
+);
 const memberGroupSummary = computed(() => {
-  const currentRows = clubMembers.value.filter((member) => member.isCurrent);
+  const rows = memberTableRows.value;
+  const currentRows = rows.filter((member) => member.isCurrent);
   return {
-    total: clubMembers.value.length,
+    total: rows.length,
     current: currentRows.length,
-    departments: uniqueTextOptions(clubMembers.value.map((member) => member.departmentName)).length,
-    groups: uniqueTextOptions(clubMembers.value.map((member) => member.groupName)).length,
+    departments: uniqueTextOptions(rows.map((member) => member.departmentName)).length,
+    groups: uniqueTextOptions(rows.map((member) => member.groupName)).length,
   };
 });
 const evaluationTermOptions = computed(() =>
@@ -833,8 +867,9 @@ async function loadData() {
 async function loadMembers() {
   const requestId = ++membersRequestId;
   const clubId = selectedClubId.value;
-  const include = includeHistory.value;
-  if (!currentUserId.value || !clubId || !canViewSelectedClub()) {
+  const userId = currentUserId.value;
+  const include = memberWorkspaceMode.value !== "current";
+  if (!userId || !clubId || !canViewSelectedClub()) {
     if (requestId === membersRequestId) {
       clubMembers.value = [];
     }
@@ -1286,13 +1321,14 @@ async function removeClubMember(row: ClubMemberRecord) {
 }
 
 function resetMemberTermForm() {
+  const term = currentAcademicTermOption();
   memberTermForm.userId = undefined;
   memberTermForm.departmentName = "";
   memberTermForm.groupName = "";
   memberTermForm.positionName = "";
-  memberTermForm.termName = `${new Date().getFullYear()} 年任期`;
-  memberTermForm.termStart = todayInput();
-  memberTermForm.termEnd = "";
+  memberTermForm.termName = term.label;
+  memberTermForm.termStart = term.termStart;
+  memberTermForm.termEnd = term.termEnd;
   memberTermForm.memberStatus = "active";
   memberTermForm.contributionScore = 0;
   memberTermForm.closeCurrentTerm = true;
@@ -1308,6 +1344,30 @@ async function openCreateMemberTermDialog() {
   memberTermMode.value = "create";
   memberTermTarget.value = null;
   resetMemberTermForm();
+  await loadDialogUsers(selectedClub.value.id);
+  memberTermDialogVisible.value = true;
+}
+
+async function openTransitionMemberTermDialog(row?: ClubMemberRecord) {
+  if (!selectedClub.value || !canManageSelectedClub.value) {
+    ElMessage.warning("当前身份不能发起该社团换届。");
+    return;
+  }
+
+  memberTermMode.value = "create";
+  memberTermTarget.value = null;
+  resetMemberTermForm();
+  memberTermForm.termName = transitionTermForm.label;
+  memberTermForm.termStart = transitionTermForm.termStart;
+  memberTermForm.termEnd = transitionTermForm.termEnd;
+  memberTermForm.closeCurrentTerm = true;
+  if (row) {
+    memberTermForm.userId = row.userId;
+    memberTermForm.departmentName = row.departmentName ?? "";
+    memberTermForm.groupName = row.groupName ?? "";
+    memberTermForm.positionName = row.positionName ?? "";
+    memberTermForm.contributionScore = row.contributionScore ?? 0;
+  }
   await loadDialogUsers(selectedClub.value.id);
   memberTermDialogVisible.value = true;
 }
@@ -1344,6 +1404,7 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
   memberTermForm.termName = row.termName ?? "";
   memberTermForm.termStart = dateOnly(row.termStart);
   memberTermForm.termEnd = dateOnly(row.termEnd);
+  applyAcademicTermToMemberForm(memberTermForm.termName);
   memberTermForm.memberStatus = normalizeMemberStatus(row.memberStatus);
   memberTermForm.contributionScore = row.contributionScore ?? 0;
   memberTermForm.closeCurrentTerm = false;
@@ -1746,12 +1807,36 @@ function dateOnly(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
-function todayInput() {
-  const date = new Date();
+function academicYearStart(date: Date) {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return date.getMonth() >= 8 ? year : year - 1;
+}
+
+function academicTermOption(startYear: number): AcademicTermOption {
+  return {
+    label: `${startYear}-${startYear + 1}学年`,
+    termStart: `${startYear}-09-01`,
+    termEnd: `${startYear + 1}-08-31`,
+  };
+}
+
+function currentAcademicTermOption(offset = 0) {
+  return academicTermOption(academicYearStart(new Date()) + offset);
+}
+
+function applyAcademicTermToMemberForm(termName: string) {
+  const option = memberTermSelectOptions.value.find((item) => item.label === termName);
+  if (!option) return;
+  memberTermForm.termStart = option.termStart;
+  memberTermForm.termEnd = option.termEnd;
+}
+
+function applyAcademicTermToTransition(termName: string) {
+  const option = academicTermOptions.value.find((item) => item.label === termName);
+  if (!option) return;
+  transitionTermForm.label = option.label;
+  transitionTermForm.termStart = option.termStart;
+  transitionTermForm.termEnd = option.termEnd;
 }
 
 function datePayload(value: string) {
@@ -1984,7 +2069,7 @@ watch(selectedClubId, () => {
 watch(
   [
     selectedClubId,
-    includeHistory,
+    memberWorkspaceMode,
     () => memberFilters.departmentName,
     () => memberFilters.groupName,
   ],
@@ -2461,10 +2546,17 @@ onUnmounted(() => {
                   :value="club.id"
                 />
               </el-select>
-              <el-switch v-model="includeHistory" active-text="包含历史" inactive-text="当前有效" />
+              <el-segmented
+                v-model="memberWorkspaceMode"
+                :options="[
+                  { label: '当前名册', value: 'current' },
+                  { label: '任期历史', value: 'history' },
+                  { label: '换届管理', value: 'transition' },
+                ]"
+              />
             </div>
             <el-button
-              v-if="canManageSelectedClub"
+              v-if="canManageSelectedClub && memberWorkspaceMode === 'current'"
               type="primary"
               :icon="Plus"
               @click="openCreateMemberTermDialog"
@@ -2512,12 +2604,18 @@ onUnmounted(() => {
         </div>
 
         <el-table
-          v-if="memberViewClubs.length > 0"
+          v-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
           v-loading="memberLoading"
-          :data="clubMembers"
+          :data="memberTableRows"
           border
           stripe
-          :empty-text="canManageSelectedClub ? '暂无任期记录，可新增成员任期' : '暂无成员任期记录'"
+          :empty-text="
+            memberWorkspaceMode === 'current'
+              ? canManageSelectedClub
+                ? '暂无当前名册，可新增成员任期'
+                : '暂无当前有效成员任期'
+              : '暂无历史任期记录'
+          "
           row-key="memberId"
         >
           <el-table-column prop="userName" label="成员" min-width="150" />
@@ -2527,7 +2625,7 @@ onUnmounted(() => {
               <span class="editable-cell">
                 <span>{{ row.departmentName || "-" }}</span>
                 <el-button
-                  v-if="canUpdateMemberDepartment(row)"
+                  v-if="memberWorkspaceMode === 'current' && canUpdateMemberDepartment(row)"
                   link
                   type="primary"
                   :icon="Edit"
@@ -2543,7 +2641,7 @@ onUnmounted(() => {
               <span class="editable-cell">
                 <span>{{ row.groupName || "-" }}</span>
                 <el-button
-                  v-if="canUpdateMemberGroup(row)"
+                  v-if="memberWorkspaceMode === 'current' && canUpdateMemberGroup(row)"
                   link
                   type="primary"
                   :icon="Edit"
@@ -2559,7 +2657,7 @@ onUnmounted(() => {
               <span class="editable-cell">
                 <span>{{ row.positionName || "-" }}</span>
                 <el-button
-                  v-if="canEditMemberPosition(row)"
+                  v-if="memberWorkspaceMode === 'current' && canEditMemberPosition(row)"
                   link
                   type="primary"
                   :icon="Edit"
@@ -2575,7 +2673,7 @@ onUnmounted(() => {
               <span class="editable-cell">
                 <span>{{ row.termName || "-" }}</span>
                 <el-button
-                  v-if="canEditMemberTerm(row)"
+                  v-if="memberWorkspaceMode === 'current' && canEditMemberTerm(row)"
                   link
                   type="primary"
                   :icon="Edit"
@@ -2608,7 +2706,10 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
           <el-table-column
-            v-if="canManageSelectedClub || canRemoveSelectedClubMember || canExitSelectedClub"
+            v-if="
+              memberWorkspaceMode === 'current' &&
+              (canManageSelectedClub || canRemoveSelectedClubMember || canExitSelectedClub)
+            "
             label="操作"
             width="210"
             fixed="right"
@@ -2646,6 +2747,85 @@ onUnmounted(() => {
             </template>
           </el-table-column>
         </el-table>
+
+        <div v-else class="transition-panel">
+          <div class="transition-toolbar">
+            <div>
+              <h3>换届管理</h3>
+              <p>
+                选择统一学年后，对当前成员执行续任或职务调整；保存时会关闭原有效任期并生成新学年任期。
+              </p>
+            </div>
+            <div class="transition-actions">
+              <el-select
+                v-model="transitionTermForm.label"
+                class="filter-item"
+                @change="applyAcademicTermToTransition"
+              >
+                <el-option
+                  v-for="term in academicTermOptions"
+                  :key="term.label"
+                  :label="term.label"
+                  :value="term.label"
+                />
+              </el-select>
+              <el-tag effect="plain">
+                {{ transitionTermForm.termStart }} 至 {{ transitionTermForm.termEnd }}
+              </el-tag>
+              <el-button
+                v-if="canManageSelectedClub"
+                type="primary"
+                :icon="Plus"
+                @click="openTransitionMemberTermDialog()"
+              >
+                新增换届任期
+              </el-button>
+            </div>
+          </div>
+
+          <div class="transition-steps">
+            <span>1. 选择换届学年</span>
+            <span>2. 基于当前名册续任或调整</span>
+            <span>3. 保存后统一生成新任期</span>
+          </div>
+
+          <el-table
+            v-loading="memberLoading"
+            :data="transitionSourceRows"
+            border
+            stripe
+            empty-text="暂无可用于换届的当前成员"
+            row-key="memberId"
+          >
+            <el-table-column prop="userName" label="成员" min-width="150" />
+            <el-table-column prop="departmentName" label="当前部门" width="150" />
+            <el-table-column prop="groupName" label="当前小组" width="140" />
+            <el-table-column prop="positionName" label="当前职务" width="150" />
+            <el-table-column prop="termName" label="当前任期" min-width="160" />
+            <el-table-column label="当前任期时间" width="230">
+              <template #default="{ row }">
+                {{ formatDateOnly(row.termStart) }} 至 {{ formatDateOnly(row.termEnd) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="canManageSelectedClub"
+              label="换届操作"
+              width="150"
+              fixed="right"
+            >
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openTransitionMemberTermDialog(row)"
+                >
+                  续任/调整
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane
@@ -3050,14 +3230,27 @@ onUnmounted(() => {
           <el-input v-model="memberTermForm.positionName" maxlength="60" />
         </el-form-item>
         <el-form-item label="任期名称" prop="termName">
-          <el-input v-model="memberTermForm.termName" maxlength="80" />
+          <el-select
+            v-model="memberTermForm.termName"
+            filterable
+            class="full-width"
+            @change="applyAcademicTermToMemberForm"
+          >
+            <el-option
+              v-for="term in memberTermSelectOptions"
+              :key="term.label"
+              :label="term.label"
+              :value="term.label"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="任期开始" prop="termStart">
           <el-date-picker
             v-model="memberTermForm.termStart"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="选择开始日期"
+            disabled
+            class="full-width"
           />
         </el-form-item>
         <el-form-item label="任期结束">
@@ -3065,7 +3258,8 @@ onUnmounted(() => {
             v-model="memberTermForm.termEnd"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="未结束可留空"
+            disabled
+            class="full-width"
           />
         </el-form-item>
         <el-form-item label="成员状态">
@@ -3422,6 +3616,49 @@ onUnmounted(() => {
   padding: 4px 8px;
 }
 
+.transition-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.transition-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.transition-toolbar h3 {
+  margin: 0 0 6px;
+}
+
+.transition-toolbar p {
+  margin: 0;
+  color: #66727f;
+}
+
+.transition-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.transition-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transition-steps span {
+  border: 1px solid var(--el-color-primary-light-5);
+  padding: 5px 9px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
 .score-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3458,7 +3695,8 @@ onUnmounted(() => {
   .toolbar,
   .identity-band,
   .workspace-head,
-  .member-head {
+  .member-head,
+  .transition-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
@@ -3467,7 +3705,8 @@ onUnmounted(() => {
   .identity-side,
   .member-controls,
   .member-filter-row,
-  .filter-bar {
+  .filter-bar,
+  .transition-actions {
     align-items: stretch;
     flex-direction: column;
   }
