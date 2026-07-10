@@ -443,6 +443,8 @@ const hasAllPermissions = computed(() => auth.value?.permissions?.includes("*") 
 const isReviewer = computed(() => currentUser.value?.canReviewClubApplication ?? false);
 const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubApplication ?? false);
 const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermission));
+// Member evaluations now live in EvaluationList.vue; keep the legacy club tab disabled explicitly.
+const showLegacyEvaluationTab = false;
 const canManageMemberTerms = computed(() => hasPermission(clubMemberManagePermission));
 const canAdministerMemberTerms = computed(
   () => hasAllPermissions.value || isReviewer.value || canManageMemberTerms.value,
@@ -790,7 +792,7 @@ async function loadMembers() {
   const userId = currentUserId.value;
   const clubId = selectedClubId.value;
   const include = includeHistory.value;
-  if (!userId || !clubId || !canViewSelectedEvaluations()) {
+  if (!userId || !clubId || !canViewSelectedClub()) {
     if (requestId === membersRequestId) {
       clubMembers.value = [];
     }
@@ -988,10 +990,6 @@ function roleNameInClub(role: UserRoleSummary, clubName: string) {
 
 function canViewSelectedClub() {
   return selectedClub.value !== null && canViewClubDirectory(selectedClub.value);
-}
-
-function canViewSelectedEvaluations() {
-  return selectedClub.value !== null && canViewClubEvaluations(selectedClub.value);
 }
 
 function resetApplicationForm() {
@@ -2560,7 +2558,7 @@ onUnmounted(() => {
       </el-tab-pane>
 
       <el-tab-pane
-        v-if="false && evaluationViewClubs.length > 0"
+        v-if="showLegacyEvaluationTab && evaluationViewClubs.length > 0"
         label="成员考核"
         name="evaluations"
       >
