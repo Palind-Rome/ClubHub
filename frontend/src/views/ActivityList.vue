@@ -109,7 +109,7 @@ const currentUserId = computed(() => auth.value?.user.id ?? null);
 const currentUserDisplay = computed(() => {
   const user = auth.value?.user;
   if (!user) return "未登录";
-  return user.realName || user.username || "未知用户";
+  return user.realName?.trim() || user.username?.trim() || "未知用户";
 });
 
 const createForm = ref<CreateActivityForm>({
