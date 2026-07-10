@@ -669,6 +669,12 @@ public class LearningController : ControllerBase
         }
 
         var visibility = LearningWorkflow.NormalizeVisibility(item.Visibility);
+        if (visibility is null)
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status500InternalServerError,
+                "课程开放范围配置异常，请联系管理员。");
+        }
         if (visibility == LearningWorkflow.VisibilityClub &&
             !canManage &&
             !IsActiveClubMember(user, item.ClubId))
@@ -913,13 +919,15 @@ public class LearningController : ControllerBase
         EnrollmentDecision? enrollmentDecision,
         DateTime now)
     {
-        if (item.StartAt is null || item.Capacity is null)
+        var normalizedVisibility = LearningWorkflow.NormalizeVisibility(item.Visibility);
+        if (item.StartAt is null || item.Capacity is null || normalizedVisibility is null)
         {
             _logger.LogError(
-                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, CapacityMissing={CapacityMissing}。",
+                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, CapacityMissing={CapacityMissing}, VisibilityInvalid={VisibilityInvalid}。",
                 item.ItemId,
                 item.StartAt is null,
-                item.Capacity is null);
+                item.Capacity is null,
+                normalizedVisibility is null);
             return null;
         }
 
@@ -944,7 +952,7 @@ public class LearningController : ControllerBase
             StartAt = LearningWorkflow.AsUtc(item.StartAt.Value),
             EndAt = LearningWorkflow.AsUtc(item.EndAt),
             Capacity = item.Capacity.Value,
-            Visibility = ToItemVisibilityEnum(item.Visibility),
+            Visibility = ToItemVisibilityEnum(normalizedVisibility),
             ItemStatus = ToItemStatusEnum(
                 LearningWorkflow.ResolveEffectiveItemStatus(item, now)),
             CurrentEnrollments = activeEnrollmentCount,
@@ -1021,10 +1029,9 @@ public class LearningController : ControllerBase
     /// <summary>
     /// 将数据库开放范围转换为课程响应枚举。
     /// </summary>
-    private static ApiLearningItem.VisibilityEnum ToItemVisibilityEnum(string? visibility)
+    private static ApiLearningItem.VisibilityEnum ToItemVisibilityEnum(string visibility)
     {
-        return LearningWorkflow.NormalizeVisibility(visibility) ==
-               LearningWorkflow.VisibilityPublic
+        return visibility == LearningWorkflow.VisibilityPublic
             ? ApiLearningItem.VisibilityEnum.PublicEnum
             : ApiLearningItem.VisibilityEnum.ClubEnum;
     }

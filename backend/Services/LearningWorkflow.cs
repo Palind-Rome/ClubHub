@@ -64,16 +64,17 @@ public static class LearningWorkflow
     /// 判断课程开放范围是否有效。
     /// </summary>
     public static bool IsVisibilityValid(string? visibility) =>
-        NormalizeVisibility(visibility) is VisibilityClub or VisibilityPublic;
+        Normalize(visibility) is VisibilityClub or VisibilityPublic;
 
     /// <summary>
-    /// 将开放范围归一化为本社团或全校。
+    /// 将合法开放范围归一化为本社团或全校；非法值返回空。
     /// </summary>
-    public static string NormalizeVisibility(string? visibility) =>
+    public static string? NormalizeVisibility(string? visibility) =>
         Normalize(visibility) switch
         {
+            VisibilityClub => VisibilityClub,
             VisibilityPublic => VisibilityPublic,
-            _ => VisibilityClub
+            _ => null
         };
 
     /// <summary>
