@@ -33,8 +33,15 @@ public class LearningController : ControllerBase
     };
 
     private readonly ClubHubDbContext _db;
+    private readonly ILogger<LearningController> _logger;
 
-    public LearningController(ClubHubDbContext db) => _db = db;
+    public LearningController(
+        ClubHubDbContext db,
+        ILogger<LearningController> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     /// <summary>
     /// 返回课程表单可选择的授课教师，界面展示姓名和学工号，内部用户编号仅随选项提交。
@@ -165,13 +172,16 @@ public class LearningController : ControllerBase
                 canManage,
                 now);
 
-            result.Add(ToItemDto(
+            var itemDto = TryMapItemDto(
                 item,
                 activeEnrollmentCount,
                 currentRecord,
                 canManage,
                 enrollmentDecision,
-                now));
+                now);
+            if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
+
+            result.Add(itemDto);
         }
 
         return Ok(result);
@@ -230,15 +240,14 @@ public class LearningController : ControllerBase
                 ItemType = Normalize(request.ItemType),
                 CategoryName = NormalizeOptionalText(request.CategoryName),
                 Description = NormalizeOptionalText(request.Description),
-                EnrollmentDeadline = request.EnrollmentDeadline,
-                StartAt = request.StartAt,
-                EndAt = request.EndAt,
+                EnrollmentDeadline = LearningWorkflow.AsUtc(request.EnrollmentDeadline),
+                StartAt = LearningWorkflow.AsUtc(request.StartAt),
+                EndAt = LearningWorkflow.AsUtc(request.EndAt),
                 Capacity = request.Capacity,
                 Visibility = LearningWorkflow.NormalizeVisibility(request.Visibility),
                 DownloadPermission = "none",
                 ItemStatus = itemStatus,
-                CreatedAt = LearningWorkflow.BusinessNow(),
-                Club = club
+                CreatedAt = LearningWorkflow.BusinessNow()
             };
 
             _db.LearningItems.Add(item);
@@ -255,10 +264,13 @@ public class LearningController : ControllerBase
                     0,
                     canManage: true,
                     now);
+                var itemDto = TryMapItemDto(item, 0, null, true, decision, now);
+                if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
+
                 return CreatedAtAction(
                     nameof(GetItems),
                     new { currentUserId = request.CurrentUserId },
-                    ToItemDto(item, 0, null, true, decision, now));
+                    itemDto);
             }
             catch (DbUpdateException) when (attempt < MaxCreateRetries)
             {
@@ -323,9 +335,9 @@ public class LearningController : ControllerBase
         item.ItemType = Normalize(request.ItemType);
         item.CategoryName = NormalizeOptionalText(request.CategoryName);
         item.Description = NormalizeOptionalText(request.Description);
-        item.EnrollmentDeadline = request.EnrollmentDeadline;
-        item.StartAt = request.StartAt;
-        item.EndAt = request.EndAt;
+        item.EnrollmentDeadline = LearningWorkflow.AsUtc(request.EnrollmentDeadline);
+        item.StartAt = LearningWorkflow.AsUtc(request.StartAt);
+        item.EndAt = LearningWorkflow.AsUtc(request.EndAt);
         item.Capacity = request.Capacity;
         item.Visibility = LearningWorkflow.NormalizeVisibility(request.Visibility);
         item.ItemStatus = itemStatus;
@@ -341,13 +353,16 @@ public class LearningController : ControllerBase
             activeEnrollmentCount,
             canManage: true,
             now);
-        return Ok(ToItemDto(
+        var itemDto = TryMapItemDto(
             item,
             activeEnrollmentCount,
             currentRecord,
             true,
             decision,
-            now));
+            now);
+        return itemDto is null
+            ? CourseDataIntegrityProblem(item.ItemId)
+            : Ok(itemDto);
     }
 
     /// <summary>
@@ -432,7 +447,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 在报名截止时间前取消当前用户的报名。
+    /// 在课程开始前取消当前用户的报名。
     /// </summary>
     [HttpDelete("items/{itemId:int}/enrollments")]
     public async Task<IActionResult> CancelEnrollment(
@@ -445,10 +460,14 @@ public class LearningController : ControllerBase
 
         var item = await _db.LearningItems.FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程不存在。");
-        if (item.EnrollmentDeadline == default ||
-            LearningWorkflow.BusinessNow() >= item.EnrollmentDeadline)
+        if (item.StartAt is null)
         {
-            return BadRequest("报名截止时间已过，不能取消报名。");
+            _logger.LogError("课程 {ItemId} 缺少开始时间，无法判断取消报名窗口。", item.ItemId);
+            return CourseDataIntegrityProblem(item.ItemId);
+        }
+        if (LearningWorkflow.BusinessNow() >= item.StartAt.Value)
+        {
+            return BadRequest("课程已经开始，不能取消报名。");
         }
 
         var record = await _db.LearningRecords
@@ -552,10 +571,14 @@ public class LearningController : ControllerBase
                 "只能更新自己的学习记录。");
         }
 
-        if (LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
-            LearningWorkflow.RecordStatusCancelled)
+        var recordStatus = LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus);
+        if (recordStatus == LearningWorkflow.RecordStatusCancelled)
         {
             return BadRequest("已取消的学习记录不能更新。");
+        }
+        if (recordStatus == LearningWorkflow.RecordStatusCompleted)
+        {
+            return Conflict("已完成的学习记录不能再次修改。");
         }
         if (record.Item?.StartAt is null ||
             LearningWorkflow.BusinessNow() < record.Item.StartAt.Value)
@@ -577,6 +600,9 @@ public class LearningController : ControllerBase
         return Ok(ToRecordDto(record));
     }
 
+    /// <summary>
+    /// 校验课程必填信息、时间、容量、范围及授课教师资格。
+    /// </summary>
     private async Task<IActionResult?> ValidateCourseInputAsync(
         string? title,
         int teacherUserId,
@@ -623,6 +649,9 @@ public class LearningController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// 返回当前用户不能报名课程的原因；可报名时返回空。
+    /// </summary>
     private static EnrollmentDecision? GetEnrollmentDecision(
         User user,
         DbLearningItem item,
@@ -669,6 +698,9 @@ public class LearningController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// 判断用户是否可按管理权、历史报名或开放范围查看课程。
+    /// </summary>
     private static bool CanViewLearningItem(
         User viewer,
         DbLearningItem item,
@@ -696,6 +728,9 @@ public class LearningController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// 判断用户是否可为指定社团发布课程。
+    /// </summary>
     private static bool CanCreateLearningItem(User user, Club club)
     {
         return UsersController.IsClubPrincipal(user, club.ClubId) ||
@@ -704,6 +739,9 @@ public class LearningController : ControllerBase
                IsNamedClubAdvisor(user, club);
     }
 
+    /// <summary>
+    /// 判断用户是否可维护课程及查看报名名单。
+    /// </summary>
     private static bool CanManageLearningItem(User user, DbLearningItem item)
     {
         if (item.UploaderUserId == user.UserId) return true;
@@ -714,12 +752,18 @@ public class LearningController : ControllerBase
                (item.Club is not null && IsNamedClubAdvisor(user, item.Club));
     }
 
+    /// <summary>
+    /// 判断教师账号是否与社团登记的指导老师姓名匹配。
+    /// </summary>
     private static bool IsNamedClubAdvisor(User user, Club club)
     {
         return IsTeacherAccount(user) &&
                AdvisorNameMatchesUser(club.AdvisorName, user);
     }
 
+    /// <summary>
+    /// 判断用户是否为指定社团的有效成员。
+    /// </summary>
     private static bool IsActiveClubMember(User user, int clubId)
     {
         return user.ClubMemberships.Any(membership =>
@@ -727,6 +771,9 @@ public class LearningController : ControllerBase
             UsersController.IsActive(membership.MemberStatus));
     }
 
+    /// <summary>
+    /// 加载权限判断所需的用户角色和社团成员关系。
+    /// </summary>
     private Task<User?> LoadUserAsync(int userId)
     {
         return _db.Users
@@ -736,6 +783,9 @@ public class LearningController : ControllerBase
             .FirstOrDefaultAsync(user => user.UserId == userId);
     }
 
+    /// <summary>
+    /// 统计课程当前占用名额的学习记录数量。
+    /// </summary>
     private Task<int> CountActiveEnrollmentsAsync(int itemId)
     {
         return _db.LearningRecords.CountAsync(record =>
@@ -744,6 +794,9 @@ public class LearningController : ControllerBase
              record.EnrollStatus != LearningWorkflow.RecordStatusCancelled));
     }
 
+    /// <summary>
+    /// 获取用户在指定课程下最近的一条学习记录。
+    /// </summary>
     private Task<DbLearningRecord?> GetLatestLearningRecordAsync(int itemId, int userId)
     {
         return _db.LearningRecords
@@ -754,6 +807,9 @@ public class LearningController : ControllerBase
             .FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// 在可串行化事务中计算下一个课程编号。
+    /// </summary>
     private async Task<int> GetNextLearningItemId()
     {
         // 当前表尚未配置序列，使用可串行化事务和重试保护 max(id) + 1。
@@ -761,6 +817,9 @@ public class LearningController : ControllerBase
         return maxId + 1;
     }
 
+    /// <summary>
+    /// 在可串行化事务中计算下一个学习记录编号。
+    /// </summary>
     private async Task<int> GetNextLearningRecordId()
     {
         // 与 LEARNING_ITEMS 保持一致，后续数据库统一引入序列时再替换。
@@ -768,6 +827,9 @@ public class LearningController : ControllerBase
         return maxId + 1;
     }
 
+    /// <summary>
+    /// 判断用户是否在指定社团拥有目标角色之一。
+    /// </summary>
     private static bool HasClubRole(
         User user,
         int clubId,
@@ -779,6 +841,9 @@ public class LearningController : ControllerBase
             roleCodes.Contains(Normalize(userRole.Role.RoleCode)));
     }
 
+    /// <summary>
+    /// 根据工号或角色判断账号是否属于教师。
+    /// </summary>
     private static bool IsTeacherAccount(User user)
     {
         return IsStaffNumber(user.StudentNo) ||
@@ -787,6 +852,9 @@ public class LearningController : ControllerBase
                    IsTeacherRole(userRole.Role));
     }
 
+    /// <summary>
+    /// 判断角色定义是否表示教师或指导老师。
+    /// </summary>
     private static bool IsTeacherRole(Role role)
     {
         var code = Normalize(role.RoleCode);
@@ -795,6 +863,9 @@ public class LearningController : ControllerBase
                (role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 判断学工号是否符合当前五位教师工号约定。
+    /// </summary>
     private static bool IsStaffNumber(string? userNumber)
     {
         return !string.IsNullOrWhiteSpace(userNumber) &&
@@ -802,6 +873,9 @@ public class LearningController : ControllerBase
                userNumber.Trim().All(char.IsDigit);
     }
 
+    /// <summary>
+    /// 判断社团登记的指导老师文本是否包含用户真实姓名。
+    /// </summary>
     private static bool AdvisorNameMatchesUser(string? advisorName, User user)
     {
         return !string.IsNullOrWhiteSpace(advisorName) &&
@@ -809,6 +883,9 @@ public class LearningController : ControllerBase
                advisorName.Trim().Contains(user.RealName.Trim(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 将创建请求枚举映射为数据库课程状态。
+    /// </summary>
     private static string? ToCreateStatusValue(CreateLearningItemRequest.ItemStatusEnum status)
     {
         return status switch
@@ -821,6 +898,9 @@ public class LearningController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// 将更新请求枚举映射为数据库课程状态。
+    /// </summary>
     private static string? ToUpdateStatusValue(UpdateLearningItemRequest.ItemStatusEnum status)
     {
         return status switch
@@ -835,7 +915,10 @@ public class LearningController : ControllerBase
         };
     }
 
-    private static ApiLearningItem ToItemDto(
+    /// <summary>
+    /// 将完整课程实体映射为 API 模型；数据缺失时记录错误并返回空。
+    /// </summary>
+    private ApiLearningItem? TryMapItemDto(
         DbLearningItem item,
         int activeEnrollmentCount,
         DbLearningRecord? currentRecord,
@@ -843,14 +926,24 @@ public class LearningController : ControllerBase
         EnrollmentDecision? enrollmentDecision,
         DateTime now)
     {
+        if (item.StartAt is null || item.EndAt is null || item.Capacity is null)
+        {
+            _logger.LogError(
+                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, EndAtMissing={EndAtMissing}, CapacityMissing={CapacityMissing}。",
+                item.ItemId,
+                item.StartAt is null,
+                item.EndAt is null,
+                item.Capacity is null);
+            return null;
+        }
+
         var currentRecordStatus = currentRecord is null
             ? null
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
         var canCancelEnrollment =
             (currentRecordStatus is LearningWorkflow.RecordStatusEnrolled or
                 LearningWorkflow.RecordStatusLearning) &&
-            item.EnrollmentDeadline != default &&
-            now < item.EnrollmentDeadline;
+            now < item.StartAt.Value;
 
         return new ApiLearningItem
         {
@@ -862,13 +955,10 @@ public class LearningController : ControllerBase
             ItemType = item.ItemType,
             CategoryName = item.CategoryName,
             Description = item.Description,
-            EnrollmentDeadline = item.EnrollmentDeadline,
-            StartAt = item.StartAt ??
-                throw new InvalidOperationException("课程缺少开始时间。"),
-            EndAt = item.EndAt ??
-                throw new InvalidOperationException("课程缺少结束时间。"),
-            Capacity = item.Capacity ??
-                throw new InvalidOperationException("课程缺少容量。"),
+            EnrollmentDeadline = LearningWorkflow.AsUtc(item.EnrollmentDeadline),
+            StartAt = LearningWorkflow.AsUtc(item.StartAt.Value),
+            EndAt = LearningWorkflow.AsUtc(item.EndAt.Value),
+            Capacity = item.Capacity.Value,
             Visibility = LearningWorkflow.NormalizeVisibility(item.Visibility),
             ItemStatus = ToItemStatusEnum(
                 LearningWorkflow.ResolveEffectiveItemStatus(item, now)),
@@ -881,6 +971,9 @@ public class LearningController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// 将学习记录实体映射为 API 模型，并统一输出 UTC 时间。
+    /// </summary>
     private static ApiLearningRecord ToRecordDto(DbLearningRecord record)
     {
         return new ApiLearningRecord
@@ -891,14 +984,28 @@ public class LearningController : ControllerBase
             UserDisplayName = BuildUserDisplayName(record.User, record.UserId),
             UserNumber = record.User?.StudentNo,
             EnrollStatus = LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus),
-            EnrolledAt = record.EnrolledAt,
+            EnrolledAt = LearningWorkflow.AsUtc(record.EnrolledAt),
             Progress = record.Progress is null ? null : (double)record.Progress.Value,
             DurationSeconds = record.DurationSeconds,
-            LastLearnAt = record.LastLearnAt,
-            CompletedAt = record.CompletedAt
+            LastLearnAt = LearningWorkflow.AsUtc(record.LastLearnAt),
+            CompletedAt = LearningWorkflow.AsUtc(record.CompletedAt)
         };
     }
 
+    /// <summary>
+    /// 返回不暴露数据库细节的课程数据完整性错误。
+    /// </summary>
+    private ObjectResult CourseDataIntegrityProblem(int itemId)
+    {
+        return Problem(
+            statusCode: StatusCodes.Status500InternalServerError,
+            title: "课程数据异常",
+            detail: $"课程 {itemId} 缺少必填信息，请联系管理员检查数据。");
+    }
+
+    /// <summary>
+    /// 将数据库课程状态映射为 OpenAPI 枚举。
+    /// </summary>
     private static ApiLearningItem.ItemStatusEnum ToItemStatusEnum(string status)
     {
         return status switch
@@ -913,6 +1020,9 @@ public class LearningController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// 按真实姓名、用户名和编号顺序生成用户展示名。
+    /// </summary>
     private static string BuildUserDisplayName(User? user, int userId)
     {
         if (!string.IsNullOrWhiteSpace(user?.RealName)) return user.RealName.Trim();
@@ -920,6 +1030,9 @@ public class LearningController : ControllerBase
         return $"用户 {userId}";
     }
 
+    /// <summary>
+    /// 生成包含姓名和学工号的授课教师候选展示文本。
+    /// </summary>
     private static string BuildTeacherCandidateDisplayName(User user)
     {
         var name = BuildUserDisplayName(user, user.UserId);
@@ -927,9 +1040,15 @@ public class LearningController : ControllerBase
         return string.IsNullOrWhiteSpace(staffNumber) ? name : $"{name}（{staffNumber}）";
     }
 
+    /// <summary>
+    /// 清理可选文本并将空白值转换为空。
+    /// </summary>
     private static string? NormalizeOptionalText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>
+    /// 将业务代码值清理为小写文本。
+    /// </summary>
     private static string Normalize(string? value) =>
         (value ?? string.Empty).Trim().ToLowerInvariant();
 

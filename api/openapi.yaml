@@ -2196,6 +2196,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ???? ID??? ID ???????
+        "404":
+          description: ???????
     post:
       summary: ?????????
       description: ??????????????????????????????????????
@@ -2282,6 +2286,8 @@ paths:
         "403":
           description: ?????????????
         "409":
+          description: ??????????
+        "404":
           description: ??????????
     delete:
       summary: ????????
@@ -4990,6 +4996,7 @@ components:
           example: 40
         visibility:
           type: string
+          enum: [club, public]
           description: Course audience; club means active club members, public means all active school accounts.
           example: club
         itemStatus:
@@ -5003,6 +5010,7 @@ components:
           example: 8
         currentUserRecordStatus:
           type: string
+          enum: [enrolled, learning, completed, cancelled]
           nullable: true
           description: Current viewer's learning record status.
         canManage:
@@ -5089,6 +5097,7 @@ components:
           description: Enrollment capacity.
         visibility:
           type: string
+          enum: [club, public]
           description: Course audience; club or public.
           example: club
         itemStatus:
@@ -5157,6 +5166,7 @@ components:
           description: Enrollment capacity.
         visibility:
           type: string
+          enum: [club, public]
           description: Course audience; club or public.
         itemStatus:
           type: string
@@ -5211,6 +5221,7 @@ components:
           description: Learning user's student or staff number.
         enrollStatus:
           type: string
+          enum: [enrolled, learning, completed, cancelled]
           description: Enrollment and learning status.
           example: learning
         enrolledAt:

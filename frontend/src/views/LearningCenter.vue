@@ -164,6 +164,7 @@ const recordDialogTitle = computed(() => {
   return item.canManage ? `${item.title} - 报名名单` : `${item.title} - 学习记录`;
 });
 
+/** 将课程状态转换为用户可读文本。 */
 function statusLabel(status?: string | null) {
   switch (status) {
     case LearningItemItemStatusEnum.Published:
@@ -177,6 +178,7 @@ function statusLabel(status?: string | null) {
   }
 }
 
+/** 将学习记录状态转换为用户可读文本。 */
 function recordStatusLabel(status?: string | null) {
   switch (status) {
     case recordStatus.learning:
@@ -192,58 +194,77 @@ function recordStatusLabel(status?: string | null) {
   }
 }
 
+/** 返回课程类型的展示名称。 */
 function courseTypeLabel(value?: string | null) {
   return courseTypeOptions.find((option) => option.value === value)?.label ?? value ?? "课程";
 }
 
+/** 返回课程开放范围的展示名称。 */
 function visibilityLabel(value?: string | null) {
   return visibilityOptions.find((option) => option.value === value)?.label ?? "仅本社团";
 }
 
+/** 判断当前用户是否能为指定社团发布课程。 */
 function canCreateForClub(clubId: number) {
   return currentRoles.value.some(
     (role) => manageableRoleCodes.has(normalize(role.code)) && roleCoversClub(role, clubId),
   );
 }
 
+/** 判断角色授权范围是否覆盖指定社团。 */
 function roleCoversClub(role: AuthRole, clubId: number) {
   return role.clubId === clubId || role.clubIds.includes(clubId);
 }
 
+/** 统一清理用于比较的角色和状态代码。 */
 function normalize(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
 }
 
+/** 将 UTC 时间固定转换为北京时间展示。 */
 function formatDate(value?: Date | string | null) {
   if (!value) return "未设置";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "未设置";
-  return date.toLocaleString("zh-CN", { hour12: false });
+  return date.toLocaleString("zh-CN", {
+    hour12: false,
+    timeZone: "Asia/Shanghai",
+  });
 }
 
+/** 将秒数转换为便于阅读的分钟数。 */
 function formatDuration(seconds?: number | null) {
   if (!seconds) return "0 分钟";
   return `${Math.round(seconds / 60)} 分钟`;
 }
 
+/** 组合报名用户姓名与学工号。 */
 function participantLabel(record: LearningRecord) {
   const name = record.userDisplayName || `用户 ${record.userId}`;
   return record.userNumber ? `${name}（${record.userNumber}）` : name;
 }
 
+/** 判断学习记录是否允许当前用户继续更新进度。 */
 function canUpdateRecord(record: LearningRecord) {
   if (record.userId !== currentUserId.value) return false;
-  if (record.enrollStatus === recordStatus.cancelled) return false;
+  if (
+    record.enrollStatus === recordStatus.cancelled ||
+    record.enrollStatus === recordStatus.completed
+  ) {
+    return false;
+  }
   const item = itemMap.value.get(record.itemId);
   if (!item?.startAt) return false;
   return new Date(item.startAt).getTime() <= Date.now();
 }
 
+/** 执行表单校验并将失败统一转换为 false。 */
 async function validateForm(form?: FormInstance) {
   if (!form) return false;
   return form.validate().catch(() => false);
 }
 
+/** 加载当前用户可见的社团列表。 */
 async function loadClubs() {
   if (!currentUserId.value) {
     clubs.value = [];
@@ -258,6 +279,7 @@ async function loadClubs() {
   }
 }
 
+/** 加载当前用户可见的课程及报名状态。 */
 async function loadLearningItems() {
   if (!currentUserId.value) {
     learningItems.value = [];
@@ -277,6 +299,7 @@ async function loadLearningItems() {
   }
 }
 
+/** 加载指定社团可选择的授课教师。 */
 async function loadTeacherCandidates(clubId?: number | null) {
   if (!clubId || !currentUserId.value) {
     teacherCandidates.value = [];
@@ -302,15 +325,18 @@ async function loadTeacherCandidates(clubId?: number | null) {
   }
 }
 
+/** 返回授课教师候选人的姓名与学工号文本。 */
 function teacherCandidateLabel(candidate: LearningTeacherCandidate) {
   return candidate.displayName.trim();
 }
 
+/** 社团切换后清空教师并刷新候选列表。 */
 async function handleCourseClubChange(clubId?: number) {
   courseForm.teacherUserId = null;
   await loadTeacherCandidates(clubId);
 }
 
+/** 重置课程表单为新建课程的默认值。 */
 function resetCourseForm() {
   courseForm.clubId = manageableClubs.value[0]?.id ?? null;
   courseForm.title = "";
@@ -327,6 +353,7 @@ function resetCourseForm() {
   courseFormRef.value?.clearValidate();
 }
 
+/** 校验发布权限后打开课程创建对话框。 */
 async function openCreateDialog() {
   if (!currentUserId.value) {
     ElMessage.warning("请先登录后再发布课程");
@@ -344,6 +371,7 @@ async function openCreateDialog() {
   courseDialogVisible.value = true;
 }
 
+/** 将课程数据填入表单并打开编辑对话框。 */
 async function openEditDialog(item: LearningItem) {
   if (!item.canManage) {
     ElMessage.warning("当前账号没有修改该课程的权限");
@@ -370,6 +398,7 @@ async function openEditDialog(item: LearningItem) {
   courseDialogVisible.value = true;
 }
 
+/** 校验并提交课程创建或更新请求。 */
 async function submitCourse() {
   if (!currentUserId.value) return;
   if (!(await validateForm(courseFormRef.value))) return;
@@ -429,6 +458,7 @@ async function submitCourse() {
   }
 }
 
+/** 为当前用户提交课程报名。 */
 async function enroll(item: LearningItem) {
   if (!currentUserId.value) return;
   if (!item.canEnroll) {
@@ -451,18 +481,23 @@ async function enroll(item: LearningItem) {
   }
 }
 
+/** 确认后取消当前用户的课程报名。 */
 async function cancelEnrollment(item: LearningItem) {
   if (!currentUserId.value || !item.canCancelEnrollment) return;
 
-  await ElMessageBox.confirm(
-    `确认取消“${item.title}”的报名吗？取消后名额会立即释放。`,
-    "取消课程报名",
-    {
-      confirmButtonText: "确认取消",
-      cancelButtonText: "保留报名",
-      type: "warning",
-    },
-  );
+  try {
+    await ElMessageBox.confirm(
+      `确认取消“${item.title}”的报名吗？取消后名额会立即释放。`,
+      "取消课程报名",
+      {
+        confirmButtonText: "确认取消",
+        cancelButtonText: "保留报名",
+        type: "warning",
+      },
+    );
+  } catch {
+    return;
+  }
 
   cancellingId.value = item.id;
   try {
@@ -479,6 +514,7 @@ async function cancelEnrollment(item: LearningItem) {
   }
 }
 
+/** 打开个人学习记录或课程报名名单。 */
 async function openRecords(item?: LearningItem) {
   if (!currentUserId.value) {
     ElMessage.warning("请先登录后查看学习记录");
@@ -491,6 +527,7 @@ async function openRecords(item?: LearningItem) {
   await loadRecords();
 }
 
+/** 加载个人学习记录或指定课程报名名单。 */
 async function loadRecords() {
   if (!currentUserId.value) return;
 
@@ -508,6 +545,7 @@ async function loadRecords() {
   }
 }
 
+/** 将可更新记录载入进度编辑表单。 */
 function beginProgress(record: LearningRecord) {
   if (!canUpdateRecord(record)) return;
   progressForm.recordId = record.id;
@@ -515,6 +553,7 @@ function beginProgress(record: LearningRecord) {
   progressForm.durationMinutes = Math.round((record.durationSeconds ?? 0) / 60);
 }
 
+/** 提交当前用户的学习进度和累计时长。 */
 async function submitProgress() {
   if (!currentUserId.value) return;
   if (!(await validateForm(progressFormRef.value))) return;
@@ -540,12 +579,14 @@ async function submitProgress() {
   }
 }
 
+/** 刷新登录态以及课程页面的基础数据。 */
 async function refreshAll() {
   auth.value = readAuth();
   await loadClubs();
   await loadLearningItems();
 }
 
+/** 从网络异常中提取适合界面展示的错误信息。 */
 function toErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Response) return `${fallback}：HTTP ${error.status}`;
   if (error instanceof Error) return error.message || fallback;

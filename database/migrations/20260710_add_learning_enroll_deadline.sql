@@ -1,5 +1,9 @@
 -- 为培训课程增加独立的报名截止时间。
 -- 本脚本可重复执行；历史记录优先使用课程开始时间回填。
+-- 影响范围：会全表回填 LEARNING_ITEMS 并执行 ALTER TABLE，可能产生表锁，
+--           实际执行时间取决于现有数据量，建议在低峰期执行。
+-- 回滚方案：先删除 CK_LEARNING_ITEMS_ENROLL_TIME 约束，再删除 ENROLL_DEADLINE 列。
+--           历史记录的回填值来自 START_AT 或当前时间，删除列后无法恢复该回填结果。
 
 DECLARE
   column_count NUMBER;
