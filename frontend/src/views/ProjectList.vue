@@ -546,7 +546,7 @@ function normalizeRoleText(value?: string | null) {
 }
 
 function leaderCandidateLabel(user: UserSummary) {
-  const name = user.realName || user.username || `用户 ${user.id}`;
+  const name = user.realName || user.username || "未知用户";
   const identity = user.studentNo || user.username;
   return identity ? `${name}（${identity}）` : name;
 }
@@ -555,7 +555,7 @@ function leaderDisplayName(leaderUserId?: number | null) {
   if (!leaderUserId) return "未分配";
 
   const user = leaderUserMap.value.get(leaderUserId);
-  return user ? leaderCandidateLabel(user) : `用户 ${leaderUserId}`;
+  return user ? leaderCandidateLabel(user) : "未知负责人";
 }
 
 function formatDate(value?: Date | null) {
@@ -623,11 +623,10 @@ onUnmounted(() => {
     </el-card>
 
     <el-table v-loading="loading" :data="projects" stripe empty-text="暂无项目数据">
-      <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
       <el-table-column label="所属社团" min-width="140">
         <template #default="{ row }">
-          {{ clubNameMap.get(row.clubId) || `社团 ${row.clubId}` }}
+          {{ clubNameMap.get(row.clubId) || "未知社团" }}
         </template>
       </el-table-column>
       <el-table-column label="负责人" min-width="150" show-overflow-tooltip>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
@@ -76,7 +76,23 @@ interface ReservationForm {
   purpose: string;
 }
 
+interface ClubOption {
+  id: number;
+  name: string;
+}
+
+interface ActivityOption {
+  id: number;
+  title: string;
+  clubId: number;
+  clubName: string;
+  startTime?: string | null;
+  status?: string | null;
+}
+
 const venues = ref<Venue[]>([]);
+const clubs = ref<ClubOption[]>([]);
+const activities = ref<ActivityOption[]>([]);
 const loading = ref(false);
 const error = ref("");
 const dialogVisible = ref(false);
@@ -121,6 +137,9 @@ const form = reactive<ReservationForm>({
 });
 
 const selectedVenue = computed(() => venues.value.find((venue) => venue.id === form.venueId));
+const selectableActivities = computed(() =>
+  activities.value.filter((activity) => activity.clubId === form.clubId),
+);
 const selectedVenueApprovedSlots = computed(() => {
   if (!approvedSlotsVenue.value) return [];
   return approvedReservationsForVenue(approvedSlotsVenue.value.id);
@@ -214,7 +233,7 @@ const reservationStatusType: Record<string, "success" | "warning" | "info" | "da
 };
 
 const rules: FormRules<ReservationForm> = {
-  clubId: [{ required: true, message: "请输入申请社团 ID", trigger: "blur" }],
+  clubId: [{ required: true, message: "请选择申请社团", trigger: "change" }],
   startTime: [
     { required: true, message: "请选择开始时间", trigger: "change" },
     {
@@ -299,6 +318,30 @@ async function loadVenues() {
   }
 }
 
+async function loadReservationOptions() {
+  const userId = auth.value?.user.id;
+  if (!userId) {
+    clubs.value = [];
+    activities.value = [];
+    return;
+  }
+
+  try {
+    const [clubRes, activityRes] = await Promise.all([
+      fetch(`/api/clubs?viewerUserId=${userId}`),
+      fetch(`/api/activities?currentUserId=${userId}`),
+    ]);
+    if (!clubRes.ok) throw new Error(await readErrorMessage(clubRes));
+    if (!activityRes.ok) throw new Error(await readErrorMessage(activityRes));
+    clubs.value = await clubRes.json();
+    activities.value = await activityRes.json();
+  } catch (e) {
+    clubs.value = [];
+    activities.value = [];
+    ElMessage.error(e instanceof Error ? e.message : "预约选项加载失败");
+  }
+}
+
 async function loadApprovedReservations() {
   try {
     const slots = await requestJson<VenueOccupiedSlotPayload[]>(
@@ -339,13 +382,13 @@ async function loadMyReservations() {
 }
 
 async function refreshVenueData() {
-  await Promise.all([loadVenues(), loadApprovedReservations()]);
+  await Promise.all([loadVenues(), loadApprovedReservations(), loadReservationOptions()]);
 }
 
 function openReservation(venue: Venue) {
   latestReservation.value = null;
   form.venueId = venue.id;
-  form.clubId = firstClubId.value;
+  form.clubId = clubs.value[0]?.id ?? firstClubId.value;
   form.activityId = undefined;
   form.startTime = "";
   form.endTime = "";
@@ -421,7 +464,7 @@ async function deleteReservation(reservation: VenueReservation) {
 
   try {
     await ElMessageBox.confirm(
-      `确定删除预约 #${reservation.id} 吗？删除后不可恢复。`,
+      `确定删除「${reservation.venueName}」在 ${formatDateTime(reservation.startTime)} 的预约吗？删除后不可恢复。`,
       "确认删除预约",
       {
         confirmButtonText: "确定删除",
@@ -463,7 +506,6 @@ function formatLocation(venue: Venue) {
 function createVenueIndex(venue: Venue) {
   const location = formatVenueLocation(venue.building, venue.roomNo);
   return createVenueSearchIndex({
-    ids: [venue.id],
     texts: [venue.name, venue.building, venue.roomNo, location],
   });
 }
@@ -473,9 +515,13 @@ function createApprovedSlotIndex(slot: VenueReservation) {
   const location = venue ? formatVenueLocation(venue.building, venue.roomNo) : "";
 
   return createVenueSearchIndex({
-    ids: [slot.id, slot.venueId],
     texts: [slot.venueName, venue?.name, venue?.building, venue?.roomNo, location],
   });
+}
+
+function activityOptionLabel(activity: ActivityOption) {
+  const time = activity.startTime ? ` · ${formatDateTime(activity.startTime)}` : "";
+  return `${activity.title}（${activity.clubName || "未知社团"}${time}）`;
 }
 
 function formatDateTime(value: string) {
@@ -640,6 +686,15 @@ function myReservationRowClass({ row }: { row: VenueReservation }) {
   return isExpiredReservation(row) ? "expired-reservation-row" : "";
 }
 
+watch(
+  () => form.clubId,
+  () => {
+    if (!selectableActivities.value.some((activity) => activity.id === form.activityId)) {
+      form.activityId = undefined;
+    }
+  },
+);
+
 onMounted(refreshVenueData);
 </script>
 
@@ -711,14 +766,13 @@ onMounted(refreshVenueData);
       <el-input
         v-model="venueSearch"
         clearable
-        placeholder="搜索 ID、场地名称或位置"
+        placeholder="搜索场地名称或位置"
         class="search-input"
       />
       <span class="search-summary">{{ venueSearchSummary }}</span>
     </div>
 
     <el-table v-loading="loading" :data="filteredVenues" stripe :empty-text="venueTableEmptyText">
-      <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="name" label="场地名称" min-width="160" />
       <el-table-column label="位置" min-width="180">
         <template #default="{ row }">
@@ -736,7 +790,6 @@ onMounted(refreshVenueData);
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="managerUserId" label="管理员 ID" width="110" />
       <el-table-column label="操作" width="210" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
@@ -783,21 +836,34 @@ onMounted(refreshVenueData);
           <el-select
             v-if="reserveClubIds.length > 0"
             v-model="form.clubId"
+            filterable
             placeholder="选择有预约权限的社团"
             class="full-width"
           >
             <el-option
-              v-for="clubId in reserveClubIds"
-              :key="clubId"
-              :label="`社团 ${clubId}`"
-              :value="clubId"
+              v-for="club in clubs.filter((c) => reserveClubIds.includes(c.id))"
+              :key="club.id"
+              :label="club.name"
+              :value="club.id"
             />
           </el-select>
-          <el-input-number v-else v-model="form.clubId" :min="1" :controls="false" />
           <span v-if="firstClubId" class="field-hint">仅显示当前角色有权预约的社团。</span>
         </el-form-item>
-        <el-form-item label="关联活动 ID（可选）" prop="activityId">
-          <el-input-number v-model="form.activityId" :min="1" :controls="false" />
+        <el-form-item label="关联活动（可选）" prop="activityId">
+          <el-select
+            v-model="form.activityId"
+            clearable
+            filterable
+            placeholder="请选择本社团活动"
+            class="full-width"
+          >
+            <el-option
+              v-for="activity in selectableActivities"
+              :key="activity.id"
+              :label="activityOptionLabel(activity)"
+              :value="activity.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="开始时间" prop="startTime">
           <el-date-picker
@@ -854,7 +920,7 @@ onMounted(refreshVenueData);
         <el-input
           v-model="approvedSlotSearch"
           clearable
-          placeholder="搜索预约 ID、场地名称或位置"
+          placeholder="搜索场地名称或位置"
           class="search-input"
         />
         <span class="search-summary">{{ approvedSlotSearchSummary }}</span>
@@ -928,11 +994,10 @@ onMounted(refreshVenueData);
         :empty-text="myReservationEmptyText"
         :row-class-name="myReservationRowClass"
       >
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="场地/社团" min-width="180">
           <template #default="{ row }">
             <div class="primary-text">{{ row.venueName }}</div>
-            <div class="muted">{{ row.clubName || `社团 ${row.clubId ?? "-"}` }}</div>
+            <div class="muted">{{ row.clubName || "未知社团" }}</div>
           </template>
         </el-table-column>
         <el-table-column label="预约时间" min-width="220">

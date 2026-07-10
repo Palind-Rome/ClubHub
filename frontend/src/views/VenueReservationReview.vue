@@ -364,18 +364,17 @@ function approveDisabledReason(reservation: VenueReservation) {
   return canApprove(reservation) ? "" : "开始时间必须晚于当前时间";
 }
 
-function createVenueIndex(venueId: number, venueName: string, extraIds: number[] = []) {
+function createVenueIndex(venueId: number, venueName: string) {
   const venue = venueLookup.value.get(venueId);
   const location = venue ? formatVenueLocation(venue.building, venue.roomNo) : "";
 
   return createVenueSearchIndex({
-    ids: [venueId, ...extraIds],
     texts: [venueName, venue?.name, venue?.building, venue?.roomNo, location],
   });
 }
 
 function createReservationIndex(reservation: VenueReservation) {
-  return createVenueIndex(reservation.venueId, reservation.venueName, [reservation.id]);
+  return createVenueIndex(reservation.venueId, reservation.venueName);
 }
 
 function venueLocationText(venueId: number) {
@@ -457,7 +456,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-input
           v-model="venueSearch"
           clearable
-          placeholder="搜索 ID、场地名称或位置"
+          placeholder="搜索场地名称或位置"
           class="panel-search"
         />
       </div>
@@ -472,7 +471,6 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-table-column label="场地" min-width="220">
           <template #default="{ row }">
             <div class="primary-text">{{ row.venueName }}</div>
-            <div class="muted">ID {{ row.venueId }}</div>
           </template>
         </el-table-column>
         <el-table-column label="位置" min-width="180">
@@ -498,7 +496,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-input
           v-model="selectedReservationSearch"
           clearable
-          placeholder="搜索预约 ID、场地名称或位置"
+          placeholder="搜索场地名称或位置"
           class="panel-search"
         />
       </div>
@@ -508,11 +506,10 @@ watch(filteredVenueGroups, syncSelectedVenue);
         stripe
         :empty-text="selectedReservationEmptyText"
       >
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="申请人/社团" min-width="180">
           <template #default="{ row }">
-            <div class="primary-text">{{ row.applicantName || `用户 ${row.applicantUserId}` }}</div>
-            <div class="muted">{{ row.clubName || `社团 ${row.clubId}` }}</div>
+            <div class="primary-text">{{ row.applicantName || "未知用户" }}</div>
+            <div class="muted">{{ row.clubName || "未知社团" }}</div>
           </template>
         </el-table-column>
         <el-table-column label="预约时间" min-width="220">
@@ -564,10 +561,10 @@ watch(filteredVenueGroups, syncSelectedVenue);
       <el-descriptions v-if="reviewTarget" :column="1" size="small" border class="review-detail">
         <el-descriptions-item label="场地">{{ reviewTarget.venueName }}</el-descriptions-item>
         <el-descriptions-item label="社团">{{
-          reviewTarget.clubName || `社团 ${reviewTarget.clubId}`
+          reviewTarget.clubName || "未知社团"
         }}</el-descriptions-item>
         <el-descriptions-item label="申请人">{{
-          reviewTarget.applicantName || `用户 ${reviewTarget.applicantUserId}`
+          reviewTarget.applicantName || "未知用户"
         }}</el-descriptions-item>
         <el-descriptions-item label="时间">
           {{ formatDateTime(reviewTarget.startTime) }} 至
@@ -611,7 +608,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
           <el-input
             v-model="historySearch"
             clearable
-            placeholder="搜索预约 ID、场地名称或位置"
+            placeholder="搜索场地名称或位置"
             class="history-search"
           />
         </div>
@@ -636,12 +633,11 @@ watch(filteredVenueGroups, syncSelectedVenue);
         stripe
         :empty-text="historyEmptyText"
       >
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="场地/社团" min-width="180">
           <template #default="{ row }">
             <div class="primary-text">{{ row.venueName }}</div>
             <div class="muted">{{ venueLocationText(row.venueId) }}</div>
-            <div class="muted">{{ row.clubName || `社团 ${row.clubId}` }}</div>
+            <div class="muted">{{ row.clubName || "未知社团" }}</div>
           </template>
         </el-table-column>
         <el-table-column label="预约时间" min-width="220">

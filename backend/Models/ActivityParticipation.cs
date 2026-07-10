@@ -47,6 +47,21 @@ namespace Org.OpenAPITools.Models
         public int UserId { get; set; }
 
         /// <summary>
+        /// 参与者姓名；姓名为空时回退为用户名。
+        /// </summary>
+        /// <value>参与者姓名；姓名为空时回退为用户名。</value>
+        [Required]
+        [DataMember(Name="userName", EmitDefaultValue=false)]
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// 参与者学号或工号。
+        /// </summary>
+        /// <value>参与者学号或工号。</value>
+        [DataMember(Name="studentNo", EmitDefaultValue=true)]
+        public string? StudentNo { get; set; }
+
+        /// <summary>
         /// Gets or Sets RegisterStatus
         /// </summary>
         [DataMember(Name="registerStatus", EmitDefaultValue=true)]
