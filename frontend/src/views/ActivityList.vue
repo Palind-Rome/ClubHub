@@ -428,14 +428,6 @@ function showBudgetMenu(activity: Activity) {
   return canApplyBudget(activity) || canReviewBudget(activity);
 }
 
-function showCheckinMenu(activity: Activity) {
-  return canManageCheckin(activity) || canSignActivity(activity);
-}
-
-function checkinMenuLabel(activity: Activity) {
-  return canManageCheckin(activity) ? "签到管理" : "签到签退";
-}
-
 async function loadActivities() {
   loading.value = true;
   error.value = "";
@@ -902,7 +894,7 @@ async function openParticipations(activity: Activity) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="380" width="380" align="center" fixed="right">
+      <el-table-column label="操作" min-width="420" width="420" align="center" fixed="right">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
@@ -956,26 +948,22 @@ async function openParticipations(activity: Activity) {
               物资借用
             </el-button>
 
-            <el-dropdown v-if="showCheckinMenu(row)" trigger="click">
-              <el-button
-                size="small"
-                type="success"
-                plain
-                :disabled="row.status !== 'published' && row.status !== 'ongoing'"
-              >
-                {{ checkinMenuLabel(row) }}
-              </el-button>
+            <el-button
+              v-if="canManageCheckin(row)"
+              size="small"
+              type="warning"
+              plain
+              @click="openSettings(row)"
+            >
+              签到设置
+            </el-button>
+
+            <el-dropdown v-if="canSignActivity(row)" trigger="click">
+              <el-button size="small" type="success" plain>签到签退</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-if="canManageCheckin(row)" @click="openSettings(row)">
-                    签到设置
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="canSignActivity(row)" @click="openSign(row, 'checkin')">
-                    签到
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="canSignActivity(row)" @click="openSign(row, 'checkout')">
-                    签退
-                  </el-dropdown-item>
+                  <el-dropdown-item @click="openSign(row, 'checkin')">签到</el-dropdown-item>
+                  <el-dropdown-item @click="openSign(row, 'checkout')">签退</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -1379,7 +1367,7 @@ async function openParticipations(activity: Activity) {
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  min-width: 360px;
+  min-width: 400px;
   min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {
