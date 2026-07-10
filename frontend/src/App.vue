@@ -121,7 +121,7 @@ onUnmounted(() => {
             {{ label }}
           </el-tag>
         </div>
-        <el-button link type="danger" @click="logout">退出</el-button>
+        <el-button class="logout-button" link type="danger" @click="logout">退出</el-button>
         <el-tag
           class="health-tag"
           :type="healthOk ? 'success' : 'danger'"
@@ -167,6 +167,7 @@ onUnmounted(() => {
 }
 .header-aside {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
@@ -182,8 +183,16 @@ onUnmounted(() => {
   max-height: 52px;
   overflow: hidden;
 }
+.logout-button {
+  flex: 0 0 auto;
+}
 .role-tag {
   max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.role-tag :deep(.el-tag__content) {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
