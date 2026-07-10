@@ -47,7 +47,7 @@ namespace Org.OpenAPITools.Models
         /// Course title.
         /// </summary>
         /// <value>Course title.</value>
-        /* <example>社团干部培训课</example> */
+        /* <example>???????</example> */
         [Required]
         [StringLength(100, MinimumLength=1)]
         [DataMember(Name="title", EmitDefaultValue=false)]

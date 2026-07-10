@@ -63,7 +63,7 @@ namespace Org.OpenAPITools.Models
         /// Course title.
         /// </summary>
         /// <value>Course title.</value>
-        /* <example>社团干部培训课</example> */
+        /* <example>???????</example> */
         [Required]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
@@ -80,7 +80,7 @@ namespace Org.OpenAPITools.Models
         /// Course category.
         /// </summary>
         /// <value>Course category.</value>
-        /* <example>干部培训</example> */
+        /* <example>????</example> */
         [DataMember(Name="categoryName", EmitDefaultValue=true)]
         public string? CategoryName { get; set; }
 
@@ -88,7 +88,7 @@ namespace Org.OpenAPITools.Models
         /// Course introduction.
         /// </summary>
         /// <value>Course introduction.</value>
-        /* <example>面向社团干部的流程与规范培训。</example> */
+        /* <example>???????????????</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 

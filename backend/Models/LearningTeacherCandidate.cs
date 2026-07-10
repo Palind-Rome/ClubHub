@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// Instructor real name.
         /// </summary>
         /// <value>Instructor real name.</value>
-        /* <example>王老师</example> */
+        /* <example>???</example> */
         [DataMember(Name="realName", EmitDefaultValue=true)]
         public string? RealName { get; set; }
 
@@ -54,7 +54,7 @@ namespace Org.OpenAPITools.Models
         /// User-facing label containing the instructor name and staff number.
         /// </summary>
         /// <value>User-facing label containing the instructor name and staff number.</value>
-        /* <example>王老师（10001）</example> */
+        /* <example>????10001?</example> */
         [Required]
         [DataMember(Name="displayName", EmitDefaultValue=false)]
         public string DisplayName { get; set; }
