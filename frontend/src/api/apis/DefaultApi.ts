@@ -206,11 +206,6 @@ import {
   RecruitmentApplicationToJSON,
 } from "../models/RecruitmentApplication";
 import {
-  type RegisterActivityRequest,
-  RegisterActivityRequestFromJSON,
-  RegisterActivityRequestToJSON,
-} from "../models/RegisterActivityRequest";
-import {
   type RegisterRequest,
   RegisterRequestFromJSON,
   RegisterRequestToJSON,
@@ -564,9 +559,8 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
-export interface RegisterActivityOperationRequest {
+export interface RegisterActivityRequest {
   activityId: number;
-  registerActivityRequest: RegisterActivityRequest;
 }
 
 export interface RegisterUserRequest {
@@ -3973,7 +3967,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for registerActivity without sending the request
    */
   async registerActivityRequestOpts(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
@@ -3982,18 +3976,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["registerActivityRequest"] == null) {
-      throw new runtime.RequiredError(
-        "registerActivityRequest",
-        'Required parameter "registerActivityRequest" was null or undefined when calling registerActivity().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/activities/{activityId}/registrations`;
     urlPath = urlPath.replace(
@@ -4006,15 +4000,15 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: RegisterActivityRequestToJSON(requestParameters["registerActivityRequest"]),
     };
   }
 
   /**
+   * 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
    * 报名活动
    */
   async registerActivityRaw(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<ActivityRegistrationResult>> {
     const requestOptions = await this.registerActivityRequestOpts(requestParameters);
@@ -4026,10 +4020,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
    * 报名活动
    */
   async registerActivity(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ActivityRegistrationResult> {
     const response = await this.registerActivityRaw(requestParameters, initOverrides);

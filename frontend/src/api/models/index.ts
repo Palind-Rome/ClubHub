@@ -47,7 +47,6 @@ export * from "./Project";
 export * from "./Recruitment";
 export * from "./RecruitmentApplication";
 export * from "./RecruitmentWorkflowStatus";
-export * from "./RegisterActivityRequest";
 export * from "./RegisterRequest";
 export * from "./ReviewActivityBudgetRequest";
 export * from "./ReviewActivityRequest";
