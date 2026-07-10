@@ -111,11 +111,11 @@ export interface LearningItem {
    */
   currentEnrollments: number;
   /**
-   * Current viewer's learning record status.
+   * Current viewer's learning record status; none means not enrolled.
    * @type {LearningItemCurrentUserRecordStatusEnum}
    * @memberof LearningItem
    */
-  currentUserRecordStatus?: LearningItemCurrentUserRecordStatusEnum | null;
+  currentUserRecordStatus: LearningItemCurrentUserRecordStatusEnum;
   /**
    * Whether the current viewer may edit this course and view its roster.
    * @type {boolean}
@@ -168,6 +168,7 @@ export type LearningItemItemStatusEnum =
  * @export
  */
 export const LearningItemCurrentUserRecordStatusEnum = {
+  None: "none",
   Enrolled: "enrolled",
   Learning: "learning",
   Completed: "completed",
@@ -190,6 +191,8 @@ export function instanceOfLearningItem(value: object): value is LearningItem {
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
   if (!("currentEnrollments" in value) || value["currentEnrollments"] === undefined) return false;
+  if (!("currentUserRecordStatus" in value) || value["currentUserRecordStatus"] === undefined)
+    return false;
   if (!("canManage" in value) || value["canManage"] === undefined) return false;
   if (!("canEnroll" in value) || value["canEnroll"] === undefined) return false;
   if (!("canCancelEnrollment" in value) || value["canCancelEnrollment"] === undefined) return false;
@@ -220,8 +223,7 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     visibility: json["visibility"],
     itemStatus: json["itemStatus"],
     currentEnrollments: json["currentEnrollments"],
-    currentUserRecordStatus:
-      json["currentUserRecordStatus"] == null ? undefined : json["currentUserRecordStatus"],
+    currentUserRecordStatus: json["currentUserRecordStatus"],
     canManage: json["canManage"],
     canEnroll: json["canEnroll"],
     canCancelEnrollment: json["canCancelEnrollment"],

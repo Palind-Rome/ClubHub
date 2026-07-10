@@ -208,12 +208,53 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="currentEnrollments", EmitDefaultValue=true)]
         public int CurrentEnrollments { get; set; }
 
+
         /// <summary>
-        /// Current viewer&#39;s learning record status.
+        /// Current viewer's learning record status; none means not enrolled.
         /// </summary>
-        /// <value>Current viewer&#39;s learning record status.</value>
+        /// <value>Current viewer's learning record status; none means not enrolled.</value>
+        
+        public enum CurrentUserRecordStatusEnum
+        {
+            
+            /// <summary>
+            /// Enum NoneEnum for none
+            /// </summary>
+            [EnumMember(Value = "none")]
+            NoneEnum = 1,
+            
+            /// <summary>
+            /// Enum EnrolledEnum for enrolled
+            /// </summary>
+            [EnumMember(Value = "enrolled")]
+            EnrolledEnum = 2,
+            
+            /// <summary>
+            /// Enum LearningEnum for learning
+            /// </summary>
+            [EnumMember(Value = "learning")]
+            LearningEnum = 3,
+            
+            /// <summary>
+            /// Enum CompletedEnum for completed
+            /// </summary>
+            [EnumMember(Value = "completed")]
+            CompletedEnum = 4,
+            
+            /// <summary>
+            /// Enum CancelledEnum for cancelled
+            /// </summary>
+            [EnumMember(Value = "cancelled")]
+            CancelledEnum = 5
+        }
+
+        /// <summary>
+        /// Current viewer&#39;s learning record status; none means not enrolled.
+        /// </summary>
+        /// <value>Current viewer&#39;s learning record status; none means not enrolled.</value>
+        [Required]
         [DataMember(Name="currentUserRecordStatus", EmitDefaultValue=true)]
-        public CurrentUserRecordStatusEnum? CurrentUserRecordStatus { get; set; }
+        public CurrentUserRecordStatusEnum CurrentUserRecordStatus { get; set; }
 
         /// <summary>
         /// Whether the current viewer may edit this course and view its roster.
