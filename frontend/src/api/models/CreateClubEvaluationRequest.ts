@@ -21,79 +21,79 @@ import { mapValues } from "../runtime";
  */
 export interface CreateClubEvaluationRequest {
   /**
-   *
+   * 当前操作人用户 ID。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   currentUserId: number;
   /**
-   *
+   * semester 表示学期考核，award 表示评优评奖结果。
    * @type {CreateClubEvaluationRequestEvaluationTypeEnum}
    * @memberof CreateClubEvaluationRequest
    */
   evaluationType: CreateClubEvaluationRequestEvaluationTypeEnum;
   /**
-   *
+   * 被考核或获奖成员用户 ID。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   userId: number;
   /**
-   *
+   * 考核或评奖所属学期。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
   termName: string;
   /**
-   *
+   * 评奖评优标题；学期考核可为空。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
   awardTitle?: string | null;
   /**
-   *
+   * 奖项等级；学期考核可为空。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
   awardLevel?: string | null;
   /**
-   *
+   * 获奖原因或推荐理由；学期考核可为空。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
   awardReason?: string | null;
   /**
-   *
+   * 活动参与得分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   activityScore: number;
   /**
-   *
+   * 项目任务得分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   taskScore: number;
   /**
-   *
+   * 学习记录得分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   learningScore: number;
   /**
-   *
+   * 奖项或附加贡献得分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
   awardScore: number;
   /**
-   *
+   * 公示状态；默认保存为草稿。
    * @type {CreateClubEvaluationRequestPublicStatusEnum}
    * @memberof CreateClubEvaluationRequest
    */
   publicStatus?: CreateClubEvaluationRequestPublicStatusEnum;
   /**
-   *
+   * 考核说明、获奖补充说明或负责人备注。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
