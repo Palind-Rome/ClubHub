@@ -389,13 +389,16 @@ public class RecruitmentApplicationService
     {
         if (application.Recruitment is null) return;
 
+        var businessDate = BusinessDate(now);
+        var academicTerm = AcademicTermHelper.FromDate(businessDate);
         _db.ClubMembers.Add(new ClubMember
         {
             ClubId = application.Recruitment.ClubId,
             UserId = application.UserId,
             PositionName = "社员",
-            TermName = $"{BusinessDate(now).Year} 招新录取",
-            TermStart = BusinessDate(now),
+            TermName = academicTerm.Label,
+            TermStart = academicTerm.Start,
+            TermEnd = academicTerm.End,
             MemberStatus = MemberActive,
             JoinAt = now,
             ContributionScore = 0

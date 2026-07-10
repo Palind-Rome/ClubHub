@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -482,6 +483,7 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> GetMembers(
         int clubId,
         [FromQuery] bool includeHistory = false,
+        [FromQuery] string? termName = null,
         [FromQuery] string? departmentName = null,
         [FromQuery] string? groupName = null)
     {
@@ -517,6 +519,12 @@ public class ClubsController : ControllerBase
         if (groupFilter is not null)
         {
             query = query.Where(cm => cm.GroupName == groupFilter);
+        }
+
+        var termFilter = EmptyToNull(termName);
+        if (termFilter is not null)
+        {
+            query = query.Where(cm => cm.TermName == termFilter);
         }
 
         var members = await query
@@ -1033,9 +1041,11 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "社团不存在。" }), null, viewer);
         }
 
-        if (!UsersController.IsSystemAdmin(viewer) && !UsersController.IsClubPrincipal(viewer, clubId))
+        if (!UsersController.IsSystemAdmin(viewer) &&
+            !UsersController.IsClubPrincipal(viewer, clubId) &&
+            !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有系统管理员或本社团负责人可以维护该社团。" }), club, viewer);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以维护该社团。" }), club, viewer);
         }
 
         return (null, club, viewer);
@@ -1081,14 +1091,14 @@ public class ClubsController : ControllerBase
             return (null, club, viewer, member);
         }
 
-        if (!UsersController.IsClubPrincipal(viewer, clubId))
+        if (!UsersController.IsClubPrincipal(viewer, clubId) && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有社团管理员、系统管理员或本社团负责人可以维护成员任期。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "只有社团管理员、系统管理员、本社团负责人或指导老师可以维护成员任期。" }), club, viewer, member);
         }
 
-        if (member.UserId == viewer.UserId)
+        if (member.UserId == viewer.UserId && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由社团管理员处理。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由指导老师或社团管理员处理。" }), club, viewer, member);
         }
 
         return (null, club, viewer, member);
@@ -1713,13 +1723,15 @@ public class ClubsController : ControllerBase
 
         if (!hasMember)
         {
+            var academicTerm = AcademicTermHelper.FromDate(today);
             _db.ClubMembers.Add(new ClubMember
             {
                 ClubId = club.ClubId,
                 UserId = club.ApplicantUserId.Value,
                 PositionName = "负责人",
-                TermName = $"{now.Year} 创始任期",
-                TermStart = today,
+                TermName = academicTerm.Label,
+                TermStart = academicTerm.Start,
+                TermEnd = academicTerm.End,
                 MemberStatus = "active",
                 JoinAt = now,
                 ContributionScore = 0

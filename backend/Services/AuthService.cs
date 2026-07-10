@@ -110,8 +110,8 @@ public class AuthService
             AdvisorRole,
             "指导老师",
             ClubScope,
-            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价，可按负责人权限维护成员考核与评奖评优。",
-            ["club:operation:view", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:stats:view"]),
+            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
+            ["club:internal:view", "club:operation:view", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
         new(
             "CLUB_ADMIN",
             "社团管理员",

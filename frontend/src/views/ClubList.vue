@@ -286,6 +286,7 @@ const filters = reactive({
 });
 
 const memberFilters = reactive({
+  termName: "",
   departmentName: "",
   groupName: "",
 });
@@ -586,6 +587,12 @@ const activePresidentOptions = computed(() =>
 );
 const advisorOptions = computed(() => dialogUsers.value.filter((user) => isAdvisorCandidate(user)));
 const memberTermUserOptions = computed(() => dialogUsers.value);
+const memberTermUserLocked = computed(
+  () =>
+    memberWorkspaceMode.value === "transition" &&
+    memberTermMode.value === "create" &&
+    memberTermTarget.value !== null,
+);
 const memberDepartmentOptions = computed(() =>
   uniqueTextOptions(clubMembers.value.map((member) => member.departmentName)),
 );
@@ -649,13 +656,34 @@ const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
   }
   return options;
 });
+const memberTermFilterOptions = computed(() =>
+  uniqueTextOptions(clubMembers.value.map((member) => member.termName)),
+);
 const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
 const memberTableRows = computed(() =>
-  memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value,
+  (memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value).filter(
+    (member) =>
+      memberWorkspaceMode.value !== "history" ||
+      !memberFilters.termName ||
+      member.termName === memberFilters.termName,
+  ),
 );
-const transitionSourceRows = computed(() =>
-  currentClubMembers.value.filter((member) => isActiveStatus(member.memberStatus)),
-);
+const transitionSourceRows = computed(() => {
+  const rows = new Map<number, ClubMemberRecord>();
+
+  clubMembers.value
+    .filter((member) => shouldEnterTransitionQueue(member))
+    .forEach((member) => {
+      const existing = rows.get(member.userId);
+      if (!existing || transitionRecordSortKey(member) > transitionRecordSortKey(existing)) {
+        rows.set(member.userId, member);
+      }
+    });
+
+  return Array.from(rows.values()).sort((left, right) =>
+    transitionRecordSortKey(right).localeCompare(transitionRecordSortKey(left)),
+  );
+});
 const memberGroupSummary = computed(() => {
   const rows = memberTableRows.value;
   const currentRows = rows.filter((member) => member.isCurrent);
@@ -881,6 +909,9 @@ async function loadMembers() {
     const query = new URLSearchParams({
       includeHistory: String(include),
     });
+    if (memberWorkspaceMode.value === "history" && memberFilters.termName) {
+      query.set("termName", memberFilters.termName);
+    }
     if (memberFilters.departmentName) query.set("departmentName", memberFilters.departmentName);
     if (memberFilters.groupName) query.set("groupName", memberFilters.groupName);
     const data = await requestJson<ClubMemberRecord[]>(
@@ -956,10 +987,13 @@ function canManageClub(club: Club) {
   if (!user || club.status !== "active") return false;
   if (hasAllPermissions.value) return true;
   if (club.presidentUserId === user.id) return true;
+  if (club.advisorUserId === user.id) return true;
 
   const hasRole = user.roles.some(
     (role) =>
-      roleCoversClub(role, club.id) && principalRoleCodes.has((role.roleCode ?? "").toLowerCase()),
+      roleCoversClub(role, club.id) &&
+      (principalRoleCodes.has((role.roleCode ?? "").toLowerCase()) ||
+        advisorRoleCodes.has((role.roleCode ?? "").toLowerCase())),
   );
   const hasPrincipalMembership = user.memberships.some(
     (membership) =>
@@ -1354,20 +1388,23 @@ async function openTransitionMemberTermDialog(row?: ClubMemberRecord) {
     return;
   }
 
+  if (!row || !shouldEnterTransitionQueue(row)) {
+    ElMessage.warning("只能处理已进入换届暂存区的成员。");
+    return;
+  }
+
   memberTermMode.value = "create";
-  memberTermTarget.value = null;
+  memberTermTarget.value = row;
   resetMemberTermForm();
   memberTermForm.termName = transitionTermForm.label;
   memberTermForm.termStart = transitionTermForm.termStart;
   memberTermForm.termEnd = transitionTermForm.termEnd;
   memberTermForm.closeCurrentTerm = true;
-  if (row) {
-    memberTermForm.userId = row.userId;
-    memberTermForm.departmentName = row.departmentName ?? "";
-    memberTermForm.groupName = row.groupName ?? "";
-    memberTermForm.positionName = row.positionName ?? "";
-    memberTermForm.contributionScore = row.contributionScore ?? 0;
-  }
+  memberTermForm.userId = row.userId;
+  memberTermForm.departmentName = row.departmentName ?? "";
+  memberTermForm.groupName = row.groupName ?? "";
+  memberTermForm.positionName = row.positionName ?? "";
+  memberTermForm.contributionScore = row.contributionScore ?? 0;
   await loadDialogUsers(selectedClub.value.id);
   memberTermDialogVisible.value = true;
 }
@@ -1383,7 +1420,7 @@ function canEditMemberPosition(row: ClubMemberRecord) {
 
 function memberTermEditDeniedMessage(row: ClubMemberRecord) {
   if (canManageSelectedClub.value && row.userId === currentUserId.value) {
-    return "负责人不能修改自己的任期，请由社团管理员处理。";
+    return "负责人不能修改自己的任期，请由指导老师或社团管理员处理。";
   }
 
   return "当前身份不能维护该社团成员任期。";
@@ -1777,6 +1814,7 @@ function resetFilters() {
 }
 
 function clearMemberFilters() {
+  memberFilters.termName = "";
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
   void loadMembers();
@@ -1837,6 +1875,25 @@ function applyAcademicTermToTransition(termName: string) {
   transitionTermForm.label = option.label;
   transitionTermForm.termStart = option.termStart;
   transitionTermForm.termEnd = option.termEnd;
+}
+
+function shouldEnterTransitionQueue(member: ClubMemberRecord) {
+  if (!isActiveStatus(member.memberStatus)) return false;
+
+  const termEnd = dateOnly(member.termEnd);
+  if (!termEnd || termEnd >= transitionTermForm.termStart) return false;
+
+  return !clubMembers.value.some(
+    (candidate) =>
+      candidate.memberId !== member.memberId &&
+      candidate.userId === member.userId &&
+      dateOnly(candidate.termStart) >= transitionTermForm.termStart &&
+      isActiveStatus(candidate.memberStatus),
+  );
+}
+
+function transitionRecordSortKey(member: ClubMemberRecord) {
+  return dateOnly(member.termEnd) || dateOnly(member.termStart) || "";
 }
 
 function datePayload(value: string) {
@@ -2063,6 +2120,7 @@ watch(currentUserId, () => {
 watch(selectedClubId, () => {
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
+  memberFilters.termName = "";
   evaluationFilters.termName = "";
 });
 
@@ -2070,6 +2128,7 @@ watch(
   [
     selectedClubId,
     memberWorkspaceMode,
+    () => memberFilters.termName,
     () => memberFilters.departmentName,
     () => memberFilters.groupName,
   ],
@@ -2567,6 +2626,20 @@ onUnmounted(() => {
 
           <div class="member-filter-row">
             <el-select
+              v-if="memberWorkspaceMode === 'history'"
+              v-model="memberFilters.termName"
+              class="filter-item"
+              clearable
+              placeholder="按届筛选"
+            >
+              <el-option
+                v-for="term in memberTermFilterOptions"
+                :key="term"
+                :label="term"
+                :value="term"
+              />
+            </el-select>
+            <el-select
               v-model="memberFilters.departmentName"
               class="filter-item"
               clearable
@@ -2753,7 +2826,7 @@ onUnmounted(() => {
             <div>
               <h3>换届管理</h3>
               <p>
-                选择统一学年后，对当前成员执行续任或职务调整；保存时会关闭原有效任期并生成新学年任期。
+                选择目标学年后，系统只把已到期且尚未生成新届任期的成员放入暂存区，再由负责人或指导老师处理续任与职务调整。
               </p>
             </div>
             <div class="transition-actions">
@@ -2772,21 +2845,13 @@ onUnmounted(() => {
               <el-tag effect="plain">
                 {{ transitionTermForm.termStart }} 至 {{ transitionTermForm.termEnd }}
               </el-tag>
-              <el-button
-                v-if="canManageSelectedClub"
-                type="primary"
-                :icon="Plus"
-                @click="openTransitionMemberTermDialog()"
-              >
-                新增换届任期
-              </el-button>
             </div>
           </div>
 
           <div class="transition-steps">
             <span>1. 选择换届学年</span>
-            <span>2. 基于当前名册续任或调整</span>
-            <span>3. 保存后统一生成新任期</span>
+            <span>2. 查看待换届暂存区</span>
+            <span>3. 逐人确认续任或职务调整</span>
           </div>
 
           <el-table
@@ -2794,7 +2859,7 @@ onUnmounted(() => {
             :data="transitionSourceRows"
             border
             stripe
-            empty-text="暂无可用于换届的当前成员"
+            empty-text="暂无到期待换届成员"
             row-key="memberId"
           >
             <el-table-column prop="userName" label="成员" min-width="150" />
@@ -2820,7 +2885,7 @@ onUnmounted(() => {
                   :icon="Edit"
                   @click="openTransitionMemberTermDialog(row)"
                 >
-                  续任/调整
+                  处理换届
                 </el-button>
               </template>
             </el-table-column>
@@ -3190,7 +3255,13 @@ onUnmounted(() => {
     <el-dialog
       v-if="isMemberWorkspace"
       v-model="memberTermDialogVisible"
-      :title="memberTermMode === 'create' ? '新增成员任期' : '编辑成员任期'"
+      :title="
+        memberWorkspaceMode === 'transition' && memberTermMode === 'create'
+          ? '处理换届任期'
+          : memberTermMode === 'create'
+            ? '新增成员任期'
+            : '编辑成员任期'
+      "
       width="660px"
     >
       <el-form
@@ -3206,6 +3277,7 @@ onUnmounted(() => {
           <el-select
             v-model="memberTermForm.userId"
             :loading="dialogUsersLoading"
+            :disabled="memberTermUserLocked"
             filterable
             placeholder="选择用户"
           >
@@ -3272,7 +3344,10 @@ onUnmounted(() => {
         <el-form-item label="贡献分">
           <el-input-number v-model="memberTermForm.contributionScore" :min="0" :precision="1" />
         </el-form-item>
-        <el-form-item v-if="memberTermMode === 'create'" label="换届处理">
+        <el-form-item
+          v-if="memberTermMode === 'create' && memberWorkspaceMode !== 'transition'"
+          label="换届处理"
+        >
           <el-switch
             v-model="memberTermForm.closeCurrentTerm"
             active-text="关闭原有效任期"
