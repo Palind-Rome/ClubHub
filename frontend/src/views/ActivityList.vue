@@ -118,19 +118,21 @@ const currentUserDisplay = computed(() => {
 const currentRoles = computed(() => auth.value?.roles ?? []);
 const creatableClubs = computed<ClubOption[]>(() => {
   const fromRoles = clubIdsWithPermission("activity:create");
-  const clubMap = new Map<number, string>();
-
-  for (const activity of activities.value) {
-    clubMap.set(activity.clubId, activity.clubName || `社团 ${activity.clubId}`);
-  }
 
   if ((auth.value?.permissions ?? []).includes("*")) {
-    return [...clubMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.id - b.id);
+    return [...clubOptions.value].sort((a, b) => a.id - b.id);
   }
+
+  const clubMap = new Map<number, string>(
+    activities.value.map((activity) => [
+      activity.clubId,
+      activity.clubName || `社团 ${activity.clubId}`,
+    ]),
+  );
 
   return fromRoles.map((id) => ({
     id,
-    name: clubMap.get(id) ?? `社团 ${id}`,
+    name: clubMap.get(id) ?? clubOptions.value.find((club) => club.id === id)?.name ?? `社团 ${id}`,
   }));
 });
 const canCreateActivity = computed(() => hasPermission("activity:create"));
@@ -548,8 +550,7 @@ async function createActivity() {
 }
 
 async function registerActivity(activity: Activity) {
-  const userId = currentUserId.value;
-  if (!userId) {
+  if (!currentUserId.value) {
     ElMessage.warning("请先登录后再报名");
     return;
   }
@@ -560,8 +561,6 @@ async function registerActivity(activity: Activity) {
       `/api/activities/${activity.id}/registrations`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
       },
     );
 

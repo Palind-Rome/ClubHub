@@ -11,7 +11,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
-using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
 using ReviewActivityBudgetRequest = Org.OpenAPITools.Models.ReviewActivityBudgetRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -36,8 +35,6 @@ public class ActivitiesController : ControllerBase
     private const string ActivityReviewPermission = "activity:review";
     private const string ActivityCheckinManagePermission = "activity:checkin:manage";
     private const string ActivityCheckinPermission = "activity:checkin";
-    private const string OwnRecordsViewPermission = "own:records:view";
-
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
 
@@ -221,16 +218,13 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/registrations")]
-    public async Task<IActionResult> Register(int activityId, [FromBody] RegisterActivityRequest? request)
+    [Authorize]
+    public async Task<IActionResult> Register(int activityId)
     {
-        if (request is null)
+        var currentUserId = GetAuthenticatedUserId();
+        if (currentUserId is null)
         {
-            return Error(StatusCodes.Status400BadRequest, "REQUEST_BODY_REQUIRED", "请提交报名用户信息");
-        }
-
-        if (request.UserId <= 0)
-        {
-            return Error(StatusCodes.Status400BadRequest, "INVALID_USER_ID", "报名用户 ID 不合法");
+            return Error(StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "登录状态已失效，请重新登录。");
         }
 
         for (var attempt = 1; attempt <= MaxRegisterRetries; attempt++)
@@ -254,7 +248,7 @@ public class ActivitiesController : ControllerBase
                 return Error(StatusCodes.Status400BadRequest, "REGISTRATION_CLOSED", "报名已截止");
             }
 
-            var userExists = await _db.Users.AnyAsync(u => u.UserId == request.UserId);
+            var userExists = await _db.Users.AnyAsync(u => u.UserId == currentUserId.Value);
             if (!userExists)
             {
                 return Error(StatusCodes.Status404NotFound, "USER_NOT_FOUND", "用户不存在");
@@ -262,7 +256,7 @@ public class ActivitiesController : ControllerBase
 
             var isClubMember = await _db.ClubMembers.AnyAsync(m =>
                 m.ClubId == activity.ClubId &&
-                m.UserId == request.UserId &&
+                m.UserId == currentUserId.Value &&
                 (m.MemberStatus == null || m.MemberStatus.ToLower() == MemberStatusActive));
             if (!isClubMember)
             {
@@ -271,7 +265,7 @@ public class ActivitiesController : ControllerBase
 
             var alreadyRegistered = await _db.ActivityParticipations.AnyAsync(p =>
                 p.ActivityId == activityId &&
-                p.UserId == request.UserId &&
+                p.UserId == currentUserId.Value &&
                 (p.RegisterStatus == RegisterStatusPending ||
                  p.RegisterStatus == RegisterStatusAccepted ||
                  p.RegisterStatus == RegisterStatusOnsite));
@@ -290,7 +284,7 @@ public class ActivitiesController : ControllerBase
             {
                 ParticipationId = await NextParticipationId(),
                 ActivityId = activityId,
-                UserId = request.UserId,
+                UserId = currentUserId.Value,
                 RegisterStatus = RegisterStatusAccepted,
                 RegisteredAt = now,
                 SignStatus = "registered"
@@ -316,7 +310,7 @@ public class ActivitiesController : ControllerBase
 
                 return CreatedAtAction(
                     nameof(GetById),
-                    new { activityId, currentUserId = request.UserId },
+                    new { activityId, currentUserId = currentUserId.Value },
                     result);
             }
             catch (DbUpdateException)
@@ -584,19 +578,6 @@ public class ActivitiesController : ControllerBase
             currentUserId.Value,
             ActivityReviewPermission,
             activity.ClubId);
-        var canViewOwn = await IsPermissionAllowedAsync(
-            currentUserId.Value,
-            OwnRecordsViewPermission,
-            null) ||
-            await IsPermissionAllowedAsync(
-                currentUserId.Value,
-                ActivityCheckinPermission,
-                activity.ClubId);
-
-        if (!canManage && !canReview && !canViewOwn)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有查看参与记录的权限。" });
-        }
 
         var query =
             from participation in _db.ActivityParticipations
@@ -925,7 +906,7 @@ public class CreateActivityRequest
     [Required]
     public int ClubId { get; set; }
 
-    [Required, StringLength(100, MinimumLength = 1)]
+    [Required, StringLength(255, MinimumLength = 1)]
     public string Title { get; set; } = string.Empty;
 
     [StringLength(255)]

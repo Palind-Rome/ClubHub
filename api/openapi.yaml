@@ -1211,19 +1211,16 @@ paths:
   /api/activities/{activityId}/registrations:
     post:
       summary: 报名活动
+      description: 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
       operationId: registerActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterActivityRequest"
       responses:
         "201":
           description: 报名成功
@@ -1237,6 +1234,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 当前用户未登录或登录状态已失效
         "404":
           description: 活动或用户不存在
           content:
@@ -1410,8 +1409,6 @@ paths:
                   $ref: "#/components/schemas/ActivityParticipation"
         "401":
           description: 当前用户未登录或登录状态已失效
-        "403":
-          description: 当前用户没有查看参与记录的权限
         "404":
           description: 活动不存在
 
@@ -4202,15 +4199,6 @@ components:
       required:
         - clubId
         - clubName
-
-    RegisterActivityRequest:
-      type: object
-      properties:
-        userId:
-          type: integer
-          description: 报名用户 ID
-      required:
-        - userId
 
     Activity:
       type: object
