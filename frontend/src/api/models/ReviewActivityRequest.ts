@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 审核活动请求。审核人由服务端从登录态写入，客户端无需也不应提交 reviewerUserId。
  * @export
  * @interface ReviewActivityRequest
  */
@@ -26,12 +26,6 @@ export interface ReviewActivityRequest {
    * @memberof ReviewActivityRequest
    */
   approved?: boolean | null;
-  /**
-   *
-   * @type {number}
-   * @memberof ReviewActivityRequest
-   */
-  reviewerUserId?: number | null;
   /**
    *
    * @type {string}
@@ -60,7 +54,6 @@ export function ReviewActivityRequestFromJSONTyped(
   }
   return {
     approved: json["approved"] == null ? undefined : json["approved"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     comment: json["comment"] == null ? undefined : json["comment"],
   };
 }
@@ -79,7 +72,6 @@ export function ReviewActivityRequestToJSONTyped(
 
   return {
     approved: value["approved"],
-    reviewerUserId: value["reviewerUserId"],
     comment: value["comment"],
   };
 }

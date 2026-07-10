@@ -1087,6 +1087,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkin`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -1103,6 +1112,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
    * 活动签到
    */
   async checkinActivityRaw(
@@ -1118,6 +1128,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
    * 活动签到
    */
   async checkinActivity(
@@ -1154,6 +1165,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkout`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -1170,6 +1190,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
    * 活动签退
    */
   async checkoutActivityRaw(
@@ -1185,6 +1206,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
    * 活动签退
    */
   async checkoutActivity(
@@ -1214,6 +1236,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities`;
 
     return {
@@ -1226,6 +1257,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
    * 创建活动并提交审核
    */
   async createActivityRaw(
@@ -1239,6 +1271,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
    * 创建活动并提交审核
    */
   async createActivity(
@@ -2411,6 +2444,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/participations`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -2426,6 +2468,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
    * 获取活动参与记录
    */
   async getActivityParticipationsRaw(
@@ -2441,6 +2484,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
    * 获取活动参与记录
    */
   async getActivityParticipations(
@@ -4146,6 +4190,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/review`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -4162,6 +4215,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
    * 审核活动并发布或驳回
    */
   async reviewActivityRaw(
@@ -4175,6 +4229,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
    * 审核活动并发布或驳回
    */
   async reviewActivity(
@@ -4621,6 +4676,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkin-settings`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -4637,6 +4701,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:checkin:manage 权限。
    * 设置活动签到签退码和有效时间
    */
   async updateActivityCheckinSettingsRaw(
@@ -4650,6 +4715,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:checkin:manage 权限。
    * 设置活动签到签退码和有效时间
    */
   async updateActivityCheckinSettings(
