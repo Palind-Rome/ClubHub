@@ -39,6 +39,18 @@ export interface ActivityParticipation {
    */
   userId: number;
   /**
+   * 参与者姓名；姓名为空时回退为用户名。
+   * @type {string}
+   * @memberof ActivityParticipation
+   */
+  userName: string;
+  /**
+   * 参与者学号或工号。
+   * @type {string}
+   * @memberof ActivityParticipation
+   */
+  studentNo?: string | null;
+  /**
    *
    * @type {string}
    * @memberof ActivityParticipation
@@ -83,6 +95,7 @@ export function instanceOfActivityParticipation(value: object): value is Activit
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("activityId" in value) || value["activityId"] === undefined) return false;
   if (!("userId" in value) || value["userId"] === undefined) return false;
+  if (!("userName" in value) || value["userName"] === undefined) return false;
   return true;
 }
 
@@ -101,6 +114,8 @@ export function ActivityParticipationFromJSONTyped(
     id: json["id"],
     activityId: json["activityId"],
     userId: json["userId"],
+    userName: json["userName"],
+    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
     registerStatus: json["registerStatus"] == null ? undefined : json["registerStatus"],
     registeredAt: json["registeredAt"] == null ? undefined : new Date(json["registeredAt"]),
     checkinAt: json["checkinAt"] == null ? undefined : new Date(json["checkinAt"]),
@@ -126,6 +141,8 @@ export function ActivityParticipationToJSONTyped(
     id: value["id"],
     activityId: value["activityId"],
     userId: value["userId"],
+    userName: value["userName"],
+    studentNo: value["studentNo"],
     registerStatus: value["registerStatus"],
     registeredAt:
       value["registeredAt"] == null ? value["registeredAt"] : value["registeredAt"].toISOString(),
