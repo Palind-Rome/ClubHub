@@ -22,12 +22,6 @@ import { mapValues } from "../runtime";
 export interface ReviewVenueReservationRequest {
   /**
    *
-   * @type {number}
-   * @memberof ReviewVenueReservationRequest
-   */
-  reviewerUserId: number;
-  /**
-   *
    * @type {boolean}
    * @memberof ReviewVenueReservationRequest
    */
@@ -46,7 +40,6 @@ export interface ReviewVenueReservationRequest {
 export function instanceOfReviewVenueReservationRequest(
   value: object,
 ): value is ReviewVenueReservationRequest {
-  if (!("reviewerUserId" in value) || value["reviewerUserId"] === undefined) return false;
   if (!("approved" in value) || value["approved"] === undefined) return false;
   return true;
 }
@@ -63,7 +56,6 @@ export function ReviewVenueReservationRequestFromJSONTyped(
     return json;
   }
   return {
-    reviewerUserId: json["reviewerUserId"],
     approved: json["approved"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
   };
@@ -82,7 +74,6 @@ export function ReviewVenueReservationRequestToJSONTyped(
   }
 
   return {
-    reviewerUserId: value["reviewerUserId"],
     approved: value["approved"],
     reviewComment: value["reviewComment"],
   };

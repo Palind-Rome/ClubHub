@@ -26,13 +26,6 @@ namespace Org.OpenAPITools.Models
     public partial class ReviewVenueReservationRequest 
     {
         /// <summary>
-        /// Gets or Sets ReviewerUserId
-        /// </summary>
-        [Required]
-        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
-        public int ReviewerUserId { get; set; }
-
-        /// <summary>
         /// Gets or Sets Approved
         /// </summary>
         [Required]

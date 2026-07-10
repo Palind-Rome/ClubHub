@@ -20,11 +20,18 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 已通过预约的脱敏占用时段，仅用于场地状态展示和前端冲突提示。
     /// </summary>
     [DataContract]
-    public partial class CreateVenueReservationRequest 
+    public partial class VenueOccupiedSlot 
     {
+        /// <summary>
+        /// Gets or Sets ReservationId
+        /// </summary>
+        [Required]
+        [DataMember(Name="reservationId", EmitDefaultValue=true)]
+        public int ReservationId { get; set; }
+
         /// <summary>
         /// Gets or Sets VenueId
         /// </summary>
@@ -33,41 +40,27 @@ namespace Org.OpenAPITools.Models
         public int VenueId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// Gets or Sets VenueName
         /// </summary>
         [Required]
-        [DataMember(Name="clubId", EmitDefaultValue=true)]
-        public int ClubId { get; set; }
+        [DataMember(Name="venueName", EmitDefaultValue=false)]
+        public string VenueName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ActivityId
+        /// 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
-        [DataMember(Name="activityId", EmitDefaultValue=true)]
-        public int? ActivityId { get; set; }
-
-        /// <summary>
-        /// 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
-        /// </summary>
-        /// <value>预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。</value>
+        /// <value>占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
         [Required]
         [DataMember(Name="startTime", EmitDefaultValue=true)]
         public DateTime StartTime { get; set; }
 
         /// <summary>
-        /// 预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
+        /// 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
         /// </summary>
-        /// <value>预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。</value>
+        /// <value>占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。</value>
         [Required]
         [DataMember(Name="endTime", EmitDefaultValue=true)]
         public DateTime EndTime { get; set; }
-
-        /// <summary>
-        /// Gets or Sets Purpose
-        /// </summary>
-        [Required]
-        [StringLength(255, MinimumLength=1)]
-        [DataMember(Name="purpose", EmitDefaultValue=false)]
-        public string Purpose { get; set; }
 
     }
 }

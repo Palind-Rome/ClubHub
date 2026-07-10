@@ -39,12 +39,6 @@ export interface CreateVenueReservationRequest {
    */
   activityId?: number | null;
   /**
-   *
-   * @type {number}
-   * @memberof CreateVenueReservationRequest
-   */
-  applicantUserId: number;
-  /**
    * 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
    * @type {Date}
    * @memberof CreateVenueReservationRequest
@@ -72,7 +66,6 @@ export function instanceOfCreateVenueReservationRequest(
 ): value is CreateVenueReservationRequest {
   if (!("venueId" in value) || value["venueId"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
-  if (!("applicantUserId" in value) || value["applicantUserId"] === undefined) return false;
   if (!("startTime" in value) || value["startTime"] === undefined) return false;
   if (!("endTime" in value) || value["endTime"] === undefined) return false;
   if (!("purpose" in value) || value["purpose"] === undefined) return false;
@@ -94,7 +87,6 @@ export function CreateVenueReservationRequestFromJSONTyped(
     venueId: json["venueId"],
     clubId: json["clubId"],
     activityId: json["activityId"] == null ? undefined : json["activityId"],
-    applicantUserId: json["applicantUserId"],
     startTime: new Date(json["startTime"]),
     endTime: new Date(json["endTime"]),
     purpose: json["purpose"],
@@ -117,7 +109,6 @@ export function CreateVenueReservationRequestToJSONTyped(
     venueId: value["venueId"],
     clubId: value["clubId"],
     activityId: value["activityId"],
-    applicantUserId: value["applicantUserId"],
     startTime: value["startTime"].toISOString(),
     endTime: value["endTime"].toISOString(),
     purpose: value["purpose"],
