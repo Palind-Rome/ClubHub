@@ -359,10 +359,25 @@ function hasScopedPermission(permission: string, clubId: number) {
 
   return currentRoles.value.some((role) => {
     const permissions = role.permissions ?? [];
-    if (!permissions.includes("*") && !permissions.includes(permission)) return false;
     if (permissions.includes("*")) return true;
-    if ((role.scope ?? "").toLowerCase() === "system") return true;
-    return (role.clubIds ?? []).includes(clubId) || role.clubId === clubId;
+    if (!permissions.includes(permission)) return false;
+
+    const code = (role.code ?? "").toUpperCase();
+    const scope = (role.scope ?? "").toLowerCase();
+    const clubIds = role.clubIds ?? [];
+    const matchesClub = clubIds.includes(clubId) || role.clubId === clubId;
+
+    // 与后端 AuthService.RoleAllows 对齐：指导老师、社团范围角色必须匹配社团。
+    if (code === "ADVISOR" || scope === "club") {
+      return matchesClub;
+    }
+
+    // 系统范围角色（如社团管理员的审核权限）可跨社团生效。
+    if (scope === "system") {
+      return true;
+    }
+
+    return matchesClub;
   });
 }
 
@@ -415,6 +430,10 @@ function showBudgetMenu(activity: Activity) {
 
 function showCheckinMenu(activity: Activity) {
   return canManageCheckin(activity) || canSignActivity(activity);
+}
+
+function checkinMenuLabel(activity: Activity) {
+  return canManageCheckin(activity) ? "签到管理" : "签到签退";
 }
 
 async function loadActivities() {
@@ -883,7 +902,7 @@ async function openParticipations(activity: Activity) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="360" align="center">
+      <el-table-column label="操作" min-width="380" width="380" align="center" fixed="right">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
@@ -944,7 +963,7 @@ async function openParticipations(activity: Activity) {
                 plain
                 :disabled="row.status !== 'published' && row.status !== 'ongoing'"
               >
-                签到管理
+                {{ checkinMenuLabel(row) }}
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -1304,6 +1323,7 @@ async function openParticipations(activity: Activity) {
   margin: 0 auto;
   padding: 0 12px;
   box-sizing: border-box;
+  scrollbar-gutter: stable;
 }
 .toolbar {
   display: flex;
@@ -1324,6 +1344,9 @@ async function openParticipations(activity: Activity) {
 }
 .activity-table {
   width: 100%;
+}
+.activity-table :deep(.el-table__inner-wrapper) {
+  overflow-x: auto;
 }
 .time-range {
   display: inline-block;
@@ -1352,15 +1375,20 @@ async function openParticipations(activity: Activity) {
 }
 .action-buttons {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
   gap: 6px;
+  min-width: 360px;
+  min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {
   display: inline-flex;
+  flex-shrink: 0;
 }
 .action-buttons :deep(.el-button) {
   margin-left: 0;
+  flex-shrink: 0;
 }
 .settings-hint {
   margin-bottom: 12px;
