@@ -5010,9 +5010,8 @@ components:
           example: 8
         currentUserRecordStatus:
           type: string
-          enum: [enrolled, learning, completed, cancelled]
-          nullable: true
-          description: Current viewer's learning record status.
+          enum: [none, enrolled, learning, completed, cancelled]
+          description: Current viewer's learning record status; none means not enrolled.
         canManage:
           type: boolean
           description: Whether the current viewer may edit this course and view its roster.
@@ -5037,6 +5036,7 @@ components:
         - visibility
         - itemStatus
         - currentEnrollments
+        - currentUserRecordStatus
         - canManage
         - canEnroll
         - canCancelEnrollment

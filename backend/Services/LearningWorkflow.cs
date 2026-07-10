@@ -19,6 +19,7 @@ public static class LearningWorkflow
     public const string RecordStatusLearning = "learning";
     public const string RecordStatusCompleted = "completed";
     public const string RecordStatusCancelled = "cancelled";
+    public const string RecordStatusNone = "none";
 
     private static readonly HashSet<string> SupportedCourseTypes = new(StringComparer.OrdinalIgnoreCase)
     {

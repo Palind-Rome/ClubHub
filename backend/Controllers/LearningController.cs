@@ -220,7 +220,7 @@ public class LearningController : ControllerBase
             request.StartAt,
             request.EndAt,
             request.Capacity,
-            request.Visibility);
+            ToVisibilityValue(request.Visibility));
         if (validation is not null) return validation;
 
         var itemStatus = ToCreateStatusValue(request.ItemStatus);
@@ -244,7 +244,7 @@ public class LearningController : ControllerBase
                 StartAt = LearningWorkflow.AsUtc(request.StartAt),
                 EndAt = LearningWorkflow.AsUtc(request.EndAt),
                 Capacity = request.Capacity,
-                Visibility = LearningWorkflow.NormalizeVisibility(request.Visibility),
+                Visibility = ToVisibilityValue(request.Visibility),
                 DownloadPermission = "none",
                 ItemStatus = itemStatus,
                 CreatedAt = LearningWorkflow.BusinessNow()
@@ -318,7 +318,7 @@ public class LearningController : ControllerBase
             request.StartAt,
             request.EndAt,
             request.Capacity,
-            request.Visibility);
+            ToVisibilityValue(request.Visibility));
         if (validation is not null) return validation;
 
         var itemStatus = ToUpdateStatusValue(request.ItemStatus);
@@ -339,7 +339,7 @@ public class LearningController : ControllerBase
         item.StartAt = LearningWorkflow.AsUtc(request.StartAt);
         item.EndAt = LearningWorkflow.AsUtc(request.EndAt);
         item.Capacity = request.Capacity;
-        item.Visibility = LearningWorkflow.NormalizeVisibility(request.Visibility);
+        item.Visibility = ToVisibilityValue(request.Visibility);
         item.ItemStatus = itemStatus;
 
         await _db.SaveChangesAsync();
@@ -938,7 +938,7 @@ public class LearningController : ControllerBase
         }
 
         var currentRecordStatus = currentRecord is null
-            ? null
+            ? LearningWorkflow.RecordStatusNone
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
         var canCancelEnrollment =
             (currentRecordStatus is LearningWorkflow.RecordStatusEnrolled or
@@ -959,11 +959,11 @@ public class LearningController : ControllerBase
             StartAt = LearningWorkflow.AsUtc(item.StartAt.Value),
             EndAt = LearningWorkflow.AsUtc(item.EndAt.Value),
             Capacity = item.Capacity.Value,
-            Visibility = LearningWorkflow.NormalizeVisibility(item.Visibility),
+            Visibility = ToItemVisibilityEnum(item.Visibility),
             ItemStatus = ToItemStatusEnum(
                 LearningWorkflow.ResolveEffectiveItemStatus(item, now)),
             CurrentEnrollments = activeEnrollmentCount,
-            CurrentUserRecordStatus = currentRecordStatus,
+            CurrentUserRecordStatus = ToCurrentUserRecordStatusEnum(currentRecordStatus),
             CanManage = canManage,
             CanEnroll = enrollmentDecision is null,
             CanCancelEnrollment = canCancelEnrollment,
@@ -983,7 +983,7 @@ public class LearningController : ControllerBase
             UserId = record.UserId,
             UserDisplayName = BuildUserDisplayName(record.User, record.UserId),
             UserNumber = record.User?.StudentNo,
-            EnrollStatus = LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus),
+            EnrollStatus = ToRecordStatusEnum(record.EnrollStatus),
             EnrolledAt = LearningWorkflow.AsUtc(record.EnrolledAt),
             Progress = record.Progress is null ? null : (double)record.Progress.Value,
             DurationSeconds = record.DurationSeconds,
@@ -1001,6 +1001,84 @@ public class LearningController : ControllerBase
             statusCode: StatusCodes.Status500InternalServerError,
             title: "课程数据异常",
             detail: $"课程 {itemId} 缺少必填信息，请联系管理员检查数据。");
+    }
+
+    /// <summary>
+    /// 将创建请求的开放范围枚举转换为数据库值。
+    /// </summary>
+    private static string ToVisibilityValue(CreateLearningItemRequest.VisibilityEnum visibility)
+    {
+        return visibility switch
+        {
+            CreateLearningItemRequest.VisibilityEnum.PublicEnum =>
+                LearningWorkflow.VisibilityPublic,
+            CreateLearningItemRequest.VisibilityEnum.ClubEnum =>
+                LearningWorkflow.VisibilityClub,
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>
+    /// 将更新请求的开放范围枚举转换为数据库值。
+    /// </summary>
+    private static string ToVisibilityValue(UpdateLearningItemRequest.VisibilityEnum visibility)
+    {
+        return visibility switch
+        {
+            UpdateLearningItemRequest.VisibilityEnum.PublicEnum =>
+                LearningWorkflow.VisibilityPublic,
+            UpdateLearningItemRequest.VisibilityEnum.ClubEnum =>
+                LearningWorkflow.VisibilityClub,
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>
+    /// 将数据库开放范围转换为课程响应枚举。
+    /// </summary>
+    private static ApiLearningItem.VisibilityEnum ToItemVisibilityEnum(string? visibility)
+    {
+        return LearningWorkflow.NormalizeVisibility(visibility) ==
+               LearningWorkflow.VisibilityPublic
+            ? ApiLearningItem.VisibilityEnum.PublicEnum
+            : ApiLearningItem.VisibilityEnum.ClubEnum;
+    }
+
+    /// <summary>
+    /// 将当前用户的学习状态转换为课程响应枚举。
+    /// </summary>
+    private static ApiLearningItem.CurrentUserRecordStatusEnum ToCurrentUserRecordStatusEnum(
+        string? status)
+    {
+        return LearningWorkflow.NormalizeRecordStatus(status) switch
+        {
+            LearningWorkflow.RecordStatusEnrolled =>
+                ApiLearningItem.CurrentUserRecordStatusEnum.EnrolledEnum,
+            LearningWorkflow.RecordStatusLearning =>
+                ApiLearningItem.CurrentUserRecordStatusEnum.LearningEnum,
+            LearningWorkflow.RecordStatusCompleted =>
+                ApiLearningItem.CurrentUserRecordStatusEnum.CompletedEnum,
+            LearningWorkflow.RecordStatusCancelled =>
+                ApiLearningItem.CurrentUserRecordStatusEnum.CancelledEnum,
+            _ => ApiLearningItem.CurrentUserRecordStatusEnum.NoneEnum
+        };
+    }
+
+    /// <summary>
+    /// 将数据库学习状态转换为学习记录响应枚举。
+    /// </summary>
+    private static ApiLearningRecord.EnrollStatusEnum ToRecordStatusEnum(string? status)
+    {
+        return LearningWorkflow.NormalizeRecordStatus(status) switch
+        {
+            LearningWorkflow.RecordStatusLearning =>
+                ApiLearningRecord.EnrollStatusEnum.LearningEnum,
+            LearningWorkflow.RecordStatusCompleted =>
+                ApiLearningRecord.EnrollStatusEnum.CompletedEnum,
+            LearningWorkflow.RecordStatusCancelled =>
+                ApiLearningRecord.EnrollStatusEnum.CancelledEnum,
+            _ => ApiLearningRecord.EnrollStatusEnum.EnrolledEnum
+        };
     }
 
     /// <summary>
