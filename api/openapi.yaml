@@ -6987,8 +6987,8 @@ components:
           maxLength: 255
         status:
           type: string
-          nullable: true
           enum: [active, disabled]
+          default: active
       required:
         - clubId
         - name
