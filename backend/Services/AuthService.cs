@@ -58,6 +58,7 @@ public class AuthService
         new("budget:review", "审核经费", "审核活动经费预算。"),
         new("evaluation:review", "审核评价", "审核成员评价或评优结果。"),
         new("club:review", "审核社团申请", "审核社团注册申请。"),
+        new("venue:reserve", "提交场地预约", "为有运营权限的社团提交场地预约并查看本社团预约。"),
         new("venue:create", "创建场地", "新增可预约场地基础信息。"),
         new("venue:update", "维护场地", "维护场地名称、位置、容量和负责人信息。"),
         new("venue:disable", "停用或恢复场地", "将场地切换为可预约、维护中或停用状态。"),
@@ -99,13 +100,13 @@ public class AuthService
             "社团干部",
             ClubScope,
             "指定社团内角色，可管理招募、活动、通知、资源、项目任务和物资借还。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft"]),
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft", "venue:reserve"]),
         new(
             ClubLeaderRole,
             "社团负责人",
             ClubScope,
             "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色和运营统计。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:apply", "project:apply", "club:stats:view"]),
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:apply", "project:apply", "club:stats:view", "venue:reserve"]),
         new(
             AdvisorRole,
             "指导老师",
@@ -316,6 +317,36 @@ public class AuthService
             allowed,
             matchedRoles,
             message));
+    }
+
+    public async Task<AuthServiceResult<IReadOnlyList<int>>> GetPermissionClubIdsAsync(int userId, string permission)
+    {
+        permission = NormalizeText(permission);
+        if (!PermissionCatalog.Any(p => p.Code == permission))
+        {
+            return AuthServiceResult<IReadOnlyList<int>>.Fail(400, "权限编码不存在。");
+        }
+
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null)
+        {
+            return AuthServiceResult<IReadOnlyList<int>>.Fail(404, "用户不存在。");
+        }
+
+        if (!IsNormalAccount(user))
+        {
+            return AuthServiceResult<IReadOnlyList<int>>.Ok([]);
+        }
+
+        var roles = await GetPermissionRolesAsync(userId);
+        var clubIds = roles
+            .SelectMany(role => role.ClubIds.Concat(role.ClubId is null ? [] : [role.ClubId.Value]))
+            .Distinct()
+            .Where(clubId => roles.Any(role => RoleAllows(role, permission, clubId)))
+            .OrderBy(clubId => clubId)
+            .ToList();
+
+        return AuthServiceResult<IReadOnlyList<int>>.Ok(clubIds);
     }
 
     public async Task<AuthServiceResult<RoleAssignmentResult>> AssignRoleAsync(AssignRoleRequest request)
