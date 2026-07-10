@@ -27,6 +27,13 @@ export interface ReviewActivityRequest {
    */
   approved?: boolean | null;
   /**
+   * 已废弃，服务端从 JWT 读取身份。
+   * @type {number}
+   * @memberof ReviewActivityRequest
+   * @deprecated
+   */
+  reviewerUserId?: number | null;
+  /**
    *
    * @type {string}
    * @memberof ReviewActivityRequest
@@ -54,6 +61,7 @@ export function ReviewActivityRequestFromJSONTyped(
   }
   return {
     approved: json["approved"] == null ? undefined : json["approved"],
+    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     comment: json["comment"] == null ? undefined : json["comment"],
   };
 }
@@ -72,6 +80,7 @@ export function ReviewActivityRequestToJSONTyped(
 
   return {
     approved: value["approved"],
+    reviewerUserId: value["reviewerUserId"],
     comment: value["comment"],
   };
 }

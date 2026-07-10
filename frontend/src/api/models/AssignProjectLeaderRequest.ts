@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface AssignProjectLeaderRequest {
   /**
-   * 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
+   *
    * @type {number}
    * @memberof AssignProjectLeaderRequest
    */

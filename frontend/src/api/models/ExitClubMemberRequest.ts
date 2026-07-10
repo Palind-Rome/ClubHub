@@ -21,18 +21,18 @@ import { mapValues } from "../runtime";
  */
 export interface ExitClubMemberRequest {
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof ExitClubMemberRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
 }
 
 /**
  * Check if a given object implements the ExitClubMemberRequest interface.
  */
 export function instanceOfExitClubMemberRequest(value: object): value is ExitClubMemberRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   return true;
 }
 
@@ -48,7 +48,7 @@ export function ExitClubMemberRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
   };
 }
 

@@ -26,13 +26,12 @@ namespace Org.OpenAPITools.Models
     public partial class CreateClubEvaluationRequest 
     {
         /// <summary>
-        /// 当前操作人用户 ID。
+        /// 已废弃，服务端从 JWT 读取身份。
         /// </summary>
-        /// <value>当前操作人用户 ID。</value>
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
         /* <example>3</example> */
-        [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
+        public int? CurrentUserId { get; set; }
 
 
         /// <summary>

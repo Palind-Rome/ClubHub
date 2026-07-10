@@ -21,11 +21,12 @@ import { mapValues } from "../runtime";
  */
 export interface ReviewClubApplicationRequest {
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof ReviewClubApplicationRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
   /**
    *
    * @type {ReviewClubApplicationRequestDecisionEnum}
@@ -56,7 +57,6 @@ export type ReviewClubApplicationRequestDecisionEnum =
 export function instanceOfReviewClubApplicationRequest(
   value: object,
 ): value is ReviewClubApplicationRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("decision" in value) || value["decision"] === undefined) return false;
   return true;
 }
@@ -73,7 +73,7 @@ export function ReviewClubApplicationRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     decision: json["decision"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
   };

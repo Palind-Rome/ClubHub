@@ -21,18 +21,18 @@ import { mapValues } from "../runtime";
  */
 export interface DissolveClubRequest {
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof DissolveClubRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
 }
 
 /**
  * Check if a given object implements the DissolveClubRequest interface.
  */
 export function instanceOfDissolveClubRequest(value: object): value is DissolveClubRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   return true;
 }
 
@@ -48,7 +48,7 @@ export function DissolveClubRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
   };
 }
 

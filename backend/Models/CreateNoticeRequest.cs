@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class CreateNoticeRequest 
     {
         /// <summary>
-        /// 当前发布人用户 ID。
+        /// Gets or Sets CurrentUserId
         /// </summary>
-        /// <value>当前发布人用户 ID。</value>
         /* <example>2</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]

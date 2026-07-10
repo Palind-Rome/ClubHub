@@ -410,8 +410,8 @@ export interface CreateVenueReservationOperationRequest {
 }
 
 export interface DeleteRecruitmentRequest {
-  recruitId: number;
   currentUserId: number;
+  recruitId: number;
 }
 
 export interface DeleteVenueOperationRequest {
@@ -452,7 +452,6 @@ export interface GetActivityParticipationsRequest {
 }
 
 export interface GetClubApplicationsRequest {
-  viewerUserId: number;
   auditStatus?: GetClubApplicationsAuditStatusEnum;
 }
 
@@ -462,19 +461,13 @@ export interface GetClubByIdRequest {
 
 export interface GetClubEvaluationsRequest {
   clubId: number;
-  viewerUserId: number;
   termName?: string;
   evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
 export interface GetClubMembersRequest {
   clubId: number;
-  viewerUserId: number;
   includeHistory?: boolean;
-}
-
-export interface GetClubsRequest {
-  viewerUserId?: number;
 }
 
 export interface GetLearningItemsRequest {
@@ -511,8 +504,8 @@ export interface GetProjectsRequest {
 }
 
 export interface GetRecruitmentApplicationsRequest {
-  recruitId: number;
   viewerUserId: number;
+  recruitId: number;
 }
 
 export interface GetRecruitmentsRequest {
@@ -522,7 +515,6 @@ export interface GetRecruitmentsRequest {
 }
 
 export interface GetUsersRequest {
-  viewerUserId: number;
   clubId?: number;
 }
 
@@ -1936,17 +1928,17 @@ export class DefaultApi extends runtime.BaseAPI {
   async deleteRecruitmentRequestOpts(
     requestParameters: DeleteRecruitmentRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["recruitId"] == null) {
-      throw new runtime.RequiredError(
-        "recruitId",
-        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
-      );
-    }
-
     if (requestParameters["currentUserId"] == null) {
       throw new runtime.RequiredError(
         "currentUserId",
         'Required parameter "currentUserId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
       );
     }
 
@@ -2495,18 +2487,7 @@ export class DefaultApi extends runtime.BaseAPI {
   async getClubApplicationsRequestOpts(
     requestParameters: GetClubApplicationsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getClubApplications().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
@@ -2543,7 +2524,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 按当前用户权限查询社团注册申请
    */
   async getClubApplications(
-    requestParameters: GetClubApplicationsRequest,
+    requestParameters: GetClubApplicationsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ClubApplication>> {
     const response = await this.getClubApplicationsRaw(requestParameters, initOverrides);
@@ -2615,18 +2596,7 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getClubEvaluations().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["termName"] != null) {
       queryParameters["termName"] = requestParameters["termName"];
@@ -2690,18 +2660,7 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getClubMembers().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["includeHistory"] != null) {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
@@ -2751,12 +2710,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getClubs without sending the request
    */
-  async getClubsRequestOpts(requestParameters: GetClubsRequest): Promise<runtime.RequestOpts> {
+  async getClubsRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -2774,10 +2729,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取社团列表
    */
   async getClubsRaw(
-    requestParameters: GetClubsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<Club>>> {
-    const requestOptions = await this.getClubsRequestOpts(requestParameters);
+    const requestOptions = await this.getClubsRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClubFromJSON));
@@ -2786,11 +2740,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * 获取社团列表
    */
-  async getClubs(
-    requestParameters: GetClubsRequest = {},
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<Club>> {
-    const response = await this.getClubsRaw(requestParameters, initOverrides);
+  async getClubs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Club>> {
+    const response = await this.getClubsRaw(initOverrides);
     return await response.value();
   }
 
@@ -3220,17 +3171,17 @@ export class DefaultApi extends runtime.BaseAPI {
   async getRecruitmentApplicationsRequestOpts(
     requestParameters: GetRecruitmentApplicationsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["recruitId"] == null) {
-      throw new runtime.RequiredError(
-        "recruitId",
-        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
-      );
-    }
-
     if (requestParameters["viewerUserId"] == null) {
       throw new runtime.RequiredError(
         "viewerUserId",
         'Required parameter "viewerUserId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
       );
     }
 
@@ -3395,18 +3346,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for getUsers without sending the request
    */
   async getUsersRequestOpts(requestParameters: GetUsersRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getUsers().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
@@ -3441,7 +3381,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取当前账号可查看或可分配的用户列表
    */
   async getUsers(
-    requestParameters: GetUsersRequest,
+    requestParameters: GetUsersRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<UserSummary>> {
     const response = await this.getUsersRaw(requestParameters, initOverrides);

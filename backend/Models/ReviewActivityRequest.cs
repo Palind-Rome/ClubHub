@@ -32,6 +32,13 @@ namespace Org.OpenAPITools.Models
         public bool? Approved { get; set; }
 
         /// <summary>
+        /// 已废弃，服务端从 JWT 读取身份。
+        /// </summary>
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        public int? ReviewerUserId { get; set; }
+
+        /// <summary>
         /// Gets or Sets Comment
         /// </summary>
         [MaxLength(255)]

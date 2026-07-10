@@ -27,6 +27,13 @@ export interface CreateActivityRequest {
    */
   clubId: number;
   /**
+   * 已废弃，服务端从 JWT 读取身份。
+   * @type {number}
+   * @memberof CreateActivityRequest
+   * @deprecated
+   */
+  creatorUserId?: number | null;
+  /**
    *
    * @type {string}
    * @memberof CreateActivityRequest
@@ -100,6 +107,7 @@ export function CreateActivityRequestFromJSONTyped(
   }
   return {
     clubId: json["clubId"],
+    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
     title: json["title"],
     activityType: json["activityType"] == null ? undefined : json["activityType"],
     description: json["description"] == null ? undefined : json["description"],
@@ -126,6 +134,7 @@ export function CreateActivityRequestToJSONTyped(
 
   return {
     clubId: value["clubId"],
+    creatorUserId: value["creatorUserId"],
     title: value["title"],
     activityType: value["activityType"],
     description: value["description"],

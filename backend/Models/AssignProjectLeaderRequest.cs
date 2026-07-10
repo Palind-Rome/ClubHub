@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class AssignProjectLeaderRequest 
     {
         /// <summary>
-        /// 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
+        /// Gets or Sets CurrentUserId
         /// </summary>
-        /// <value>当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。</value>
         /* <example>7</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]
