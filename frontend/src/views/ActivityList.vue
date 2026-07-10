@@ -76,6 +76,12 @@ interface BudgetReviewForm {
   comment: string;
 }
 
+interface SignForm {
+  type: "checkin" | "checkout";
+  userId?: number;
+  code: string;
+}
+
 const activities = ref<Activity[]>([]);
 const auth = ref(readAuth());
 const statusFilter = ref("all");
@@ -143,10 +149,8 @@ const settingsForm = ref({
   checkoutEndAt: "",
 });
 
-const signForm = ref({
+const signForm = ref<SignForm>({
   type: "checkin",
-  // TODO(#81): 默认 userId 仅为 demo 联调；正式版应由后端根据登录态确定，前端移除该输入。
-  userId: 1,
   code: "",
 });
 

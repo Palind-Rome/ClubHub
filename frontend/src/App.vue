@@ -113,7 +113,8 @@ onUnmounted(() => {
             :aria-busy="healthChecking"
             @click="checkHealth"
             @keyup.enter="checkHealth"
-            @keyup.space.prevent="checkHealth"
+            @keydown.space.prevent
+            @keyup.space="checkHealth"
           >
             {{ healthChecking ? "检测中..." : healthOk ? "后端已连接" : "点击检测" }}
           </el-tag>

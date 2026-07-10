@@ -340,6 +340,13 @@ public class VenueReservationsController : ControllerBase
         var operatorUserId = GetAuthenticatedUserId();
         if (operatorUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
+        var operatorUser = await _db.Users.FindAsync(operatorUserId.Value);
+        if (operatorUser is null) return NotFound(Error("operator_not_found", "操作人不存在。"));
+        if (!IsActiveAccount(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, Error("operator_account_inactive", "操作人账号不可用。"));
+        }
+
         var reservation = await ReservationQuery()
             .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
 

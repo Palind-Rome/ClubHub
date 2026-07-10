@@ -656,7 +656,9 @@ public class ActivitiesController : ControllerBase
             return null;
         }
 
-        return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
+        return await _db.Activities
+            .Include(a => a.Club)
+            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
     private int? GetAuthenticatedUserId()

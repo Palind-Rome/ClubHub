@@ -521,10 +521,10 @@ function gradeTagType(grade: string) {
 }
 
 function evaluationGrade(totalScore: number) {
-  if (totalScore >= 90) return "A";
-  if (totalScore >= 80) return "B";
-  if (totalScore >= 60) return "C";
-  return "D";
+  if (totalScore >= 320) return "优秀";
+  if (totalScore >= 260) return "良好";
+  if (totalScore >= 200) return "合格";
+  return "待提升";
 }
 
 function formatDate(value: string | null) {

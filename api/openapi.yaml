@@ -3062,78 +3062,131 @@ components:
       properties:
         evaluationId:
           type: integer
+          description: 评价记录 ID。
+          example: 501
         evaluationType:
           type: string
           enum: [semester, award]
           description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
         evaluationTypeText:
           type: string
+          description: 评价类型中文文案。
+          example: 学期考核
         clubId:
           type: integer
+          description: 所属社团 ID。
+          example: 1
         clubName:
           type: string
+          description: 所属社团名称。
+          example: 计算机协会
         userId:
           type: integer
+          description: 被考核或获奖成员用户 ID。
+          example: 12
         userName:
           type: string
+          description: 被考核或获奖成员姓名。
+          example: 张三
         studentNo:
           type: string
           nullable: true
+          description: 被考核或获奖成员学号。
+          example: "2450001"
         departmentName:
           type: string
           nullable: true
+          description: 成员当前所属部门。
+          example: 技术部
         groupName:
           type: string
           nullable: true
+          description: 成员当前所属小组。
+          example: 后端组
         positionName:
           type: string
           nullable: true
+          description: 成员当前职位。
+          example: 干部
         evaluatorUserId:
           type: integer
           nullable: true
+          description: 录入或最后维护该记录的用户 ID。
+          example: 3
         evaluatorName:
           type: string
           nullable: true
+          description: 录入或最后维护该记录的用户姓名。
+          example: 李老师
         termName:
           type: string
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
         awardTitle:
           type: string
           nullable: true
+          description: 评奖评优标题；学期考核时为空。
+          example: 优秀社团干部
         awardLevel:
           type: string
           nullable: true
+          description: 奖项等级；学期考核时为空。
+          example: 校级
         awardReason:
           type: string
           nullable: true
+          description: 获奖原因或推荐理由；学期考核时为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
         activityScore:
           type: number
           format: decimal
+          description: 活动参与得分，取值范围 0-100。
+          example: 92
         taskScore:
           type: number
           format: decimal
+          description: 项目任务得分，取值范围 0-100。
+          example: 88
         learningScore:
           type: number
           format: decimal
+          description: 学习记录得分，取值范围 0-100。
+          example: 95
         awardScore:
           type: number
           format: decimal
+          description: 奖项或附加贡献得分，取值范围 0-100。
+          example: 80
         totalScore:
           type: number
           format: decimal
+          description: 后端汇总计算的总分，满分 400。
+          example: 355
         grade:
           type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
         publicStatus:
           type: string
           enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
         publicStatusText:
           type: string
+          description: 公示状态中文文案。
+          example: 已公示
         commentText:
           type: string
           nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
         createdAt:
           type: string
           format: date-time
           nullable: true
+          description: 记录创建时间。
+          example: "2026-07-10T08:30:00Z"
       required:
         - evaluationId
         - evaluationType
@@ -3159,51 +3212,77 @@ components:
         currentUserId:
           type: integer
           minimum: 1
+          description: 当前操作人用户 ID。
+          example: 3
         evaluationType:
           type: string
           enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
         userId:
           type: integer
           minimum: 1
+          description: 被考核或获奖成员用户 ID。
+          example: 12
         termName:
           type: string
           minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
         awardTitle:
           type: string
           nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
         awardLevel:
           type: string
           nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
         awardReason:
           type: string
           nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
         activityScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 活动参与得分。
+          example: 92
         taskScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 项目任务得分。
+          example: 88
         learningScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 学习记录得分。
+          example: 95
         awardScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
         publicStatus:
           type: string
           enum: [draft, published]
           default: draft
+          description: 公示状态；默认保存为草稿。
+          example: draft
         commentText:
           type: string
           nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
       required:
         - currentUserId
         - evaluationType
@@ -3221,47 +3300,71 @@ components:
         currentUserId:
           type: integer
           minimum: 1
+          description: 当前操作人用户 ID。
+          example: 3
         evaluationType:
           type: string
           enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
         termName:
           type: string
           minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
         awardTitle:
           type: string
           nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
         awardLevel:
           type: string
           nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
         awardReason:
           type: string
           nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
         activityScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 活动参与得分。
+          example: 92
         taskScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 项目任务得分。
+          example: 88
         learningScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 学习记录得分。
+          example: 95
         awardScore:
           type: number
           format: decimal
           minimum: 0
           maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
         publicStatus:
           type: string
           enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
         commentText:
           type: string
           nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
       required:
         - currentUserId
 
@@ -4308,18 +4411,26 @@ components:
       properties:
         reservationId:
           type: integer
+          description: 预约记录 ID。
+          example: 301
         venueId:
           type: integer
+          description: 场地 ID。
+          example: 5
         venueName:
           type: string
+          description: 场地名称。
+          example: 大学生活动中心 201
         startTime:
           type: string
           format: date-time
           description: 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T10:00:00Z"
         endTime:
           type: string
           format: date-time
           description: 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T12:00:00Z"
       required:
         - reservationId
         - venueId
