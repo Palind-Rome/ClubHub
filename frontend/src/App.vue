@@ -91,7 +91,7 @@ onUnmounted(() => {
   <el-container>
     <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
-      <el-menu mode="horizontal" router :default-active="activeMenu" class="nav">
+      <el-menu mode="horizontal" router :default-active="activeMenu" :ellipsis="false" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">我的社团</el-menu-item>
         <el-menu-item index="/club-members">成员管理</el-menu-item>
@@ -167,9 +167,22 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .nav {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 720px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: min(100%, 720px);
+  height: auto;
+  min-height: 40px;
+  overflow: visible;
   border-bottom: none !important;
+}
+.nav :deep(.el-menu-item),
+.nav :deep(.el-sub-menu__title) {
+  flex: 0 0 auto;
+  height: 40px;
+  line-height: 40px;
+  white-space: nowrap;
 }
 .header-actions {
   display: flex;
