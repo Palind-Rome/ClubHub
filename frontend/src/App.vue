@@ -28,6 +28,14 @@ const activeMenu = computed(() => {
   if (route.path.startsWith("/learning")) return "/learning";
   return route.path;
 });
+const canAccessClubRegistration = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("club:apply") ||
+    permissions.includes("club:review")
+  );
+});
 const canManageVenues = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return (
@@ -87,6 +95,9 @@ onUnmounted(() => {
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">我的社团</el-menu-item>
         <el-menu-item index="/club-members">成员管理</el-menu-item>
+        <el-menu-item v-if="canAccessClubRegistration" index="/club-registration">
+          社团注册
+        </el-menu-item>
         <el-menu-item index="/recruitments">纳新</el-menu-item>
         <el-menu-item index="/awards">评奖评优</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
