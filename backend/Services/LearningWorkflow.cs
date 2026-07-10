@@ -29,17 +29,13 @@ public static class LearningWorkflow
     };
 
     /// <summary>
-    /// 校验报名截止、开始和结束时间的先后关系。
+    /// 校验课程开始时间必填，且可选结束时间晚于开始时间。
     /// </summary>
     public static bool IsCourseTimeValid(
-        DateTime? enrollmentDeadline,
         DateTime? startAt,
         DateTime? endAt) =>
-        enrollmentDeadline.HasValue &&
         startAt.HasValue &&
-        endAt.HasValue &&
-        enrollmentDeadline <= startAt &&
-        endAt > startAt;
+        (!endAt.HasValue || endAt > startAt);
 
     /// <summary>
     /// 判断课程容量是否为正数。
@@ -81,12 +77,11 @@ public static class LearningWorkflow
         };
 
     /// <summary>
-    /// 判断当前 UTC 时间是否仍处于课程报名窗口。
+    /// 判断课程是否开放加入；未设置结束时间时长期开放。
     /// </summary>
     public static bool IsEnrollmentWindowOpen(LearningItem item, DateTime now) =>
         IsPublished(item) &&
-        item.EnrollmentDeadline != default &&
-        now < item.EnrollmentDeadline;
+        (!item.EndAt.HasValue || now < item.EndAt.Value);
 
     /// <summary>
     /// 根据课程时间和保存状态计算对外展示的有效状态。
@@ -96,10 +91,6 @@ public static class LearningWorkflow
         var status = NormalizeItemStatus(item.ItemStatus);
         if (status != ItemStatusPublished) return status;
         if (item.EndAt.HasValue && now >= item.EndAt.Value) return ItemStatusFinished;
-        if (item.EnrollmentDeadline != default && now >= item.EnrollmentDeadline)
-        {
-            return ItemStatusClosed;
-        }
         return ItemStatusPublished;
     }
 

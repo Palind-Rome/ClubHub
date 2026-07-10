@@ -2179,7 +2179,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-          description: ?????? ID????????????????????
+          description: ?????? ID??????????????????????
         - name: clubId
           in: query
           required: false
@@ -2254,12 +2254,12 @@ paths:
         "404":
           description: ?????
         "409":
-          description: ??????????????
+          description: ?????????????
 
   /api/learning/items/{itemId}/enrollments:
     post:
       summary: ??????
-      description: ???????????????????????????????????????
+      description: ??????????????????????????????????????????????????????
       operationId: enrollLearningItem
       parameters:
         - name: itemId
@@ -2276,7 +2276,7 @@ paths:
               $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "201":
-          description: ?????????????
+          description: ????????????
           content:
             application/json:
               schema:
@@ -2284,14 +2284,14 @@ paths:
         "400":
           description: ????????????????
         "403":
-          description: ?????????????
+          description: ???????????????????????????
         "409":
-          description: ??????????
+          description: ????????????
         "404":
           description: ??????????
     delete:
-      summary: ????????
-      description: ?????????????????????????
+      summary: ??????
+      description: ???????????????????????????????????????
       operationId: cancelLearningEnrollment
       parameters:
         - name: itemId
@@ -2308,13 +2308,13 @@ paths:
               $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "200":
-          description: ???????
+          description: ?????
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ????????????????
+          description: ??????????????????????
         "403":
           description: ?????????????
         "404":
@@ -4976,23 +4976,18 @@ components:
           nullable: true
           description: Course introduction.
           example: ???????????????
-        enrollmentDeadline:
-          type: string
-          format: date-time
-          description: Enrollment deadline. Enrollment and cancellation close at this time.
         startAt:
           type: string
           format: date-time
-          nullable: true
-          description: Course start time.
+          description: Required course start time; learning progress cannot be updated before this time.
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Course end time.
+          description: Optional course end time; when omitted, users may join at any time.
         capacity:
           type: integer
-          description: Enrollment capacity.
+          description: Maximum number of users who may join the course.
           example: 40
         visibility:
           type: string
@@ -5006,7 +5001,7 @@ components:
           example: published
         currentEnrollments:
           type: integer
-          description: Active enrollment count.
+          description: Number of users currently joined.
           example: 8
         currentUserRecordStatus:
           type: string
@@ -5017,10 +5012,10 @@ components:
           description: Whether the current viewer may edit this course and view its roster.
         canEnroll:
           type: boolean
-          description: Whether the current viewer may enroll now.
+          description: Whether the current viewer may join the course now.
         canCancelEnrollment:
           type: boolean
-          description: Whether the current viewer may cancel the current enrollment now.
+          description: Whether the current viewer may exit the course now.
         enrollmentUnavailableReason:
           type: string
           nullable: true
@@ -5029,9 +5024,7 @@ components:
         - id
         - clubId
         - title
-        - enrollmentDeadline
         - startAt
-        - endAt
         - capacity
         - visibility
         - itemStatus
@@ -5079,18 +5072,15 @@ components:
           nullable: true
           maxLength: 100
           description: Course category.
-        enrollmentDeadline:
-          type: string
-          format: date-time
-          description: Enrollment deadline, which must not be later than the course start time.
         startAt:
           type: string
           format: date-time
-          description: Course start time.
+          description: Required course start time.
         endAt:
           type: string
           format: date-time
-          description: Course end time.
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
         capacity:
           type: integer
           minimum: 1
@@ -5111,9 +5101,7 @@ components:
         - title
         - teacherUserId
         - itemType
-        - enrollmentDeadline
         - startAt
-        - endAt
         - capacity
         - visibility
         - itemStatus
@@ -5148,18 +5136,15 @@ components:
           nullable: true
           maxLength: 100
           description: Course category.
-        enrollmentDeadline:
-          type: string
-          format: date-time
-          description: Enrollment deadline, which must not be later than the course start time.
         startAt:
           type: string
           format: date-time
-          description: Course start time.
+          description: Required course start time.
         endAt:
           type: string
           format: date-time
-          description: Course end time.
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
         capacity:
           type: integer
           minimum: 1
@@ -5177,21 +5162,19 @@ components:
         - title
         - teacherUserId
         - itemType
-        - enrollmentDeadline
         - startAt
-        - endAt
         - capacity
         - visibility
         - itemStatus
 
     EnrollLearningItemRequest:
       type: object
-      description: Request body for enrolling in a training course.
+      description: Request body for joining or exiting a training course.
       properties:
         currentUserId:
           type: integer
           minimum: 1
-          description: Current enrolling user id.
+          description: Current user id.
           example: 21
       required:
         - currentUserId

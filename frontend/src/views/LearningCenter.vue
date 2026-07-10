@@ -21,7 +21,7 @@ const courseTypeOptions = [
   { label: "培训", value: "training" },
 ];
 const visibilityOptions = [
-  { label: "仅本社团", value: "club" },
+  { label: "仅本社团成员", value: "club" },
   { label: "面向全校", value: "public" },
 ];
 
@@ -39,6 +39,7 @@ const recordStatus = {
   completed: "completed",
   cancelled: "cancelled",
 } as const;
+type CourseVisibility = "club" | "public";
 
 const auth = ref(readAuth());
 const clubs = ref<Club[]>([]);
@@ -70,11 +71,10 @@ const courseForm = reactive({
   teacherUserId: null as number | null,
   itemType: "course",
   categoryName: "",
-  enrollmentDeadline: null as Date | null,
   startAt: null as Date | null,
   endAt: null as Date | null,
   capacity: null as number | null,
-  visibility: "club",
+  visibility: "club" as CourseVisibility,
   itemStatus: "published",
 });
 
@@ -95,22 +95,8 @@ const courseRules: FormRules<typeof courseForm> = {
     { type: "number", min: 1, message: "请选择有效授课教师", trigger: "change" },
   ],
   itemType: [{ required: true, message: "请选择课程类型", trigger: "change" }],
-  enrollmentDeadline: [
-    { required: true, message: "请选择报名截止时间", trigger: "change" },
-    {
-      validator: (_rule, value: Date | null, callback) => {
-        if (value && courseForm.startAt && value > courseForm.startAt) {
-          callback(new Error("报名截止时间不能晚于课程开始时间"));
-          return;
-        }
-        callback();
-      },
-      trigger: "change",
-    },
-  ],
   startAt: [{ required: true, message: "请选择课程开始时间", trigger: "change" }],
   endAt: [
-    { required: true, message: "请选择课程结束时间", trigger: "change" },
     {
       validator: (_rule, value: Date | null, callback) => {
         if (value && courseForm.startAt && value <= courseForm.startAt) {
@@ -161,16 +147,16 @@ const recordDialogTitle = computed(() => {
     ? itemMap.value.get(selectedRecordItemId.value)
     : undefined;
   if (!item) return "我的学习记录";
-  return item.canManage ? `${item.title} - 报名名单` : `${item.title} - 学习记录`;
+  return item.canManage ? `${item.title} - 课程成员` : `${item.title} - 学习记录`;
 });
 
 /** 将课程状态转换为用户可读文本。 */
 function statusLabel(status?: string | null) {
   switch (status) {
     case LearningItemItemStatusEnum.Published:
-      return "报名中";
+      return "开放加入";
     case LearningItemItemStatusEnum.Closed:
-      return "报名已截止";
+      return "已停止加入";
     case LearningItemItemStatusEnum.Finished:
       return "已结束";
     default:
@@ -188,9 +174,9 @@ function recordStatusLabel(status?: string | null) {
     case recordStatus.cancelled:
       return "已取消";
     case recordStatus.enrolled:
-      return "已报名";
+      return "已加入";
     default:
-      return "未报名";
+      return "未加入";
   }
 }
 
@@ -201,7 +187,7 @@ function courseTypeLabel(value?: string | null) {
 
 /** 返回课程开放范围的展示名称。 */
 function visibilityLabel(value?: string | null) {
-  return visibilityOptions.find((option) => option.value === value)?.label ?? "仅本社团";
+  return visibilityOptions.find((option) => option.value === value)?.label ?? "仅本社团成员";
 }
 
 /** 判断当前用户是否能为指定社团发布课程。 */
@@ -238,7 +224,7 @@ function formatDuration(seconds?: number | null) {
   return `${Math.round(seconds / 60)} 分钟`;
 }
 
-/** 组合报名用户姓名与学工号。 */
+/** 组合课程成员姓名与学工号。 */
 function participantLabel(record: LearningRecord) {
   const name = record.userDisplayName || `用户 ${record.userId}`;
   return record.userNumber ? `${name}（${record.userNumber}）` : name;
@@ -279,7 +265,7 @@ async function loadClubs() {
   }
 }
 
-/** 加载当前用户可见的课程及报名状态。 */
+/** 加载当前用户可见的课程及加入状态。 */
 async function loadLearningItems() {
   if (!currentUserId.value) {
     learningItems.value = [];
@@ -344,7 +330,6 @@ function resetCourseForm() {
   courseForm.teacherUserId = null;
   courseForm.itemType = "course";
   courseForm.categoryName = "";
-  courseForm.enrollmentDeadline = null;
   courseForm.startAt = null;
   courseForm.endAt = null;
   courseForm.capacity = null;
@@ -386,8 +371,7 @@ async function openEditDialog(item: LearningItem) {
   courseForm.teacherUserId = item.teacherUserId ?? null;
   courseForm.itemType = item.itemType ?? "course";
   courseForm.categoryName = item.categoryName ?? "";
-  courseForm.enrollmentDeadline = new Date(item.enrollmentDeadline);
-  courseForm.startAt = item.startAt ? new Date(item.startAt) : null;
+  courseForm.startAt = new Date(item.startAt);
   courseForm.endAt = item.endAt ? new Date(item.endAt) : null;
   courseForm.capacity = item.capacity;
   courseForm.visibility = item.visibility;
@@ -405,9 +389,7 @@ async function submitCourse() {
   if (
     !courseForm.clubId ||
     !courseForm.teacherUserId ||
-    !courseForm.enrollmentDeadline ||
     !courseForm.startAt ||
-    !courseForm.endAt ||
     !courseForm.capacity
   ) {
     return;
@@ -422,9 +404,8 @@ async function submitCourse() {
       teacherUserId: courseForm.teacherUserId,
       itemType: courseForm.itemType,
       categoryName: courseForm.categoryName.trim() || undefined,
-      enrollmentDeadline: courseForm.enrollmentDeadline,
       startAt: courseForm.startAt,
-      endAt: courseForm.endAt,
+      endAt: courseForm.endAt ?? undefined,
       capacity: courseForm.capacity,
       visibility: courseForm.visibility,
     };
@@ -458,11 +439,11 @@ async function submitCourse() {
   }
 }
 
-/** 为当前用户提交课程报名。 */
+/** 为当前用户加入课程。 */
 async function enroll(item: LearningItem) {
   if (!currentUserId.value) return;
   if (!item.canEnroll) {
-    ElMessage.warning(item.enrollmentUnavailableReason || "当前不能报名该课程");
+    ElMessage.warning(item.enrollmentUnavailableReason || "当前不能加入该课程");
     return;
   }
 
@@ -472,26 +453,26 @@ async function enroll(item: LearningItem) {
       itemId: item.id,
       enrollLearningItemRequest: { currentUserId: currentUserId.value },
     });
-    ElMessage.success("课程报名成功");
+    ElMessage.success("已加入课程");
     await loadLearningItems();
   } catch (error) {
-    ElMessage.error(toErrorMessage(error, "课程报名失败"));
+    ElMessage.error(toErrorMessage(error, "加入课程失败"));
   } finally {
     enrollingId.value = null;
   }
 }
 
-/** 确认后取消当前用户的课程报名。 */
+/** 确认后退出当前用户已加入的课程。 */
 async function cancelEnrollment(item: LearningItem) {
   if (!currentUserId.value || !item.canCancelEnrollment) return;
 
   try {
     await ElMessageBox.confirm(
-      `确认取消“${item.title}”的报名吗？取消后名额会立即释放。`,
-      "取消课程报名",
+      `确认退出“${item.title}”吗？退出后课程名额会立即释放。`,
+      "退出课程",
       {
-        confirmButtonText: "确认取消",
-        cancelButtonText: "保留报名",
+        confirmButtonText: "确认退出",
+        cancelButtonText: "继续学习",
         type: "warning",
       },
     );
@@ -505,16 +486,16 @@ async function cancelEnrollment(item: LearningItem) {
       itemId: item.id,
       enrollLearningItemRequest: { currentUserId: currentUserId.value },
     });
-    ElMessage.success("课程报名已取消");
+    ElMessage.success("已退出课程");
     await loadLearningItems();
   } catch (error) {
-    ElMessage.error(toErrorMessage(error, "取消报名失败"));
+    ElMessage.error(toErrorMessage(error, "退出课程失败"));
   } finally {
     cancellingId.value = null;
   }
 }
 
-/** 打开个人学习记录或课程报名名单。 */
+/** 打开个人学习记录或课程成员名单。 */
 async function openRecords(item?: LearningItem) {
   if (!currentUserId.value) {
     ElMessage.warning("请先登录后查看学习记录");
@@ -527,7 +508,7 @@ async function openRecords(item?: LearningItem) {
   await loadRecords();
 }
 
-/** 加载个人学习记录或指定课程报名名单。 */
+/** 加载个人学习记录或指定课程成员名单。 */
 async function loadRecords() {
   if (!currentUserId.value) return;
 
@@ -610,15 +591,15 @@ onUnmounted(() => {
     <div class="page-header">
       <div>
         <h1>培训课程</h1>
-        <p>发布、报名和管理课程，并跟踪学习进度与完成情况。</p>
+        <p>发布、加入和管理课程，并跟踪学习进度与完成情况。</p>
       </div>
       <div class="toolbar">
         <el-segmented
           v-model="statusFilter"
           :options="[
             { label: '全部', value: 'all' },
-            { label: '报名中', value: 'published' },
-            { label: '报名已截止', value: 'closed' },
+            { label: '开放加入', value: 'published' },
+            { label: '已停止加入', value: 'closed' },
             { label: '已结束', value: 'finished' },
             { label: '草稿', value: 'draft' },
           ]"
@@ -656,12 +637,7 @@ onUnmounted(() => {
           {{ formatDate(row.startAt) }} 至 {{ formatDate(row.endAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="报名截止" min-width="170">
-        <template #default="{ row }">
-          {{ formatDate(row.enrollmentDeadline) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="报名人数" width="110" align="center">
+      <el-table-column label="加入人数" width="110" align="center">
         <template #default="{ row }"> {{ row.currentEnrollments }} / {{ row.capacity }} </template>
       </el-table-column>
       <el-table-column label="状态" width="110" align="center">
@@ -684,7 +660,7 @@ onUnmounted(() => {
             :title="row.enrollmentUnavailableReason ?? ''"
             @click="enroll(row)"
           >
-            报名
+            加入课程
           </el-button>
           <el-button
             v-if="row.canCancelEnrollment"
@@ -693,7 +669,7 @@ onUnmounted(() => {
             :loading="cancellingId === row.id"
             @click="cancelEnrollment(row)"
           >
-            取消报名
+            退出课程
           </el-button>
           <el-button v-if="row.canManage" size="small" @click="openEditDialog(row)">
             编辑
@@ -703,7 +679,7 @@ onUnmounted(() => {
             size="small"
             @click="openRecords(row)"
           >
-            {{ row.canManage ? "报名名单" : "学习记录" }}
+            {{ row.canManage ? "课程成员" : "学习记录" }}
           </el-button>
         </template>
       </el-table-column>
@@ -768,13 +744,6 @@ onUnmounted(() => {
         <el-form-item label="课程分类">
           <el-input v-model="courseForm.categoryName" maxlength="100" />
         </el-form-item>
-        <el-form-item label="报名截止时间" prop="enrollmentDeadline">
-          <el-date-picker
-            v-model="courseForm.enrollmentDeadline"
-            type="datetime"
-            placeholder="请选择报名截止时间"
-          />
-        </el-form-item>
         <el-form-item label="开始时间" prop="startAt">
           <el-date-picker
             v-model="courseForm.startAt"
@@ -782,8 +751,12 @@ onUnmounted(() => {
             placeholder="请选择开始时间"
           />
         </el-form-item>
-        <el-form-item label="结束时间" prop="endAt">
-          <el-date-picker v-model="courseForm.endAt" type="datetime" placeholder="请选择结束时间" />
+        <el-form-item label="结束时间（可选）" prop="endAt">
+          <el-date-picker
+            v-model="courseForm.endAt"
+            type="datetime"
+            placeholder="不填则课程长期开放"
+          />
         </el-form-item>
         <el-form-item label="课程容量" prop="capacity">
           <el-input-number v-model="courseForm.capacity" :min="1" controls-position="right" />
@@ -802,9 +775,9 @@ onUnmounted(() => {
         <el-form-item label="课程状态" prop="itemStatus">
           <el-radio-group v-model="courseForm.itemStatus">
             <el-radio-button value="draft">草稿</el-radio-button>
-            <el-radio-button value="published">报名中</el-radio-button>
+            <el-radio-button value="published">开放加入</el-radio-button>
             <el-radio-button v-if="courseDialogMode === 'edit'" value="closed">
-              关闭报名
+              停止加入
             </el-radio-button>
           </el-radio-group>
         </el-form-item>
@@ -822,12 +795,12 @@ onUnmounted(() => {
             {{ itemMap.get(row.itemId)?.title ?? `课程 ${row.itemId}` }}
           </template>
         </el-table-column>
-        <el-table-column label="报名用户" min-width="160">
+        <el-table-column label="课程成员" min-width="160">
           <template #default="{ row }">
             {{ participantLabel(row) }}
           </template>
         </el-table-column>
-        <el-table-column label="报名时间" min-width="160">
+        <el-table-column label="加入时间" min-width="160">
           <template #default="{ row }">
             {{ formatDate(row.enrolledAt) }}
           </template>

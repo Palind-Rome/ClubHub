@@ -17,7 +17,7 @@ using UpdateLearningProgressRequest = Org.OpenAPITools.Models.UpdateLearningProg
 namespace ClubHub.Api.Controllers;
 
 /// <summary>
-/// 培训课程发布、报名和学习记录接口。
+/// 培训课程发布、加入和学习记录接口。
 /// </summary>
 [ApiController]
 [Route("api/learning")]
@@ -216,7 +216,6 @@ public class LearningController : ControllerBase
             request.TeacherUserId,
             request.ItemType,
             request.CategoryName,
-            request.EnrollmentDeadline,
             request.StartAt,
             request.EndAt,
             request.Capacity,
@@ -224,7 +223,7 @@ public class LearningController : ControllerBase
         if (validation is not null) return validation;
 
         var itemStatus = ToCreateStatusValue(request.ItemStatus);
-        if (itemStatus is null) return BadRequest("课程初始状态只能是草稿或报名中。");
+        if (itemStatus is null) return BadRequest("课程初始状态只能是草稿或开放加入。");
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
@@ -240,7 +239,6 @@ public class LearningController : ControllerBase
                 ItemType = Normalize(request.ItemType),
                 CategoryName = NormalizeOptionalText(request.CategoryName),
                 Description = NormalizeOptionalText(request.Description),
-                EnrollmentDeadline = LearningWorkflow.AsUtc(request.EnrollmentDeadline),
                 StartAt = LearningWorkflow.AsUtc(request.StartAt),
                 EndAt = LearningWorkflow.AsUtc(request.EndAt),
                 Capacity = request.Capacity,
@@ -283,7 +281,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 修改课程信息、开放范围和报名状态。
+    /// 修改课程信息、开放范围和加入状态。
     /// </summary>
     [HttpPut("items/{itemId:int}")]
     public async Task<IActionResult> UpdateItem(
@@ -314,7 +312,6 @@ public class LearningController : ControllerBase
             request.TeacherUserId,
             request.ItemType,
             request.CategoryName,
-            request.EnrollmentDeadline,
             request.StartAt,
             request.EndAt,
             request.Capacity,
@@ -322,12 +319,12 @@ public class LearningController : ControllerBase
         if (validation is not null) return validation;
 
         var itemStatus = ToUpdateStatusValue(request.ItemStatus);
-        if (itemStatus is null) return BadRequest("课程状态只能是草稿、报名中或已关闭。");
+        if (itemStatus is null) return BadRequest("课程状态只能是草稿、开放加入或已停止加入。");
 
         var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
         if (request.Capacity < activeEnrollmentCount)
         {
-            return Conflict($"课程容量不能小于当前有效报名人数 {activeEnrollmentCount}。");
+            return Conflict($"课程容量不能小于当前已加入人数 {activeEnrollmentCount}。");
         }
 
         item.TeacherUserId = request.TeacherUserId;
@@ -335,7 +332,6 @@ public class LearningController : ControllerBase
         item.ItemType = Normalize(request.ItemType);
         item.CategoryName = NormalizeOptionalText(request.CategoryName);
         item.Description = NormalizeOptionalText(request.Description);
-        item.EnrollmentDeadline = LearningWorkflow.AsUtc(request.EnrollmentDeadline);
         item.StartAt = LearningWorkflow.AsUtc(request.StartAt);
         item.EndAt = LearningWorkflow.AsUtc(request.EndAt);
         item.Capacity = request.Capacity;
@@ -366,14 +362,14 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 报名课程；取消后再次报名会恢复原学习记录。
+    /// 加入课程；退出后再次加入会恢复原学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/enrollments")]
     public async Task<IActionResult> Enroll(
         int itemId,
         [FromBody] EnrollLearningItemRequest? request)
     {
-        if (request is null) return BadRequest("报名用户信息不能为空。");
+        if (request is null) return BadRequest("加入课程的用户信息不能为空。");
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
         if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
 
@@ -443,31 +439,27 @@ public class LearningController : ControllerBase
             }
         }
 
-        return Conflict("课程报名发生并发冲突，请重试。");
+        return Conflict("加入课程时发生并发冲突，请重试。");
     }
 
     /// <summary>
-    /// 在课程开始前取消当前用户的报名。
+    /// 在课程结束前退出当前用户已加入的课程。
     /// </summary>
     [HttpDelete("items/{itemId:int}/enrollments")]
     public async Task<IActionResult> CancelEnrollment(
         int itemId,
         [FromBody] EnrollLearningItemRequest? request)
     {
-        if (request is null) return BadRequest("报名用户信息不能为空。");
+        if (request is null) return BadRequest("退出课程的用户信息不能为空。");
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
         if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
 
         var item = await _db.LearningItems.FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程不存在。");
-        if (item.StartAt is null)
+        if (item.EndAt.HasValue &&
+            LearningWorkflow.BusinessNow() >= item.EndAt.Value)
         {
-            _logger.LogError("课程 {ItemId} 缺少开始时间，无法判断取消报名窗口。", item.ItemId);
-            return CourseDataIntegrityProblem(item.ItemId);
-        }
-        if (LearningWorkflow.BusinessNow() >= item.StartAt.Value)
-        {
-            return BadRequest("课程已经开始，不能取消报名。");
+            return BadRequest("课程已经结束，不能退出课程。");
         }
 
         var record = await _db.LearningRecords
@@ -478,16 +470,16 @@ public class LearningController : ControllerBase
             .OrderByDescending(candidate => candidate.EnrolledAt)
             .ThenByDescending(candidate => candidate.RecordId)
             .FirstOrDefaultAsync();
-        if (record is null) return NotFound("当前用户没有该课程的报名记录。");
+        if (record is null) return NotFound("当前用户尚未加入该课程。");
 
         var status = LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus);
         if (status == LearningWorkflow.RecordStatusCancelled)
         {
-            return BadRequest("该课程报名已经取消。");
+            return BadRequest("当前用户已经退出该课程。");
         }
         if (status == LearningWorkflow.RecordStatusCompleted)
         {
-            return BadRequest("已完成的课程记录不能取消。");
+            return BadRequest("已完成的课程记录不能退出。");
         }
 
         record.EnrollStatus = LearningWorkflow.RecordStatusCancelled;
@@ -496,7 +488,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 用户查看自己的学习记录，课程管理者可查看课程报名名单。
+    /// 用户查看自己的学习记录，课程管理者可查看课程成员名单。
     /// </summary>
     [HttpGet("records")]
     public async Task<IActionResult> GetRecords(
@@ -608,10 +600,9 @@ public class LearningController : ControllerBase
         int teacherUserId,
         string? itemType,
         string? categoryName,
-        DateTime enrollmentDeadline,
-        DateTime startAt,
-        DateTime endAt,
-        int capacity,
+        DateTime? startAt,
+        DateTime? endAt,
+        int? capacity,
         string? visibility)
     {
         if (string.IsNullOrWhiteSpace(title)) return BadRequest("课程名称不能为空。");
@@ -624,10 +615,10 @@ public class LearningController : ControllerBase
         {
             return BadRequest("课程分类不能超过 100 个字符。");
         }
-        if (!LearningWorkflow.IsCourseTimeValid(enrollmentDeadline, startAt, endAt))
+        if (!LearningWorkflow.IsCourseTimeValid(startAt, endAt))
         {
             return BadRequest(
-                "报名截止时间、课程开始时间和结束时间必填，且必须满足报名截止时间不晚于开始时间、结束时间晚于开始时间。");
+                "课程开始时间必填；结束时间可不填，填写时必须晚于开始时间。");
         }
         if (!LearningWorkflow.IsCapacityValid(capacity))
         {
@@ -650,7 +641,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 返回当前用户不能报名课程的原因；可报名时返回空。
+    /// 返回当前用户不能加入课程的原因；可加入时返回空。
     /// </summary>
     private static EnrollmentDecision? GetEnrollmentDecision(
         User user,
@@ -662,15 +653,11 @@ public class LearningController : ControllerBase
     {
         if (!LearningWorkflow.IsPublished(item))
         {
-            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程当前未开放报名。");
-        }
-        if (item.EndAt.HasValue && now >= item.EndAt.Value)
-        {
-            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程已经结束。");
+            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程当前未开放加入。");
         }
         if (!LearningWorkflow.IsEnrollmentWindowOpen(item, now))
         {
-            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程报名时间已截止。");
+            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程已经结束，不能加入。");
         }
 
         var recordStatus = currentRecord is null
@@ -678,7 +665,7 @@ public class LearningController : ControllerBase
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
         if (recordStatus is not null && recordStatus != LearningWorkflow.RecordStatusCancelled)
         {
-            return new EnrollmentDecision(StatusCodes.Status409Conflict, "当前用户已经报名该课程。");
+            return new EnrollmentDecision(StatusCodes.Status409Conflict, "当前用户已经加入该课程。");
         }
 
         var visibility = LearningWorkflow.NormalizeVisibility(item.Visibility);
@@ -699,7 +686,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 判断用户是否可按管理权、历史报名或开放范围查看课程。
+    /// 判断用户是否可按管理权、历史加入记录或开放范围查看课程。
     /// </summary>
     private static bool CanViewLearningItem(
         User viewer,
@@ -740,7 +727,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 判断用户是否可维护课程及查看报名名单。
+    /// 判断用户是否可维护课程及查看课程成员名单。
     /// </summary>
     private static bool CanManageLearningItem(User user, DbLearningItem item)
     {
@@ -926,13 +913,12 @@ public class LearningController : ControllerBase
         EnrollmentDecision? enrollmentDecision,
         DateTime now)
     {
-        if (item.StartAt is null || item.EndAt is null || item.Capacity is null)
+        if (item.StartAt is null || item.Capacity is null)
         {
             _logger.LogError(
-                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, EndAtMissing={EndAtMissing}, CapacityMissing={CapacityMissing}。",
+                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, CapacityMissing={CapacityMissing}。",
                 item.ItemId,
                 item.StartAt is null,
-                item.EndAt is null,
                 item.Capacity is null);
             return null;
         }
@@ -943,7 +929,7 @@ public class LearningController : ControllerBase
         var canCancelEnrollment =
             (currentRecordStatus is LearningWorkflow.RecordStatusEnrolled or
                 LearningWorkflow.RecordStatusLearning) &&
-            now < item.StartAt.Value;
+            (!item.EndAt.HasValue || now < item.EndAt.Value);
 
         return new ApiLearningItem
         {
@@ -955,9 +941,8 @@ public class LearningController : ControllerBase
             ItemType = item.ItemType,
             CategoryName = item.CategoryName,
             Description = item.Description,
-            EnrollmentDeadline = LearningWorkflow.AsUtc(item.EnrollmentDeadline),
             StartAt = LearningWorkflow.AsUtc(item.StartAt.Value),
-            EndAt = LearningWorkflow.AsUtc(item.EndAt.Value),
+            EndAt = LearningWorkflow.AsUtc(item.EndAt),
             Capacity = item.Capacity.Value,
             Visibility = ToItemVisibilityEnum(item.Visibility),
             ItemStatus = ToItemStatusEnum(

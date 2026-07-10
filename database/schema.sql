@@ -210,17 +210,13 @@ CREATE TABLE LEARNING_ITEMS (
   category_name varchar2(255),
   description clob,
   file_url varchar2(255),
-  enroll_deadline date NOT NULL,
   start_at date,
   end_at date,
   capacity number,
   visibility varchar2(255),
   download_permission varchar2(255),
   item_status varchar2(255),
-  created_at date,
-  CONSTRAINT ck_learning_items_enroll_time CHECK (
-    start_at IS NULL OR enroll_deadline <= start_at
-  )
+  created_at date
 );
 
 CREATE TABLE LEARNING_RECORDS (
