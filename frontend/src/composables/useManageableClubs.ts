@@ -27,6 +27,17 @@ export function collectManageableClubIds(
   return clubIds;
 }
 
+export function collectScopedClubIds(roles: readonly ScopedClubRole[]): Set<number> {
+  const clubIds = new Set<number>();
+
+  roles.forEach((role) => {
+    const ids = role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
+    ids.forEach((clubId) => clubIds.add(clubId));
+  });
+
+  return clubIds;
+}
+
 export function roleCoversClub(role: ScopedClubRole, clubId: number) {
   return role.clubId === clubId || Boolean(role.clubIds?.includes(clubId));
 }
@@ -45,4 +56,8 @@ export function hasScopedRole(
 
 function roleCodeOf(role: ScopedClubRole) {
   return (role.roleCode ?? role.code ?? "").toLowerCase();
+}
+
+export function normalizedRoleCodeOf(role: ScopedClubRole) {
+  return roleCodeOf(role);
 }
