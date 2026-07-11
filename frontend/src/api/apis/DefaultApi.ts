@@ -617,6 +617,12 @@ export interface UpdateClubEvaluationOperationRequest {
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
 }
 
+export interface UpdateClubMemberGroupingRequest {
+  clubId: number;
+  memberId: number;
+  updateClubMemberTermRequest: UpdateClubMemberTermRequest;
+}
+
 export interface UpdateClubMemberTermOperationRequest {
   clubId: number;
   memberId: number;
@@ -4802,6 +4808,83 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubMemberGrouping without sending the request
+   */
+  async updateClubMemberGroupingRequestOpts(
+    requestParameters: UpdateClubMemberGroupingRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["memberId"] == null) {
+      throw new runtime.RequiredError(
+        "memberId",
+        'Required parameter "memberId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["updateClubMemberTermRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubMemberTermRequest",
+        'Required parameter "updateClubMemberTermRequest" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/{memberId}/grouping`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{memberId}",
+      encodeURIComponent(String(requestParameters["memberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubMemberTermRequestToJSON(requestParameters["updateClubMemberTermRequest"]),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGroupingRaw(
+    requestParameters: UpdateClubMemberGroupingRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+    const requestOptions = await this.updateClubMemberGroupingRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubMemberRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGrouping(
+    requestParameters: UpdateClubMemberGroupingRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubMemberRecord> {
+    const response = await this.updateClubMemberGroupingRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
