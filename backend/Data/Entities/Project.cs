@@ -43,4 +43,6 @@ public class Project
 
     [ForeignKey(nameof(ClubId))]
     public Club? Club { get; set; }
+
+    public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
 }

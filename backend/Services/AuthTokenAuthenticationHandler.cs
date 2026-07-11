@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Org.OpenAPITools.Models;
 
 namespace ClubHub.Api.Services;
 
@@ -54,5 +55,15 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
         var identity = new ClaimsIdentity(claims, SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
         return Task.FromResult(AuthenticateResult.Success(ticket));
+    }
+
+    protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await Response.WriteAsJsonAsync(new ApiError
+        {
+            Code = "authentication_required",
+            Message = "登录状态已失效，请重新登录。"
+        });
     }
 }

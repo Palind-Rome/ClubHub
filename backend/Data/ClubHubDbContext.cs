@@ -17,6 +17,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Recruitment> Recruitments => Set<Recruitment>();
     public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
@@ -179,6 +180,30 @@ public class ClubHubDbContext : DbContext
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ProjectMember>(e =>
+        {
+            e.HasKey(pm => pm.ProjectMemberId);
+            e.HasIndex(pm => new { pm.ProjectId, pm.UserId })
+             .IsUnique()
+             .HasDatabaseName("UQ_PROJECT_MEMBERS_USER");
+            e.Property(pm => pm.MemberRole)
+             .HasMaxLength(30)
+             .HasDefaultValue("member");
+            e.Property(pm => pm.MemberStatus)
+             .HasMaxLength(30)
+             .HasDefaultValue("active");
+            e.Property(pm => pm.Remark)
+             .HasMaxLength(255);
+            e.HasOne(pm => pm.Project)
+             .WithMany(p => p.Members)
+             .HasForeignKey(pm => pm.ProjectId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(pm => pm.User)
+             .WithMany(u => u.ProjectMemberships)
+             .HasForeignKey(pm => pm.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
