@@ -549,7 +549,7 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> UpdateMemberGrouping(
         int clubId,
         int memberId,
-        [FromBody] UpdateClubMemberTermRequest req)
+        [FromBody] UpdateClubMemberGroupingRequest req)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -1222,7 +1222,7 @@ public class ClubsController : ControllerBase
         int clubId,
         int memberId,
         int currentUserId,
-        UpdateClubMemberTermRequest req)
+        UpdateClubMemberGroupingRequest req)
     {
         var viewer = await LoadUserAsync(currentUserId);
         if (viewer is null)
@@ -2444,6 +2444,12 @@ public class UpdateClubMemberTermRequest
     public DateTime? TermEnd { get; set; }
     public string? MemberStatus { get; set; }
     public decimal? ContributionScore { get; set; }
+}
+
+public class UpdateClubMemberGroupingRequest
+{
+    public string? DepartmentName { get; set; }
+    public string? GroupName { get; set; }
 }
 
 public record ClubEvaluationRecordDto(

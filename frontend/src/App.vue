@@ -115,8 +115,8 @@ onUnmounted(() => {
         <div class="session">
           <div class="role-list" :title="roleSummary" aria-label="当前职务">
             <el-tag
-              v-for="role in roleLabels"
-              :key="role"
+              v-for="(role, roleIdx) in roleLabels"
+              :key="`${role}-${roleIdx}`"
               class="role-tag"
               type="success"
               size="small"

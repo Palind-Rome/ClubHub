@@ -41,7 +41,7 @@ export async function requestJson<T>(
         const body = JSON.parse(text) as ApiError;
         message = body.message || body.title || message;
       } catch {
-        message = text;
+        /* Keep the status-based message for non-JSON responses. */
       }
     }
     throw new Error(message);

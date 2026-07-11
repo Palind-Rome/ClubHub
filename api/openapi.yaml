@@ -613,6 +613,7 @@ paths:
           required: false
           schema:
             type: string
+            example: "2026-2027学年"
           description: 按 CLUB_MEMBERS.term_name 精确筛选，例如 2026-2027学年。
       responses:
         "200":
@@ -670,13 +671,17 @@ paths:
         - name: clubId
           in: path
           required: true
+          description: 社团 ID。
           schema:
             type: integer
+            example: 1
         - name: memberId
           in: path
           required: true
+          description: 成员任期记录 ID。
           schema:
             type: integer
+            example: 101
       requestBody:
         required: true
         content:
@@ -708,19 +713,23 @@ paths:
         - name: clubId
           in: path
           required: true
+          description: 社团 ID。
           schema:
             type: integer
+            example: 1
         - name: memberId
           in: path
           required: true
+          description: 成员任期记录 ID。
           schema:
             type: integer
+            example: 101
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateClubMemberTermRequest"
+              $ref: "#/components/schemas/UpdateClubMemberGroupingRequest"
       responses:
         "200":
           description: 社团成员部门和小组已更新
@@ -3360,6 +3369,21 @@ components:
           type: number
           format: decimal
           nullable: true
+
+    UpdateClubMemberGroupingRequest:
+      type: object
+      description: 更新成员部门和小组归属的请求体。
+      properties:
+        departmentName:
+          type: string
+          nullable: true
+          description: 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+          example: 技术部
+        groupName:
+          type: string
+          nullable: true
+          description: 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+          example: 后端组
     ClubEvaluationRecord:
       type: object
       description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。

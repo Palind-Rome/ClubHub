@@ -6,6 +6,10 @@ export interface ScopedClubRole {
   permissions?: string[] | null;
 }
 
+function extractClubIds(role: ScopedClubRole): number[] {
+  return role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
+}
+
 export function collectManageableClubIds(
   roles: readonly ScopedClubRole[],
   permission: string | readonly string[],
@@ -20,8 +24,7 @@ export function collectManageableClubIds(
       ),
     )
     .forEach((role) => {
-      const ids = role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
-      ids.forEach((clubId) => clubIds.add(clubId));
+      extractClubIds(role).forEach((clubId) => clubIds.add(clubId));
     });
 
   return clubIds;
@@ -30,10 +33,7 @@ export function collectManageableClubIds(
 export function collectScopedClubIds(roles: readonly ScopedClubRole[]): Set<number> {
   const clubIds = new Set<number>();
 
-  roles.forEach((role) => {
-    const ids = role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
-    ids.forEach((clubId) => clubIds.add(clubId));
-  });
+  roles.forEach((role) => extractClubIds(role).forEach((clubId) => clubIds.add(clubId)));
 
   return clubIds;
 }

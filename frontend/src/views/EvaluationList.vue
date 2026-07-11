@@ -73,6 +73,14 @@ const wholeClubMaintainRoleCodes = new Set([
   "club_president",
   "president",
 ]);
+const globalViewRoleCodes = new Set([
+  "admin",
+  "club_admin",
+  "club_reviewer",
+  "platform_admin",
+  "system_admin",
+  "sysadmin",
+]);
 const officerRoleCodes = new Set(["club_officer"]);
 const cadrePositionNames = new Set([
   "干部",
@@ -151,16 +159,7 @@ const scopedClubIds = computed(() => collectScopedClubIds(auth.value?.roles ?? [
 const canViewAllClubs = computed(
   () =>
     hasAllPermissions.value ||
-    (auth.value?.roles ?? []).some((role) =>
-      [
-        "admin",
-        "club_admin",
-        "club_reviewer",
-        "platform_admin",
-        "system_admin",
-        "sysadmin",
-      ].includes(normalizedRoleCodeOf(role)),
-    ),
+    (auth.value?.roles ?? []).some((role) => globalViewRoleCodes.has(normalizedRoleCodeOf(role))),
 );
 const accessibleClubs = computed(() =>
   canViewAllClubs.value
