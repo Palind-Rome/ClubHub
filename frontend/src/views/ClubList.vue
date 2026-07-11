@@ -272,6 +272,7 @@ const evaluationMembers = ref<ClubMemberRecord[]>([]);
 const evaluations = ref<ClubEvaluationRecord[]>([]);
 const manualDepartmentOptions = ref<Record<number, string[]>>({});
 const manualGroupOptions = ref<Record<number, MemberGroupOption[]>>({});
+const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
@@ -310,6 +311,7 @@ const memberFilters = reactive({
 const newDepartmentName = ref("");
 const newGroupDepartmentName = ref("");
 const newGroupName = ref("");
+const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
 
 const evaluationFilters = reactive({
   termName: "",
@@ -684,6 +686,7 @@ const selectedDepartmentManagerScopes = computed(() =>
 const canCreateMemberDepartment = computed(
   () => memberWorkspaceMode.value === "current" && canManageSelectedClub.value,
 );
+const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
   () =>
     memberWorkspaceMode.value === "current" &&
@@ -699,9 +702,22 @@ const memberGroupingGroupOptions = computed(() =>
 );
 const academicTermOptions = computed<AcademicTermOption[]>(() => {
   const currentYear = academicYearStart(new Date());
-  return [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
+  const baseTerms = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
     academicTermOption(year),
   );
+  const memberTerms = clubMembers.value
+    .filter((member) => member.termName && member.termStart && member.termEnd)
+    .map((member) => ({
+      label: member.termName as string,
+      termStart: dateOnly(member.termStart),
+      termEnd: dateOnly(member.termEnd),
+    }));
+
+  return uniqueAcademicTermOptions([
+    ...baseTerms,
+    ...manualAcademicTermOptions.value,
+    ...memberTerms,
+  ]);
 });
 const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
   const options = [...academicTermOptions.value];
@@ -716,7 +732,10 @@ const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
   return options;
 });
 const memberTermFilterOptions = computed(() =>
-  uniqueTextOptions(clubMembers.value.map((member) => member.termName)),
+  uniqueTextOptions([
+    ...clubMembers.value.map((member) => member.termName),
+    ...academicTermOptions.value.map((term) => term.label),
+  ]),
 );
 const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
 const memberTableRows = computed(() =>
@@ -1793,6 +1812,29 @@ function resetEvaluationForm() {
   evaluationFormRef.value?.clearValidate();
 }
 
+function addAcademicTermOption() {
+  if (!canCreateAcademicTerm.value) return;
+
+  const startYear = Number(newAcademicTermStartYear.value);
+  if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) {
+    ElMessage.warning("请输入 2000-2100 之间的学年起始年份。");
+    return;
+  }
+
+  const term = academicTermOption(startYear);
+  if (academicTermOptions.value.some((option) => option.label === term.label)) {
+    ElMessage.info("该任期已存在。");
+    return;
+  }
+
+  manualAcademicTermOptions.value = uniqueAcademicTermOptions([
+    ...manualAcademicTermOptions.value,
+    term,
+  ]);
+  newAcademicTermStartYear.value = startYear + 1;
+  ElMessage.success("任期已加入可选项");
+}
+
 function openCreateEvaluationDialog() {
   if (!canMaintainSelectedEvaluations.value) {
     ElMessage.warning("当前身份没有可录入评价的成员。");
@@ -2010,6 +2052,13 @@ function dateOnly(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
+function todayDateOnly() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 function academicYearStart(date: Date) {
   const year = date.getFullYear();
   return date.getMonth() >= 6 ? year : year - 1;
@@ -2021,6 +2070,24 @@ function academicTermOption(startYear: number): AcademicTermOption {
     termStart: `${startYear}-07-01`,
     termEnd: `${startYear + 1}-06-30`,
   };
+}
+
+function uniqueAcademicTermOptions(options: AcademicTermOption[]) {
+  const terms = new Map<string, AcademicTermOption>();
+  options.forEach((option) => {
+    const label = option.label.trim();
+    if (!label || terms.has(label)) return;
+    terms.set(label, {
+      label,
+      termStart: dateOnly(option.termStart),
+      termEnd: dateOnly(option.termEnd),
+    });
+  });
+
+  return Array.from(terms.values()).sort((left, right) => {
+    const startCompare = left.termStart.localeCompare(right.termStart);
+    return startCompare !== 0 ? startCompare : left.label.localeCompare(right.label, "zh-CN");
+  });
 }
 
 function currentAcademicTermOption(offset = 0) {
@@ -2096,6 +2163,41 @@ function memberStatusText(status: string | null | undefined) {
   if (normalized === "active") return "在任";
   if (normalized === "ended") return "已结束";
   return "暂停";
+}
+
+function isFutureMemberTerm(row: ClubMemberRecord) {
+  const termStart = dateOnly(row.termStart);
+  return isActiveStatus(row.memberStatus) && Boolean(termStart) && termStart > todayDateOnly();
+}
+
+function memberRecordStatusTagType(row: ClubMemberRecord) {
+  return isFutureMemberTerm(row) ? "warning" : memberStatusTagType(row.memberStatus);
+}
+
+function memberRecordStatusText(row: ClubMemberRecord) {
+  return isFutureMemberTerm(row) ? "未开始" : memberStatusText(row.memberStatus);
+}
+
+function memberTermPhase(row: ClubMemberRecord) {
+  if (row.isCurrent) return "current";
+  if (isFutureMemberTerm(row)) return "future";
+  return "history";
+}
+
+function memberTermPhaseTagType(row: ClubMemberRecord) {
+  return memberTermPhase(row) === "current"
+    ? "success"
+    : memberTermPhase(row) === "future"
+      ? "warning"
+      : "info";
+}
+
+function memberTermPhaseText(row: ClubMemberRecord) {
+  return memberTermPhase(row) === "current"
+    ? "当前"
+    : memberTermPhase(row) === "future"
+      ? "未来"
+      : "历史";
 }
 
 function evaluationPublicTagType(status: EvaluationPublicStatus) {
@@ -2871,6 +2973,26 @@ onUnmounted(() => {
             <span>有效任期 {{ memberGroupSummary.current }} 条</span>
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
+            <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
+              <el-input-number
+                v-model="newAcademicTermStartYear"
+                size="small"
+                :min="2000"
+                :max="2100"
+                :step="1"
+                :precision="0"
+                controls-position="right"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addAcademicTermOption"
+              >
+                新增学年
+              </el-button>
+            </div>
             <div v-if="canCreateMemberDepartment" class="taxonomy-add">
               <el-input
                 v-model="newDepartmentName"
@@ -3012,15 +3134,15 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="状态" width="130">
             <template #default="{ row }">
-              <el-tag :type="memberStatusTagType(row.memberStatus)" effect="plain">
-                {{ memberStatusText(row.memberStatus) }}
+              <el-tag :type="memberRecordStatusTagType(row)" effect="plain">
+                {{ memberRecordStatusText(row) }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="当前" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.isCurrent ? 'success' : 'info'" effect="plain">
-                {{ row.isCurrent ? "当前" : "历史" }}
+              <el-tag :type="memberTermPhaseTagType(row)" effect="plain">
+                {{ memberTermPhaseText(row) }}
               </el-tag>
             </template>
           </el-table-column>
@@ -3995,8 +4117,13 @@ onUnmounted(() => {
 }
 
 .taxonomy-add .el-input,
-.taxonomy-add .el-select {
+.taxonomy-add .el-select,
+.taxonomy-add .el-input-number {
   width: 132px;
+}
+
+.taxonomy-add.term-add .el-input-number {
+  width: 128px;
 }
 
 .taxonomy-add.group-add .el-select {
@@ -4101,6 +4228,7 @@ onUnmounted(() => {
 
   .taxonomy-add .el-input,
   .taxonomy-add .el-select,
+  .taxonomy-add .el-input-number,
   .taxonomy-add.group-add .el-select {
     width: 100%;
   }

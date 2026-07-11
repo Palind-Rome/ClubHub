@@ -33,6 +33,7 @@ public class ClubsController : ControllerBase
     private const string ClubAdvisorRoleCode = "ADVISOR";
     private const int MaxStudentClubMemberships = 3;
     private const int ClubMemberTextMaxLength = 255;
+    private const int MaxStudentClubMemberships = RecruitmentWorkflow.MaxStudentClubMemberships;
     private const string EvaluationSemester = "semester";
     private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
@@ -2144,7 +2145,13 @@ public class ClubsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(evaluationType)) return null;
 
-        return evaluationType.Trim().ToLowerInvariant() switch
+        var normalized = evaluationType.Trim().ToLowerInvariant();
+        if (normalized is "award" or "honor" or "prize" or "评奖评优" or "评优评奖")
+        {
+            return EvaluationAward;
+        }
+
+        return normalized switch
         {
             "semester" or "term" or "assessment" or "学期考核" or "成员考核" => EvaluationSemester,
             "award" or "honor" or "prize" or "评优评奖" or "奖项" => EvaluationAward,
