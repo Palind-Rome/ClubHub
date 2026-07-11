@@ -239,9 +239,10 @@ paths:
         - name: viewerUserId
           in: query
           required: true
-          description: 当前查看用户 ID。
+          description: 当前登录用户 ID（临时兼容，待 NoticesController 迁移至 JWT 后移除）。
           schema:
             type: integer
+            minimum: 1
         - name: noticeStatus
           in: query
           required: false
@@ -373,13 +374,6 @@ paths:
     get:
       summary: 获取社团列表
       operationId: getClubs
-      parameters:
-        - name: viewerUserId
-          in: query
-          required: false
-          description: 当前查看用户，用于返回与角色相关的社团视图。
-          schema:
-            type: integer
       responses:
         "200":
           description: 社团列表
@@ -419,12 +413,6 @@ paths:
       summary: 按当前用户权限查询社团注册申请
       operationId: getClubApplications
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前用户。学生只能查看自己的申请，平台管理员可以查看全部申请。
-          schema:
-            type: integer
         - name: auditStatus
           in: query
           required: false
@@ -573,7 +561,7 @@ paths:
   /api/clubs/{clubId}/profile:
     patch:
       summary: 维护社团基础信息
-      description: 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+      description: 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
       operationId: updateClubProfile
       parameters:
         - name: clubId
@@ -606,7 +594,7 @@ paths:
   /api/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
-      description: 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+      description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
       operationId: getClubMembers
       parameters:
         - name: clubId
@@ -614,18 +602,33 @@ paths:
           required: true
           schema:
             type: integer
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
         - name: includeHistory
           in: query
           required: false
           schema:
             type: boolean
             default: false
+        - name: departmentName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "宣传部"
+          description: 按 CLUB_MEMBERS.department_name 精确筛选。
+        - name: groupName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "摄影组"
+          description: 按 CLUB_MEMBERS.group_name 精确筛选。
+        - name: termName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-2027学年"
+          description: 按 CLUB_MEMBERS.term_name 精确筛选，例如 2026-2027学年。
       responses:
         "200":
           description: 社团成员与任期记录列表
@@ -643,7 +646,7 @@ paths:
   /api/clubs/{clubId}/members/terms:
     post:
       summary: 新增社团成员或干部任期
-      description: 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+      description: 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
       operationId: createClubMemberTerm
       parameters:
         - name: clubId
@@ -676,19 +679,23 @@ paths:
   /api/clubs/{clubId}/members/{memberId}:
     patch:
       summary: 更新社团成员或干部任期
-      description: 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+      description: 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
       operationId: updateClubMemberTerm
       parameters:
         - name: clubId
           in: path
           required: true
+          description: 社团 ID。
           schema:
             type: integer
+            example: 1
         - name: memberId
           in: path
           required: true
+          description: 成员任期记录 ID。
           schema:
             type: integer
+            example: 101
       requestBody:
         required: true
         content:
@@ -710,6 +717,48 @@ paths:
           description: 当前用户、社团或成员任期记录不存在
         "409":
           description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/members/{memberId}/grouping:
+    patch:
+      summary: 更新社团成员部门和小组归属
+      description: 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+      operationId: updateClubMemberGrouping
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: 社团 ID。
+          schema:
+            type: integer
+            example: 1
+        - name: memberId
+          in: path
+          required: true
+          description: 成员任期记录 ID。
+          schema:
+            type: integer
+            example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubMemberGroupingRequest"
+      responses:
+        "200":
+          description: 社团成员部门和小组已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubMemberRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该成员分组的权限
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态或成员任期状态不允许维护
 
   /api/clubs/{clubId}/members/self/exit:
     patch:
@@ -774,6 +823,114 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/evaluations:
+    get:
+      summary: 查询社团成员评价考核记录
+      description: 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+      operationId: getClubEvaluations
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按 EVALUATIONS.term_name 精确筛选。
+        - name: evaluationType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+      responses:
+        "200":
+          description: 按角色可见范围过滤后的评价考核记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubEvaluationRecord"
+        "403":
+          description: 当前用户没有查看该社团评价考核的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 录入社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+      operationId: createClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubEvaluationRequest"
+      responses:
+        "201":
+          description: 评价考核记录已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有录入该成员评价考核的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/evaluations/{evaluationId}:
+    patch:
+      summary: 更新社团成员评价考核或评优评奖结果
+      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+      operationId: updateClubEvaluation
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: evaluationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubEvaluationRequest"
+      responses:
+        "200":
+          description: 评价考核记录已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该评价考核的权限
+        "404":
+          description: 当前用户、社团或评价考核记录不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/recruitments:
     get:
       summary: 查询社团招募列表
@@ -783,6 +940,7 @@ paths:
         - name: viewerUserId
           in: query
           required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
           schema:
             type: integer
             minimum: 1
@@ -873,17 +1031,18 @@ paths:
       description: 目标社团的社团干部、负责人可以删除本社团草稿招募。
       operationId: deleteRecruitment
       parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
+          schema:
+            type: integer
+            minimum: 1
         - name: recruitId
           in: path
           required: true
           schema:
             type: integer
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
       responses:
         "204":
           description: 草稿已删除
@@ -935,17 +1094,18 @@ paths:
       description: 社团干部可查看本招募全部报名；学生只能查看自己的报名。
       operationId: getRecruitmentApplications
       parameters:
+        - name: viewerUserId
+          in: query
+          required: true
+          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
+          schema:
+            type: integer
+            minimum: 1
         - name: recruitId
           in: path
           required: true
           schema:
             type: integer
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
       responses:
         "200":
           description: 招募报名列表
@@ -1046,7 +1206,10 @@ paths:
                   $ref: "#/components/schemas/Activity"
     post:
       summary: 创建活动并提交审核
+      description: 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
       operationId: createActivity
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1062,6 +1225,10 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 请求参数或业务规则不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的活动创建权限
 
   /api/activities/{activityId}:
     get:
@@ -1090,19 +1257,16 @@ paths:
   /api/activities/{activityId}/registrations:
     post:
       summary: 报名活动
+      description: 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
       operationId: registerActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterActivityRequest"
       responses:
         "201":
           description: 报名成功
@@ -1116,6 +1280,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 当前用户未登录或登录状态已失效
         "404":
           description: 活动或用户不存在
           content:
@@ -1132,7 +1298,10 @@ paths:
   /api/activities/{activityId}/review:
     post:
       summary: 审核活动并发布或驳回
+      description: 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
       operationId: reviewActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1154,6 +1323,10 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 当前活动状态不允许审核
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的活动审核权限
         "404":
           description: 活动不存在
 
@@ -1226,7 +1399,10 @@ paths:
   /api/activities/{activityId}/checkin-settings:
     put:
       summary: 设置活动签到签退码和有效时间
+      description: 需要登录，并具备目标社团的 activity:checkin:manage 权限。
       operationId: updateActivityCheckinSettings
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1248,13 +1424,20 @@ paths:
                 $ref: "#/components/schemas/Activity"
         "400":
           description: 签到或签退时间段不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的签到管理权限
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/participations:
     get:
       summary: 获取活动参与记录
+      description: 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
       operationId: getActivityParticipations
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1270,13 +1453,18 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityParticipation"
+        "401":
+          description: 当前用户未登录或登录状态已失效
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/checkin:
     post:
       summary: 活动签到
+      description: 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
       operationId: checkinActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1298,13 +1486,20 @@ paths:
                 $ref: "#/components/schemas/ActivityParticipation"
         "400":
           description: 签到码、时间窗口或活动状态不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有活动签到权限
         "404":
           description: 活动不存在
 
   /api/activities/{activityId}/checkout:
     post:
       summary: 活动签退
+      description: 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
       operationId: checkoutActivity
+      security:
+        - bearerAuth: []
       parameters:
         - name: activityId
           in: path
@@ -1326,6 +1521,10 @@ paths:
                 $ref: "#/components/schemas/ActivityParticipation"
         "400":
           description: 签退码、时间窗口或活动状态不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有活动签退权限
         "404":
           description: 活动不存在
 
@@ -1334,18 +1533,12 @@ paths:
       summary: 获取当前账号可查看或可分配的用户列表
       operationId: getUsers
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: 当前登录用户 ID，用于按角色限制可见用户范围。
         - name: clubId
           in: query
           required: false
           schema:
             type: integer
-          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人或干部可获取该社团有效成员。
+          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人、干部或指导老师可获取该社团有效成员。
       responses:
         "200":
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
@@ -1745,6 +1938,8 @@ paths:
     get:
       summary: 获取场地预约列表
       operationId: getVenueReservations
+      security:
+        - bearerAuth: []
       parameters:
         - name: status
           in: query
@@ -1786,9 +1981,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VenueReservation"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有查看相应预约数据的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
     post:
       summary: 提交场地预约申请
       operationId: createVenueReservation
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1808,8 +2017,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有为该社团提交场地预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
-          description: 场地、社团、活动或申请人不存在
+          description: 场地、社团或关联活动不存在
           content:
             application/json:
               schema:
@@ -1821,10 +2042,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/venue-reservations/occupied-slots:
+    get:
+      summary: 获取场地已占用时段
+      description: 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+      operationId: getVenueOccupiedSlots
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: venueId
+          in: query
+          required: false
+          description: 按场地筛选。
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 当前及未来仍有效的已通过预约时段
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VenueOccupiedSlot"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有场地预约申请或审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/venue-reservations/{reservationId}:
     get:
       summary: 获取场地预约详情
       operationId: getVenueReservationById
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
@@ -1838,6 +2097,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VenueReservation"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有查看该预约的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 预约不存在
           content:
@@ -1847,21 +2118,23 @@ paths:
     delete:
       summary: 删除场地预约
       operationId: deleteVenueReservation
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DeleteVenueReservationRequest"
       responses:
         "204":
           description: 预约已删除
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有删除该预约的权限
           content:
@@ -1885,6 +2158,8 @@ paths:
     post:
       summary: 审批场地预约
       operationId: reviewVenueReservation
+      security:
+        - bearerAuth: []
       parameters:
         - name: reservationId
           in: path
@@ -1910,14 +2185,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "404":
-          description: 预约或审批人不存在
+        "401":
+          description: 登录状态无效
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有场地预约审批权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 预约不存在
           content:
             application/json:
               schema:
@@ -1929,6 +2210,256 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/learning/teacher-candidates:
+    get:
+      summary: ????????
+      description: ?????????????????????????????????????????????
+      operationId: getLearningTeacherCandidates
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ?????? ID???????????????????????????
+        - name: clubId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ????????? ID?
+      responses:
+        "200":
+          description: ????????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: ?????????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ??????????
+
+  /api/learning/items:
+    get:
+      summary: ????????
+      description: ?????????????????????????????????????
+      operationId: getLearningItems
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ?????? ID??????????????????????
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: ??? ID ?????
+      responses:
+        "200":
+          description: ??????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ???? ID??? ID ???????
+        "404":
+          description: ???????
+    post:
+      summary: ?????????
+      description: ??????????????????????????????????????
+      operationId: createLearningItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLearningItemRequest"
+      responses:
+        "201":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ?????????????
+        "403":
+          description: ?????????????
+
+  /api/learning/items/{itemId}:
+    put:
+      summary: ??????
+      description: ??????????????????????????????????????
+      operationId: updateLearningItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLearningItemRequest"
+      responses:
+        "200":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: ?????????????????
+        "403":
+          description: ???????????
+        "404":
+          description: ?????
+        "409":
+          description: ?????????????
+
+  /api/learning/items/{itemId}/enrollments:
+    post:
+      summary: ??????
+      description: ??????????????????????????????????????????????????????
+      operationId: enrollLearningItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollLearningItemRequest"
+      responses:
+        "201":
+          description: ????????????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ????????????????
+        "403":
+          description: ???????????????????????????
+        "409":
+          description: ????????????
+        "404":
+          description: ??????????
+    delete:
+      summary: ??????
+      description: ???????????????????????????????????????
+      operationId: cancelLearningEnrollment
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollLearningItemRequest"
+      responses:
+        "200":
+          description: ?????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ??????????????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ??????????
+
+  /api/learning/records:
+    get:
+      summary: ??????
+      description: ?????????????????????????????????
+      operationId: getLearningRecords
+      parameters:
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: itemId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: ??????
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ???? ID ??
+
+  /api/learning/records/{recordId}/progress:
+    put:
+      summary: ??????
+      description: ?????????????????? 100 ????????
+      operationId: updateLearningProgress
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLearningProgressRequest"
+      responses:
+        "200":
+          description: ???????
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: ????????????
+        "403":
+          description: ?????????????
+        "404":
+          description: ???????
 components:
   securitySchemes:
     bearerAuth:
@@ -2392,7 +2923,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前发布人用户 ID。
           minimum: 1
           example: 2
         noticeType:
@@ -2452,12 +2982,10 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前阅读用户 ID。
           minimum: 1
           example: 3
       required:
         - currentUserId
-
     NoticeReadResult:
       type: object
       description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
@@ -2479,6 +3007,7 @@ components:
           format: date-time
           description: 已读时间。
       required:
+        - currentUserId
         - noticeId
         - userId
         - isRead
@@ -2633,6 +3162,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         name:
           type: string
@@ -2643,7 +3174,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
 
@@ -2664,6 +3194,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         name:
           type: string
@@ -2693,7 +3225,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
 
@@ -2702,19 +3233,17 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-      required:
-        - currentUserId
-
     ExitClubMemberRequest:
       type: object
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-      required:
-        - currentUserId
-
     ClubMemberRecord:
       type: object
       properties:
@@ -2777,6 +3306,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         userId:
           type: integer
@@ -2812,7 +3343,6 @@ components:
           type: boolean
           default: true
       required:
-        - currentUserId
         - userId
         - positionName
         - termName
@@ -2823,6 +3353,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         departmentName:
           type: string
@@ -2851,9 +3383,331 @@ components:
           type: number
           format: decimal
           nullable: true
-      required:
-        - currentUserId
 
+    UpdateClubMemberGroupingRequest:
+      type: object
+      description: 更新成员部门和小组归属的请求体。
+      properties:
+        departmentName:
+          type: string
+          nullable: true
+          description: 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+          example: 技术部
+        groupName:
+          type: string
+          nullable: true
+          description: 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+          example: 后端组
+    ClubEvaluationRecord:
+      type: object
+      description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
+      properties:
+        evaluationId:
+          type: integer
+          description: 评价记录 ID。
+          example: 501
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        evaluationTypeText:
+          type: string
+          description: 评价类型中文文案。
+          example: 学期考核
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        userId:
+          type: integer
+          description: 被考核或获奖成员用户 ID。
+          example: 12
+        userName:
+          type: string
+          description: 被考核或获奖成员姓名。
+          example: 张三
+        studentNo:
+          type: string
+          nullable: true
+          description: 被考核或获奖成员学号。
+          example: "2450001"
+        departmentName:
+          type: string
+          nullable: true
+          description: 成员当前所属部门。
+          example: 技术部
+        groupName:
+          type: string
+          nullable: true
+          description: 成员当前所属小组。
+          example: 后端组
+        positionName:
+          type: string
+          nullable: true
+          description: 成员当前职位。
+          example: 干部
+        evaluatorUserId:
+          type: integer
+          nullable: true
+          description: 录入或最后维护该记录的用户 ID。
+          example: 3
+        evaluatorName:
+          type: string
+          nullable: true
+          description: 录入或最后维护该记录的用户姓名。
+          example: 李老师
+        termName:
+          type: string
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核时为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核时为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核时为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          description: 活动参与得分，取值范围 0-100。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          description: 项目任务得分，取值范围 0-100。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          description: 学习记录得分，取值范围 0-100。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          description: 奖项或附加贡献得分，取值范围 0-100。
+          example: 80
+        totalScore:
+          type: number
+          format: decimal
+          description: 后端汇总计算的总分，满分 400。
+          example: 355
+        grade:
+          type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
+        publicStatusText:
+          type: string
+          description: 公示状态中文文案。
+          example: 已公示
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 记录创建时间。
+          example: "2026-07-10T08:30:00Z"
+      required:
+        - evaluationId
+        - evaluationType
+        - evaluationTypeText
+        - clubId
+        - clubName
+        - userId
+        - userName
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
+        - publicStatus
+        - publicStatusText
+
+    CreateClubEvaluationRequest:
+      type: object
+      description: 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+      properties:
+        currentUserId:
+          type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
+          minimum: 1
+          example: 3
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        userId:
+          type: integer
+          minimum: 1
+          description: 被考核或获奖成员用户 ID。
+          example: 12
+        termName:
+          type: string
+          minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 活动参与得分。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 项目任务得分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 学习记录得分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          default: draft
+          description: 公示状态；默认保存为草稿。
+          example: draft
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
+      required:
+        - evaluationType
+        - userId
+        - termName
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+
+    UpdateClubEvaluationRequest:
+      type: object
+      description: 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+      properties:
+        currentUserId:
+          type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
+          minimum: 1
+          example: 3
+        evaluationType:
+          type: string
+          enum: [semester, award]
+          description: semester 表示学期考核，award 表示评优评奖结果。
+          example: semester
+        termName:
+          type: string
+          minLength: 1
+          description: 考核或评奖所属学期。
+          example: 2026 学年春季学期
+        awardTitle:
+          type: string
+          nullable: true
+          description: 评奖评优标题；学期考核可为空。
+          example: 优秀社团干部
+        awardLevel:
+          type: string
+          nullable: true
+          description: 奖项等级；学期考核可为空。
+          example: 校级
+        awardReason:
+          type: string
+          nullable: true
+          description: 获奖原因或推荐理由；学期考核可为空。
+          example: 组织多次技术分享并承担核心项目管理工作。
+        activityScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 活动参与得分。
+          example: 92
+        taskScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 项目任务得分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 学习记录得分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 奖项或附加贡献得分。
+          example: 80
+        publicStatus:
+          type: string
+          enum: [draft, published]
+          description: 公示状态；draft 为草稿，published 为已公示。
+          example: published
+        commentText:
+          type: string
+          nullable: true
+          description: 考核说明、获奖补充说明或负责人备注。
+          example: 综合表现稳定，参与度高。
     ClubApplication:
       type: object
       properties:
@@ -2922,8 +3776,9 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
-          description: 当前学生用户 ID，后端据此写入申请人并校验角色权限。
         name:
           type: string
           minLength: 1
@@ -2952,7 +3807,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - name
         - category
         - applyReason
@@ -2963,6 +3817,8 @@ components:
       properties:
         currentUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
         decision:
           type: string
@@ -2971,7 +3827,6 @@ components:
           type: string
           nullable: true
       required:
-        - currentUserId
         - decision
 
     Recruitment:
@@ -3266,7 +4121,6 @@ components:
           nullable: true
       required:
         - currentUserId
-
     ReviewRecruitmentRequest:
       type: object
       properties:
@@ -3397,15 +4251,6 @@ components:
         - clubId
         - clubName
 
-    RegisterActivityRequest:
-      type: object
-      properties:
-        userId:
-          type: integer
-          description: 报名用户 ID
-      required:
-        - userId
-
     Activity:
       type: object
       properties:
@@ -3525,11 +4370,14 @@ components:
 
     CreateActivityRequest:
       type: object
+      description: 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
       properties:
         clubId:
           type: integer
         creatorUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           nullable: true
         title:
           type: string
@@ -3568,12 +4416,15 @@ components:
 
     ReviewActivityRequest:
       type: object
+      description: 审核活动请求。审核人由服务端从登录态写入，客户端无需也不应提交 reviewerUserId。
       properties:
         approved:
           type: boolean
           nullable: true
         reviewerUserId:
           type: integer
+          deprecated: true
+          description: 已废弃，服务端从 JWT 读取身份。
           nullable: true
         comment:
           type: string
@@ -3654,15 +4505,13 @@ components:
 
     ActivitySignRequest:
       type: object
+      description: 活动签到/签退请求。签到用户由服务端从登录态确定，客户端只需提交签到或签退码。
       properties:
-        userId:
-          type: integer
         code:
           type: string
           minLength: 1
           maxLength: 255
       required:
-        - userId
         - code
 
     ActivityParticipation:
@@ -3674,6 +4523,13 @@ components:
           type: integer
         userId:
           type: integer
+        userName:
+          type: string
+          description: 参与者姓名；姓名为空时回退为用户名。
+        studentNo:
+          type: string
+          nullable: true
+          description: 参与者学号或工号。
         registerStatus:
           type: string
           nullable: true
@@ -3699,6 +4555,7 @@ components:
         - id
         - activityId
         - userId
+        - userName
 
     Venue:
       type: object
@@ -3827,15 +4684,6 @@ components:
       required:
         - operatorUserId
 
-    DeleteVenueReservationRequest:
-      type: object
-      properties:
-        operatorUserId:
-          type: integer
-          description: 执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。
-      required:
-        - operatorUserId
-
     VenueReservation:
       type: object
       properties:
@@ -3900,6 +4748,39 @@ components:
         - status
         - createdAt
 
+    VenueOccupiedSlot:
+      type: object
+      description: 已通过预约的脱敏占用时段，仅用于场地状态展示和前端冲突提示。
+      properties:
+        reservationId:
+          type: integer
+          description: 预约记录 ID。
+          example: 301
+        venueId:
+          type: integer
+          description: 场地 ID。
+          example: 5
+        venueName:
+          type: string
+          description: 场地名称。
+          example: 大学生活动中心 201
+        startTime:
+          type: string
+          format: date-time
+          description: 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T10:00:00Z"
+        endTime:
+          type: string
+          format: date-time
+          description: 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
+          example: "2026-07-10T12:00:00Z"
+      required:
+        - reservationId
+        - venueId
+        - venueName
+        - startTime
+        - endTime
+
     CreateVenueReservationRequest:
       type: object
       properties:
@@ -3910,8 +4791,6 @@ components:
         activityId:
           type: integer
           nullable: true
-        applicantUserId:
-          type: integer
         startTime:
           type: string
           format: date-time
@@ -3927,7 +4806,6 @@ components:
       required:
         - venueId
         - clubId
-        - applicantUserId
         - startTime
         - endTime
         - purpose
@@ -3935,8 +4813,6 @@ components:
     ReviewVenueReservationRequest:
       type: object
       properties:
-        reviewerUserId:
-          type: integer
         approved:
           type: boolean
         reviewComment:
@@ -3944,7 +4820,6 @@ components:
           nullable: true
           maxLength: 255
       required:
-        - reviewerUserId
         - approved
 
     Project:
@@ -4018,7 +4893,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前提交立项申请的用户 ID；后端据此校验其是否为本社团负责人或指导老师。
           minimum: 1
           example: 12
         clubId:
@@ -4066,7 +4940,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前分配负责人操作用户 ID；仅本社团负责人或干部可操作。
           minimum: 1
           example: 7
         leaderUserId:
@@ -4084,7 +4957,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前审核操作用户 ID；仅本社团指导老师可审核。
           minimum: 1
           example: 3
         projectStatus:
@@ -4107,7 +4979,6 @@ components:
       properties:
         currentUserId:
           type: integer
-          description: 当前撤销操作用户 ID；系统管理员可撤销待审核/进行中项目，本社团负责人可撤销待审核申请，校级社团管理员可撤销进行中项目。
           minimum: 1
           example: 12
         cancelReason:
@@ -4118,6 +4989,366 @@ components:
           nullable: true
       required:
         - currentUserId
+
+    LearningTeacherCandidate:
+      type: object
+      description: User-facing instructor option used by the learning course form.
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: integer
+          description: Internal user id submitted by the client after the user selects an instructor.
+          example: 30
+        realName:
+          type: string
+          nullable: true
+          description: Instructor real name.
+          example: ???
+        studentNo:
+          type: string
+          nullable: true
+          description: Instructor staff number.
+          example: "10001"
+        displayName:
+          type: string
+          description: User-facing label containing the instructor name and staff number.
+          example: ????10001?
+
+    LearningItem:
+      type: object
+      description: Training course or learning resource published by a club.
+      properties:
+        id:
+          type: integer
+          description: Learning item id in LEARNING_ITEMS.ITEM_ID.
+          example: 2001
+        clubId:
+          type: integer
+          description: Club that publishes the course.
+          example: 1
+        uploaderUserId:
+          type: integer
+          nullable: true
+          description: User who created or uploaded the learning item.
+          example: 12
+        teacherUserId:
+          type: integer
+          nullable: true
+          description: Instructor user id.
+          example: 30
+        title:
+          type: string
+          description: Course title.
+          example: ???????
+        itemType:
+          type: string
+          nullable: true
+          description: Course type, video, document, or other learning resource type.
+          example: course
+        categoryName:
+          type: string
+          nullable: true
+          description: Course category.
+          example: ????
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+          example: ???????????????
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time; learning progress cannot be updated before this time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; when omitted, users may join at any time.
+        capacity:
+          type: integer
+          description: Maximum number of users who may join the course.
+          example: 40
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club means active club members, public means all active school accounts.
+          example: club
+        itemStatus:
+          type: string
+          enum: [draft, published, closed, finished]
+          description: Current course publication status.
+          example: published
+        currentEnrollments:
+          type: integer
+          description: Number of users currently joined.
+          example: 8
+        currentUserRecordStatus:
+          type: string
+          enum: [none, enrolled, learning, completed, cancelled]
+          description: Current viewer's learning record status; none means not enrolled.
+        canManage:
+          type: boolean
+          description: Whether the current viewer may edit this course and view its roster.
+        canEnroll:
+          type: boolean
+          description: Whether the current viewer may join the course now.
+        canCancelEnrollment:
+          type: boolean
+          description: Whether the current viewer may exit the course now.
+        enrollmentUnavailableReason:
+          type: string
+          nullable: true
+          description: Chinese explanation shown when enrollment is unavailable.
+      required:
+        - id
+        - clubId
+        - title
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+        - currentEnrollments
+        - currentUserRecordStatus
+        - canManage
+        - canEnroll
+        - canCancelEnrollment
+
+    CreateLearningItemRequest:
+      type: object
+      description: Request body for creating a club training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current operator user id.
+          example: 12
+        clubId:
+          type: integer
+          minimum: 1
+          description: Club that publishes the course.
+          example: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Course title.
+          example: ???????
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+        teacherUserId:
+          type: integer
+          minimum: 1
+          description: Instructor user id.
+        itemType:
+          type: string
+          maxLength: 30
+          description: Course type.
+          example: course
+        categoryName:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Course category.
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
+        capacity:
+          type: integer
+          minimum: 1
+          description: Enrollment capacity.
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club or public.
+          example: club
+        itemStatus:
+          type: string
+          enum: [draft, published]
+          default: draft
+          description: Initial course status.
+      required:
+        - currentUserId
+        - clubId
+        - title
+        - teacherUserId
+        - itemType
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+
+    UpdateLearningItemRequest:
+      type: object
+      description: Request body for updating a club training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current operator user id.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Course title.
+        description:
+          type: string
+          nullable: true
+          description: Course introduction.
+        teacherUserId:
+          type: integer
+          minimum: 1
+          description: Instructor user id.
+        itemType:
+          type: string
+          maxLength: 30
+          description: Course type.
+        categoryName:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Course category.
+        startAt:
+          type: string
+          format: date-time
+          description: Required course start time.
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional course end time; omit it for a long-running course.
+        capacity:
+          type: integer
+          minimum: 1
+          description: Enrollment capacity.
+        visibility:
+          type: string
+          enum: [club, public]
+          description: Course audience; club or public.
+        itemStatus:
+          type: string
+          enum: [draft, published, closed]
+          description: Updated course publication status.
+      required:
+        - currentUserId
+        - title
+        - teacherUserId
+        - itemType
+        - startAt
+        - capacity
+        - visibility
+        - itemStatus
+
+    EnrollLearningItemRequest:
+      type: object
+      description: Request body for joining or exiting a training course.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current user id.
+          example: 21
+      required:
+        - currentUserId
+
+    LearningRecord:
+      type: object
+      description: Course enrollment and learning progress record.
+      properties:
+        id:
+          type: integer
+          description: Learning record id in LEARNING_RECORDS.RECORD_ID.
+          example: 3001
+        itemId:
+          type: integer
+          description: Related learning item id.
+          example: 2001
+        userId:
+          type: integer
+          description: Learning user id.
+          example: 21
+        userDisplayName:
+          type: string
+          description: Learning user's display name.
+        userNumber:
+          type: string
+          nullable: true
+          description: Learning user's student or staff number.
+        enrollStatus:
+          type: string
+          enum: [enrolled, learning, completed, cancelled]
+          description: Enrollment and learning status.
+          example: learning
+        enrolledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Enrollment time.
+        progress:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: Learning progress percentage.
+          example: 60
+        durationSeconds:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Accumulated learning duration in seconds.
+          example: 1800
+        lastLearnAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last learning time.
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Completion time.
+      required:
+        - id
+        - itemId
+        - userId
+        - userDisplayName
+        - enrollStatus
+
+    UpdateLearningProgressRequest:
+      type: object
+      description: Request body for updating learning progress.
+      properties:
+        currentUserId:
+          type: integer
+          minimum: 1
+          description: Current learning user id.
+          example: 21
+        progress:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Latest learning progress percentage.
+          example: 100
+        durationSeconds:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Latest accumulated learning duration in seconds.
+          example: 3600
+      required:
+        - currentUserId
+        - progress
 
     ActivityRegistrationResult:
       type: object

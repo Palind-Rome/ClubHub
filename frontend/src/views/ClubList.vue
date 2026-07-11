@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   Check,
@@ -25,6 +26,11 @@ type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
 type MemberStatus = "active" | "ended" | "suspended";
 type TermMode = "create" | "edit";
+type GroupingMode = "free" | "own" | "department";
+type GroupingField = "departmentName" | "groupName";
+type EvaluationType = "semester" | "award";
+type EvaluationPublicStatus = "draft" | "published";
+type EvaluationMode = "create" | "edit";
 
 interface UserRoleSummary {
   roleCode: string;
@@ -125,6 +131,46 @@ interface ClubMemberRecord {
   isCurrent: boolean;
 }
 
+interface IdentityRow {
+  clubId: number;
+  clubName: string;
+  departmentName: string | null;
+  groupName: string | null;
+  positionName: string | null;
+  termName: string | null;
+  memberStatus: string | null;
+}
+
+interface ClubEvaluationRecord {
+  evaluationId: number;
+  evaluationType: EvaluationType;
+  evaluationTypeText: string;
+  clubId: number;
+  clubName: string;
+  userId: number;
+  userName: string;
+  studentNo: string | null;
+  departmentName: string | null;
+  groupName: string | null;
+  positionName: string | null;
+  evaluatorUserId: number | null;
+  evaluatorName: string | null;
+  termName: string;
+  awardTitle: string | null;
+  awardLevel: string | null;
+  awardReason: string | null;
+  activityScore: number;
+  taskScore: number;
+  learningScore: number;
+  awardScore: number;
+  totalScore: number;
+  grade: string;
+  publicStatus: EvaluationPublicStatus;
+  publicStatusText: string;
+  commentText: string | null;
+  createdAt: string | null;
+}
+
 interface ClubContextOption {
   clubId: number;
   clubName: string;
@@ -144,7 +190,61 @@ interface IdentityRow {
   memberStatus: string | null;
 }
 
+interface MemberGroupingScope {
+  departmentName: string;
+  groupName: string;
+  label: string;
+}
+
+interface MemberGroupOption {
+  departmentName: string;
+  groupName: string;
+}
+
+type ClubWorkspace = "club" | "members" | "registration";
+type MemberWorkspaceMode = "current" | "history" | "transition";
+
+interface AcademicTermOption {
+  label: string;
+  termStart: string;
+  termEnd: string;
+}
+
+const props = withDefaults(
+  defineProps<{
+    workspace?: ClubWorkspace;
+  }>(),
+  {
+    workspace: "club",
+  },
+);
+
 const principalRoleCodes = new Set(["club_president", "club_leader", "club_manager", "president"]);
+const principalPositionNames = new Set([
+  "负责人",
+  "会长",
+  "社长",
+  "社团负责人",
+  "president",
+  "leader",
+  "club president",
+  "club leader",
+]);
+const cadrePositionNames = new Set([
+  "干部",
+  "部长",
+  "副部长",
+  "组长",
+  "副组长",
+  "干事",
+  "社团干部",
+  "部门负责人",
+  "小组负责人",
+  "officer",
+  "cadre",
+  "minister",
+  "group leader",
+]);
 const clubParticipantRoleCodes = new Set([
   "club_member",
   "club_officer",
@@ -159,6 +259,8 @@ const clubMemberManagePermission = "club:member:manage";
 const clubInternalViewPermission = "club:internal:view";
 const clubOperationViewPermission = "club:operation:view";
 
+const route = useRoute();
+const router = useRouter();
 const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
 const dialogUsers = ref<UserSummary[]>([]);
@@ -166,24 +268,53 @@ const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
+const evaluationMembers = ref<ClubMemberRecord[]>([]);
+const evaluations = ref<ClubEvaluationRecord[]>([]);
+const manualDepartmentOptions = ref<Record<number, string[]>>({});
+const manualGroupOptions = ref<Record<number, MemberGroupOption[]>>({});
+const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
 const memberLoading = ref(false);
+const evaluationLoading = ref(false);
 const saving = ref(false);
 const reviewing = ref(false);
 const profileSaving = ref(false);
 const termSaving = ref(false);
+const groupingSaving = ref(false);
+const evaluationSaving = ref(false);
 const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
 const error = ref("");
-const activeTab = ref("workspace");
-const selectedClubId = ref<number>();
-const includeHistory = ref(false);
+const isClubWorkspace = computed(() => props.workspace === "club");
+const isMemberWorkspace = computed(() => props.workspace === "members");
+const isRegistrationWorkspace = computed(() => props.workspace === "registration");
+const activeTab = ref(defaultActiveTab(props.workspace));
+const routeClubId = Number(route.query.clubId);
+const selectedClubId = ref<number | undefined>(
+  Number.isFinite(routeClubId) && routeClubId > 0 ? routeClubId : undefined,
+);
+const memberWorkspaceMode = ref<MemberWorkspaceMode>("current");
+const transitionTermForm = reactive(currentAcademicTermOption());
 
 const filters = reactive({
   auditStatus: "",
+});
+
+const memberFilters = reactive({
+  termName: "",
+  departmentName: "",
+  groupName: "",
+});
+const newDepartmentName = ref("");
+const newGroupDepartmentName = ref("");
+const newGroupName = ref("");
+const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
+
+const evaluationFilters = reactive({
+  termName: "",
 });
 
 const applicationDialogVisible = ref(false);
@@ -227,12 +358,40 @@ const memberTermForm = reactive({
   departmentName: "",
   groupName: "",
   positionName: "",
-  termName: "",
-  termStart: todayInput(),
-  termEnd: "",
+  termName: currentAcademicTermOption().label,
+  termStart: currentAcademicTermOption().termStart,
+  termEnd: currentAcademicTermOption().termEnd,
   memberStatus: "active" as MemberStatus,
   contributionScore: 0,
   closeCurrentTerm: true,
+});
+
+const memberGroupingDialogVisible = ref(false);
+const memberGroupingTarget = ref<ClubMemberRecord | null>(null);
+const memberGroupingMode = ref<GroupingMode>("free");
+const memberGroupingField = ref<GroupingField>("departmentName");
+const memberGroupingForm = reactive({
+  departmentName: "",
+  groupName: "",
+});
+
+const evaluationDialogVisible = ref(false);
+const evaluationFormRef = ref<FormInstance>();
+const evaluationMode = ref<EvaluationMode>("create");
+const evaluationTarget = ref<ClubEvaluationRecord | null>(null);
+const evaluationForm = reactive({
+  evaluationType: "semester" as EvaluationType,
+  userId: undefined as number | undefined,
+  termName: `${new Date().getFullYear()} 学年春季学期`,
+  awardTitle: "",
+  awardLevel: "",
+  awardReason: "",
+  activityScore: 0,
+  taskScore: 0,
+  learningScore: 0,
+  awardScore: 0,
+  publicStatus: "draft" as EvaluationPublicStatus,
+  commentText: "",
 });
 
 const applicationRules: FormRules = {
@@ -258,11 +417,61 @@ const memberTermRules: FormRules = {
   termStart: [{ required: true, message: "请选择任期开始时间", trigger: "change" }],
 };
 
+const evaluationRules: FormRules = {
+  evaluationType: [{ required: true, message: "请选择评价类型", trigger: "change" }],
+  userId: [{ required: true, message: "请选择被评价成员", trigger: "change" }],
+  termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
+  awardTitle: [
+    {
+      validator: (_rule, value, callback) => {
+        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
+          callback(new Error("请填写评优评奖标题"));
+          return;
+        }
+        callback();
+      },
+      trigger: "blur",
+    },
+  ],
+  awardLevel: [
+    {
+      validator: (_rule, value, callback) => {
+        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
+          callback(new Error("请填写奖项等级"));
+          return;
+        }
+        callback();
+      },
+      trigger: "blur",
+    },
+  ],
+  awardReason: [
+    {
+      validator: (_rule, value, callback) => {
+        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
+          callback(new Error("请填写获奖原因"));
+          return;
+        }
+        callback();
+      },
+      trigger: "blur",
+    },
+  ],
+};
+
+function defaultActiveTab(workspace: ClubWorkspace) {
+  if (workspace === "members") return "members";
+  if (workspace === "registration") return "workspace";
+  return "profile";
+}
+
 let stopSessionListener: (() => void) | null = null;
 let usersRequestId = 0;
 let dialogUsersRequestId = 0;
 let dataRequestId = 0;
 let membersRequestId = 0;
+let evaluationMembersRequestId = 0;
+let evaluationsRequestId = 0;
 
 const currentUser = computed<UserSummary | null>(() => {
   const session = auth.value;
@@ -291,14 +500,27 @@ const hasAllPermissions = computed(() => auth.value?.permissions?.includes("*") 
 const isReviewer = computed(() => currentUser.value?.canReviewClubApplication ?? false);
 const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubApplication ?? false);
 const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermission));
-const canManageMemberTerms = computed(() => hasPermission(clubMemberManagePermission));
+// Member evaluations now live in EvaluationList.vue; keep the legacy club tab disabled explicitly.
+const showLegacyEvaluationTab = false;
+const hasAnyMemberTermManagePermission = computed(() => hasPermission(clubMemberManagePermission));
+const canManageMemberTerms = computed(() => {
+  const clubId = selectedClubId.value;
+  return Boolean(clubId && hasScopedClubPermission(clubId, clubMemberManagePermission));
+});
+const canViewAllClubWorkspaces = computed(() => hasAllPermissions.value || isReviewer.value);
+const canAdministerMemberTerms = computed(
+  () => hasAllPermissions.value || canManageMemberTerms.value,
+);
 const canViewMemberDirectory = computed(
   () =>
-    canManageMemberTerms.value ||
+    canViewAllClubWorkspaces.value ||
+    hasAnyMemberTermManagePermission.value ||
     hasPermission(clubInternalViewPermission) ||
     hasPermission(clubOperationViewPermission),
 );
-const canViewClubProfiles = computed(() => isReviewer.value || canViewMemberDirectory.value);
+const canViewClubProfiles = computed(
+  () => canViewAllClubWorkspaces.value || canViewMemberDirectory.value,
+);
 const myApplications = computed(() =>
   applications.value.filter((item) => item.applicantUserId === currentUserId.value),
 );
@@ -312,18 +534,22 @@ const selectedClub = computed(
 const clubInfoRows = computed(() =>
   canViewClubProfiles.value ? clubs.value.filter((club) => canViewClubInfo(club)) : [],
 );
-const isGlobalClubGovernance = computed(() => isReviewer.value || hasAllPermissions.value);
+const isGlobalClubGovernance = computed(() => canViewAllClubWorkspaces.value);
 const focusedClubRows = computed(() => {
   const club = selectedClub.value;
   return club && canViewClubInfo(club) ? [club] : [];
 });
-const visibleClubInfoRows = computed(() =>
-  isGlobalClubGovernance.value ? clubInfoRows.value : focusedClubRows.value,
-);
+const visibleClubInfoRows = computed(() => {
+  if (selectedClubId.value) return focusedClubRows.value;
+  return isGlobalClubGovernance.value ? clubInfoRows.value : focusedClubRows.value;
+});
 const manageableClubs = computed(() => clubs.value.filter((club) => canManageClub(club)));
 const profileRows = computed(() => (canManageClubProfiles.value ? manageableClubs.value : []));
 const memberViewClubs = computed(() =>
   canViewMemberDirectory.value ? clubs.value.filter((club) => canViewClubDirectory(club)) : [],
+);
+const evaluationViewClubs = computed(() =>
+  clubs.value.filter((club) => canViewClubEvaluations(club)),
 );
 const clubContextOptions = computed<ClubContextOption[]>(() =>
   memberViewClubs.value.map((club) => buildClubContextOption(club)),
@@ -388,25 +614,250 @@ const activePresidentOptions = computed(() =>
 );
 const advisorOptions = computed(() => dialogUsers.value.filter((user) => isAdvisorCandidate(user)));
 const memberTermUserOptions = computed(() => dialogUsers.value);
+const memberTermUserLocked = computed(
+  () =>
+    memberWorkspaceMode.value === "transition" &&
+    memberTermMode.value === "create" &&
+    memberTermTarget.value !== null,
+);
+const selectedManualDepartmentOptions = computed(() =>
+  selectedClubId.value ? (manualDepartmentOptions.value[selectedClubId.value] ?? []) : [],
+);
+const selectedManualGroupOptions = computed(() =>
+  selectedClubId.value ? (manualGroupOptions.value[selectedClubId.value] ?? []) : [],
+);
+const memberGroupEntries = computed<MemberGroupOption[]>(() => [
+  ...clubMembers.value
+    .map((member) => ({
+      departmentName: member.departmentName?.trim() ?? "",
+      groupName: member.groupName?.trim() ?? "",
+    }))
+    .filter((entry) => entry.groupName),
+  ...selectedManualGroupOptions.value,
+]);
+const memberDepartmentOptions = computed(() =>
+  uniqueTextOptions([
+    ...clubMembers.value.map((member) => member.departmentName),
+    ...selectedManualDepartmentOptions.value,
+    ...selectedManualGroupOptions.value.map((group) => group.departmentName),
+  ]),
+);
+const memberGroupOptions = computed(() => groupOptionsForDepartment(memberFilters.departmentName));
+const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
+  const user = currentUser.value;
+  const clubId = selectedClubId.value;
+  if (!user || !clubId) return [];
+
+  const hasOfficerRole = user.roles.some(
+    (role) =>
+      roleCoversClub(role, clubId) && (role.roleCode ?? "").toLowerCase() === "club_officer",
+  );
+  const scopeMap = new Map<string, MemberGroupingScope>();
+
+  user.memberships
+    .filter(
+      (membership) =>
+        membership.clubId === clubId &&
+        isActiveStatus(membership.memberStatus) &&
+        (hasOfficerRole || isCadrePosition(membership.positionName)) &&
+        (Boolean(membership.groupName?.trim()) ||
+          (isDepartmentManagerPosition(membership.positionName) &&
+            Boolean(membership.departmentName?.trim()))),
+    )
+    .forEach((membership) => {
+      const departmentName = membership.departmentName?.trim() ?? "";
+      const groupName = isDepartmentManagerPosition(membership.positionName)
+        ? ""
+        : (membership.groupName?.trim() ?? "");
+      const key = `${departmentName}\n${groupName}`;
+      scopeMap.set(key, {
+        departmentName,
+        groupName,
+        label: groupName
+          ? departmentName
+            ? `${departmentName} / ${groupName}`
+            : groupName
+          : departmentName,
+      });
+    });
+
+  return Array.from(scopeMap.values());
+});
+const selectedDepartmentManagerScopes = computed(() =>
+  selectedCadreGroupingScopes.value.filter(
+    (scope) => scope.departmentName.trim() && !scope.groupName.trim(),
+  ),
+);
+const canCreateMemberDepartment = computed(
+  () => memberWorkspaceMode.value === "current" && canManageSelectedClub.value,
+);
+const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
+const canCreateMemberGroup = computed(
+  () =>
+    memberWorkspaceMode.value === "current" &&
+    (canManageSelectedClub.value || selectedDepartmentManagerScopes.value.length > 0),
+);
+const canShowMemberOperationColumn = computed(
+  () =>
+    memberWorkspaceMode.value === "current" &&
+    (canAdministerMemberTerms.value ||
+      canManageSelectedClub.value ||
+      canRemoveSelectedClubMember.value ||
+      canExitSelectedClub.value ||
+      selectedCadreGroupingScopes.value.length > 0),
+);
+const groupCreateDepartmentOptions = computed(() =>
+  canManageSelectedClub.value
+    ? memberDepartmentOptions.value
+    : uniqueTextOptions(selectedDepartmentManagerScopes.value.map((scope) => scope.departmentName)),
+);
+const memberGroupingGroupOptions = computed(() =>
+  groupOptionsForDepartment(memberGroupingForm.departmentName),
+);
+const academicTermOptions = computed<AcademicTermOption[]>(() => {
+  const currentYear = academicYearStart(new Date());
+  const baseTerms = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
+    academicTermOption(year),
+  );
+  const memberTerms = clubMembers.value
+    .filter((member) => member.termName && member.termStart && member.termEnd)
+    .map((member) => ({
+      label: member.termName as string,
+      termStart: dateOnly(member.termStart),
+      termEnd: dateOnly(member.termEnd),
+    }));
+
+  return uniqueAcademicTermOptions([
+    ...baseTerms,
+    ...manualAcademicTermOptions.value,
+    ...memberTerms,
+  ]);
+});
+const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
+  const options = [...academicTermOptions.value];
+  const currentLabel = memberTermForm.termName.trim();
+  if (currentLabel && !options.some((option) => option.label === currentLabel)) {
+    options.unshift({
+      label: currentLabel,
+      termStart: memberTermForm.termStart,
+      termEnd: memberTermForm.termEnd,
+    });
+  }
+  return options;
+});
+const memberTermFilterOptions = computed(() =>
+  uniqueTextOptions([
+    ...clubMembers.value.map((member) => member.termName),
+    ...academicTermOptions.value.map((term) => term.label),
+  ]),
+);
+const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
+const memberTableRows = computed(() =>
+  (memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value).filter(
+    (member) =>
+      memberWorkspaceMode.value !== "history" ||
+      !memberFilters.termName ||
+      member.termName === memberFilters.termName,
+  ),
+);
+const transitionSourceRows = computed(() => {
+  const rows = new Map<number, ClubMemberRecord>();
+
+  clubMembers.value
+    .filter((member) => shouldEnterTransitionQueue(member))
+    .forEach((member) => {
+      const existing = rows.get(member.userId);
+      if (!existing || transitionRecordSortKey(member) > transitionRecordSortKey(existing)) {
+        rows.set(member.userId, member);
+      }
+    });
+
+  return Array.from(rows.values()).sort((left, right) =>
+    transitionRecordSortKey(right).localeCompare(transitionRecordSortKey(left)),
+  );
+});
+const memberGroupSummary = computed(() => {
+  const rows = memberTableRows.value;
+  const currentRows = rows.filter((member) => member.isCurrent);
+  return {
+    total: rows.length,
+    current: currentRows.length,
+    departments: uniqueTextOptions(rows.map((member) => member.departmentName)).length,
+    groups: uniqueTextOptions(rows.map((member) => member.groupName)).length,
+  };
+});
+const evaluationTermOptions = computed(() =>
+  uniqueTextOptions(evaluations.value.map((evaluation) => evaluation.termName)),
+);
+const evaluationSummary = computed(() => {
+  const published = evaluations.value.filter(
+    (evaluation) => evaluation.publicStatus === "published",
+  ).length;
+  const average =
+    evaluations.value.length === 0
+      ? 0
+      : evaluations.value.reduce((sum, evaluation) => sum + evaluation.totalScore, 0) /
+        evaluations.value.length;
+
+  return {
+    total: evaluations.value.length,
+    published,
+    average: Number(average.toFixed(1)),
+  };
+});
+const evaluationTargetOptions = computed(() =>
+  evaluationMembers.value.filter(
+    (member) => member.isCurrent && canMaintainEvaluationForMember(member),
+  ),
+);
+const canMaintainSelectedEvaluations = computed(
+  () => selectedClub.value?.status === "active" && evaluationTargetOptions.value.length > 0,
+);
+const evaluationFormTotal = computed(() =>
+  Number(
+    (
+      Number(evaluationForm.activityScore || 0) +
+      Number(evaluationForm.taskScore || 0) +
+      Number(evaluationForm.learningScore || 0) +
+      Number(evaluationForm.awardScore || 0)
+    ).toFixed(1),
+  ),
+);
+const evaluationFormGrade = computed(() => evaluationGrade(evaluationFormTotal.value));
+const workspaceTitle = computed(() => {
+  if (isMemberWorkspace.value) return "成员管理";
+  if (isRegistrationWorkspace.value) return "社团注册";
+  return "我的社团";
+});
+const workspaceSubtitle = computed(() => {
+  if (isMemberWorkspace.value) return "成员名册、任期维护、干部换届与成员退出";
+  if (isRegistrationWorkspace.value) return "社团注册申请、我的申请进度与负责人审核";
+  return "社团基本信息与我的社团身份";
+});
+const workspaceEmptyDescription = computed(() => {
+  if (isMemberWorkspace.value) return "当前账号暂无成员管理相关任务";
+  if (isRegistrationWorkspace.value) return "当前账号暂无社团注册相关任务";
+  return "当前账号暂无社团身份或可查看的社团信息";
+});
 const visibleIdentityRows = computed(() => {
-  if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
+  if (!selectedClubId.value) return identityRows.value;
   return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
 });
 const visibleTabs = computed(() => {
   const tabs: string[] = [];
 
-  if (isGlobalClubGovernance.value) {
+  if (isRegistrationWorkspace.value) {
     if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
-    if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
+    return tabs;
+  }
+
+  if (isMemberWorkspace.value) {
     if (memberViewClubs.value.length > 0) tabs.push("members");
-    if (visibleIdentityRows.value.length > 0) tabs.push("identity");
     return tabs;
   }
 
   if (visibleClubInfoRows.value.length > 0) tabs.push("profile");
-  if (memberViewClubs.value.length > 0) tabs.push("members");
   if (visibleIdentityRows.value.length > 0) tabs.push("identity");
-  if (canSubmitApplication.value || isReviewer.value) tabs.push("workspace");
   return tabs;
 });
 const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
@@ -448,8 +899,7 @@ async function loadUsers() {
 
   usersLoading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
-    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    const data = await requestJson<UserSummary[]>(`/api/users`);
     if (requestId === usersRequestId) users.value = data;
   } catch (e) {
     if (requestId === usersRequestId) {
@@ -471,9 +921,8 @@ async function loadDialogUsers(clubId?: number) {
 
   dialogUsersLoading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
-    if (clubId) query.set("clubId", String(clubId));
-    const data = await requestJson<UserSummary[]>(`/api/users?${query.toString()}`);
+    const query = clubId ? `?clubId=${clubId}` : "";
+    const data = await requestJson<UserSummary[]>(`/api/users${query}`);
     if (requestId === dialogUsersRequestId) dialogUsers.value = data;
   } catch (e) {
     if (requestId === dialogUsersRequestId) {
@@ -493,6 +942,8 @@ async function loadData() {
       applications.value = [];
       clubs.value = [];
       clubMembers.value = [];
+      evaluationMembers.value = [];
+      evaluations.value = [];
     }
     return;
   }
@@ -500,30 +951,32 @@ async function loadData() {
   loading.value = true;
   error.value = "";
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    const query = new URLSearchParams();
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
-    const shouldLoadApplications = canSubmitApplication.value || isReviewer.value;
-    const shouldLoadClubs = canViewClubProfiles.value || canManageClubProfiles.value;
+    const shouldLoadApplications =
+      isRegistrationWorkspace.value && (canSubmitApplication.value || isReviewer.value);
+    const shouldLoadClubs =
+      !isRegistrationWorkspace.value && (canViewClubProfiles.value || canManageClubProfiles.value);
 
     const [applicationData, clubData] = await Promise.all([
       shouldLoadApplications
         ? requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`)
         : Promise.resolve([]),
-      shouldLoadClubs
-        ? requestJson<Club[]>(`/api/clubs?viewerUserId=${currentUserId.value}`)
-        : Promise.resolve([]),
+      shouldLoadClubs ? requestJson<Club[]>(`/api/clubs`) : Promise.resolve([]),
     ]);
     if (requestId !== dataRequestId) return;
     applications.value = applicationData;
     clubs.value = clubData;
     syncSelectedClub();
-    await loadMembers();
+    await Promise.all([loadMembers(), loadEvaluationMembers(), loadEvaluations()]);
   } catch (e) {
     if (requestId === dataRequestId) {
       error.value = e instanceof Error ? e.message : "加载失败";
       applications.value = [];
       clubs.value = [];
       clubMembers.value = [];
+      evaluationMembers.value = [];
+      evaluations.value = [];
     }
   } finally {
     if (requestId === dataRequestId) loading.value = false;
@@ -532,9 +985,9 @@ async function loadData() {
 
 async function loadMembers() {
   const requestId = ++membersRequestId;
-  const userId = currentUserId.value;
   const clubId = selectedClubId.value;
-  const include = includeHistory.value;
+  const userId = currentUserId.value;
+  const include = memberWorkspaceMode.value !== "current";
   if (!userId || !clubId || !canViewSelectedClub()) {
     if (requestId === membersRequestId) {
       clubMembers.value = [];
@@ -545,9 +998,13 @@ async function loadMembers() {
   memberLoading.value = true;
   try {
     const query = new URLSearchParams({
-      viewerUserId: String(userId),
       includeHistory: String(include),
     });
+    if (memberWorkspaceMode.value === "history" && memberFilters.termName) {
+      query.set("termName", memberFilters.termName);
+    }
+    if (memberFilters.departmentName) query.set("departmentName", memberFilters.departmentName);
+    if (memberFilters.groupName) query.set("groupName", memberFilters.groupName);
     const data = await requestJson<ClubMemberRecord[]>(
       `/api/clubs/${clubId}/members?${query.toString()}`,
     );
@@ -562,6 +1019,54 @@ async function loadMembers() {
   }
 }
 
+async function loadEvaluationMembers() {
+  const requestId = ++evaluationMembersRequestId;
+  const clubId = selectedClubId.value;
+  if (!currentUserId.value || !clubId || !canViewSelectedClub()) {
+    if (requestId === evaluationMembersRequestId) evaluationMembers.value = [];
+    return;
+  }
+
+  try {
+    const query = new URLSearchParams({
+      includeHistory: "false",
+    });
+    const data = await requestJson<ClubMemberRecord[]>(
+      `/api/clubs/${clubId}/members?${query.toString()}`,
+    );
+    if (requestId === evaluationMembersRequestId) evaluationMembers.value = data;
+  } catch {
+    if (requestId === evaluationMembersRequestId) evaluationMembers.value = [];
+  }
+}
+
+async function loadEvaluations() {
+  const requestId = ++evaluationsRequestId;
+  const clubId = selectedClubId.value;
+  if (!currentUserId.value || !clubId || evaluationViewClubs.value.length === 0) {
+    if (requestId === evaluationsRequestId) evaluations.value = [];
+    return;
+  }
+
+  evaluationLoading.value = true;
+  try {
+    const query = new URLSearchParams();
+    if (evaluationFilters.termName) query.set("termName", evaluationFilters.termName);
+    query.set("evaluationType", "semester");
+    const data = await requestJson<ClubEvaluationRecord[]>(
+      `/api/clubs/${clubId}/evaluations?${query.toString()}`,
+    );
+    if (requestId === evaluationsRequestId) evaluations.value = data;
+  } catch (e) {
+    if (requestId === evaluationsRequestId) {
+      evaluations.value = [];
+      ElMessage.error(e instanceof Error ? e.message : "成员考核加载失败");
+    }
+  } finally {
+    if (requestId === evaluationsRequestId) evaluationLoading.value = false;
+  }
+}
+
 function syncSelectedClub() {
   const options = memberViewClubs.value;
   if (options.some((club) => club.id === selectedClubId.value)) return;
@@ -573,10 +1078,13 @@ function canManageClub(club: Club) {
   if (!user || club.status !== "active") return false;
   if (hasAllPermissions.value) return true;
   if (club.presidentUserId === user.id) return true;
+  if (club.advisorUserId === user.id) return true;
 
   const hasRole = user.roles.some(
     (role) =>
-      roleCoversClub(role, club.id) && principalRoleCodes.has((role.roleCode ?? "").toLowerCase()),
+      roleCoversClub(role, club.id) &&
+      (principalRoleCodes.has((role.roleCode ?? "").toLowerCase()) ||
+        advisorRoleCodes.has((role.roleCode ?? "").toLowerCase())),
   );
   const hasPrincipalMembership = user.memberships.some(
     (membership) =>
@@ -597,16 +1105,16 @@ function canRemoveClubMember(club: Club) {
 }
 
 function canDissolveClub(club: Club) {
-  return (hasAllPermissions.value || isReviewer.value) && club.status === "active";
+  return hasAllPermissions.value && club.status === "active";
 }
 
 function canViewClubInfo(club: Club) {
-  if (hasAllPermissions.value || isReviewer.value) return true;
+  if (canViewAllClubWorkspaces.value) return true;
   return canManageClub(club) || canViewClubDirectory(club);
 }
 
 function canViewClubDirectory(club: Club) {
-  if (hasAllPermissions.value) return true;
+  if (canViewAllClubWorkspaces.value) return true;
   if (canManageClub(club)) return true;
 
   const user = currentUser.value;
@@ -626,6 +1134,17 @@ function canViewClubDirectory(club: Club) {
   );
 
   return hasParticipantRole || hasAdvisorRole || hasMembership;
+}
+
+function canViewClubEvaluations(club: Club) {
+  if (hasAllPermissions.value || canManageClub(club)) return true;
+
+  const user = currentUser.value;
+  if (!user) return false;
+
+  return user.memberships.some(
+    (membership) => membership.clubId === club.id && isActiveStatus(membership.memberStatus),
+  );
 }
 
 function buildClubContextOption(club: Club): ClubContextOption {
@@ -701,7 +1220,6 @@ async function submitApplication() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         ...applicationForm,
       }),
     });
@@ -756,7 +1274,6 @@ async function submitReview() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         ...reviewForm,
       }),
     });
@@ -800,7 +1317,6 @@ async function submitProfile() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         name: profileForm.name,
         category: profileForm.category,
         description: emptyToNull(profileForm.description),
@@ -845,7 +1361,7 @@ async function dissolveClub(row: Club) {
     await requestJson<void>(`/api/clubs/${row.id}/dissolve`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("社团已解散");
     await Promise.all([loadUsers(), loadData()]);
@@ -881,7 +1397,7 @@ async function exitCurrentClub(row: IdentityRow) {
     await requestJson<void>(`/api/clubs/${row.clubId}/members/self/exit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("已退出社团");
     await refreshAuthSessionQuietly();
@@ -918,7 +1434,7 @@ async function removeClubMember(row: ClubMemberRecord) {
     await requestJson<void>(`/api/clubs/${row.clubId}/members/${row.memberId}/exit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: currentUserId.value }),
+      body: JSON.stringify({}),
     });
     ElMessage.success("成员已移出");
     await Promise.all([loadUsers(), loadData()]);
@@ -930,13 +1446,14 @@ async function removeClubMember(row: ClubMemberRecord) {
 }
 
 function resetMemberTermForm() {
+  const term = currentAcademicTermOption();
   memberTermForm.userId = undefined;
   memberTermForm.departmentName = "";
   memberTermForm.groupName = "";
   memberTermForm.positionName = "";
-  memberTermForm.termName = `${new Date().getFullYear()} 年任期`;
-  memberTermForm.termStart = todayInput();
-  memberTermForm.termEnd = "";
+  memberTermForm.termName = term.label;
+  memberTermForm.termStart = term.termStart;
+  memberTermForm.termEnd = term.termEnd;
   memberTermForm.memberStatus = "active";
   memberTermForm.contributionScore = 0;
   memberTermForm.closeCurrentTerm = true;
@@ -956,9 +1473,53 @@ async function openCreateMemberTermDialog() {
   memberTermDialogVisible.value = true;
 }
 
+async function openTransitionMemberTermDialog(row?: ClubMemberRecord) {
+  if (!selectedClub.value || !canManageSelectedClub.value) {
+    ElMessage.warning("当前身份不能发起该社团换届。");
+    return;
+  }
+
+  if (!row || !shouldEnterTransitionQueue(row)) {
+    ElMessage.warning("只能处理已进入换届暂存区的成员。");
+    return;
+  }
+
+  memberTermMode.value = "create";
+  memberTermTarget.value = row;
+  resetMemberTermForm();
+  memberTermForm.termName = transitionTermForm.label;
+  memberTermForm.termStart = transitionTermForm.termStart;
+  memberTermForm.termEnd = transitionTermForm.termEnd;
+  memberTermForm.closeCurrentTerm = true;
+  memberTermForm.userId = row.userId;
+  memberTermForm.departmentName = row.departmentName ?? "";
+  memberTermForm.groupName = row.groupName ?? "";
+  memberTermForm.positionName = row.positionName ?? "";
+  memberTermForm.contributionScore = row.contributionScore ?? 0;
+  await loadDialogUsers(selectedClub.value.id);
+  memberTermDialogVisible.value = true;
+}
+
+function canEditMemberTerm(row: ClubMemberRecord) {
+  if (canAdministerMemberTerms.value) return true;
+  return canManageSelectedClub.value && row.userId !== currentUserId.value;
+}
+
+function canEditMemberPosition(row: ClubMemberRecord) {
+  return canEditMemberTerm(row);
+}
+
+function memberTermEditDeniedMessage(row: ClubMemberRecord) {
+  if (canManageSelectedClub.value && row.userId === currentUserId.value) {
+    return "负责人不能修改自己的任期，请由指导老师或系统管理员处理。";
+  }
+
+  return "当前身份不能维护该社团成员任期。";
+}
+
 function openEditMemberTermDialog(row: ClubMemberRecord) {
-  if (!canManageSelectedClub.value) {
-    ElMessage.warning("当前身份不能维护该社团成员任期。");
+  if (!canEditMemberTerm(row)) {
+    ElMessage.warning(memberTermEditDeniedMessage(row));
     return;
   }
 
@@ -978,6 +1539,189 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
   memberTermDialogVisible.value = true;
 }
 
+function canFreelyUpdateMemberGrouping(row: ClubMemberRecord) {
+  if (!row.isCurrent) return false;
+  return canAdministerMemberTerms.value || canManageSelectedClub.value;
+}
+
+function canUpdateMemberDepartment(row: ClubMemberRecord) {
+  return canFreelyUpdateMemberGrouping(row);
+}
+
+function canUpdateMemberGroup(row: ClubMemberRecord) {
+  if (canFreelyUpdateMemberGrouping(row)) return true;
+  if (!row.isCurrent) return false;
+  return selectedCadreGroupingScopes.value.length > 0;
+}
+
+function groupingDialogTitle() {
+  if (memberGroupingMode.value === "own") return "纳入我的小组";
+  return memberGroupingField.value === "departmentName" ? "修改部门" : "修改小组";
+}
+
+function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
+  if (field === "departmentName" && !canUpdateMemberDepartment(row)) {
+    ElMessage.warning("当前身份不能维护该成员部门。");
+    return;
+  }
+
+  if (field === "groupName" && !canUpdateMemberGroup(row)) {
+    ElMessage.warning("当前身份不能维护该成员分组。");
+    return;
+  }
+
+  memberGroupingTarget.value = row;
+  memberGroupingField.value = field;
+  if (canFreelyUpdateMemberGrouping(row)) {
+    memberGroupingMode.value = "free";
+    memberGroupingForm.departmentName = row.departmentName ?? "";
+    memberGroupingForm.groupName = row.groupName ?? "";
+  } else {
+    const scope =
+      selectedCadreGroupingScopes.value.find(
+        (item) => !item.groupName && item.departmentName === (row.departmentName ?? ""),
+      ) ??
+      selectedCadreGroupingScopes.value.find((item) => !item.groupName) ??
+      selectedCadreGroupingScopes.value[0];
+    memberGroupingMode.value = scope.groupName ? "own" : "department";
+    memberGroupingForm.departmentName = scope.departmentName;
+    memberGroupingForm.groupName = scope.groupName || row.groupName || "";
+  }
+  handleMemberGroupingDepartmentChange();
+  memberGroupingDialogVisible.value = true;
+}
+
+async function updateMemberTermFields(
+  row: ClubMemberRecord,
+  fields: Partial<{
+    positionName: string;
+    termName: string;
+    termStart: string | null;
+    termEnd: string | null;
+    memberStatus: MemberStatus;
+    contributionScore: number | null;
+  }>,
+  successText: string,
+) {
+  if (!selectedClubId.value || !currentUserId.value) return;
+
+  termSaving.value = true;
+  try {
+    await requestJson<ClubMemberRecord>(
+      `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...fields,
+        }),
+      },
+    );
+    ElMessage.success(successText);
+    await Promise.all([loadUsers(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "成员任期更新失败");
+  } finally {
+    termSaving.value = false;
+  }
+}
+
+async function promptTextValue(options: {
+  title: string;
+  message: string;
+  inputValue: string;
+  requiredMessage: string;
+  maxLength: number;
+  maxLengthMessage: string;
+}) {
+  try {
+    const result = await ElMessageBox.prompt(options.message, options.title, {
+      inputValue: options.inputValue,
+      confirmButtonText: "保存",
+      cancelButtonText: "取消",
+      inputValidator: (value) => {
+        const text = String(value ?? "").trim();
+        if (!text) return options.requiredMessage;
+        if (text.length > options.maxLength) return options.maxLengthMessage;
+        return true;
+      },
+    });
+    return String(result.value ?? "").trim();
+  } catch {
+    return null;
+  }
+}
+
+async function editMemberPosition(row: ClubMemberRecord) {
+  if (!canEditMemberPosition(row)) {
+    ElMessage.warning(memberTermEditDeniedMessage(row));
+    return;
+  }
+
+  const nextPosition = await promptTextValue({
+    title: "修改职位",
+    message: "请输入新的职位名称。",
+    inputValue: row.positionName ?? "",
+    requiredMessage: "职位名称不能为空",
+    maxLength: 50,
+    maxLengthMessage: "职位名称不能超过 50 个字",
+  });
+  if (nextPosition === null) return;
+  if (nextPosition === (row.positionName ?? "").trim()) return;
+  await updateMemberTermFields(row, { positionName: nextPosition }, "职位名称已更新");
+}
+
+async function submitMemberGrouping() {
+  if (!memberGroupingTarget.value || !selectedClubId.value || !currentUserId.value) return;
+
+  if (memberGroupingField.value === "groupName" && !memberGroupingForm.groupName.trim()) {
+    ElMessage.warning("请选择小组。");
+    return;
+  }
+
+  if (memberGroupingMode.value !== "free" && !memberGroupingForm.groupName.trim()) {
+    ElMessage.warning(
+      memberGroupingMode.value === "own"
+        ? "干部账号需要先登记自己的小组，才能把成员纳入本组。"
+        : "请选择本部门下的小组。",
+    );
+    return;
+  }
+
+  const nextDepartment = memberGroupingForm.departmentName;
+  const nextGroup = memberGroupingForm.groupName;
+
+  groupingSaving.value = true;
+  try {
+    await requestJson<ClubMemberRecord>(
+      `/api/clubs/${selectedClubId.value}/members/${memberGroupingTarget.value.memberId}/grouping`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          departmentName: emptyToNull(nextDepartment),
+          groupName: emptyToNull(nextGroup),
+        }),
+      },
+    );
+    ElMessage.success(
+      memberGroupingMode.value === "own"
+        ? "成员已纳入我的小组"
+        : memberGroupingMode.value === "department"
+          ? "成员已纳入本部门小组"
+          : memberGroupingField.value === "departmentName"
+            ? "成员部门已更新"
+            : "成员小组已更新",
+    );
+    memberGroupingDialogVisible.value = false;
+    await Promise.all([loadUsers(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "分组保存失败");
+  } finally {
+    groupingSaving.value = false;
+  }
+}
+
 async function submitMemberTerm() {
   if (!memberTermFormRef.value || !selectedClubId.value || !currentUserId.value) return;
   if (!(await validateForm(memberTermFormRef.value))) return;
@@ -985,7 +1729,6 @@ async function submitMemberTerm() {
   termSaving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       userId: memberTermForm.userId,
       departmentName: emptyToNull(memberTermForm.departmentName),
       groupName: emptyToNull(memberTermForm.groupName),
@@ -1028,9 +1771,273 @@ async function submitMemberTerm() {
   }
 }
 
+function canMaintainEvaluationForMember(member: ClubMemberRecord) {
+  if (hasAllPermissions.value || canManageSelectedClub.value) return true;
+
+  return selectedCadreGroupingScopes.value.some((scope) =>
+    groupingMatchesScope(
+      member.departmentName,
+      member.groupName,
+      scope.departmentName,
+      scope.groupName,
+    ),
+  );
+}
+
+function canMaintainEvaluationRecord(row: ClubEvaluationRecord) {
+  const member = evaluationMembers.value.find((item) => item.userId === row.userId);
+  return Boolean(member && canMaintainEvaluationForMember(member));
+}
+
+function groupingMatchesScope(
+  targetDepartment: string | null | undefined,
+  targetGroup: string | null | undefined,
+  scopeDepartment: string | null | undefined,
+  scopeGroup: string | null | undefined,
+) {
+  if (!scopeGroup?.trim()) {
+    return (
+      Boolean(scopeDepartment?.trim()) &&
+      (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment!.trim().toLowerCase()
+    );
+  }
+  if (!targetGroup?.trim()) return false;
+  const groupMatches = targetGroup.trim().toLowerCase() === scopeGroup.trim().toLowerCase();
+  const departmentMatches =
+    !scopeDepartment?.trim() ||
+    (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment.trim().toLowerCase();
+  return groupMatches && departmentMatches;
+}
+
+function resetEvaluationForm() {
+  evaluationForm.evaluationType = "semester";
+  evaluationForm.userId = evaluationTargetOptions.value[0]?.userId;
+  evaluationForm.termName = `${new Date().getFullYear()} 学年春季学期`;
+  evaluationForm.awardTitle = "";
+  evaluationForm.awardLevel = "";
+  evaluationForm.awardReason = "";
+  evaluationForm.activityScore = 0;
+  evaluationForm.taskScore = 0;
+  evaluationForm.learningScore = 0;
+  evaluationForm.awardScore = 0;
+  evaluationForm.publicStatus = "draft";
+  evaluationForm.commentText = "";
+  evaluationFormRef.value?.clearValidate();
+}
+
+function addAcademicTermOption() {
+  if (!canCreateAcademicTerm.value) return;
+
+  const startYear = Number(newAcademicTermStartYear.value);
+  if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) {
+    ElMessage.warning("请输入 2000-2100 之间的学年起始年份。");
+    return;
+  }
+
+  const term = academicTermOption(startYear);
+  if (academicTermOptions.value.some((option) => option.label === term.label)) {
+    ElMessage.info("该任期已存在。");
+    return;
+  }
+
+  manualAcademicTermOptions.value = uniqueAcademicTermOptions([
+    ...manualAcademicTermOptions.value,
+    term,
+  ]);
+  newAcademicTermStartYear.value = startYear + 1;
+  ElMessage.success("任期已加入可选项");
+}
+
+function openCreateEvaluationDialog() {
+  if (!canMaintainSelectedEvaluations.value) {
+    ElMessage.warning("当前身份没有可录入评价的成员。");
+    return;
+  }
+
+  evaluationMode.value = "create";
+  evaluationTarget.value = null;
+  resetEvaluationForm();
+  evaluationDialogVisible.value = true;
+}
+
+function openEditEvaluationDialog(row: ClubEvaluationRecord) {
+  const target = evaluationMembers.value.find((member) => member.userId === row.userId);
+  if (!target || !canMaintainEvaluationForMember(target)) {
+    ElMessage.warning("当前身份不能维护该成员评价。");
+    return;
+  }
+
+  evaluationMode.value = "edit";
+  evaluationTarget.value = row;
+  evaluationForm.evaluationType = row.evaluationType;
+  evaluationForm.userId = row.userId;
+  evaluationForm.termName = row.termName;
+  evaluationForm.awardTitle = row.awardTitle ?? "";
+  evaluationForm.awardLevel = row.awardLevel ?? "";
+  evaluationForm.awardReason = row.awardReason ?? "";
+  evaluationForm.activityScore = row.activityScore;
+  evaluationForm.taskScore = row.taskScore;
+  evaluationForm.learningScore = row.learningScore;
+  evaluationForm.awardScore = row.awardScore;
+  evaluationForm.publicStatus = row.publicStatus;
+  evaluationForm.commentText = row.commentText ?? "";
+  evaluationFormRef.value?.clearValidate();
+  evaluationDialogVisible.value = true;
+}
+
+async function submitEvaluation() {
+  if (!evaluationFormRef.value || !selectedClubId.value || !currentUserId.value) return;
+  if (!(await validateForm(evaluationFormRef.value))) return;
+
+  evaluationSaving.value = true;
+  try {
+    const payload = {
+      evaluationType: evaluationForm.evaluationType,
+      userId: evaluationForm.userId,
+      termName: evaluationForm.termName,
+      awardTitle: emptyToNull(evaluationForm.awardTitle),
+      awardLevel: emptyToNull(evaluationForm.awardLevel),
+      awardReason: emptyToNull(evaluationForm.awardReason),
+      activityScore: evaluationForm.activityScore,
+      taskScore: evaluationForm.taskScore,
+      learningScore: evaluationForm.learningScore,
+      awardScore: evaluationForm.awardScore,
+      publicStatus: evaluationForm.publicStatus,
+      commentText: emptyToNull(evaluationForm.commentText),
+    };
+
+    if (evaluationMode.value === "create") {
+      await requestJson<ClubEvaluationRecord>(`/api/clubs/${selectedClubId.value}/evaluations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } else if (evaluationTarget.value) {
+      await requestJson<ClubEvaluationRecord>(
+        `/api/clubs/${selectedClubId.value}/evaluations/${evaluationTarget.value.evaluationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+    }
+
+    ElMessage.success(evaluationMode.value === "create" ? "评价考核已录入" : "评价考核已更新");
+    evaluationDialogVisible.value = false;
+    await loadEvaluations();
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "评价考核保存失败");
+  } finally {
+    evaluationSaving.value = false;
+  }
+}
+
+function clearEvaluationFilters() {
+  evaluationFilters.termName = "";
+  void loadEvaluations();
+}
+
 function resetFilters() {
   filters.auditStatus = "";
   void loadData();
+}
+
+function clearMemberFilters() {
+  memberFilters.termName = "";
+  memberFilters.departmentName = "";
+  memberFilters.groupName = "";
+  void loadMembers();
+}
+
+function addMemberDepartmentOption() {
+  const clubId = selectedClubId.value;
+  const departmentName = newDepartmentName.value.trim();
+  if (!clubId || !canCreateMemberDepartment.value) return;
+  if (!departmentName) {
+    ElMessage.warning("请填写部门名称。");
+    return;
+  }
+  if (memberDepartmentOptions.value.includes(departmentName)) {
+    ElMessage.info("该部门已存在。");
+    return;
+  }
+
+  manualDepartmentOptions.value = {
+    ...manualDepartmentOptions.value,
+    [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
+  };
+  if (!newGroupDepartmentName.value) newGroupDepartmentName.value = departmentName;
+  newDepartmentName.value = "";
+  ElMessage.success("部门已加入可选项");
+}
+
+function addMemberGroupOption() {
+  const clubId = selectedClubId.value;
+  const groupName = newGroupName.value.trim();
+  if (!clubId || !canCreateMemberGroup.value) return;
+
+  const departmentOptions = groupCreateDepartmentOptions.value;
+  const departmentName =
+    newGroupDepartmentName.value.trim() ||
+    (departmentOptions.length === 1 ? departmentOptions[0] : "");
+  if (!departmentName) {
+    ElMessage.warning("请选择小组所属部门。");
+    return;
+  }
+  if (!groupName) {
+    ElMessage.warning("请填写小组名称。");
+    return;
+  }
+  if (!canManageSelectedClub.value && !departmentOptions.includes(departmentName)) {
+    ElMessage.warning("部长只能在自己所在部门新增小组。");
+    return;
+  }
+  if (groupOptionExists(departmentName, groupName)) {
+    ElMessage.info("该部门下已存在同名小组。");
+    return;
+  }
+
+  const nextGroups = [...(manualGroupOptions.value[clubId] ?? []), { departmentName, groupName }];
+  manualGroupOptions.value = {
+    ...manualGroupOptions.value,
+    [clubId]: nextGroups,
+  };
+  if (!memberDepartmentOptions.value.includes(departmentName)) {
+    manualDepartmentOptions.value = {
+      ...manualDepartmentOptions.value,
+      [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
+    };
+  }
+  newGroupName.value = "";
+  newGroupDepartmentName.value = departmentName;
+  ElMessage.success("小组已加入可选项");
+}
+
+function groupOptionExists(departmentName: string, groupName: string) {
+  return memberGroupEntries.value.some(
+    (entry) =>
+      entry.departmentName.trim() === departmentName.trim() &&
+      entry.groupName.trim() === groupName.trim(),
+  );
+}
+
+function handleMemberGroupingDepartmentChange() {
+  if (
+    memberGroupingForm.groupName &&
+    !memberGroupingGroupOptions.value.includes(memberGroupingForm.groupName)
+  ) {
+    memberGroupingForm.groupName = "";
+  }
+}
+
+function handleMemberTermDepartmentChange() {
+  if (
+    memberTermForm.groupName &&
+    !groupOptionsForDepartment(memberTermForm.departmentName).includes(memberTermForm.groupName)
+  ) {
+    memberTermForm.groupName = "";
+  }
 }
 
 function formatDate(value: string | null | undefined) {
@@ -1058,12 +2065,80 @@ function dateOnly(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
-function todayInput() {
-  const date = new Date();
+function todayDateOnly() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function academicYearStart(date: Date) {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return date.getMonth() >= 6 ? year : year - 1;
+}
+
+function academicTermOption(startYear: number): AcademicTermOption {
+  return {
+    label: `${startYear}-${startYear + 1}学年`,
+    termStart: `${startYear}-07-01`,
+    termEnd: `${startYear + 1}-06-30`,
+  };
+}
+
+function uniqueAcademicTermOptions(options: AcademicTermOption[]) {
+  const terms = new Map<string, AcademicTermOption>();
+  options.forEach((option) => {
+    const label = option.label.trim();
+    if (!label || terms.has(label)) return;
+    terms.set(label, {
+      label,
+      termStart: dateOnly(option.termStart),
+      termEnd: dateOnly(option.termEnd),
+    });
+  });
+
+  return Array.from(terms.values()).sort((left, right) => {
+    const startCompare = left.termStart.localeCompare(right.termStart);
+    return startCompare !== 0 ? startCompare : left.label.localeCompare(right.label, "zh-CN");
+  });
+}
+
+function currentAcademicTermOption(offset = 0) {
+  return academicTermOption(academicYearStart(new Date()) + offset);
+}
+
+function applyAcademicTermToMemberForm(termName: string) {
+  const option = memberTermSelectOptions.value.find((item) => item.label === termName);
+  if (!option) return;
+  memberTermForm.termStart = option.termStart;
+  memberTermForm.termEnd = option.termEnd;
+}
+
+function applyAcademicTermToTransition(termName: string) {
+  const option = academicTermOptions.value.find((item) => item.label === termName);
+  if (!option) return;
+  transitionTermForm.label = option.label;
+  transitionTermForm.termStart = option.termStart;
+  transitionTermForm.termEnd = option.termEnd;
+}
+
+function shouldEnterTransitionQueue(member: ClubMemberRecord) {
+  if (!isActiveStatus(member.memberStatus)) return false;
+
+  const termEnd = dateOnly(member.termEnd);
+  if (!termEnd || termEnd >= transitionTermForm.termStart) return false;
+
+  return !clubMembers.value.some(
+    (candidate) =>
+      candidate.memberId !== member.memberId &&
+      candidate.userId === member.userId &&
+      dateOnly(candidate.termStart) >= transitionTermForm.termStart &&
+      isActiveStatus(candidate.memberStatus),
+  );
+}
+
+function transitionRecordSortKey(member: ClubMemberRecord) {
+  return dateOnly(member.termEnd) || dateOnly(member.termStart) || "";
 }
 
 function datePayload(value: string) {
@@ -1101,6 +2176,59 @@ function memberStatusText(status: string | null | undefined) {
   if (normalized === "active") return "在任";
   if (normalized === "ended") return "已结束";
   return "暂停";
+}
+
+function isFutureMemberTerm(row: ClubMemberRecord) {
+  const termStart = dateOnly(row.termStart);
+  return isActiveStatus(row.memberStatus) && Boolean(termStart) && termStart > todayDateOnly();
+}
+
+function memberRecordStatusTagType(row: ClubMemberRecord) {
+  return isFutureMemberTerm(row) ? "warning" : memberStatusTagType(row.memberStatus);
+}
+
+function memberRecordStatusText(row: ClubMemberRecord) {
+  return isFutureMemberTerm(row) ? "未开始" : memberStatusText(row.memberStatus);
+}
+
+function memberTermPhase(row: ClubMemberRecord) {
+  if (row.isCurrent) return "current";
+  if (isFutureMemberTerm(row)) return "future";
+  return "history";
+}
+
+function memberTermPhaseTagType(row: ClubMemberRecord) {
+  return memberTermPhase(row) === "current"
+    ? "success"
+    : memberTermPhase(row) === "future"
+      ? "warning"
+      : "info";
+}
+
+function memberTermPhaseText(row: ClubMemberRecord) {
+  return memberTermPhase(row) === "current"
+    ? "当前"
+    : memberTermPhase(row) === "future"
+      ? "未来"
+      : "历史";
+}
+
+function evaluationPublicTagType(status: EvaluationPublicStatus) {
+  return status === "published" ? "success" : "info";
+}
+
+function evaluationGradeTagType(grade: string) {
+  if (grade === "优秀") return "success";
+  if (grade === "良好") return "primary";
+  if (grade === "合格") return "warning";
+  return "danger";
+}
+
+function evaluationGrade(totalScore: number) {
+  if (totalScore >= 320) return "优秀";
+  if (totalScore >= 260) return "良好";
+  if (totalScore >= 200) return "合格";
+  return "待提升";
 }
 
 function statusStep(row: ClubApplication) {
@@ -1145,6 +2273,14 @@ function hasPermission(permission: string) {
   return permissions.includes("*") || permissions.includes(permission);
 }
 
+function hasScopedClubPermission(clubId: number, permission: string) {
+  return (auth.value?.roles ?? []).some(
+    (role) =>
+      roleCoversClub(role, clubId) &&
+      (role.permissions?.includes("*") || role.permissions?.includes(permission)),
+  );
+}
+
 function buildSessionDisplayName(session: AuthResponse) {
   const name = session.user.realName || session.user.username;
   return session.user.studentNo ? `${name}（${session.user.studentNo}）` : name;
@@ -1171,11 +2307,22 @@ function goProfile() {
 }
 
 function goMembers() {
+  if (!isMemberWorkspace.value) {
+    const query = selectedClubId.value ? { clubId: String(selectedClubId.value) } : undefined;
+    void router.push({ path: "/club-members", query });
+    return;
+  }
+
   activeTab.value = "members";
   syncSelectedClub();
 }
 
 function openClubMembers(clubId: number) {
+  if (!isMemberWorkspace.value) {
+    void router.push({ path: "/club-members", query: { clubId: String(clubId) } });
+    return;
+  }
+
   selectedClubId.value = clubId;
   activeTab.value = "members";
 }
@@ -1194,6 +2341,17 @@ function canRemoveMemberRow(row: ClubMemberRecord) {
     row.userId !== currentUserId.value &&
     canRemoveSelectedClubMember.value &&
     !isPrincipalMember(row)
+  );
+}
+
+function hasMemberRowActions(row: ClubMemberRecord) {
+  return (
+    canUpdateMemberDepartment(row) ||
+    canUpdateMemberGroup(row) ||
+    canEditMemberPosition(row) ||
+    canEditMemberTerm(row) ||
+    canExitMemberRow(row) ||
+    canRemoveMemberRow(row)
   );
 }
 
@@ -1219,13 +2377,21 @@ function memberOptionLabel(member: ClubMemberRecord) {
 
 function isPrincipalPosition(positionName: string | null | undefined) {
   if (!positionName) return false;
-  return (
-    positionName.includes("负责人") ||
-    positionName.includes("会长") ||
-    positionName.includes("社长") ||
-    positionName.toLowerCase().includes("president") ||
-    positionName.toLowerCase().includes("leader")
-  );
+  const normalized = positionName.trim().toLowerCase();
+  if (positionName.trim().startsWith("副")) return false;
+  return principalPositionNames.has(normalized) || principalPositionNames.has(positionName.trim());
+}
+
+function isCadrePosition(positionName: string | null | undefined) {
+  if (!positionName) return false;
+  const normalized = positionName.trim().toLowerCase();
+  return cadrePositionNames.has(normalized) || cadrePositionNames.has(positionName.trim());
+}
+
+function isDepartmentManagerPosition(positionName: string | null | undefined) {
+  if (!positionName) return false;
+  const normalized = positionName.trim().toLowerCase();
+  return ["部长", "副部长", "部门负责人", "minister"].includes(normalized);
 }
 
 function isActiveStatus(status: string | null | undefined) {
@@ -1244,13 +2410,86 @@ function normalizeMemberStatus(status: string | null | undefined): MemberStatus 
   return "active";
 }
 
+function uniqueTextOptions(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)),
+    ),
+  ).sort((left, right) => left.localeCompare(right, "zh-CN"));
+}
+
+function groupOptionsForDepartment(departmentName: string | null | undefined) {
+  const normalizedDepartment = departmentName?.trim() ?? "";
+  return uniqueTextOptions(
+    memberGroupEntries.value
+      .filter((entry) => !normalizedDepartment || entry.departmentName === normalizedDepartment)
+      .map((entry) => entry.groupName),
+  );
+}
+
 watch(currentUserId, () => {
   void loadData();
 });
 
-watch([selectedClubId, includeHistory], () => {
-  void loadMembers();
+watch(selectedClubId, () => {
+  memberFilters.departmentName = "";
+  memberFilters.groupName = "";
+  memberFilters.termName = "";
+  newDepartmentName.value = "";
+  newGroupDepartmentName.value = "";
+  newGroupName.value = "";
+  evaluationFilters.termName = "";
 });
+
+watch(
+  groupCreateDepartmentOptions,
+  (options) => {
+    if (!newGroupDepartmentName.value && options.length === 1) {
+      newGroupDepartmentName.value = options[0];
+      return;
+    }
+
+    if (newGroupDepartmentName.value && !options.includes(newGroupDepartmentName.value)) {
+      newGroupDepartmentName.value = options[0] ?? "";
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  [
+    selectedClubId,
+    memberWorkspaceMode,
+    () => memberFilters.termName,
+    () => memberFilters.departmentName,
+    () => memberFilters.groupName,
+  ],
+  () => {
+    void loadMembers();
+  },
+);
+
+watch(
+  () => props.workspace,
+  () => {
+    activeTab.value = defaultActiveTab(props.workspace);
+    applications.value = [];
+    clubs.value = [];
+    clubMembers.value = [];
+    void loadData();
+  },
+);
+
+watch(selectedClubId, () => {
+  void Promise.all([loadEvaluationMembers(), loadEvaluations()]);
+});
+
+watch(
+  () => evaluationFilters.termName,
+  () => {
+    void loadEvaluations();
+  },
+);
 
 watch(
   visibleTabs,
@@ -1285,8 +2524,8 @@ onUnmounted(() => {
   <div class="page">
     <section class="toolbar">
       <div>
-        <h2>社团组织管理</h2>
-        <div class="subtitle">社团注册审核、档案维护、成员任期与干部换届</div>
+        <h2>{{ workspaceTitle }}</h2>
+        <div class="subtitle">{{ workspaceSubtitle }}</div>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -1304,7 +2543,10 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="identity-side">
-        <div v-if="clubContextOptions.length > 0" class="identity-switch">
+        <div
+          v-if="!isRegistrationWorkspace && clubContextOptions.length > 0"
+          class="identity-switch"
+        >
           <span>{{ isGlobalClubGovernance ? "快速定位社团" : "当前社团" }}</span>
           <el-select
             v-model="selectedClubId"
@@ -1327,24 +2569,47 @@ onUnmounted(() => {
           <small v-if="selectedClubContext">{{ selectedClubContext.statusText }}</small>
         </div>
         <div class="identity-tags">
-          <el-tag v-if="currentUser.canSubmitClubApplication" type="success" effect="plain">
+          <el-tag
+            v-if="isRegistrationWorkspace && currentUser.canSubmitClubApplication"
+            type="success"
+            effect="plain"
+          >
             可提交注册申请
           </el-tag>
-          <el-tag v-if="currentUser.canReviewClubApplication" type="warning" effect="plain">
+          <el-tag
+            v-if="isRegistrationWorkspace && currentUser.canReviewClubApplication"
+            type="warning"
+            effect="plain"
+          >
             可审核注册申请
           </el-tag>
-          <el-tag v-if="clubInfoRows.length > 0" effect="plain">可查看社团信息</el-tag>
-          <el-tag v-if="profileRows.length > 0" type="primary" effect="plain">
+          <el-tag v-if="isClubWorkspace && clubInfoRows.length > 0" effect="plain">
+            可查看社团信息
+          </el-tag>
+          <el-tag v-if="isClubWorkspace && profileRows.length > 0" type="primary" effect="plain">
             可维护社团档案
           </el-tag>
-          <el-tag v-if="memberViewClubs.length > 0" effect="plain">可查看成员任期</el-tag>
-          <el-tag v-if="identityRows.length > 0" effect="plain">我的社团身份</el-tag>
+          <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
+            可查看成员任期
+          </el-tag>
+          <el-tag v-if="isClubWorkspace && identityRows.length > 0" effect="plain">
+            我的社团身份
+          </el-tag>
         </div>
         <div class="identity-actions">
-          <el-button v-if="clubInfoRows.length > 0" type="primary" plain @click="goProfile">
+          <el-button
+            v-if="isClubWorkspace && clubInfoRows.length > 0"
+            type="primary"
+            plain
+            @click="goProfile"
+          >
             查看社团
           </el-button>
-          <el-button v-if="memberViewClubs.length > 0" plain @click="goMembers">
+          <el-button
+            v-if="isMemberWorkspace && memberViewClubs.length > 0"
+            plain
+            @click="goMembers"
+          >
             查看任期
           </el-button>
         </div>
@@ -1353,12 +2618,16 @@ onUnmounted(() => {
 
     <el-empty
       v-if="!hasClubWorkspace"
-      description="当前账号暂无社团相关任务"
+      :description="workspaceEmptyDescription"
       class="empty-workspace"
     />
 
     <el-tabs v-else v-model="activeTab" class="workspace-tabs">
-      <el-tab-pane v-if="canSubmitApplication || isReviewer" label="当前工作台" name="workspace">
+      <el-tab-pane
+        v-if="isRegistrationWorkspace && (canSubmitApplication || isReviewer)"
+        label="当前工作台"
+        name="workspace"
+      >
         <div class="workspace-head">
           <div>
             <h3>{{ isReviewer ? "申请审核池" : "我的注册申请" }}</h3>
@@ -1473,15 +2742,21 @@ onUnmounted(() => {
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="visibleClubInfoRows.length > 0" label="社团信息" name="profile">
+      <el-tab-pane
+        v-if="isClubWorkspace && visibleClubInfoRows.length > 0"
+        label="社团信息"
+        name="profile"
+      >
         <div class="workspace-head">
           <div>
-            <h3>{{ isGlobalClubGovernance ? "社团治理" : selectedClub?.name }}</h3>
+            <h3>{{ selectedClub?.name || "社团治理" }}</h3>
             <p>
               {{
-                isGlobalClubGovernance
-                  ? "查看全校社团档案，处理社团运营状态。"
-                  : "当前社团的基础档案、负责人、指导老师和备案信息。"
+                selectedClub
+                  ? "当前社团的基础档案、负责人、指导老师和备案信息。"
+                  : isGlobalClubGovernance
+                    ? "查看全校社团档案，处理社团运营状态。"
+                    : "当前社团的基础档案、负责人、指导老师和备案信息。"
               }}
             </p>
           </div>
@@ -1641,51 +2916,206 @@ onUnmounted(() => {
         </div>
       </el-tab-pane>
 
-      <el-tab-pane v-if="memberViewClubs.length > 0" label="成员与任期" name="members">
+      <el-tab-pane
+        v-if="isMemberWorkspace && memberViewClubs.length > 0"
+        label="成员分组与任期"
+        name="members"
+      >
         <el-empty v-if="memberViewClubs.length === 0" description="当前账号暂无可查看的社团任期" />
 
-        <div v-else class="member-head">
-          <div class="member-controls">
+        <div v-else>
+          <div class="member-head">
+            <div class="member-controls">
+              <el-select
+                v-model="selectedClubId"
+                class="club-selector"
+                placeholder="选择社团"
+                filterable
+              >
+                <el-option
+                  v-for="club in memberViewClubs"
+                  :key="club.id"
+                  :label="club.name"
+                  :value="club.id"
+                />
+              </el-select>
+              <el-segmented
+                v-model="memberWorkspaceMode"
+                :options="[
+                  { label: '当前名册', value: 'current' },
+                  { label: '任期历史', value: 'history' },
+                  { label: '换届管理', value: 'transition' },
+                ]"
+              />
+            </div>
+            <el-button
+              v-if="canManageSelectedClub && memberWorkspaceMode === 'current'"
+              type="primary"
+              :icon="Plus"
+              @click="openCreateMemberTermDialog"
+            >
+              新增任期
+            </el-button>
+          </div>
+
+          <div class="member-filter-row">
             <el-select
-              v-model="selectedClubId"
-              class="club-selector"
-              placeholder="选择社团"
-              filterable
+              v-if="memberWorkspaceMode === 'history'"
+              v-model="memberFilters.termName"
+              class="filter-item"
+              clearable
+              placeholder="按届筛选"
             >
               <el-option
-                v-for="club in memberViewClubs"
-                :key="club.id"
-                :label="club.name"
-                :value="club.id"
+                v-for="term in memberTermFilterOptions"
+                :key="term"
+                :label="term"
+                :value="term"
               />
             </el-select>
-            <el-switch v-model="includeHistory" active-text="包含历史" inactive-text="当前有效" />
+            <el-select
+              v-model="memberFilters.departmentName"
+              class="filter-item"
+              clearable
+              placeholder="按部门筛选"
+            >
+              <el-option
+                v-for="department in memberDepartmentOptions"
+                :key="department"
+                :label="department"
+                :value="department"
+              />
+            </el-select>
+            <el-select
+              v-model="memberFilters.groupName"
+              class="filter-item"
+              clearable
+              placeholder="按小组筛选"
+            >
+              <el-option
+                v-for="group in memberGroupOptions"
+                :key="group"
+                :label="group"
+                :value="group"
+              />
+            </el-select>
+            <el-button :icon="Refresh" @click="clearMemberFilters">清除筛选</el-button>
           </div>
-          <el-button
-            v-if="canManageSelectedClub"
-            type="primary"
-            :icon="Plus"
-            @click="openCreateMemberTermDialog"
-          >
-            新增任期
-          </el-button>
+
+          <div class="member-summary">
+            <span>当前列表 {{ memberGroupSummary.total }} 条</span>
+            <span>有效任期 {{ memberGroupSummary.current }} 条</span>
+            <span>部门 {{ memberGroupSummary.departments }} 个</span>
+            <span>小组 {{ memberGroupSummary.groups }} 个</span>
+            <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
+              <el-input-number
+                v-model="newAcademicTermStartYear"
+                size="small"
+                :min="2000"
+                :max="2100"
+                :step="1"
+                :precision="0"
+                controls-position="right"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addAcademicTermOption"
+              >
+                新增学年
+              </el-button>
+            </div>
+            <div v-if="canCreateMemberDepartment" class="taxonomy-add">
+              <el-input
+                v-model="newDepartmentName"
+                size="small"
+                maxlength="60"
+                placeholder="新增部门"
+                @keyup.enter="addMemberDepartmentOption"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addMemberDepartmentOption"
+              >
+                新增部门
+              </el-button>
+            </div>
+            <div v-if="canCreateMemberGroup" class="taxonomy-add group-add">
+              <el-select
+                v-model="newGroupDepartmentName"
+                size="small"
+                placeholder="所属部门"
+                :disabled="!canManageSelectedClub && groupCreateDepartmentOptions.length <= 1"
+              >
+                <el-option
+                  v-for="department in groupCreateDepartmentOptions"
+                  :key="department"
+                  :label="department"
+                  :value="department"
+                />
+              </el-select>
+              <el-input
+                v-model="newGroupName"
+                size="small"
+                maxlength="60"
+                placeholder="新增小组"
+                @keyup.enter="addMemberGroupOption"
+              />
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="addMemberGroupOption"
+              >
+                新增小组
+              </el-button>
+            </div>
+          </div>
         </div>
 
         <el-table
-          v-if="memberViewClubs.length > 0"
+          v-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
           v-loading="memberLoading"
-          :data="clubMembers"
+          :data="memberTableRows"
           border
           stripe
-          :empty-text="canManageSelectedClub ? '暂无任期记录，可新增成员任期' : '暂无成员任期记录'"
+          :empty-text="
+            memberWorkspaceMode === 'current'
+              ? canManageSelectedClub
+                ? '暂无当前名册，可新增成员任期'
+                : '暂无当前有效成员任期'
+              : '暂无历史任期记录'
+          "
           row-key="memberId"
         >
           <el-table-column prop="userName" label="成员" min-width="150" />
           <el-table-column prop="studentNo" label="学号/工号" width="130" />
-          <el-table-column prop="departmentName" label="部门" width="130" />
-          <el-table-column prop="groupName" label="小组" width="120" />
-          <el-table-column prop="positionName" label="职位" width="130" />
-          <el-table-column prop="termName" label="任期" min-width="150" />
+          <el-table-column label="部门" width="150">
+            <template #default="{ row }">
+              <span>{{ row.departmentName || "-" }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="小组" width="140">
+            <template #default="{ row }">
+              <span>{{ row.groupName || "-" }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="职位" width="150">
+            <template #default="{ row }">
+              <span>{{ row.positionName || "-" }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="任期" min-width="170">
+            <template #default="{ row }">
+              <span>{{ row.termName || "-" }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="任期开始" width="130">
             <template #default="{ row }">{{ formatDateOnly(row.termStart) }}</template>
           </el-table-column>
@@ -1694,61 +3124,293 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="状态" width="130">
             <template #default="{ row }">
-              <el-tag :type="memberStatusTagType(row.memberStatus)" effect="plain">
-                {{ memberStatusText(row.memberStatus) }}
+              <el-tag :type="memberRecordStatusTagType(row)" effect="plain">
+                {{ memberRecordStatusText(row) }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="当前" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.isCurrent ? 'success' : 'info'" effect="plain">
-                {{ row.isCurrent ? "当前" : "历史" }}
+              <el-tag :type="memberTermPhaseTagType(row)" effect="plain">
+                {{ memberTermPhaseText(row) }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
           <el-table-column
-            v-if="canManageSelectedClub || canRemoveSelectedClubMember || canExitSelectedClub"
+            v-if="canShowMemberOperationColumn"
             label="操作"
-            width="210"
+            width="320"
             fixed="right"
           >
             <template #default="{ row }">
+              <div class="row-actions member-row-actions">
+                <el-button
+                  v-if="canUpdateMemberDepartment(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openMemberGroupingDialog(row, 'departmentName')"
+                >
+                  部门
+                </el-button>
+                <el-button
+                  v-if="canUpdateMemberGroup(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openMemberGroupingDialog(row, 'groupName')"
+                >
+                  小组
+                </el-button>
+                <el-button
+                  v-if="canEditMemberPosition(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="editMemberPosition(row)"
+                >
+                  职位
+                </el-button>
+                <el-button
+                  v-if="canEditMemberTerm(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openEditMemberTermDialog(row)"
+                >
+                  任期
+                </el-button>
+                <el-button
+                  v-if="canExitMemberRow(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingClubId === row.clubId"
+                  @click="exitCurrentClub(row)"
+                >
+                  退出
+                </el-button>
+                <el-button
+                  v-if="canRemoveMemberRow(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingMemberId === row.memberId"
+                  @click="removeClubMember(row)"
+                >
+                  移出
+                </el-button>
+                <span v-if="!hasMemberRowActions(row)" class="muted">仅查看</span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div v-else class="transition-panel">
+          <div class="transition-toolbar">
+            <div>
+              <h3>换届管理</h3>
+              <p>
+                选择目标学年后，系统只把已到期且尚未生成新届任期的成员放入暂存区，再由负责人或指导老师处理续任与职务调整。
+              </p>
+            </div>
+            <div class="transition-actions">
+              <el-select
+                v-model="transitionTermForm.label"
+                class="filter-item"
+                @change="applyAcademicTermToTransition"
+              >
+                <el-option
+                  v-for="term in academicTermOptions"
+                  :key="term.label"
+                  :label="term.label"
+                  :value="term.label"
+                />
+              </el-select>
+              <el-tag effect="plain">
+                {{ transitionTermForm.termStart }} 至 {{ transitionTermForm.termEnd }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="transition-steps">
+            <span>1. 选择换届学年</span>
+            <span>2. 查看待换届暂存区</span>
+            <span>3. 逐人确认续任或职务调整</span>
+          </div>
+
+          <el-table
+            v-loading="memberLoading"
+            :data="transitionSourceRows"
+            border
+            stripe
+            empty-text="暂无到期待换届成员"
+            row-key="memberId"
+          >
+            <el-table-column prop="userName" label="成员" min-width="150" />
+            <el-table-column prop="departmentName" label="当前部门" width="150" />
+            <el-table-column prop="groupName" label="当前小组" width="140" />
+            <el-table-column prop="positionName" label="当前职务" width="150" />
+            <el-table-column prop="termName" label="当前任期" min-width="160" />
+            <el-table-column label="当前任期时间" width="230">
+              <template #default="{ row }">
+                {{ formatDateOnly(row.termStart) }} 至 {{ formatDateOnly(row.termEnd) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="canManageSelectedClub"
+              label="换届操作"
+              width="150"
+              fixed="right"
+            >
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openTransitionMemberTermDialog(row)"
+                >
+                  处理换届
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane
+        v-if="showLegacyEvaluationTab && evaluationViewClubs.length > 0"
+        label="成员考核"
+        name="evaluations"
+      >
+        <div class="member-head">
+          <div class="member-controls">
+            <el-select
+              v-model="selectedClubId"
+              class="club-selector"
+              placeholder="选择社团"
+              filterable
+            >
+              <el-option
+                v-for="club in evaluationViewClubs"
+                :key="club.id"
+                :label="club.name"
+                :value="club.id"
+              />
+            </el-select>
+            <el-select
+              v-model="evaluationFilters.termName"
+              class="filter-item"
+              clearable
+              filterable
+              allow-create
+              default-first-option
+              placeholder="考核学期"
+            >
+              <el-option
+                v-for="term in evaluationTermOptions"
+                :key="term"
+                :label="term"
+                :value="term"
+              />
+            </el-select>
+            <el-button :icon="Refresh" @click="clearEvaluationFilters">清除筛选</el-button>
+          </div>
+          <el-button
+            v-if="canMaintainSelectedEvaluations"
+            type="primary"
+            :icon="Plus"
+            @click="openCreateEvaluationDialog"
+          >
+            录入评价
+          </el-button>
+        </div>
+
+        <div class="member-summary">
+          <span>考核记录 {{ evaluationSummary.total }} 条</span>
+          <span>已公示 {{ evaluationSummary.published }} 条</span>
+          <span>平均总分 {{ evaluationSummary.average }}</span>
+          <span>可评价成员 {{ evaluationTargetOptions.length }} 人</span>
+        </div>
+
+        <el-table
+          v-loading="evaluationLoading"
+          :data="evaluations"
+          border
+          stripe
+          empty-text="暂无成员考核记录"
+          row-key="evaluationId"
+        >
+          <el-table-column type="expand">
+            <template #default="{ row }">
+              <div class="application-detail">
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="成员">
+                    {{ row.userName }}（{{ row.studentNo || "-" }}）
+                  </el-descriptions-item>
+                  <el-descriptions-item label="评价人">
+                    {{ row.evaluatorName || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="部门/小组">
+                    {{ row.departmentName || "-" }} / {{ row.groupName || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="职位">
+                    {{ row.positionName || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="评价说明" :span="2">
+                    {{ row.commentText || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="创建时间">
+                    {{ formatDate(row.createdAt) }}
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="userName" label="成员" min-width="150" />
+          <el-table-column prop="termName" label="学期" min-width="150" />
+          <el-table-column prop="activityScore" label="参与分" width="100" />
+          <el-table-column prop="taskScore" label="任务分" width="100" />
+          <el-table-column prop="learningScore" label="学习分" width="100" />
+          <el-table-column prop="awardScore" label="奖项分" width="100" />
+          <el-table-column prop="totalScore" label="总分" width="100" />
+          <el-table-column label="等级" width="110">
+            <template #default="{ row }">
+              <el-tag :type="evaluationGradeTagType(row.grade)" effect="plain">
+                {{ row.grade }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="公示" width="110">
+            <template #default="{ row }">
+              <el-tag :type="evaluationPublicTagType(row.publicStatus)" effect="plain">
+                {{ row.publicStatusText }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
               <el-button
-                v-if="canManageSelectedClub"
+                v-if="canMaintainEvaluationRecord(row)"
                 type="primary"
                 plain
                 :icon="Edit"
-                @click="openEditMemberTermDialog(row)"
+                @click="openEditEvaluationDialog(row)"
               >
                 编辑
               </el-button>
-              <el-button
-                v-if="canExitMemberRow(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingClubId === row.clubId"
-                @click="exitCurrentClub(row)"
-              >
-                退出
-              </el-button>
-              <el-button
-                v-if="canRemoveMemberRow(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingMemberId === row.memberId"
-                @click="removeClubMember(row)"
-              >
-                移出
-              </el-button>
+              <span v-else class="muted">仅查看</span>
             </template>
           </el-table-column>
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane v-if="visibleIdentityRows.length > 0" label="我的社团身份" name="identity">
+      <el-tab-pane
+        v-if="isClubWorkspace && visibleIdentityRows.length > 0"
+        label="我的社团身份"
+        name="identity"
+      >
         <el-table :data="visibleIdentityRows" border stripe empty-text="暂无社团成员身份">
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
@@ -1762,7 +3424,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right">
+          <el-table-column v-if="isMemberWorkspace" label="操作" width="210" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
                 查看
@@ -1783,7 +3445,12 @@ onUnmounted(() => {
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="applicationDialogVisible" title="提交社团注册申请" width="620px">
+    <el-dialog
+      v-if="isRegistrationWorkspace"
+      v-model="applicationDialogVisible"
+      title="提交社团注册申请"
+      width="620px"
+    >
       <el-form
         ref="applicationFormRef"
         :model="applicationForm"
@@ -1830,7 +3497,12 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reviewDialogVisible" title="审核社团注册申请" width="560px">
+    <el-dialog
+      v-if="isRegistrationWorkspace"
+      v-model="reviewDialogVisible"
+      title="审核社团注册申请"
+      width="560px"
+    >
       <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="90px">
         <el-form-item label="社团">
           <el-input :model-value="reviewTarget?.name" disabled />
@@ -1929,9 +3601,78 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
+    <el-dialog v-model="memberGroupingDialogVisible" :title="groupingDialogTitle()" width="520px">
+      <el-alert
+        v-if="memberGroupingMode === 'own'"
+        class="dialog-alert"
+        type="info"
+        show-icon
+        :closable="false"
+        title="干部只能将成员纳入自己所在的小组，不能调整到其他部门或小组。"
+      />
+      <el-alert
+        v-else-if="memberGroupingMode === 'department'"
+        class="dialog-alert"
+        type="info"
+        show-icon
+        :closable="false"
+        title="部长只能在自己所在部门内选择小组。"
+      />
+      <el-form label-width="90px">
+        <el-form-item label="成员">
+          <el-input :model-value="memberGroupingTarget?.userName" disabled />
+        </el-form-item>
+        <el-form-item label="部门">
+          <el-select
+            v-model="memberGroupingForm.departmentName"
+            class="full-width"
+            :disabled="memberGroupingMode !== 'free'"
+            placeholder="选择部门"
+            @change="handleMemberGroupingDepartmentChange"
+          >
+            <el-option
+              v-for="department in memberDepartmentOptions"
+              :key="department"
+              :label="department"
+              :value="department"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="小组">
+          <el-select
+            v-model="memberGroupingForm.groupName"
+            :disabled="memberGroupingMode === 'own'"
+            class="full-width"
+            clearable
+            placeholder="选择小组"
+          >
+            <el-option
+              v-for="group in memberGroupingGroupOptions"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="memberGroupingDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="groupingSaving" @click="submitMemberGrouping">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog
+      v-if="isMemberWorkspace"
       v-model="memberTermDialogVisible"
-      :title="memberTermMode === 'create' ? '新增成员任期' : '编辑成员任期'"
+      :title="
+        memberWorkspaceMode === 'transition' && memberTermMode === 'create'
+          ? '处理换届任期'
+          : memberTermMode === 'create'
+            ? '新增成员任期'
+            : '编辑成员任期'
+      "
       width="660px"
     >
       <el-form
@@ -1947,6 +3688,7 @@ onUnmounted(() => {
           <el-select
             v-model="memberTermForm.userId"
             :loading="dialogUsersLoading"
+            :disabled="memberTermUserLocked"
             filterable
             placeholder="选择用户"
           >
@@ -1961,24 +3703,62 @@ onUnmounted(() => {
         <el-form-item v-else label="成员">
           <el-input :model-value="memberTermTarget?.userName" disabled />
         </el-form-item>
-        <el-form-item label="部门">
-          <el-input v-model="memberTermForm.departmentName" maxlength="60" />
+        <el-form-item v-if="memberTermMode === 'create'" label="部门">
+          <el-select
+            v-model="memberTermForm.departmentName"
+            class="full-width"
+            clearable
+            placeholder="选择部门"
+            @change="handleMemberTermDepartmentChange"
+          >
+            <el-option
+              v-for="department in memberDepartmentOptions"
+              :key="department"
+              :label="department"
+              :value="department"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="小组">
-          <el-input v-model="memberTermForm.groupName" maxlength="60" />
+        <el-form-item v-if="memberTermMode === 'create'" label="小组">
+          <el-select
+            v-model="memberTermForm.groupName"
+            class="full-width"
+            clearable
+            placeholder="选择小组"
+          >
+            <el-option
+              v-for="group in groupOptionsForDepartment(memberTermForm.departmentName)"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="职位" prop="positionName">
+        <el-form-item v-if="memberTermMode === 'create'" label="职位" prop="positionName">
           <el-input v-model="memberTermForm.positionName" maxlength="60" />
         </el-form-item>
         <el-form-item label="任期名称" prop="termName">
-          <el-input v-model="memberTermForm.termName" maxlength="80" />
+          <el-select
+            v-model="memberTermForm.termName"
+            filterable
+            class="full-width"
+            @change="applyAcademicTermToMemberForm"
+          >
+            <el-option
+              v-for="term in memberTermSelectOptions"
+              :key="term.label"
+              :label="term.label"
+              :value="term.label"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="任期开始" prop="termStart">
           <el-date-picker
             v-model="memberTermForm.termStart"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="选择开始日期"
+            disabled
+            class="full-width"
           />
         </el-form-item>
         <el-form-item label="任期结束">
@@ -1986,7 +3766,8 @@ onUnmounted(() => {
             v-model="memberTermForm.termEnd"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="未结束可留空"
+            disabled
+            class="full-width"
           />
         </el-form-item>
         <el-form-item label="成员状态">
@@ -1999,7 +3780,10 @@ onUnmounted(() => {
         <el-form-item label="贡献分">
           <el-input-number v-model="memberTermForm.contributionScore" :min="0" :precision="1" />
         </el-form-item>
-        <el-form-item v-if="memberTermMode === 'create'" label="换届处理">
+        <el-form-item
+          v-if="memberTermMode === 'create' && memberWorkspaceMode !== 'transition'"
+          label="换届处理"
+        >
           <el-switch
             v-model="memberTermForm.closeCurrentTerm"
             active-text="关闭原有效任期"
@@ -2011,6 +3795,103 @@ onUnmounted(() => {
         <el-button @click="memberTermDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="termSaving" @click="submitMemberTerm">
           保存任期
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="evaluationDialogVisible"
+      :title="evaluationMode === 'create' ? '录入评价考核' : '编辑评价考核'"
+      width="720px"
+    >
+      <el-form
+        ref="evaluationFormRef"
+        :model="evaluationForm"
+        :rules="evaluationRules"
+        label-width="100px"
+      >
+        <el-form-item label="社团">
+          <el-input :model-value="selectedClub?.name" disabled />
+        </el-form-item>
+        <el-form-item v-if="evaluationMode === 'create'" label="成员" prop="userId">
+          <el-select v-model="evaluationForm.userId" filterable placeholder="选择被评价成员">
+            <el-option
+              v-for="member in evaluationTargetOptions"
+              :key="member.memberId"
+              :label="memberOptionLabel(member)"
+              :value="member.userId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-else label="成员">
+          <el-input :model-value="evaluationTarget?.userName" disabled />
+        </el-form-item>
+        <el-form-item label="考核学期" prop="termName">
+          <el-input v-model="evaluationForm.termName" maxlength="80" show-word-limit />
+        </el-form-item>
+
+        <div class="score-grid">
+          <el-form-item label="参与分">
+            <el-input-number
+              v-model="evaluationForm.activityScore"
+              :min="0"
+              :max="100"
+              :precision="1"
+            />
+          </el-form-item>
+          <el-form-item label="任务分">
+            <el-input-number
+              v-model="evaluationForm.taskScore"
+              :min="0"
+              :max="100"
+              :precision="1"
+            />
+          </el-form-item>
+          <el-form-item label="学习分">
+            <el-input-number
+              v-model="evaluationForm.learningScore"
+              :min="0"
+              :max="100"
+              :precision="1"
+            />
+          </el-form-item>
+          <el-form-item label="奖项分">
+            <el-input-number
+              v-model="evaluationForm.awardScore"
+              :min="0"
+              :max="100"
+              :precision="1"
+            />
+          </el-form-item>
+        </div>
+
+        <div class="evaluation-preview">
+          <span>总分 {{ evaluationFormTotal }}</span>
+          <el-tag :type="evaluationGradeTagType(evaluationFormGrade)" effect="plain">
+            {{ evaluationFormGrade }}
+          </el-tag>
+        </div>
+
+        <el-form-item label="公示状态">
+          <el-radio-group v-model="evaluationForm.publicStatus">
+            <el-radio-button label="draft">草稿</el-radio-button>
+            <el-radio-button label="published">已公示</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="评价说明">
+          <el-input
+            v-model="evaluationForm.commentText"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="evaluationDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="evaluationSaving" @click="submitEvaluation">
+          保存评价
         </el-button>
       </template>
     </el-dialog>
@@ -2061,6 +3942,7 @@ onUnmounted(() => {
 .toolbar-actions,
 .member-head,
 .member-controls,
+.member-filter-row,
 .filter-bar {
   display: flex;
   align-items: center;
@@ -2206,8 +4088,108 @@ onUnmounted(() => {
   padding: 18px 0 14px;
 }
 
+.member-filter-row {
+  padding-bottom: 12px;
+}
+
+.member-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 0 14px;
+  color: #66727f;
+  font-size: 13px;
+}
+
+.member-summary span {
+  border: 1px solid #d9e1ea;
+  padding: 4px 8px;
+}
+
+.taxonomy-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.taxonomy-add .el-input,
+.taxonomy-add .el-select,
+.taxonomy-add .el-input-number {
+  width: 132px;
+}
+
+.taxonomy-add.term-add .el-input-number {
+  width: 128px;
+}
+
+.taxonomy-add.group-add .el-select {
+  width: 150px;
+}
+
+.transition-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.transition-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.transition-toolbar h3 {
+  margin: 0 0 6px;
+}
+
+.transition-toolbar p {
+  margin: 0;
+  color: #66727f;
+}
+
+.transition-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.transition-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transition-steps span {
+  border: 1px solid var(--el-color-primary-light-5);
+  padding: 5px 9px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+}
+
+.evaluation-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 18px 100px;
+  color: #20262e;
+  font-weight: 600;
+}
+
 .club-selector {
   width: 280px;
+}
+
+.dialog-alert {
+  margin-bottom: 16px;
 }
 
 :deep(.el-dialog__body .el-select),
@@ -2223,7 +4205,8 @@ onUnmounted(() => {
   .toolbar,
   .identity-band,
   .workspace-head,
-  .member-head {
+  .member-head,
+  .transition-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
@@ -2231,9 +4214,19 @@ onUnmounted(() => {
   .toolbar-actions,
   .identity-side,
   .member-controls,
-  .filter-bar {
+  .member-filter-row,
+  .filter-bar,
+  .taxonomy-add,
+  .transition-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .taxonomy-add .el-input,
+  .taxonomy-add .el-select,
+  .taxonomy-add .el-input-number,
+  .taxonomy-add.group-add .el-select {
+    width: 100%;
   }
 
   .identity-tags,
@@ -2250,6 +4243,14 @@ onUnmounted(() => {
   .club-detail-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .evaluation-preview {
+    padding-left: 0;
   }
 }
 </style>

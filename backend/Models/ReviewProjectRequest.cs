@@ -26,9 +26,8 @@ namespace Org.OpenAPITools.Models
     public partial class ReviewProjectRequest 
     {
         /// <summary>
-        /// 当前审核操作用户 ID；仅本社团指导老师可审核。
+        /// Gets or Sets CurrentUserId
         /// </summary>
-        /// <value>当前审核操作用户 ID；仅本社团指导老师可审核。</value>
         /* <example>3</example> */
         [Required]
         [DataMember(Name="currentUserId", EmitDefaultValue=true)]

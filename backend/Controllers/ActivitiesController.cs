@@ -3,6 +3,7 @@ using System.Data;
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Extensions;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
-using RegisterActivityRequest = Org.OpenAPITools.Models.RegisterActivityRequest;
 using ReviewActivityBudgetRequest = Org.OpenAPITools.Models.ReviewActivityBudgetRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -29,7 +29,13 @@ public class ActivitiesController : ControllerBase
     private const string BudgetStatusPending = "pending";
     private const string BudgetStatusApproved = "approved";
     private const string BudgetStatusRejected = "rejected";
-
+    private const int BudgetPurposeMaxLength = 255;
+    private const int BudgetCommentMaxLength = 255;
+    private const int BudgetDetailMaxLength = 4000;
+    private const string ActivityCreatePermission = "activity:create";
+    private const string ActivityReviewPermission = "activity:review";
+    private const string ActivityCheckinManagePermission = "activity:checkin:manage";
+    private const string ActivityCheckinPermission = "activity:checkin";
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
 
@@ -93,8 +99,15 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateActivityRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
         if (string.IsNullOrWhiteSpace(req.Title))
         {
             return BadRequest(new { message = "活动标题不能为空。" });
@@ -116,19 +129,23 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "指定社团不存在，不能创建活动。" });
         }
 
-        if (req.CreatorUserId is not null && !await UserExists(req.CreatorUserId.Value))
+        var permissionError = await EnsurePermissionAsync(
+            currentUserId.Value,
+            ActivityCreatePermission,
+            req.ClubId,
+            "当前用户没有该社团的活动创建权限。");
+        if (permissionError is not null)
         {
-            return BadRequest(new { message = "创建人用户不存在，请留空或填写有效用户 ID。" });
+            return permissionError;
         }
 
-        // TODO(#81): creatorUserId 目前可手工填写，仅用于 demo；正式版应从认证上下文写入，忽略请求体该字段。
         var maxId = await _db.Activities.MaxAsync(a => (int?)a.ActivityId) ?? 0;
         var now = DateTime.Now;
         var activity = new Activity
         {
             ActivityId = maxId + 1,
             ClubId = req.ClubId,
-            CreatorUserId = req.CreatorUserId,
+            CreatorUserId = currentUserId.Value,
             Title = req.Title.Trim(),
             ActivityType = req.ActivityType,
             Description = req.Description,
@@ -202,16 +219,13 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/registrations")]
-    public async Task<IActionResult> Register(int activityId, [FromBody] RegisterActivityRequest? request)
+    [Authorize]
+    public async Task<IActionResult> Register(int activityId)
     {
-        if (request is null)
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
         {
-            return Error(StatusCodes.Status400BadRequest, "REQUEST_BODY_REQUIRED", "请提交报名用户信息");
-        }
-
-        if (request.UserId <= 0)
-        {
-            return Error(StatusCodes.Status400BadRequest, "INVALID_USER_ID", "报名用户 ID 不合法");
+            return Error(StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "登录状态已失效，请重新登录。");
         }
 
         for (var attempt = 1; attempt <= MaxRegisterRetries; attempt++)
@@ -235,7 +249,7 @@ public class ActivitiesController : ControllerBase
                 return Error(StatusCodes.Status400BadRequest, "REGISTRATION_CLOSED", "报名已截止");
             }
 
-            var userExists = await _db.Users.AnyAsync(u => u.UserId == request.UserId);
+            var userExists = await _db.Users.AnyAsync(u => u.UserId == currentUserId.Value);
             if (!userExists)
             {
                 return Error(StatusCodes.Status404NotFound, "USER_NOT_FOUND", "用户不存在");
@@ -243,7 +257,7 @@ public class ActivitiesController : ControllerBase
 
             var isClubMember = await _db.ClubMembers.AnyAsync(m =>
                 m.ClubId == activity.ClubId &&
-                m.UserId == request.UserId &&
+                m.UserId == currentUserId.Value &&
                 (m.MemberStatus == null || m.MemberStatus.ToLower() == MemberStatusActive));
             if (!isClubMember)
             {
@@ -252,7 +266,7 @@ public class ActivitiesController : ControllerBase
 
             var alreadyRegistered = await _db.ActivityParticipations.AnyAsync(p =>
                 p.ActivityId == activityId &&
-                p.UserId == request.UserId &&
+                p.UserId == currentUserId.Value &&
                 (p.RegisterStatus == RegisterStatusPending ||
                  p.RegisterStatus == RegisterStatusAccepted ||
                  p.RegisterStatus == RegisterStatusOnsite));
@@ -271,7 +285,7 @@ public class ActivitiesController : ControllerBase
             {
                 ParticipationId = await NextParticipationId(),
                 ActivityId = activityId,
-                UserId = request.UserId,
+                UserId = currentUserId.Value,
                 RegisterStatus = RegisterStatusAccepted,
                 RegisteredAt = now,
                 SignStatus = "registered"
@@ -297,7 +311,7 @@ public class ActivitiesController : ControllerBase
 
                 return CreatedAtAction(
                     nameof(GetById),
-                    new { activityId, currentUserId = request.UserId },
+                    new { activityId, currentUserId = currentUserId.Value },
                     result);
             }
             catch (DbUpdateException)
@@ -311,8 +325,15 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
         var activity = await _db.Activities
             .Include(a => a.Club)
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
@@ -328,12 +349,17 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "已发布或已结束的活动不能重复审核。" });
         }
 
-        if (req.ReviewerUserId is not null && !await UserExists(req.ReviewerUserId.Value))
+        var permissionError = await EnsurePermissionAsync(
+            currentUserId.Value,
+            ActivityReviewPermission,
+            activity.ClubId,
+            "当前用户没有该社团的活动审核权限。");
+        if (permissionError is not null)
         {
-            return BadRequest(new { message = "审核人用户不存在，请留空或填写有效用户 ID。" });
+            return permissionError;
         }
 
-        activity.ReviewerUserId = req.ReviewerUserId;
+        activity.ReviewerUserId = currentUserId.Value;
         activity.ReviewComment = req.Comment;
         activity.ActivityStatus = req.Approved.Value ? "published" : "rejected";
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
@@ -347,10 +373,32 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
+        var budgetPurpose = req.BudgetPurpose?.Trim();
+        var budgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        if (req.BudgetAmount < 0.01)
+        {
+            return BadRequest(new { message = "预算金额必须大于 0。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(budgetPurpose))
+        {
+            return BadRequest(new { message = "预算用途不能为空。" });
+        }
+
+        if (budgetPurpose.Length > BudgetPurposeMaxLength)
+        {
+            return BadRequest(new { message = $"预算用途不能超过 {BudgetPurposeMaxLength} 个字符。" });
+        }
+
+        if (budgetDetail?.Length > BudgetDetailMaxLength)
+        {
+            return BadRequest(new { message = $"经费明细不能超过 {BudgetDetailMaxLength} 个字符。" });
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
@@ -365,21 +413,6 @@ public class ActivitiesController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
         }
 
-        if (req.BudgetAmount < 0.01)
-        {
-            return BadRequest(new { message = "预算金额必须大于 0。" });
-        }
-
-        if (string.IsNullOrWhiteSpace(req.BudgetPurpose))
-        {
-            return BadRequest(new { message = "预算用途不能为空。" });
-        }
-
-        if (req.BudgetDetail?.Length > 4000)
-        {
-            return BadRequest(new { message = "经费明细不能超过 4000 个字符。" });
-        }
-
         if (activity.ActivityStatus is "finished" or "cancelled")
         {
             return BadRequest(new { message = "已结束或已取消的活动不能提交经费申请。" });
@@ -391,8 +424,8 @@ public class ActivitiesController : ControllerBase
         }
 
         activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
-        activity.BudgetPurpose = req.BudgetPurpose.Trim();
-        activity.BudgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
+        activity.BudgetPurpose = budgetPurpose;
+        activity.BudgetDetail = budgetDetail;
         activity.BudgetStatus = BudgetStatusPending;
         activity.BudgetReviewerId = null;
         activity.BudgetComment = null;
@@ -408,10 +441,16 @@ public class ActivitiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
-        var currentUserId = GetAuthenticatedUserId();
+        var currentUserId = User.GetUserId();
         if (currentUserId is null)
         {
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
+        var budgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        if (budgetComment?.Length > BudgetCommentMaxLength)
+        {
+            return BadRequest(new { message = $"审批意见不能超过 {BudgetCommentMaxLength} 个字符。" });
         }
 
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
@@ -431,7 +470,7 @@ public class ActivitiesController : ControllerBase
         }
 
         activity.BudgetReviewerId = currentUserId.Value;
-        activity.BudgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
+        activity.BudgetComment = budgetComment;
         activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
 
         await _db.SaveChangesAsync();
@@ -442,13 +481,31 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPut("{activityId:int}/checkin-settings")]
+    [Authorize]
     public async Task<IActionResult> UpdateCheckinSettings(int activityId, [FromBody] UpdateCheckinSettingsRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
         var activity = await _db.Activities
             .Include(a => a.Club)
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
 
         if (activity is null) return NotFound();
+
+        var permissionError = await EnsurePermissionAsync(
+            currentUserId.Value,
+            ActivityCheckinManagePermission,
+            activity.ClubId,
+            "当前用户没有该社团的签到管理权限。");
+        if (permissionError is not null)
+        {
+            return permissionError;
+        }
+
         if (activity.ActivityStatus is not "published" and not "ongoing")
         {
             return BadRequest(new { message = "只有已发布或进行中的活动才能设置签到签退规则。" });
@@ -502,24 +559,52 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpGet("{activityId:int}/participations")]
+    [Authorize]
     public async Task<IActionResult> GetParticipations(int activityId)
     {
-        var activityExists = await _db.Activities.AnyAsync(a => a.ActivityId == activityId);
-        if (!activityExists) return NotFound();
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
 
-        var participations = await _db.ActivityParticipations
-            .Where(p => p.ActivityId == activityId)
-            .OrderBy(p => p.ParticipationId)
-            .Select(p => new ActivityParticipationDto(
-                p.ParticipationId,
-                p.ActivityId,
-                p.UserId,
-                p.RegisterStatus,
-                p.RegisteredAt,
-                p.CheckinAt,
-                p.CheckoutAt,
-                p.SignStatus,
-                p.Remark
+        var activity = await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
+        if (activity is null) return NotFound();
+
+        var canManage = await IsPermissionAllowedAsync(
+            currentUserId.Value,
+            ActivityCheckinManagePermission,
+            activity.ClubId);
+        var canReview = await IsPermissionAllowedAsync(
+            currentUserId.Value,
+            ActivityReviewPermission,
+            activity.ClubId);
+
+        var query =
+            from participation in _db.ActivityParticipations
+            join user in _db.Users on participation.UserId equals user.UserId
+            where participation.ActivityId == activityId
+            select new { participation, user };
+
+        if (!canManage && !canReview)
+        {
+            query = query.Where(row => row.participation.UserId == currentUserId.Value);
+        }
+
+        var participations = await query
+            .OrderBy(row => row.participation.ParticipationId)
+            .Select(row => new ActivityParticipationDto(
+                row.participation.ParticipationId,
+                row.participation.ActivityId,
+                row.participation.UserId,
+                string.IsNullOrWhiteSpace(row.user.RealName) ? row.user.Username : row.user.RealName,
+                row.user.StudentNo,
+                row.participation.RegisterStatus,
+                row.participation.RegisteredAt,
+                row.participation.CheckinAt,
+                row.participation.CheckoutAt,
+                row.participation.SignStatus,
+                row.participation.Remark
             ))
             .ToListAsync();
 
@@ -527,13 +612,14 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/checkin")]
+    [Authorize]
     public async Task<IActionResult> Checkin(int activityId, [FromBody] ActivitySignRequest req)
     {
-        // TODO(#81): userId 目前由请求体传入，仅用于 demo；正式版应从 HttpContext.User 读取，禁止客户端指定。
         return await Sign(activityId, req, isCheckin: true);
     }
 
     [HttpPost("{activityId:int}/checkout")]
+    [Authorize]
     public async Task<IActionResult> Checkout(int activityId, [FromBody] ActivitySignRequest req)
     {
         return await Sign(activityId, req, isCheckin: false);
@@ -541,11 +627,28 @@ public class ActivitiesController : ControllerBase
 
     private async Task<IActionResult> Sign(int activityId, ActivitySignRequest req, bool isCheckin)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        }
+
         var activity = await _db.Activities
             .Include(a => a.Participations)
             .FirstOrDefaultAsync(a => a.ActivityId == activityId);
 
         if (activity is null) return NotFound();
+
+        var permissionError = await EnsurePermissionAsync(
+            currentUserId.Value,
+            ActivityCheckinPermission,
+            activity.ClubId,
+            isCheckin ? "当前用户没有活动签到权限。" : "当前用户没有活动签退权限。");
+        if (permissionError is not null)
+        {
+            return permissionError;
+        }
+
         if (string.IsNullOrWhiteSpace(req.Code))
         {
             return BadRequest(new { message = isCheckin ? "签到码不能为空。" : "签退码不能为空。" });
@@ -556,7 +659,15 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "只有已发布或进行中的活动可以签到或签退。" });
         }
 
-        if (!await UserExists(req.UserId))
+        var participantUser = await _db.Users
+            .Where(user => user.UserId == currentUserId.Value)
+            .Select(user => new
+            {
+                UserName = string.IsNullOrWhiteSpace(user.RealName) ? user.Username : user.RealName,
+                user.StudentNo
+            })
+            .FirstOrDefaultAsync();
+        if (participantUser is null)
         {
             return BadRequest(new { message = "用户不存在，不能签到或签退。" });
         }
@@ -581,7 +692,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = isCheckin ? "当前不在签到有效时间内。" : "当前不在签退有效时间内。" });
         }
 
-        var participation = activity.Participations.FirstOrDefault(p => p.UserId == req.UserId);
+        var participation = activity.Participations.FirstOrDefault(p => p.UserId == currentUserId.Value);
         if (participation is null)
         {
             var maxId = await _db.ActivityParticipations.MaxAsync(p => (int?)p.ParticipationId) ?? 0;
@@ -589,7 +700,7 @@ public class ActivitiesController : ControllerBase
             {
                 ParticipationId = maxId + 1,
                 ActivityId = activity.ActivityId,
-                UserId = req.UserId,
+                UserId = currentUserId.Value,
                 RegisterStatus = RegisterStatusOnsite,
                 RegisteredAt = now,
                 SignStatus = "registered",
@@ -629,6 +740,8 @@ public class ActivitiesController : ControllerBase
             participation.ParticipationId,
             participation.ActivityId,
             participation.UserId,
+            participantUser.UserName,
+            participantUser.StudentNo,
             participation.RegisterStatus,
             participation.RegisteredAt,
             participation.CheckinAt,
@@ -656,13 +769,36 @@ public class ActivitiesController : ControllerBase
             return null;
         }
 
-        return await _db.Activities.FirstOrDefaultAsync(a => a.ActivityId == activityId);
+        return await _db.Activities
+            .Include(a => a.Club)
+            .FirstOrDefaultAsync(a => a.ActivityId == activityId);
     }
 
-    private int? GetAuthenticatedUserId()
+
+    private async Task<IActionResult?> EnsurePermissionAsync(
+        int userId,
+        string permission,
+        int? clubId,
+        string forbiddenMessage)
     {
-        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(rawUserId, out var userId) && userId > 0 ? userId : null;
+        var result = await _authService.CheckPermissionAsync(userId, permission, clubId);
+        if (!result.Succeeded)
+        {
+            return StatusCode(result.StatusCode, new { message = result.ErrorMessage ?? "权限校验失败。" });
+        }
+
+        if (result.Value?.Allowed != true)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = forbiddenMessage });
+        }
+
+        return null;
+    }
+
+    private async Task<bool> IsPermissionAllowedAsync(int userId, string permission, int? clubId)
+    {
+        var result = await _authService.CheckPermissionAsync(userId, permission, clubId);
+        return result.Succeeded && result.Value?.Allowed == true;
     }
 
     private Task<int> CountActiveParticipants(int activityId)
@@ -717,11 +853,6 @@ public class ActivitiesController : ControllerBase
         );
     }
 
-    private async Task<bool> UserExists(int userId)
-    {
-        return await _db.Users.AnyAsync(u => u.UserId == userId);
-    }
-
     private static ObjectResult Error(int statusCode, string code, string message)
     {
         return new ObjectResult(new ApiError
@@ -771,9 +902,7 @@ public class CreateActivityRequest
     [Required]
     public int ClubId { get; set; }
 
-    public int? CreatorUserId { get; set; }
-
-    [Required, StringLength(100, MinimumLength = 1)]
+    [Required, StringLength(255, MinimumLength = 1)]
     public string Title { get; set; } = string.Empty;
 
     [StringLength(255)]
@@ -801,8 +930,6 @@ public class ReviewActivityRequest
     [Required]
     public bool? Approved { get; set; }
 
-    public int? ReviewerUserId { get; set; }
-
     public string? Comment { get; set; }
 }
 
@@ -829,9 +956,6 @@ public class UpdateCheckinSettingsRequest
 
 public class ActivitySignRequest
 {
-    [Required]
-    public int UserId { get; set; }
-
     [Required, StringLength(50, MinimumLength = 1)]
     public string Code { get; set; } = string.Empty;
 }
@@ -840,6 +964,8 @@ public record ActivityParticipationDto(
     int Id,
     int ActivityId,
     int UserId,
+    string UserName,
+    string? StudentNo,
     string? RegisterStatus,
     DateTime? RegisteredAt,
     DateTime? CheckinAt,

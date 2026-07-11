@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
     /// </summary>
     [DataContract]
     public partial class CreateActivityRequest 
@@ -33,8 +33,9 @@ namespace Org.OpenAPITools.Models
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatorUserId
+        /// 已废弃，服务端从 JWT 读取身份。
         /// </summary>
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
         [DataMember(Name="creatorUserId", EmitDefaultValue=true)]
         public int? CreatorUserId { get; set; }
 

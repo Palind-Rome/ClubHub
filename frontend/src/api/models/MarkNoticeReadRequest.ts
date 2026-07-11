@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface MarkNoticeReadRequest {
   /**
-   * 当前阅读用户 ID。
+   *
    * @type {number}
    * @memberof MarkNoticeReadRequest
    */

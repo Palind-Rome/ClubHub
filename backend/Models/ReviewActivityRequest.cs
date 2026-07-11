@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 审核活动请求。审核人由服务端从登录态写入，客户端无需也不应提交 reviewerUserId。
     /// </summary>
     [DataContract]
     public partial class ReviewActivityRequest 
@@ -32,8 +32,9 @@ namespace Org.OpenAPITools.Models
         public bool? Approved { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewerUserId
+        /// 已废弃，服务端从 JWT 读取身份。
         /// </summary>
+        /// <value>已废弃，服务端从 JWT 读取身份。</value>
         [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
         public int? ReviewerUserId { get; set; }
 

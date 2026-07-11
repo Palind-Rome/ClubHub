@@ -99,7 +99,9 @@ public class RecruitmentApplicationService
         var currentClubCount = await CountCurrentMembershipClubsAsync(applicant.UserId);
         if (currentClubCount >= MaxStudentClubMemberships)
         {
-            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "一个学生最多只能同时加入 3 个社团，当前已达到上限。");
+            return ServiceResult<RecruitmentApplicationDto>.Fail(
+                409,
+                $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。");
         }
 
         if (recruitment.Quota is not null && recruitment.Applications.Count(a => a.ApplicationStatus == ApplicationAccepted) >= recruitment.Quota.Value)
@@ -210,7 +212,9 @@ public class RecruitmentApplicationService
         var currentClubCount = await CountCurrentMembershipClubsAsync(application.UserId);
         if (currentClubCount >= MaxStudentClubMemberships)
         {
-            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "一个学生最多只能同时加入 3 个社团，该学生已达到上限。");
+            return ServiceResult<RecruitmentApplicationDto>.Fail(
+                409,
+                $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，该学生已达到上限。");
         }
 
         var acceptedCount = await _db.RecruitmentApplications.CountAsync(a =>
@@ -389,15 +393,16 @@ public class RecruitmentApplicationService
     {
         if (application.Recruitment is null) return;
 
-        var nextMemberId = (await _db.ClubMembers.MaxAsync(m => (int?)m.MemberId) ?? 0) + 1;
+        var businessDate = BusinessDate(now);
+        var academicTerm = AcademicTermHelper.FromDate(businessDate);
         _db.ClubMembers.Add(new ClubMember
         {
-            MemberId = nextMemberId,
             ClubId = application.Recruitment.ClubId,
             UserId = application.UserId,
             PositionName = "社员",
-            TermName = $"{BusinessDate(now).Year} 招新录取",
-            TermStart = BusinessDate(now),
+            TermName = academicTerm.Label,
+            TermStart = academicTerm.Start,
+            TermEnd = academicTerm.End,
             MemberStatus = MemberActive,
             JoinAt = now,
             ContributionScore = 0
@@ -423,7 +428,6 @@ public class RecruitmentApplicationService
 
         _db.UserRoles.Add(new UserRole
         {
-            UserRoleId = await NextUserRoleIdAsync(),
             UserId = userId,
             RoleId = role.RoleId,
             ClubId = clubId,
@@ -461,15 +465,4 @@ public class RecruitmentApplicationService
         return Math.Max(maxSaved, maxAdded) + 1;
     }
 
-    private async Task<int> NextUserRoleIdAsync()
-    {
-        var maxSaved = await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0;
-        var maxAdded = _db.ChangeTracker.Entries<UserRole>()
-            .Where(entry => entry.State == EntityState.Added)
-            .Select(entry => entry.Entity.UserRoleId)
-            .DefaultIfEmpty(0)
-            .Max();
-
-        return Math.Max(maxSaved, maxAdded) + 1;
-    }
 }

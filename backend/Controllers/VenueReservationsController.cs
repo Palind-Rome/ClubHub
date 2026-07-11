@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.OpenAPITools.Models;
@@ -9,6 +12,7 @@ using VenueReservationEntity = ClubHub.Api.Data.Entities.VenueReservation;
 namespace ClubHub.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/venue-reservations")]
 public class VenueReservationsController : ControllerBase
 {
@@ -16,10 +20,11 @@ public class VenueReservationsController : ControllerBase
     private const string ClubStatusActive = "active";
     private const string AccountStatusNormal = "normal";
     private const string AccountStatusEnabled = "enabled";
-    private const string MemberStatusActive = "active";
+    private const string AccountStatusActive = "active";
     private const string ReservationStatusPending = "pending";
     private const string ReservationStatusApproved = "approved";
     private const string ReservationStatusRejected = "rejected";
+    private const string ReservePermission = "venue:reserve";
     private const string ReviewPermission = "venue:review";
     private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
 
@@ -48,12 +53,27 @@ public class VenueReservationsController : ControllerBase
         [FromQuery] int? applicantUserId,
         [FromQuery] int? reviewerUserId)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
         if (!IsValidStatus(status, AllowedReservationStatuses, out var normalizedStatus))
         {
             return BadRequest(Error("reservation_status_invalid", "预约状态参数不合法。"));
         }
 
         var query = ReservationQuery().AsNoTracking();
+        var access = await GetReservationAccessAsync(currentUserId.Value);
+        if (access.Error is not null) return access.Error;
+        if (!access.CanReview && access.ClubIds.Count == 0)
+        {
+            return StatusCode(403, Error("venue_reservation_view_forbidden", "当前用户没有场地预约查看权限。"));
+        }
+
+        if (!access.CanReview)
+        {
+            query = query.Where(r =>
+                r.ApplicantUserId == currentUserId.Value || access.ClubIds.Contains(r.ClubId));
+        }
 
         if (normalizedStatus is not null)
         {
@@ -91,18 +111,90 @@ public class VenueReservationsController : ControllerBase
     [HttpGet("{reservationId:int}")]
     public async Task<IActionResult> GetById(int reservationId)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var access = await GetReservationAccessAsync(currentUserId.Value);
+        if (access.Error is not null) return access.Error;
+        if (!access.CanReview && access.ClubIds.Count == 0)
+        {
+            return StatusCode(403, Error("venue_reservation_view_forbidden", "当前用户没有场地预约查看权限。"));
+        }
+
         var reservation = await ReservationQuery()
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
 
-        return reservation is null
-            ? NotFound(Error("reservation_not_found", "预约不存在。"))
-            : Ok(ToDto(reservation));
+        if (reservation is null) return NotFound(Error("reservation_not_found", "预约不存在。"));
+        if (!access.CanReview &&
+            reservation.ApplicantUserId != currentUserId.Value &&
+            !access.ClubIds.Contains(reservation.ClubId))
+        {
+            return StatusCode(403, Error("venue_reservation_view_forbidden", "当前用户没有查看该预约的权限。"));
+        }
+
+        return Ok(ToDto(reservation));
+    }
+
+    [HttpGet("occupied-slots")]
+    public async Task<IActionResult> GetOccupiedSlots([FromQuery] int? venueId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var access = await GetReservationAccessAsync(currentUserId.Value);
+        if (access.Error is not null) return access.Error;
+        if (!access.CanReview && access.ClubIds.Count == 0)
+        {
+            return StatusCode(403, Error("venue_reservation_slots_forbidden", "当前用户没有场地预约申请或审批权限。"));
+        }
+
+        var now = DateTime.UtcNow;
+        var query = _db.VenueReservations
+            .AsNoTracking()
+            .Include(r => r.Venue)
+            .Where(r =>
+                r.ReservationStatus == ReservationStatusApproved &&
+                r.EndAt.HasValue &&
+                r.EndAt.Value > now);
+
+        if (venueId is not null)
+        {
+            query = query.Where(r => r.VenueId == venueId.Value);
+        }
+
+        var reservations = await query
+            .OrderBy(r => r.StartAt)
+            .ThenBy(r => r.ReservationId)
+            .ToListAsync();
+
+        return Ok(reservations.Select(r => new VenueOccupiedSlot
+        {
+            ReservationId = r.ReservationId,
+            VenueId = r.VenueId,
+            VenueName = r.Venue?.VenueName ?? "",
+            StartTime = StoredTimeToUtc(r.StartAt ?? DateTime.MinValue),
+            EndTime = StoredTimeToUtc(r.EndAt ?? DateTime.MinValue)
+        }));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVenueReservationRequest req)
     {
+        var applicantUserId = User.GetUserId();
+        if (applicantUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var permission = await _authService.CheckPermissionAsync(applicantUserId.Value, ReservePermission, req.ClubId);
+        if (!permission.Succeeded)
+        {
+            return StatusCode(permission.StatusCode, Error("venue_reservation_permission_check_failed", permission.ErrorMessage ?? "预约权限校验失败。"));
+        }
+
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(403, Error("venue_reservation_forbidden", "只有该社团的干部或负责人可以提交场地预约。"));
+        }
+
         var startTime = RequestTimeToUtc(req.StartTime);
         var endTime = RequestTimeToUtc(req.EndTime);
 
@@ -128,16 +220,11 @@ public class VenueReservationsController : ControllerBase
             return BadRequest(Error("club_not_active", "只有正常运营中的社团可以提交场地预约。"));
         }
 
-        var applicant = await _db.Users.FindAsync(req.ApplicantUserId);
+        var applicant = await _db.Users.FindAsync(applicantUserId.Value);
         if (applicant is null) return NotFound(Error("applicant_not_found", "申请人不存在。"));
         if (!IsActiveAccount(applicant.AccountStatus))
         {
             return BadRequest(Error("applicant_account_inactive", "申请人账号不可用，不能提交场地预约。"));
-        }
-
-        if (!await IsClubParticipantAsync(req.ClubId, req.ApplicantUserId))
-        {
-            return StatusCode(403, Error("club_participant_required", "申请人必须是该社团的当前有效成员或社团角色。"));
         }
 
         ClubHub.Api.Data.Entities.Activity? activity = null;
@@ -163,7 +250,7 @@ public class VenueReservationsController : ControllerBase
             VenueId = req.VenueId,
             ClubId = req.ClubId,
             ActivityId = req.ActivityId,
-            ApplicantUserId = req.ApplicantUserId,
+            ApplicantUserId = applicantUserId.Value,
             StartAt = startTime,
             EndAt = endTime,
             Purpose = req.Purpose.Trim(),
@@ -184,6 +271,20 @@ public class VenueReservationsController : ControllerBase
     [HttpPost("{reservationId:int}/review")]
     public async Task<IActionResult> Review(int reservationId, [FromBody] ReviewVenueReservationRequest req)
     {
+        var reviewerUserId = User.GetUserId();
+        if (reviewerUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var permission = await _authService.CheckPermissionAsync(reviewerUserId.Value, ReviewPermission, null);
+        if (!permission.Succeeded)
+        {
+            return StatusCode(permission.StatusCode, Error("venue_review_permission_check_failed", permission.ErrorMessage ?? "审批权限校验失败。"));
+        }
+
+        if (permission.Value?.Allowed != true)
+        {
+            return StatusCode(403, Error("venue_review_forbidden", permission.Value?.Message ?? "当前用户没有场地预约审批权限。"));
+        }
+
         var reservation = await ReservationQuery()
             .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
 
@@ -194,19 +295,8 @@ public class VenueReservationsController : ControllerBase
             return BadRequest(Error("reservation_not_pending", "只有待审批的预约可以审核。"));
         }
 
-        var reviewer = await _db.Users.FindAsync(req.ReviewerUserId);
+        var reviewer = await _db.Users.FindAsync(reviewerUserId.Value);
         if (reviewer is null) return NotFound(Error("reviewer_not_found", "审批人不存在。"));
-
-        var permission = await _authService.CheckPermissionAsync(req.ReviewerUserId, ReviewPermission, null);
-        if (!permission.Succeeded)
-        {
-            return StatusCode(permission.StatusCode, Error("venue_review_permission_check_failed", permission.ErrorMessage ?? "审批权限校验失败。"));
-        }
-
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(403, Error("venue_review_forbidden", permission.Value?.Message ?? "当前用户没有场地预约审批权限。"));
-        }
 
         if (req.Approved)
         {
@@ -234,7 +324,7 @@ public class VenueReservationsController : ControllerBase
         }
 
         reservation.ReservationStatus = req.Approved ? ReservationStatusApproved : ReservationStatusRejected;
-        reservation.ReviewerUserId = req.ReviewerUserId;
+        reservation.ReviewerUserId = reviewerUserId.Value;
         reservation.ReviewerUser = reviewer;
         reservation.ReviewComment = string.IsNullOrWhiteSpace(req.ReviewComment)
             ? null
@@ -246,16 +336,26 @@ public class VenueReservationsController : ControllerBase
     }
 
     [HttpDelete("{reservationId:int}")]
-    public async Task<IActionResult> Delete(int reservationId, [FromBody] DeleteVenueReservationRequest req)
+    public async Task<IActionResult> Delete(int reservationId)
     {
+        var operatorUserId = User.GetUserId();
+        if (operatorUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var operatorUser = await _db.Users.FindAsync(operatorUserId.Value);
+        if (operatorUser is null) return NotFound(Error("operator_not_found", "操作人不存在。"));
+        if (!IsActiveAccount(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, Error("operator_account_inactive", "操作人账号不可用。"));
+        }
+
         var reservation = await ReservationQuery()
             .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
 
         if (reservation is null) return NotFound(Error("reservation_not_found", "预约不存在。"));
 
-        if (reservation.ApplicantUserId != req.OperatorUserId)
+        if (reservation.ApplicantUserId != operatorUserId.Value)
         {
-            var permission = await _authService.CheckPermissionAsync(req.OperatorUserId, ReviewPermission, null);
+            var permission = await _authService.CheckPermissionAsync(operatorUserId.Value, ReviewPermission, null);
             if (!permission.Succeeded)
             {
                 return StatusCode(permission.StatusCode, Error("venue_reservation_delete_permission_check_failed", permission.ErrorMessage ?? "删除预约权限校验失败。"));
@@ -302,32 +402,6 @@ public class VenueReservationsController : ControllerBase
             r.EndAt.HasValue &&
             r.StartAt.Value < endTime &&
             r.EndAt.Value > startTime);
-    }
-
-    private async Task<bool> IsClubParticipantAsync(int clubId, int userId)
-    {
-        var today = BeijingToday();
-        var memberStatuses = await _db.ClubMembers
-            .Where(member =>
-                member.ClubId == clubId &&
-                member.UserId == userId &&
-                (member.TermStart == null || member.TermStart.Value.Date <= today) &&
-                (member.TermEnd == null || member.TermEnd.Value.Date >= today))
-            .Select(member => member.MemberStatus)
-            .ToListAsync();
-
-        if (memberStatuses.Any(IsActiveMemberStatus)) return true;
-
-        var roleCodes = await _db.UserRoles
-            .Include(userRole => userRole.Role)
-            .Where(userRole =>
-                userRole.UserId == userId &&
-                userRole.ClubId == clubId &&
-                userRole.Role != null)
-            .Select(userRole => userRole.Role!.RoleCode)
-            .ToListAsync();
-
-        return roleCodes.Any(IsClubParticipantRole);
     }
 
     private IActionResult? ValidateReservationTime(DateTime startTime, DateTime endTime)
@@ -435,24 +509,7 @@ public class VenueReservationsController : ControllerBase
     private static bool IsActiveAccount(string? status)
     {
         var normalized = NormalizeStatus(status);
-        return normalized is "" or AccountStatusNormal or AccountStatusEnabled or MemberStatusActive or "正常";
-    }
-
-    private static bool IsActiveMemberStatus(string? status)
-    {
-        var normalized = NormalizeStatus(status);
-        return normalized is "" or MemberStatusActive or AccountStatusNormal or AccountStatusEnabled or "在任" or "正常";
-    }
-
-    private static bool IsClubParticipantRole(string? roleCode)
-    {
-        var normalized = NormalizeStatus(roleCode);
-        return normalized is "club_member" or "club_officer" or "club_leader" or "club_president" or "advisor";
-    }
-
-    private static DateTime BeijingToday()
-    {
-        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BeijingTimeZone).Date;
+        return normalized is "" or AccountStatusNormal or AccountStatusEnabled or AccountStatusActive or "正常";
     }
 
     private static string NormalizeReservationStatus(string? status)
@@ -483,6 +540,33 @@ public class VenueReservationsController : ControllerBase
         return StoredTimeToUtc(reservation.StartAt.Value) <= now && StoredTimeToUtc(reservation.EndAt.Value) > now;
     }
 
+    private async Task<(IActionResult? Error, bool CanReview, IReadOnlyList<int> ClubIds)> GetReservationAccessAsync(int userId)
+    {
+        var reviewPermission = await _authService.CheckPermissionAsync(userId, ReviewPermission, null);
+        if (!reviewPermission.Succeeded)
+        {
+            return (
+                StatusCode(reviewPermission.StatusCode, Error(
+                    "venue_reservation_permission_check_failed",
+                    reviewPermission.ErrorMessage ?? "预约权限校验失败。")),
+                false,
+                []);
+        }
+
+        var clubPermission = await _authService.GetPermissionClubIdsAsync(userId, ReservePermission);
+        if (!clubPermission.Succeeded)
+        {
+            return (
+                StatusCode(clubPermission.StatusCode, Error(
+                    "venue_reservation_permission_check_failed",
+                    clubPermission.ErrorMessage ?? "预约权限校验失败。")),
+                false,
+                []);
+        }
+
+        return (null, reviewPermission.Value?.Allowed == true, clubPermission.Value ?? []);
+    }
+
     private static ApiError Error(string code, string message, string? detail = null) => new()
     {
         Code = code,
@@ -509,6 +593,3 @@ public record VenueReservationDto(
     string? ReviewerName,
     string? ReviewComment,
     DateTime CreatedAt);
-
-public record DeleteVenueReservationRequest(
-    int OperatorUserId);

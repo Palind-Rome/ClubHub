@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
  * @export
  * @interface CreateActivityRequest
  */
@@ -27,9 +27,10 @@ export interface CreateActivityRequest {
    */
   clubId: number;
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof CreateActivityRequest
+   * @deprecated
    */
   creatorUserId?: number | null;
   /**

@@ -72,6 +72,8 @@ public class Club
 
     public ICollection<Recruitment> Recruitments { get; set; } = new List<Recruitment>();
 
+    public ICollection<LearningItem> LearningItems { get; set; } = new List<LearningItem>();
+
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public ICollection<ClubMember> Members { get; set; } = new List<ClubMember>();

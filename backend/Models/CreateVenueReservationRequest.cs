@@ -46,13 +46,6 @@ namespace Org.OpenAPITools.Models
         public int? ActivityId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantUserId
-        /// </summary>
-        [Required]
-        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
-        public int ApplicantUserId { get; set; }
-
-        /// <summary>
         /// 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
         /// </summary>
         /// <value>预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。</value>

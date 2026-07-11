@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 审核活动请求。审核人由服务端从登录态写入，客户端无需也不应提交 reviewerUserId。
  * @export
  * @interface ReviewActivityRequest
  */
@@ -27,9 +27,10 @@ export interface ReviewActivityRequest {
    */
   approved?: boolean | null;
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof ReviewActivityRequest
+   * @deprecated
    */
   reviewerUserId?: number | null;
   /**

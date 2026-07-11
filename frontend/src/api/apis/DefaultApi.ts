@@ -63,6 +63,11 @@ import {
   ClubApplicationToJSON,
 } from "../models/ClubApplication";
 import {
+  type ClubEvaluationRecord,
+  ClubEvaluationRecordFromJSON,
+  ClubEvaluationRecordToJSON,
+} from "../models/ClubEvaluationRecord";
+import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
@@ -78,6 +83,11 @@ import {
   CreateClubApplicationRequestToJSON,
 } from "../models/CreateClubApplicationRequest";
 import {
+  type CreateClubEvaluationRequest,
+  CreateClubEvaluationRequestFromJSON,
+  CreateClubEvaluationRequestToJSON,
+} from "../models/CreateClubEvaluationRequest";
+import {
   type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
   CreateClubMemberTermRequestToJSON,
@@ -87,6 +97,11 @@ import {
   CreateClubRequestFromJSON,
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
+import {
+  type CreateLearningItemRequest,
+  CreateLearningItemRequestFromJSON,
+  CreateLearningItemRequestToJSON,
+} from "../models/CreateLearningItemRequest";
 import {
   type CreateNoticeRequest,
   CreateNoticeRequestFromJSON,
@@ -123,15 +138,15 @@ import {
   DeleteVenueRequestToJSON,
 } from "../models/DeleteVenueRequest";
 import {
-  type DeleteVenueReservationRequest,
-  DeleteVenueReservationRequestFromJSON,
-  DeleteVenueReservationRequestToJSON,
-} from "../models/DeleteVenueReservationRequest";
-import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
 } from "../models/DissolveClubRequest";
+import {
+  type EnrollLearningItemRequest,
+  EnrollLearningItemRequestFromJSON,
+  EnrollLearningItemRequestToJSON,
+} from "../models/EnrollLearningItemRequest";
 import {
   type ExitClubMemberRequest,
   ExitClubMemberRequestFromJSON,
@@ -142,6 +157,21 @@ import {
   HealthStatusFromJSON,
   HealthStatusToJSON,
 } from "../models/HealthStatus";
+import {
+  type LearningItem,
+  LearningItemFromJSON,
+  LearningItemToJSON,
+} from "../models/LearningItem";
+import {
+  type LearningRecord,
+  LearningRecordFromJSON,
+  LearningRecordToJSON,
+} from "../models/LearningRecord";
+import {
+  type LearningTeacherCandidate,
+  LearningTeacherCandidateFromJSON,
+  LearningTeacherCandidateToJSON,
+} from "../models/LearningTeacherCandidate";
 import {
   type LoginRequest,
   LoginRequestFromJSON,
@@ -175,11 +205,6 @@ import {
   RecruitmentApplicationFromJSON,
   RecruitmentApplicationToJSON,
 } from "../models/RecruitmentApplication";
-import {
-  type RegisterActivityRequest,
-  RegisterActivityRequestFromJSON,
-  RegisterActivityRequestToJSON,
-} from "../models/RegisterActivityRequest";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -236,6 +261,16 @@ import {
   UpdateCheckinSettingsRequestToJSON,
 } from "../models/UpdateCheckinSettingsRequest";
 import {
+  type UpdateClubEvaluationRequest,
+  UpdateClubEvaluationRequestFromJSON,
+  UpdateClubEvaluationRequestToJSON,
+} from "../models/UpdateClubEvaluationRequest";
+import {
+  type UpdateClubMemberGroupingRequest,
+  UpdateClubMemberGroupingRequestFromJSON,
+  UpdateClubMemberGroupingRequestToJSON,
+} from "../models/UpdateClubMemberGroupingRequest";
+import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
   UpdateClubMemberTermRequestToJSON,
@@ -250,6 +285,16 @@ import {
   UpdateClubRequestFromJSON,
   UpdateClubRequestToJSON,
 } from "../models/UpdateClubRequest";
+import {
+  type UpdateLearningItemRequest,
+  UpdateLearningItemRequestFromJSON,
+  UpdateLearningItemRequestToJSON,
+} from "../models/UpdateLearningItemRequest";
+import {
+  type UpdateLearningProgressRequest,
+  UpdateLearningProgressRequestFromJSON,
+  UpdateLearningProgressRequestToJSON,
+} from "../models/UpdateLearningProgressRequest";
 import {
   type UpdateRecruitmentRequest,
   UpdateRecruitmentRequestFromJSON,
@@ -268,6 +313,11 @@ import {
 import { type UserSummary, UserSummaryFromJSON, UserSummaryToJSON } from "../models/UserSummary";
 import { type Venue, VenueFromJSON, VenueToJSON } from "../models/Venue";
 import {
+  type VenueOccupiedSlot,
+  VenueOccupiedSlotFromJSON,
+  VenueOccupiedSlotToJSON,
+} from "../models/VenueOccupiedSlot";
+import {
   type VenueReservation,
   VenueReservationFromJSON,
   VenueReservationToJSON,
@@ -285,6 +335,11 @@ export interface AssignProjectLeaderOperationRequest {
 
 export interface AssignUserRoleRequest {
   assignRoleRequest: AssignRoleRequest;
+}
+
+export interface CancelLearningEnrollmentRequest {
+  itemId: number;
+  enrollLearningItemRequest: EnrollLearningItemRequest;
 }
 
 export interface CancelProjectOperationRequest {
@@ -320,9 +375,18 @@ export interface CreateClubApplicationOperationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
+export interface CreateClubEvaluationOperationRequest {
+  clubId: number;
+  createClubEvaluationRequest: CreateClubEvaluationRequest;
+}
+
 export interface CreateClubMemberTermOperationRequest {
   clubId: number;
   createClubMemberTermRequest: CreateClubMemberTermRequest;
+}
+
+export interface CreateLearningItemOperationRequest {
+  createLearningItemRequest: CreateLearningItemRequest;
 }
 
 export interface CreateNoticeOperationRequest {
@@ -351,8 +415,8 @@ export interface CreateVenueReservationOperationRequest {
 }
 
 export interface DeleteRecruitmentRequest {
-  recruitId: number;
   currentUserId: number;
+  recruitId: number;
 }
 
 export interface DeleteVenueOperationRequest {
@@ -360,14 +424,18 @@ export interface DeleteVenueOperationRequest {
   deleteVenueRequest: DeleteVenueRequest;
 }
 
-export interface DeleteVenueReservationOperationRequest {
+export interface DeleteVenueReservationRequest {
   reservationId: number;
-  deleteVenueReservationRequest: DeleteVenueReservationRequest;
 }
 
 export interface DissolveClubOperationRequest {
   clubId: number;
   dissolveClubRequest: DissolveClubRequest;
+}
+
+export interface EnrollLearningItemOperationRequest {
+  itemId: number;
+  enrollLearningItemRequest: EnrollLearningItemRequest;
 }
 
 export interface ExitCurrentClubMemberRequest {
@@ -389,7 +457,6 @@ export interface GetActivityParticipationsRequest {
 }
 
 export interface GetClubApplicationsRequest {
-  viewerUserId: number;
   auditStatus?: GetClubApplicationsAuditStatusEnum;
 }
 
@@ -397,14 +464,33 @@ export interface GetClubByIdRequest {
   clubId: number;
 }
 
-export interface GetClubMembersRequest {
+export interface GetClubEvaluationsRequest {
   clubId: number;
-  viewerUserId: number;
-  includeHistory?: boolean;
+  termName?: string;
+  evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
-export interface GetClubsRequest {
-  viewerUserId?: number;
+export interface GetClubMembersRequest {
+  clubId: number;
+  includeHistory?: boolean;
+  departmentName?: string;
+  groupName?: string;
+  termName?: string;
+}
+
+export interface GetLearningItemsRequest {
+  currentUserId: number;
+  clubId?: number;
+}
+
+export interface GetLearningRecordsRequest {
+  currentUserId: number;
+  itemId?: number;
+}
+
+export interface GetLearningTeacherCandidatesRequest {
+  currentUserId: number;
+  clubId: number;
 }
 
 export interface GetNoticesRequest {
@@ -426,8 +512,8 @@ export interface GetProjectsRequest {
 }
 
 export interface GetRecruitmentApplicationsRequest {
-  recruitId: number;
   viewerUserId: number;
+  recruitId: number;
 }
 
 export interface GetRecruitmentsRequest {
@@ -437,12 +523,15 @@ export interface GetRecruitmentsRequest {
 }
 
 export interface GetUsersRequest {
-  viewerUserId: number;
   clubId?: number;
 }
 
 export interface GetVenueByIdRequest {
   venueId: number;
+}
+
+export interface GetVenueOccupiedSlotsRequest {
+  venueId?: number;
 }
 
 export interface GetVenueReservationByIdRequest {
@@ -470,9 +559,8 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
-export interface RegisterActivityOperationRequest {
+export interface RegisterActivityRequest {
   activityId: number;
-  registerActivityRequest: RegisterActivityRequest;
 }
 
 export interface RegisterUserRequest {
@@ -530,6 +618,18 @@ export interface UpdateClubOperationRequest {
   updateClubRequest: UpdateClubRequest;
 }
 
+export interface UpdateClubEvaluationOperationRequest {
+  clubId: number;
+  evaluationId: number;
+  updateClubEvaluationRequest: UpdateClubEvaluationRequest;
+}
+
+export interface UpdateClubMemberGroupingOperationRequest {
+  clubId: number;
+  memberId: number;
+  updateClubMemberGroupingRequest: UpdateClubMemberGroupingRequest;
+}
+
 export interface UpdateClubMemberTermOperationRequest {
   clubId: number;
   memberId: number;
@@ -539,6 +639,16 @@ export interface UpdateClubMemberTermOperationRequest {
 export interface UpdateClubProfileOperationRequest {
   clubId: number;
   updateClubProfileRequest: UpdateClubProfileRequest;
+}
+
+export interface UpdateLearningItemOperationRequest {
+  itemId: number;
+  updateLearningItemRequest: UpdateLearningItemRequest;
+}
+
+export interface UpdateLearningProgressOperationRequest {
+  recordId: number;
+  updateLearningProgressRequest: UpdateLearningProgressRequest;
 }
 
 export interface UpdateRecruitmentOperationRequest {
@@ -749,6 +859,70 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for cancelLearningEnrollment without sending the request
+   */
+  async cancelLearningEnrollmentRequestOpts(
+    requestParameters: CancelLearningEnrollmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling cancelLearningEnrollment().',
+      );
+    }
+
+    if (requestParameters["enrollLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "enrollLearningItemRequest",
+        'Required parameter "enrollLearningItemRequest" was null or undefined when calling cancelLearningEnrollment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ???????????????????????????????????????
+   * ??????
+   */
+  async cancelLearningEnrollmentRaw(
+    requestParameters: CancelLearningEnrollmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.cancelLearningEnrollmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ???????????????????????????????????????
+   * ??????
+   */
+  async cancelLearningEnrollment(
+    requestParameters: CancelLearningEnrollmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.cancelLearningEnrollmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for cancelProject without sending the request
    */
   async cancelProjectRequestOpts(
@@ -913,6 +1087,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkin`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -929,6 +1112,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
    * 活动签到
    */
   async checkinActivityRaw(
@@ -944,6 +1128,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
    * 活动签到
    */
   async checkinActivity(
@@ -980,6 +1165,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkout`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -996,6 +1190,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
    * 活动签退
    */
   async checkoutActivityRaw(
@@ -1011,6 +1206,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
    * 活动签退
    */
   async checkoutActivity(
@@ -1040,6 +1236,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities`;
 
     return {
@@ -1052,6 +1257,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
    * 创建活动并提交审核
    */
   async createActivityRaw(
@@ -1065,6 +1271,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:create 权限。创建人由服务端从 Bearer 令牌解析，不接受客户端传入创建人用户 ID。
    * 创建活动并提交审核
    */
   async createActivity(
@@ -1186,6 +1393,72 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createClubEvaluation without sending the request
+   */
+  async createClubEvaluationRequestOpts(
+    requestParameters: CreateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["createClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubEvaluationRequest",
+        'Required parameter "createClubEvaluationRequest" was null or undefined when calling createClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubEvaluationRequestToJSON(requestParameters["createClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+   * 录入社团成员评价考核或评优评奖结果
+   */
+  async createClubEvaluationRaw(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.createClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以录入任意成员评价；干部只能录入自己管辖部门或小组成员评价。评优评奖按 evaluationType=award 记录奖项标题、等级、获奖原因和公示状态。
+   * 录入社团成员评价考核或评优评奖结果
+   */
+  async createClubEvaluation(
+    requestParameters: CreateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClubMemberTerm without sending the request
    */
   async createClubMemberTermRequestOpts(
@@ -1224,7 +1497,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTermRaw(
@@ -1240,7 +1513,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTerm(
@@ -1248,6 +1521,62 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubMemberRecord> {
     const response = await this.createClubMemberTermRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createLearningItem without sending the request
+   */
+  async createLearningItemRequestOpts(
+    requestParameters: CreateLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createLearningItemRequest",
+        'Required parameter "createLearningItemRequest" was null or undefined when calling createLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateLearningItemRequestToJSON(requestParameters["createLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ?????????
+   */
+  async createLearningItemRaw(
+    requestParameters: CreateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.createLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ?????????
+   */
+  async createLearningItem(
+    requestParameters: CreateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.createLearningItemRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1561,6 +1890,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/venue-reservations`;
 
     return {
@@ -1604,17 +1942,17 @@ export class DefaultApi extends runtime.BaseAPI {
   async deleteRecruitmentRequestOpts(
     requestParameters: DeleteRecruitmentRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["recruitId"] == null) {
-      throw new runtime.RequiredError(
-        "recruitId",
-        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
-      );
-    }
-
     if (requestParameters["currentUserId"] == null) {
       throw new runtime.RequiredError(
         "currentUserId",
         'Required parameter "currentUserId" was null or undefined when calling deleteRecruitment().',
+      );
+    }
+
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling deleteRecruitment().',
       );
     }
 
@@ -1733,7 +2071,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for deleteVenueReservation without sending the request
    */
   async deleteVenueReservationRequestOpts(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
@@ -1742,18 +2080,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["deleteVenueReservationRequest"] == null) {
-      throw new runtime.RequiredError(
-        "deleteVenueReservationRequest",
-        'Required parameter "deleteVenueReservationRequest" was null or undefined when calling deleteVenueReservation().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
@@ -1766,7 +2104,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: DeleteVenueReservationRequestToJSON(requestParameters["deleteVenueReservationRequest"]),
     };
   }
 
@@ -1774,7 +2111,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地预约
    */
   async deleteVenueReservationRaw(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
     const requestOptions = await this.deleteVenueReservationRequestOpts(requestParameters);
@@ -1787,7 +2124,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地预约
    */
   async deleteVenueReservation(
-    requestParameters: DeleteVenueReservationOperationRequest,
+    requestParameters: DeleteVenueReservationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteVenueReservationRaw(requestParameters, initOverrides);
@@ -1854,6 +2191,70 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.dissolveClubRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for enrollLearningItem without sending the request
+   */
+  async enrollLearningItemRequestOpts(
+    requestParameters: EnrollLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling enrollLearningItem().',
+      );
+    }
+
+    if (requestParameters["enrollLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "enrollLearningItemRequest",
+        'Required parameter "enrollLearningItemRequest" was null or undefined when calling enrollLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????????????????????
+   * ??????
+   */
+  async enrollLearningItemRaw(
+    requestParameters: EnrollLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.enrollLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????????????????????
+   * ??????
+   */
+  async enrollLearningItem(
+    requestParameters: EnrollLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.enrollLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**
@@ -2043,6 +2444,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/participations`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -2058,6 +2468,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
    * 获取活动参与记录
    */
   async getActivityParticipationsRaw(
@@ -2073,6 +2484,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
    * 获取活动参与记录
    */
   async getActivityParticipations(
@@ -2089,18 +2501,7 @@ export class DefaultApi extends runtime.BaseAPI {
   async getClubApplicationsRequestOpts(
     requestParameters: GetClubApplicationsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getClubApplications().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
@@ -2137,7 +2538,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 按当前用户权限查询社团注册申请
    */
   async getClubApplications(
-    requestParameters: GetClubApplicationsRequest,
+    requestParameters: GetClubApplicationsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ClubApplication>> {
     const response = await this.getClubApplicationsRaw(requestParameters, initOverrides);
@@ -2197,6 +2598,70 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubEvaluations without sending the request
+   */
+  async getClubEvaluationsRequestOpts(
+    requestParameters: GetClubEvaluationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    if (requestParameters["evaluationType"] != null) {
+      queryParameters["evaluationType"] = requestParameters["evaluationType"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+   * 查询社团成员评价考核记录
+   */
+  async getClubEvaluationsRaw(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubEvaluationRecord>>> {
+    const requestOptions = await this.getClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ClubEvaluationRecordFromJSON),
+    );
+  }
+
+  /**
+   * 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
+   * 查询社团成员评价考核记录
+   */
+  async getClubEvaluations(
+    requestParameters: GetClubEvaluationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ClubEvaluationRecord>> {
+    const response = await this.getClubEvaluationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubMembers without sending the request
    */
   async getClubMembersRequestOpts(
@@ -2209,21 +2674,22 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getClubMembers().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["includeHistory"] != null) {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
+    }
+
+    if (requestParameters["departmentName"] != null) {
+      queryParameters["departmentName"] = requestParameters["departmentName"];
+    }
+
+    if (requestParameters["groupName"] != null) {
+      queryParameters["groupName"] = requestParameters["groupName"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -2240,7 +2706,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembersRaw(
@@ -2256,7 +2722,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembers(
@@ -2270,12 +2736,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getClubs without sending the request
    */
-  async getClubsRequestOpts(requestParameters: GetClubsRequest): Promise<runtime.RequestOpts> {
+  async getClubsRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -2293,10 +2755,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取社团列表
    */
   async getClubsRaw(
-    requestParameters: GetClubsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<Club>>> {
-    const requestOptions = await this.getClubsRequestOpts(requestParameters);
+    const requestOptions = await this.getClubsRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClubFromJSON));
@@ -2305,11 +2766,204 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * 获取社团列表
    */
-  async getClubs(
-    requestParameters: GetClubsRequest = {},
+  async getClubs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Club>> {
+    const response = await this.getClubsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItems without sending the request
+   */
+  async getLearningItemsRequestOpts(
+    requestParameters: GetLearningItemsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningItems().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/items`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????????
+   * ????????
+   */
+  async getLearningItemsRaw(
+    requestParameters: GetLearningItemsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<Club>> {
-    const response = await this.getClubsRaw(requestParameters, initOverrides);
+  ): Promise<runtime.ApiResponse<Array<LearningItem>>> {
+    const requestOptions = await this.getLearningItemsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningItemFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????????
+   * ????????
+   */
+  async getLearningItems(
+    requestParameters: GetLearningItemsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningItem>> {
+    const response = await this.getLearningItemsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningRecords without sending the request
+   */
+  async getLearningRecordsRequestOpts(
+    requestParameters: GetLearningRecordsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningRecords().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["itemId"] != null) {
+      queryParameters["itemId"] = requestParameters["itemId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/records`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????
+   * ??????
+   */
+  async getLearningRecordsRaw(
+    requestParameters: GetLearningRecordsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningRecord>>> {
+    const requestOptions = await this.getLearningRecordsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningRecordFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????
+   * ??????
+   */
+  async getLearningRecords(
+    requestParameters: GetLearningRecordsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningRecord>> {
+    const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningTeacherCandidates without sending the request
+   */
+  async getLearningTeacherCandidatesRequestOpts(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["currentUserId"] == null) {
+      throw new runtime.RequiredError(
+        "currentUserId",
+        'Required parameter "currentUserId" was null or undefined when calling getLearningTeacherCandidates().',
+      );
+    }
+
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getLearningTeacherCandidates().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["currentUserId"] != null) {
+      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/learning/teacher-candidates`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * ?????????????????????????????????????????????
+   * ????????
+   */
+  async getLearningTeacherCandidatesRaw(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
+    const requestOptions = await this.getLearningTeacherCandidatesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningTeacherCandidateFromJSON),
+    );
+  }
+
+  /**
+   * ?????????????????????????????????????????????
+   * ????????
+   */
+  async getLearningTeacherCandidates(
+    requestParameters: GetLearningTeacherCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningTeacherCandidate>> {
+    const response = await this.getLearningTeacherCandidatesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2543,17 +3197,17 @@ export class DefaultApi extends runtime.BaseAPI {
   async getRecruitmentApplicationsRequestOpts(
     requestParameters: GetRecruitmentApplicationsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["recruitId"] == null) {
-      throw new runtime.RequiredError(
-        "recruitId",
-        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
-      );
-    }
-
     if (requestParameters["viewerUserId"] == null) {
       throw new runtime.RequiredError(
         "viewerUserId",
         'Required parameter "viewerUserId" was null or undefined when calling getRecruitmentApplications().',
+      );
+    }
+
+    if (requestParameters["recruitId"] == null) {
+      throw new runtime.RequiredError(
+        "recruitId",
+        'Required parameter "recruitId" was null or undefined when calling getRecruitmentApplications().',
       );
     }
 
@@ -2718,18 +3372,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for getUsers without sending the request
    */
   async getUsersRequestOpts(requestParameters: GetUsersRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getUsers().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
@@ -2764,7 +3407,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取当前账号可查看或可分配的用户列表
    */
   async getUsers(
-    requestParameters: GetUsersRequest,
+    requestParameters: GetUsersRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<UserSummary>> {
     const response = await this.getUsersRaw(requestParameters, initOverrides);
@@ -2827,6 +3470,67 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getVenueOccupiedSlots without sending the request
+   */
+  async getVenueOccupiedSlotsRequestOpts(
+    requestParameters: GetVenueOccupiedSlotsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["venueId"] != null) {
+      queryParameters["venueId"] = requestParameters["venueId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/venue-reservations/occupied-slots`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+   * 获取场地已占用时段
+   */
+  async getVenueOccupiedSlotsRaw(
+    requestParameters: GetVenueOccupiedSlotsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<VenueOccupiedSlot>>> {
+    const requestOptions = await this.getVenueOccupiedSlotsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(VenueOccupiedSlotFromJSON),
+    );
+  }
+
+  /**
+   * 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
+   * 获取场地已占用时段
+   */
+  async getVenueOccupiedSlots(
+    requestParameters: GetVenueOccupiedSlotsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<VenueOccupiedSlot>> {
+    const response = await this.getVenueOccupiedSlotsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getVenueReservationById without sending the request
    */
   async getVenueReservationByIdRequestOpts(
@@ -2842,6 +3546,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
@@ -2912,6 +3625,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/venue-reservations`;
 
@@ -3211,7 +3933,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for registerActivity without sending the request
    */
   async registerActivityRequestOpts(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
@@ -3220,18 +3942,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["registerActivityRequest"] == null) {
-      throw new runtime.RequiredError(
-        "registerActivityRequest",
-        'Required parameter "registerActivityRequest" was null or undefined when calling registerActivity().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/activities/{activityId}/registrations`;
     urlPath = urlPath.replace(
@@ -3244,15 +3966,15 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: RegisterActivityRequestToJSON(requestParameters["registerActivityRequest"]),
     };
   }
 
   /**
+   * 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
    * 报名活动
    */
   async registerActivityRaw(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<ActivityRegistrationResult>> {
     const requestOptions = await this.registerActivityRequestOpts(requestParameters);
@@ -3264,10 +3986,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
    * 报名活动
    */
   async registerActivity(
-    requestParameters: RegisterActivityOperationRequest,
+    requestParameters: RegisterActivityRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ActivityRegistrationResult> {
     const response = await this.registerActivityRaw(requestParameters, initOverrides);
@@ -3428,6 +4151,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/review`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -3444,6 +4176,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
    * 审核活动并发布或驳回
    */
   async reviewActivityRaw(
@@ -3457,6 +4190,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
    * 审核活动并发布或驳回
    */
   async reviewActivity(
@@ -3827,6 +4561,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/venue-reservations/{reservationId}/review`;
     urlPath = urlPath.replace(
       "{reservationId}",
@@ -3894,6 +4637,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/activities/{activityId}/checkin-settings`;
     urlPath = urlPath.replace(
       "{activityId}",
@@ -3910,6 +4662,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:checkin:manage 权限。
    * 设置活动签到签退码和有效时间
    */
   async updateActivityCheckinSettingsRaw(
@@ -3923,6 +4676,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 需要登录，并具备目标社团的 activity:checkin:manage 权限。
    * 设置活动签到签退码和有效时间
    */
   async updateActivityCheckinSettings(
@@ -3996,6 +4750,162 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubEvaluation without sending the request
+   */
+  async updateClubEvaluationRequestOpts(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["evaluationId"] == null) {
+      throw new runtime.RequiredError(
+        "evaluationId",
+        'Required parameter "evaluationId" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    if (requestParameters["updateClubEvaluationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubEvaluationRequest",
+        'Required parameter "updateClubEvaluationRequest" was null or undefined when calling updateClubEvaluation().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/{evaluationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{evaluationId}",
+      encodeURIComponent(String(requestParameters["evaluationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubEvaluationRequestToJSON(requestParameters["updateClubEvaluationRequest"]),
+    };
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 更新社团成员评价考核或评优评奖结果
+   */
+  async updateClubEvaluationRaw(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationRecord>> {
+    const requestOptions = await this.updateClubEvaluationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 更新社团成员评价考核或评优评奖结果
+   */
+  async updateClubEvaluation(
+    requestParameters: UpdateClubEvaluationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationRecord> {
+    const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubMemberGrouping without sending the request
+   */
+  async updateClubMemberGroupingRequestOpts(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["memberId"] == null) {
+      throw new runtime.RequiredError(
+        "memberId",
+        'Required parameter "memberId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["updateClubMemberGroupingRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubMemberGroupingRequest",
+        'Required parameter "updateClubMemberGroupingRequest" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/{memberId}/grouping`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{memberId}",
+      encodeURIComponent(String(requestParameters["memberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubMemberGroupingRequestToJSON(
+        requestParameters["updateClubMemberGroupingRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGroupingRaw(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+    const requestOptions = await this.updateClubMemberGroupingRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubMemberRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGrouping(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubMemberRecord> {
+    const response = await this.updateClubMemberGroupingRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubMemberTerm without sending the request
    */
   async updateClubMemberTermRequestOpts(
@@ -4045,7 +4955,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTermRaw(
@@ -4061,7 +4971,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTerm(
@@ -4111,7 +5021,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfileRaw(
@@ -4125,7 +5035,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfile(
@@ -4133,6 +5043,137 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Club> {
     const response = await this.updateClubProfileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateLearningItem without sending the request
+   */
+  async updateLearningItemRequestOpts(
+    requestParameters: UpdateLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling updateLearningItem().',
+      );
+    }
+
+    if (requestParameters["updateLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateLearningItemRequest",
+        'Required parameter "updateLearningItemRequest" was null or undefined when calling updateLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/items/{itemId}`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateLearningItemRequestToJSON(requestParameters["updateLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ??????
+   */
+  async updateLearningItemRaw(
+    requestParameters: UpdateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.updateLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * ??????????????????????????????????????
+   * ??????
+   */
+  async updateLearningItem(
+    requestParameters: UpdateLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.updateLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateLearningProgress without sending the request
+   */
+  async updateLearningProgressRequestOpts(
+    requestParameters: UpdateLearningProgressOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["recordId"] == null) {
+      throw new runtime.RequiredError(
+        "recordId",
+        'Required parameter "recordId" was null or undefined when calling updateLearningProgress().',
+      );
+    }
+
+    if (requestParameters["updateLearningProgressRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateLearningProgressRequest",
+        'Required parameter "updateLearningProgressRequest" was null or undefined when calling updateLearningProgress().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/learning/records/{recordId}/progress`;
+    urlPath = urlPath.replace(
+      "{recordId}",
+      encodeURIComponent(String(requestParameters["recordId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateLearningProgressRequestToJSON(requestParameters["updateLearningProgressRequest"]),
+    };
+  }
+
+  /**
+   * ?????????????????? 100 ????????
+   * ??????
+   */
+  async updateLearningProgressRaw(
+    requestParameters: UpdateLearningProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.updateLearningProgressRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * ?????????????????? 100 ????????
+   * ??????
+   */
+  async updateLearningProgress(
+    requestParameters: UpdateLearningProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.updateLearningProgressRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4344,6 +5385,15 @@ export const GetClubApplicationsAuditStatusEnum = {
 } as const;
 export type GetClubApplicationsAuditStatusEnum =
   (typeof GetClubApplicationsAuditStatusEnum)[keyof typeof GetClubApplicationsAuditStatusEnum];
+/**
+ * @export
+ */
+export const GetClubEvaluationsEvaluationTypeEnum = {
+  Semester: "semester",
+  Award: "award",
+} as const;
+export type GetClubEvaluationsEvaluationTypeEnum =
+  (typeof GetClubEvaluationsEvaluationTypeEnum)[keyof typeof GetClubEvaluationsEvaluationTypeEnum];
 /**
  * @export
  */

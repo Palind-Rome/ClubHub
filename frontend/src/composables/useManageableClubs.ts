@@ -6,18 +6,34 @@ export interface ScopedClubRole {
   permissions?: string[] | null;
 }
 
+function extractClubIds(role: ScopedClubRole): number[] {
+  return role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
+}
+
 export function collectManageableClubIds(
   roles: readonly ScopedClubRole[],
-  permission: string,
+  permission: string | readonly string[],
 ): Set<number> {
   const clubIds = new Set<number>();
+  const permissions = Array.isArray(permission) ? permission : [permission];
 
   roles
-    .filter((role) => role.permissions?.includes(permission) || role.permissions?.includes("*"))
+    .filter((role) =>
+      role.permissions?.some(
+        (rolePermission) => rolePermission === "*" || permissions.includes(rolePermission),
+      ),
+    )
     .forEach((role) => {
-      const ids = role.clubIds?.length ? role.clubIds : role.clubId != null ? [role.clubId] : [];
-      ids.forEach((clubId) => clubIds.add(clubId));
+      extractClubIds(role).forEach((clubId) => clubIds.add(clubId));
     });
+
+  return clubIds;
+}
+
+export function collectScopedClubIds(roles: readonly ScopedClubRole[]): Set<number> {
+  const clubIds = new Set<number>();
+
+  roles.forEach((role) => extractClubIds(role).forEach((clubId) => clubIds.add(clubId)));
 
   return clubIds;
 }
@@ -40,4 +56,8 @@ export function hasScopedRole(
 
 function roleCodeOf(role: ScopedClubRole) {
   return (role.roleCode ?? role.code ?? "").toLowerCase();
+}
+
+export function normalizedRoleCodeOf(role: ScopedClubRole) {
+  return roleCodeOf(role);
 }

@@ -1,5 +1,12 @@
+-- 业务代码使用数据库生成主键。序列从较高区间起步，兼容 seeds 中保留的显式演示 ID。
+CREATE SEQUENCE SEQ_USERS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USER_ROLES START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CLUBS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CLUB_MEMBERS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_EVALUATIONS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+
 CREATE TABLE USERS (
-  user_id number PRIMARY KEY,
+  user_id number DEFAULT SEQ_USERS.NEXTVAL PRIMARY KEY,
   username varchar2(255),
   password_hash varchar2(255),
   real_name varchar2(255),
@@ -25,7 +32,7 @@ CREATE TABLE ROLES (
 );
 
 CREATE TABLE USER_ROLES (
-  user_role_id number PRIMARY KEY,
+  user_role_id number DEFAULT SEQ_USER_ROLES.NEXTVAL PRIMARY KEY,
   user_id number,
   role_id number,
   club_id number,
@@ -33,7 +40,7 @@ CREATE TABLE USER_ROLES (
 );
 
 CREATE TABLE CLUBS (
-  club_id number PRIMARY KEY,
+  club_id number DEFAULT SEQ_CLUBS.NEXTVAL PRIMARY KEY,
   club_name varchar2(255),
   category varchar2(255),
   description clob,
@@ -54,7 +61,7 @@ CREATE TABLE CLUBS (
 );
 
 CREATE TABLE CLUB_MEMBERS (
-  member_id number PRIMARY KEY,
+  member_id number DEFAULT SEQ_CLUB_MEMBERS.NEXTVAL PRIMARY KEY,
   club_id number,
   user_id number,
   department_name varchar2(255),
@@ -260,7 +267,7 @@ CREATE TABLE MATERIAL_BORROWS (
 );
 
 CREATE TABLE EVALUATIONS (
-  evaluation_id number PRIMARY KEY,
+  evaluation_id number DEFAULT SEQ_EVALUATIONS.NEXTVAL PRIMARY KEY,
   evaluation_type varchar2(255),
   club_id number,
   user_id number,
@@ -324,6 +331,13 @@ CREATE TABLE OPERATION_LOGS (
   ip_address varchar2(255),
   created_at date
 );
+
+CREATE UNIQUE INDEX UQ_USERS_USERNAME ON USERS (username);
+
+CREATE UNIQUE INDEX UQ_USERS_STUDENT_NO ON USERS (student_no);
+
+-- NVL 让全局角色（club_id 为空）也只能分配一次。
+CREATE UNIQUE INDEX UQ_USER_ROLES_SCOPE ON USER_ROLES (user_id, role_id, NVL(club_id, -1));
 
 ALTER TABLE USER_ROLES ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
 

@@ -13,6 +13,7 @@ import {
   matchesVenueSearch,
   type VenueSearchIndex,
 } from "../venueSearch";
+import { requestJson } from "../composables/useApiRequest";
 
 interface Venue {
   id: number;
@@ -53,11 +54,20 @@ interface VenueForm {
   building: string;
   roomNo: string;
   capacity: number;
-  managerUserId: string;
+  managerUserId?: number;
   status: "available" | "maintenance" | "disabled";
 }
 
+interface UserOption {
+  id: number;
+  displayName: string;
+  realName?: string | null;
+  username?: string | null;
+  studentNo?: string | null;
+}
+
 const venues = ref<Venue[]>([]);
+const managerOptions = ref<UserOption[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const statusChangingId = ref<number>();
@@ -76,7 +86,7 @@ const form = reactive<VenueForm>({
   building: "",
   roomNo: "",
   capacity: 1,
-  managerUserId: "",
+  managerUserId: undefined,
   status: "available",
 });
 
@@ -132,7 +142,6 @@ const rules: FormRules<VenueForm> = {
   building: [{ max: 255, message: "楼栋最多 255 个字符", trigger: "blur" }],
   roomNo: [{ max: 255, message: "房间号最多 255 个字符", trigger: "blur" }],
   capacity: [{ required: true, message: "请输入容量", trigger: "change" }],
-  managerUserId: [{ validator: validateOptionalUserId, trigger: "blur" }],
   status: [{ required: true, message: "请选择状态", trigger: "change" }],
 };
 
@@ -159,16 +168,6 @@ function hasPermission(permission: string) {
   return permissions.value.includes(permission) || permissions.value.includes("*");
 }
 
-function validateOptionalUserId(_rule: unknown, value: string, callback: (error?: Error) => void) {
-  const normalized = value.trim();
-  if (!normalized || /^[1-9]\d*$/.test(normalized)) {
-    callback();
-    return;
-  }
-
-  callback(new Error("负责人 ID 必须为正整数"));
-}
-
 async function readErrorMessage(res: Response) {
   try {
     const payload = (await res.json()) as ApiErrorPayload;
@@ -192,6 +191,33 @@ async function loadVenues() {
   }
 }
 
+async function loadManagerOptions() {
+  const user = auth.value?.user;
+  if (!user) {
+    managerOptions.value = [];
+    return;
+  }
+
+  const currentUserOption: UserOption = {
+    id: user.id,
+    displayName: user.realName || user.username || "当前用户",
+    realName: user.realName,
+    username: user.username,
+    studentNo: user.studentNo,
+  };
+
+  try {
+    const res = await fetch(`/api/users`);
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+    const users = (await res.json()) as UserOption[];
+    managerOptions.value = users.some((option) => option.id === user.id)
+      ? users
+      : [currentUserOption, ...users];
+  } catch {
+    managerOptions.value = [currentUserOption];
+  }
+}
+
 function openCreate() {
   editingVenue.value = null;
   resetForm();
@@ -204,7 +230,8 @@ function openEdit(venue: Venue) {
   form.building = venue.building ?? "";
   form.roomNo = venue.roomNo ?? "";
   form.capacity = venue.capacity || 1;
-  form.managerUserId = venue.managerUserId ? String(venue.managerUserId) : "";
+  ensureManagerOption(venue.managerUserId);
+  form.managerUserId = venue.managerUserId ?? undefined;
   form.status = normalizeStatus(venue.status);
   dialogVisible.value = true;
 }
@@ -405,9 +432,7 @@ async function updateVenueStatus(
 }
 
 async function fetchVenueReservations(venueId: number) {
-  const res = await fetch(`/api/venue-reservations?venueId=${venueId}`);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as VenueReservation[];
+  return requestJson<VenueReservation[]>(`/api/venue-reservations?venueId=${venueId}`);
 }
 
 function findStatusConflictReservations(
@@ -481,7 +506,7 @@ function venuePayload() {
     building: optionalText(form.building),
     roomNo: optionalText(form.roomNo),
     capacity: form.capacity,
-    managerUserId: optionalNumber(form.managerUserId),
+    managerUserId: form.managerUserId ?? null,
   };
 }
 
@@ -490,16 +515,34 @@ function resetForm() {
   form.building = "";
   form.roomNo = "";
   form.capacity = 1;
-  form.managerUserId = "";
+  form.managerUserId = operatorUserId.value;
   form.status = "available";
 }
 
 function createVenueIndex(venue: Venue) {
   const location = formatVenueLocation(venue.building, venue.roomNo);
   return createVenueSearchIndex({
-    ids: [venue.id],
     texts: [venue.name, venue.building, venue.roomNo, location],
   });
+}
+
+function ensureManagerOption(managerUserId?: number | null) {
+  if (!managerUserId || managerOptions.value.some((user) => user.id === managerUserId)) return;
+  managerOptions.value.push({
+    id: managerUserId,
+    displayName: "当前负责人（姓名未加载）",
+  });
+}
+
+function managerOptionLabel(user: UserOption) {
+  const name = user.displayName || user.realName || user.username || "未知用户";
+  return user.studentNo ? `${name}（${user.studentNo}）` : name;
+}
+
+function managerDisplayName(managerUserId?: number | null) {
+  if (!managerUserId) return "未指定";
+  const user = managerOptions.value.find((option) => option.id === managerUserId);
+  return user ? managerOptionLabel(user) : "未知负责人";
 }
 
 function formatLocation(venue: Venue) {
@@ -530,12 +573,7 @@ function optionalText(value: string) {
   return normalized ? normalized : null;
 }
 
-function optionalNumber(value: string) {
-  const normalized = value.trim();
-  return normalized ? Number(normalized) : null;
-}
-
-onMounted(loadVenues);
+onMounted(() => Promise.all([loadVenues(), loadManagerOptions()]));
 </script>
 
 <template>
@@ -564,14 +602,13 @@ onMounted(loadVenues);
       <el-input
         v-model="venueSearch"
         clearable
-        placeholder="搜索 ID、场地名称或位置"
+        placeholder="搜索场地名称或位置"
         class="search-input"
       />
       <span class="search-summary">{{ searchSummary }}</span>
     </div>
 
     <el-table v-loading="loading" :data="filteredVenues" stripe :empty-text="tableEmptyText">
-      <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="name" label="场地名称" min-width="160" />
       <el-table-column label="位置" min-width="180">
         <template #default="{ row }">{{ formatLocation(row) }}</template>
@@ -587,7 +624,9 @@ onMounted(loadVenues);
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="managerUserId" label="负责人 ID" width="110" />
+      <el-table-column label="负责人" min-width="150">
+        <template #default="{ row }">{{ managerDisplayName(row.managerUserId) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
@@ -657,8 +696,21 @@ onMounted(loadVenues);
               class="full-width"
             />
           </el-form-item>
-          <el-form-item label="负责人用户 ID" prop="managerUserId">
-            <el-input v-model="form.managerUserId" placeholder="可选" />
+          <el-form-item label="负责人" prop="managerUserId">
+            <el-select
+              v-model="form.managerUserId"
+              clearable
+              filterable
+              placeholder="请选择负责人"
+              class="full-width"
+            >
+              <el-option
+                v-for="user in managerOptions"
+                :key="user.id"
+                :label="managerOptionLabel(user)"
+                :value="user.id"
+              />
+            </el-select>
           </el-form-item>
         </div>
         <el-form-item label="状态" prop="status">
@@ -721,7 +773,6 @@ onMounted(loadVenues);
         class="notice"
       />
       <el-table :data="statusConflictReservations" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="预约时间" min-width="220">
           <template #default="{ row }">
             <div>{{ formatVenueReservationDateTime(row.startTime) }}</div>
@@ -730,7 +781,7 @@ onMounted(loadVenues);
         </el-table-column>
         <el-table-column label="申请人" min-width="130">
           <template #default="{ row }">
-            {{ row.applicantName || `用户 ${row.applicantUserId}` }}
+            {{ row.applicantName || "未知用户" }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">

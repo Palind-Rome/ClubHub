@@ -21,11 +21,12 @@ import { mapValues } from "../runtime";
  */
 export interface CreateClubApplicationRequest {
   /**
-   * 当前学生用户 ID，后端据此写入申请人并校验角色权限。
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof CreateClubApplicationRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
   /**
    *
    * @type {string}
@@ -83,7 +84,6 @@ export interface CreateClubApplicationRequest {
 export function instanceOfCreateClubApplicationRequest(
   value: object,
 ): value is CreateClubApplicationRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("name" in value) || value["name"] === undefined) return false;
   if (!("category" in value) || value["category"] === undefined) return false;
   if (!("applyReason" in value) || value["applyReason"] === undefined) return false;
@@ -103,7 +103,7 @@ export function CreateClubApplicationRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     name: json["name"],
     category: json["category"],
     description: json["description"] == null ? undefined : json["description"],

@@ -16,14 +16,27 @@ const accountLabel = computed(() => {
   if (!user) return "账号与权限";
   return user.studentNo ? `${user.realName} / ${user.studentNo}` : user.realName;
 });
-const roleSummary = computed(() => {
+const roleLabels = computed(() => {
   const roles = auth.value?.roles ?? [];
-  if (roles.length === 0) return "暂无角色";
-  return roles.map((role) => role.displayName || role.name).join("、");
+  if (roles.length === 0) return ["暂无角色"];
+  return roles.map((role) => role.displayName || role.name);
 });
-const activeMenu = computed(() =>
-  route.path.startsWith("/recruitments") ? "/recruitments" : route.path,
-);
+const roleSummary = computed(() => roleLabels.value.join("、"));
+const activeMenu = computed(() => {
+  if (route.path.startsWith("/recruitments")) return "/recruitments";
+  if (route.path.startsWith("/evaluations")) return "/evaluations";
+  if (route.path.startsWith("/awards")) return "/awards";
+  if (route.path.startsWith("/learning")) return "/learning";
+  return route.path;
+});
+const canAccessClubRegistration = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("club:apply") ||
+    permissions.includes("club:review")
+  );
+});
 const canManageVenues = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return (
@@ -31,6 +44,14 @@ const canManageVenues = computed(() => {
     permissions.includes("venue:create") ||
     permissions.includes("venue:update") ||
     permissions.includes("venue:disable")
+  );
+});
+const canAccessVenueReservations = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("venue:reserve") ||
+    permissions.includes("venue:review")
   );
 });
 
@@ -71,41 +92,60 @@ onUnmounted(() => {
   <el-container>
     <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
-      <el-menu mode="horizontal" router :default-active="activeMenu" class="nav">
+      <el-menu mode="horizontal" router :default-active="activeMenu" :ellipsis="false" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
-        <el-menu-item index="/clubs">社团</el-menu-item>
+        <el-menu-item index="/clubs">我的社团</el-menu-item>
+        <el-menu-item index="/club-members">成员管理</el-menu-item>
+        <el-menu-item v-if="canAccessClubRegistration" index="/club-registration">
+          社团注册
+        </el-menu-item>
         <el-menu-item index="/recruitments">纳新</el-menu-item>
+        <el-menu-item index="/evaluations">成员考核</el-menu-item>
+        <el-menu-item index="/awards">评奖评优</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
         <el-menu-item v-if="canManageVenues" index="/venues">场地管理</el-menu-item>
-        <el-menu-item index="/venue-reservations">场地预约</el-menu-item>
-        <div class="session">
-          <el-tag class="role-tag" type="success" size="small" :title="roleSummary">{{
-            roleSummary
-          }}</el-tag>
-          <el-button link type="danger" @click="logout">退出</el-button>
-        </div>
-        <div class="health">
-          <el-tag
-            :type="healthOk ? 'success' : 'danger'"
-            size="small"
-            role="button"
-            tabindex="0"
-            :aria-label="
-              healthOk ? '后端已连接，回车或空格重新检测' : '点击、回车或空格检测后端健康状态'
-            "
-            :aria-busy="healthChecking"
-            @click="checkHealth"
-            @keyup.enter="checkHealth"
-            @keyup.space.prevent="checkHealth"
-          >
-            {{ healthChecking ? "检测中..." : healthOk ? "后端已连接" : "点击检测" }}
-          </el-tag>
-        </div>
+        <el-menu-item v-if="canAccessVenueReservations" index="/venue-reservations">
+          场地预约
+        </el-menu-item>
+        <el-menu-item index="/learning">课程</el-menu-item>
       </el-menu>
+      <div class="header-actions">
+        <div class="session">
+          <div class="role-list" :title="roleSummary" aria-label="当前职务">
+            <el-tag
+              v-for="(role, roleIdx) in roleLabels"
+              :key="`${role}-${roleIdx}`"
+              class="role-tag"
+              type="success"
+              size="small"
+              :title="role"
+            >
+              {{ role }}
+            </el-tag>
+          </div>
+          <el-button class="logout-button" link type="danger" @click="logout">退出</el-button>
+        </div>
+        <el-tag
+          class="health-tag"
+          :type="healthOk ? 'success' : 'danger'"
+          size="small"
+          role="button"
+          tabindex="0"
+          :aria-label="
+            healthOk ? '后端已连接，回车或空格重新检测' : '点击、回车或空格检测后端健康状态'
+          "
+          :aria-busy="healthChecking"
+          @click="checkHealth"
+          @keyup.enter="checkHealth"
+          @keyup.space.prevent="checkHealth"
+        >
+          {{ healthChecking ? "检测中..." : healthOk ? "后端已连接" : "点击检测" }}
+        </el-tag>
+      </div>
     </el-header>
-    <el-main>
+    <el-main class="main">
       <router-view />
     </el-main>
   </el-container>
@@ -115,34 +155,83 @@ onUnmounted(() => {
 .el-header {
   display: flex;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--el-border-color-light);
-  padding: 0 16px;
+  min-height: 60px;
+  height: auto;
+  padding: 8px 16px;
 }
 .brand {
   font-size: 18px;
   font-weight: 600;
-  margin-right: 16px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .nav {
-  flex: 1;
+  flex: 1 1 720px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: min(100%, 720px);
+  height: auto;
+  min-height: 40px;
+  overflow: visible;
   border-bottom: none !important;
 }
-.health {
+.nav :deep(.el-menu-item),
+.nav :deep(.el-sub-menu__title) {
+  flex: 0 0 auto;
+  height: 40px;
+  line-height: 40px;
+  white-space: nowrap;
+}
+.header-actions {
   display: flex;
+  flex: 1 1 480px;
   align-items: center;
-  cursor: pointer;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  margin-left: 16px;
 }
 .session {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-left: auto;
+  min-width: 0;
+  max-width: min(100%, 680px);
+}
+.logout-button {
+  flex: 0 0 auto;
+}
+.role-list {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 .role-tag {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
   white-space: nowrap;
+}
+.role-tag :deep(.el-tag__content) {
+  overflow: visible;
+  white-space: nowrap;
+}
+.health-tag {
+  width: 88px;
+  justify-content: center;
+  cursor: pointer;
+}
+.main {
+  scrollbar-gutter: stable;
 }
 </style>

@@ -20,18 +20,19 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// Request body for joining or exiting a training course.
     /// </summary>
     [DataContract]
-    public partial class DeleteVenueReservationRequest 
+    public partial class EnrollLearningItemRequest 
     {
         /// <summary>
-        /// 执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。
+        /// Current user id.
         /// </summary>
-        /// <value>执行删除预约操作的用户 ID。预约申请人可删除自己的预约，场地管理员可删除任意预约。</value>
+        /// <value>Current user id.</value>
+        /* <example>21</example> */
         [Required]
-        [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
-        public int OperatorUserId { get; set; }
+        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
+        public int CurrentUserId { get; set; }
 
     }
 }

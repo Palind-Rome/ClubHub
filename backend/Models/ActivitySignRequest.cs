@@ -20,18 +20,11 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 活动签到/签退请求。签到用户由服务端从登录态确定，客户端只需提交签到或签退码。
     /// </summary>
     [DataContract]
     public partial class ActivitySignRequest 
     {
-        /// <summary>
-        /// Gets or Sets UserId
-        /// </summary>
-        [Required]
-        [DataMember(Name="userId", EmitDefaultValue=true)]
-        public int UserId { get; set; }
-
         /// <summary>
         /// Gets or Sets Code
         /// </summary>

@@ -2,12 +2,15 @@ import { createRouter, createWebHistory } from "vue-router";
 import ClubList from "../views/ClubList.vue";
 import ActivityList from "../views/ActivityList.vue";
 import RecruitmentList from "../views/RecruitmentList.vue";
+import EvaluationList from "../views/EvaluationList.vue";
+import AwardList from "../views/AwardList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
 import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
-import { hasCompletedSession } from "../authSession";
+import LearningCenter from "../views/LearningCenter.vue";
+import { hasCompletedSession, readAuth } from "../authSession";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,19 +18,32 @@ const router = createRouter({
     { path: "/", redirect: "/auth" },
     { path: "/auth", component: AuthFlow },
     { path: "/clubs", component: ClubList },
+    { path: "/club-members", component: ClubList, props: { workspace: "members" } },
+    { path: "/club-registration", component: ClubList, props: { workspace: "registration" } },
     { path: "/recruitments", component: RecruitmentList },
     { path: "/recruitments/:recruitmentId/applications", component: RecruitmentList },
+    { path: "/evaluations", component: EvaluationList },
+    { path: "/awards", component: AwardList },
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },
     { path: "/venues", component: VenueManage },
     { path: "/venue-reservations", component: VenueReservationApply },
+    { path: "/learning", component: LearningCenter },
   ],
 });
 
 router.beforeEach((to) => {
   if (to.path !== "/auth" && !hasCompletedSession()) {
     return { path: "/auth", query: { redirect: to.fullPath } };
+  }
+
+  if (to.path === "/venue-reservations") {
+    const permissions = readAuth()?.permissions ?? [];
+    const canAccess = ["*", "venue:reserve", "venue:review"].some((permission) =>
+      permissions.includes(permission),
+    );
+    if (!canAccess) return { path: "/clubs" };
   }
 });
 

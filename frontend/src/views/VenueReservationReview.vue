@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { readAuth } from "../authSession";
 import { formatVenueReservationDateTime, venueReservationTimestamp } from "../beijingTime";
+import { requestJson } from "../composables/useApiRequest";
 import {
   createVenueSearchIndex,
   formatVenueLocation,
@@ -250,9 +251,9 @@ async function loadPendingReservations() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/venue-reservations?status=pending");
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    pendingReservations.value = await res.json();
+    pendingReservations.value = await requestJson<VenueReservation[]>(
+      "/api/venue-reservations?status=pending",
+    );
     syncSelectedVenue();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载待审批预约失败";
@@ -262,15 +263,14 @@ async function loadPendingReservations() {
 }
 
 async function loadHistoryReservations() {
-  const reviewerId = reviewerUserId.value;
-  if (!reviewerId) return;
+  if (!reviewerUserId.value) return;
 
   historyLoading.value = true;
   historyError.value = "";
   try {
     const [approved, rejected] = await Promise.all([
-      fetchReservationsByStatus("approved", reviewerId),
-      fetchReservationsByStatus("rejected", reviewerId),
+      fetchReservationsByStatus("approved"),
+      fetchReservationsByStatus("rejected"),
     ]);
     historyReservations.value = [...approved, ...rejected];
   } catch (e) {
@@ -280,14 +280,9 @@ async function loadHistoryReservations() {
   }
 }
 
-async function fetchReservationsByStatus(status: "approved" | "rejected", reviewerId: number) {
-  const params = new URLSearchParams({
-    status,
-    reviewerUserId: String(reviewerId),
-  });
-  const res = await fetch(`/api/venue-reservations?${params.toString()}`);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as VenueReservation[];
+async function fetchReservationsByStatus(status: "approved" | "rejected") {
+  const params = new URLSearchParams({ status });
+  return requestJson<VenueReservation[]>(`/api/venue-reservations?${params.toString()}`);
 }
 
 function syncSelectedVenue() {
@@ -312,8 +307,7 @@ function openReview(reservation: VenueReservation, approved: boolean) {
 }
 
 async function submitReview() {
-  const reviewerId = reviewerUserId.value;
-  if (!reviewTarget.value || !reviewerId) {
+  if (!reviewTarget.value || !reviewerUserId.value) {
     ElMessage.error("缺少审批人或预约信息，无法提交审批。");
     return;
   }
@@ -325,18 +319,17 @@ async function submitReview() {
 
   reviewing.value = true;
   try {
-    const res = await fetch(`/api/venue-reservations/${reviewTarget.value.id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reviewerUserId: reviewerId,
-        approved: reviewForm.approved,
-        reviewComment: reviewForm.reviewComment.trim() || null,
-      }),
-    });
-
-    if (!res.ok) throw new Error(await readErrorMessage(res));
-    const reviewedReservation = (await res.json()) as VenueReservation;
+    const reviewedReservation = await requestJson<VenueReservation>(
+      `/api/venue-reservations/${reviewTarget.value.id}/review`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved: reviewForm.approved,
+          reviewComment: reviewForm.reviewComment.trim() || null,
+        }),
+      },
+    );
     pendingReservations.value = pendingReservations.value.filter(
       (reservation) => reservation.id !== reviewedReservation.id,
     );
@@ -366,18 +359,17 @@ function approveDisabledReason(reservation: VenueReservation) {
   return canApprove(reservation) ? "" : "开始时间必须晚于当前时间";
 }
 
-function createVenueIndex(venueId: number, venueName: string, extraIds: number[] = []) {
+function createVenueIndex(venueId: number, venueName: string) {
   const venue = venueLookup.value.get(venueId);
   const location = venue ? formatVenueLocation(venue.building, venue.roomNo) : "";
 
   return createVenueSearchIndex({
-    ids: [venueId, ...extraIds],
     texts: [venueName, venue?.name, venue?.building, venue?.roomNo, location],
   });
 }
 
 function createReservationIndex(reservation: VenueReservation) {
-  return createVenueIndex(reservation.venueId, reservation.venueName, [reservation.id]);
+  return createVenueIndex(reservation.venueId, reservation.venueName);
 }
 
 function venueLocationText(venueId: number) {
@@ -459,7 +451,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-input
           v-model="venueSearch"
           clearable
-          placeholder="搜索 ID、场地名称或位置"
+          placeholder="搜索场地名称或位置"
           class="panel-search"
         />
       </div>
@@ -474,7 +466,6 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-table-column label="场地" min-width="220">
           <template #default="{ row }">
             <div class="primary-text">{{ row.venueName }}</div>
-            <div class="muted">ID {{ row.venueId }}</div>
           </template>
         </el-table-column>
         <el-table-column label="位置" min-width="180">
@@ -500,7 +491,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
         <el-input
           v-model="selectedReservationSearch"
           clearable
-          placeholder="搜索预约 ID、场地名称或位置"
+          placeholder="搜索场地名称或位置"
           class="panel-search"
         />
       </div>
@@ -510,11 +501,10 @@ watch(filteredVenueGroups, syncSelectedVenue);
         stripe
         :empty-text="selectedReservationEmptyText"
       >
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="申请人/社团" min-width="180">
           <template #default="{ row }">
-            <div class="primary-text">{{ row.applicantName || `用户 ${row.applicantUserId}` }}</div>
-            <div class="muted">{{ row.clubName || `社团 ${row.clubId}` }}</div>
+            <div class="primary-text">{{ row.applicantName || "未知用户" }}</div>
+            <div class="muted">{{ row.clubName || "未知社团" }}</div>
           </template>
         </el-table-column>
         <el-table-column label="预约时间" min-width="220">
@@ -566,10 +556,10 @@ watch(filteredVenueGroups, syncSelectedVenue);
       <el-descriptions v-if="reviewTarget" :column="1" size="small" border class="review-detail">
         <el-descriptions-item label="场地">{{ reviewTarget.venueName }}</el-descriptions-item>
         <el-descriptions-item label="社团">{{
-          reviewTarget.clubName || `社团 ${reviewTarget.clubId}`
+          reviewTarget.clubName || "未知社团"
         }}</el-descriptions-item>
         <el-descriptions-item label="申请人">{{
-          reviewTarget.applicantName || `用户 ${reviewTarget.applicantUserId}`
+          reviewTarget.applicantName || "未知用户"
         }}</el-descriptions-item>
         <el-descriptions-item label="时间">
           {{ formatDateTime(reviewTarget.startTime) }} 至
@@ -613,7 +603,7 @@ watch(filteredVenueGroups, syncSelectedVenue);
           <el-input
             v-model="historySearch"
             clearable
-            placeholder="搜索预约 ID、场地名称或位置"
+            placeholder="搜索场地名称或位置"
             class="history-search"
           />
         </div>
@@ -638,12 +628,11 @@ watch(filteredVenueGroups, syncSelectedVenue);
         stripe
         :empty-text="historyEmptyText"
       >
-        <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="场地/社团" min-width="180">
           <template #default="{ row }">
             <div class="primary-text">{{ row.venueName }}</div>
             <div class="muted">{{ venueLocationText(row.venueId) }}</div>
-            <div class="muted">{{ row.clubName || `社团 ${row.clubId}` }}</div>
+            <div class="muted">{{ row.clubName || "未知社团" }}</div>
           </template>
         </el-table-column>
         <el-table-column label="预约时间" min-width="220">

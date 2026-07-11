@@ -14,19 +14,31 @@ public class ClubHubDbContext : DbContext
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
-    public DbSet<Project> Projects => Set<Project>();
-    public DbSet<Notice> Notices => Set<Notice>();
-    public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
     public DbSet<Recruitment> Recruitments => Set<Recruitment>();
     public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<LearningItem> LearningItems => Set<LearningItem>();
+    public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
+    public DbSet<Notice> Notices => Set<Notice>();
+    public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
+    public DbSet<Evaluation> Evaluations => Set<Evaluation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.UserId);
+            e.Property(u => u.UserId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_USERS.NEXTVAL");
+            e.HasIndex(u => u.Username)
+             .IsUnique()
+             .HasDatabaseName("UQ_USERS_USERNAME");
+            e.HasIndex(u => u.StudentNo)
+             .IsUnique()
+             .HasDatabaseName("UQ_USERS_STUDENT_NO");
             e.HasMany(u => u.UserRoles)
              .WithOne(ur => ur.User)
              .HasForeignKey(ur => ur.UserId)
@@ -53,6 +65,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<UserRole>(e =>
         {
             e.HasKey(ur => ur.UserRoleId);
+            e.Property(ur => ur.UserRoleId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_USER_ROLES.NEXTVAL");
             e.HasOne(ur => ur.Club)
              .WithMany(c => c.UserRoles)
              .HasForeignKey(ur => ur.ClubId)
@@ -62,6 +77,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Club>(e =>
         {
             e.HasKey(c => c.ClubId);
+            e.Property(c => c.ClubId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUBS.NEXTVAL");
             e.HasMany(c => c.Activities)
              .WithOne(a => a.Club)
              .HasForeignKey(a => a.ClubId);
@@ -72,6 +90,10 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.Recruitments)
              .WithOne(r => r.Club)
              .HasForeignKey(r => r.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.LearningItems)
+             .WithOne(item => item.Club)
+             .HasForeignKey(item => item.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(c => c.Applicant)
              .WithMany()
@@ -113,9 +135,34 @@ public class ClubHubDbContext : DbContext
             e.HasKey(p => p.ParticipationId);
         });
 
+        modelBuilder.Entity<Recruitment>(e =>
+        {
+            e.HasKey(r => r.RecruitId);
+            e.HasMany(r => r.Applications)
+             .WithOne(a => a.Recruitment)
+             .HasForeignKey(a => a.RecruitId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<RecruitmentApplication>(e =>
+        {
+            e.HasKey(a => a.ApplicationId);
+            e.HasOne(a => a.User)
+             .WithMany()
+             .HasForeignKey(a => a.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Reviewer)
+             .WithMany()
+             .HasForeignKey(a => a.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
         modelBuilder.Entity<ClubMember>(e =>
         {
             e.HasKey(cm => cm.MemberId);
+            e.Property(cm => cm.MemberId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUB_MEMBERS.NEXTVAL");
             e.HasOne(cm => cm.Club)
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
@@ -132,6 +179,32 @@ public class ClubHubDbContext : DbContext
             e.HasOne<User>()
              .WithMany()
              .HasForeignKey(p => p.LeaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<LearningItem>(e =>
+        {
+            e.HasKey(item => item.ItemId);
+            e.HasOne(item => item.Uploader)
+             .WithMany()
+             .HasForeignKey(item => item.UploaderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(item => item.Teacher)
+             .WithMany()
+             .HasForeignKey(item => item.TeacherUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(item => item.Records)
+             .WithOne(record => record.Item)
+             .HasForeignKey(record => record.ItemId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<LearningRecord>(e =>
+        {
+            e.HasKey(record => record.RecordId);
+            e.HasOne(record => record.User)
+             .WithMany()
+             .HasForeignKey(record => record.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -191,6 +264,56 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<VenueReservation>(e =>
         {
             e.HasKey(r => r.ReservationId);
+            e.HasOne(r => r.Club)
+             .WithMany()
+             .HasForeignKey(r => r.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.Activity)
+             .WithMany()
+             .HasForeignKey(r => r.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.ApplicantUser)
+             .WithMany()
+             .HasForeignKey(r => r.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(r => r.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Evaluation>(e =>
+        {
+            e.HasKey(ev => ev.EvaluationId);
+            e.Property(ev => ev.EvaluationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_EVALUATIONS.NEXTVAL");
+            e.HasOne(ev => ev.Club)
+             .WithMany()
+             .HasForeignKey(ev => ev.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(ev => ev.User)
+             .WithMany()
+             .HasForeignKey(ev => ev.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(ev => ev.Evaluator)
+             .WithMany()
+             .HasForeignKey(ev => ev.EvaluatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Venue>(e =>
+        {
+            e.HasKey(v => v.VenueId);
+        });
+
+        modelBuilder.Entity<VenueReservation>(e =>
+        {
+            e.HasKey(r => r.ReservationId);
+            e.HasOne(r => r.Venue)
+             .WithMany(v => v.Reservations)
+             .HasForeignKey(r => r.VenueId)
+             .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(r => r.Club)
              .WithMany()
              .HasForeignKey(r => r.ClubId)

@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface ReviewProjectRequest {
   /**
-   * 当前审核操作用户 ID；仅本社团指导老师可审核。
+   *
    * @type {number}
    * @memberof ReviewProjectRequest
    */

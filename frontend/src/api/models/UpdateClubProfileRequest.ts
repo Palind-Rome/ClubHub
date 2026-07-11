@@ -21,11 +21,12 @@ import { mapValues } from "../runtime";
  */
 export interface UpdateClubProfileRequest {
   /**
-   *
+   * 已废弃，服务端从 JWT 读取身份。
    * @type {number}
    * @memberof UpdateClubProfileRequest
+   * @deprecated
    */
-  currentUserId: number;
+  currentUserId?: number;
   /**
    *
    * @type {string}
@@ -83,7 +84,6 @@ export interface UpdateClubProfileRequest {
 export function instanceOfUpdateClubProfileRequest(
   value: object,
 ): value is UpdateClubProfileRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("name" in value) || value["name"] === undefined) return false;
   if (!("category" in value) || value["category"] === undefined) return false;
   return true;
@@ -101,7 +101,7 @@ export function UpdateClubProfileRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
+    currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     name: json["name"],
     category: json["category"],
     description: json["description"] == null ? undefined : json["description"],
