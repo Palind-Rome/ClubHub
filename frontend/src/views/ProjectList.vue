@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
+import { RouterLink } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   ProjectProjectStatusEnum,
@@ -426,10 +427,6 @@ function canCancelProject(project: Project) {
   );
 }
 
-function hasProjectActions(project: Project) {
-  return canAssignProjectLeader(project) || canReviewProject(project) || canCancelProject(project);
-}
-
 async function cancelProject(project: Project) {
   if (!canCancelProject(project) || !currentUserId.value) {
     ElMessage.warning("仅系统管理员、本社团负责人或校级社团管理员可撤销符合条件的项目。");
@@ -655,8 +652,19 @@ onUnmounted(() => {
         min-width="160"
         show-overflow-tooltip
       />
-      <el-table-column label="操作" width="210" fixed="right">
+      <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
+          <RouterLink :to="`/projects/${row.id}/workspace`" custom v-slot="{ href, navigate }">
+            <el-link
+              class="workspace-action"
+              :href="href"
+              type="primary"
+              underline="never"
+              @click="navigate"
+            >
+              项目空间
+            </el-link>
+          </RouterLink>
           <el-button
             v-if="canAssignProjectLeader(row)"
             size="small"
@@ -685,7 +693,6 @@ onUnmounted(() => {
           >
             撤销
           </el-button>
-          <span v-if="!hasProjectActions(row)" class="action-muted">无可用操作</span>
         </template>
       </el-table-column>
     </el-table>
@@ -881,9 +888,9 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.action-muted {
-  color: var(--el-text-color-placeholder);
-  font-size: 13px;
+.workspace-action {
+  margin-right: 12px;
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {

@@ -27,6 +27,7 @@ const activeMenu = computed(() => {
   if (route.path.startsWith("/evaluations")) return "/evaluations";
   if (route.path.startsWith("/awards")) return "/awards";
   if (route.path.startsWith("/learning")) return "/learning";
+  if (route.path.startsWith("/projects")) return "/projects";
   return route.path;
 });
 const canAccessClubRegistration = computed(() => {
@@ -233,5 +234,38 @@ onUnmounted(() => {
 }
 .main {
   scrollbar-gutter: stable;
+}
+
+@media (max-width: 900px) {
+  .el-header {
+    padding: 0 12px;
+  }
+
+  .nav {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .nav :deep(.el-menu-item) {
+    flex-shrink: 0;
+  }
+
+  .role-tags {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .el-header {
+    gap: 8px;
+  }
+
+  .health-tag {
+    display: none;
+  }
+
+  .main {
+    padding: 14px;
+  }
 }
 </style>
