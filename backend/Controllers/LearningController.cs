@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Minio.Exceptions;
 using ApiLearningDownloadResult = Org.OpenAPITools.Models.LearningDownloadResult;
 using ApiLearningItem = Org.OpenAPITools.Models.LearningItem;
 using ApiLearningItemStatistics = Org.OpenAPITools.Models.LearningItemStatistics;
@@ -31,6 +32,7 @@ public class LearningController : ControllerBase
     private const int MaxCreateRetries = 3;
     private const long MaxUploadBytes = 50L * 1024 * 1024;
     private const string LocalFileUrlPrefix = "/api/learning/items/";
+    private const string MinioFileUrlPrefix = "minio://";
 
     private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -41,15 +43,18 @@ public class LearningController : ControllerBase
 
     private readonly ClubHubDbContext _db;
     private readonly IWebHostEnvironment _environment;
+    private readonly LearningObjectStorage _objectStorage;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
         ClubHubDbContext db,
         IWebHostEnvironment environment,
+        LearningObjectStorage objectStorage,
         ILogger<LearningController> logger)
     {
         _db = db;
         _environment = environment;
+        _objectStorage = objectStorage;
         _logger = logger;
     }
 
@@ -206,9 +211,9 @@ public class LearningController : ControllerBase
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (request.ClubId <= 0) return BadRequest("社团 ID 必须大于 0。");
-        if (request.FileUrl?.Trim().StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true)
+        if (IsInternalFileReference(request.FileUrl))
         {
-            return BadRequest("本地文件地址只能通过资源上传生成。");
+            return BadRequest("内部文件地址只能通过资源上传生成。");
         }
 
         var operatorUser = await LoadUserAsync(currentUserId.Value);
@@ -369,20 +374,20 @@ public class LearningController : ControllerBase
         await using var transaction =
             await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var itemId = await GetNextLearningItemId();
-        var clubStoragePath = Path.Combine(
-            _environment.ContentRootPath,
-            "App_Data",
-            "learning-files",
-            clubId.ToString());
-        Directory.CreateDirectory(clubStoragePath);
-        var storedPath = Path.Combine(clubStoragePath, $"{itemId}{extension}");
+        string? storageReference = null;
 
         try
         {
-            await using (var stream = new FileStream(storedPath, FileMode.CreateNew, FileAccess.Write))
-            {
-                await file.CopyToAsync(stream);
-            }
+            await using var stream = file.OpenReadStream();
+            storageReference = await _objectStorage.UploadAsync(
+                clubId,
+                itemId,
+                extension,
+                stream,
+                file.Length,
+                file.ContentType,
+                originalFileName,
+                HttpContext.RequestAborted);
 
             var item = new DbLearningItem
             {
@@ -393,7 +398,7 @@ public class LearningController : ControllerBase
                 ItemType = InferResourceType(file.ContentType, extension),
                 CategoryName = normalizedCategory,
                 Description = normalizedDescription,
-                FileUrl = $"{LocalFileUrlPrefix}{itemId}/file",
+                FileUrl = storageReference,
                 Visibility = normalizedVisibility,
                 DownloadPermission = normalizedDownloadPermission,
                 ItemStatus = LearningWorkflow.ItemStatusPublished,
@@ -409,10 +414,20 @@ public class LearningController : ControllerBase
                 ? CourseDataIntegrityProblem(itemId)
                 : CreatedAtAction(nameof(GetItems), null, itemDto);
         }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            await transaction.RollbackAsync();
+            await TryRemoveObjectAsync(storageReference, itemId);
+            _logger.LogError(exception, "资源 {ItemId} 上传到 MinIO 失败。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源存储暂不可用",
+                detail: "无法连接 MinIO 或存储配置无效，请稍后重试。");
+        }
         catch
         {
             await transaction.RollbackAsync();
-            if (System.IO.File.Exists(storedPath)) System.IO.File.Delete(storedPath);
+            await TryRemoveObjectAsync(storageReference, itemId);
             throw;
         }
     }
@@ -496,6 +511,9 @@ public class LearningController : ControllerBase
         }
 
         var isLocalUpload = item.FileUrl == $"{LocalFileUrlPrefix}{itemId}/file";
+        var storageReference = _objectStorage.IsStorageReference(item.FileUrl)
+            ? item.FileUrl
+            : null;
         var clubId = item.ClubId;
         await using var transaction = await _db.Database.BeginTransactionAsync();
         var records = await _db.LearningRecords
@@ -532,6 +550,10 @@ public class LearningController : ControllerBase
                 }
             }
         }
+        else if (storageReference is not null)
+        {
+            await TryRemoveObjectAsync(storageReference, itemId);
+        }
 
         return NoContent();
     }
@@ -555,8 +577,8 @@ public class LearningController : ControllerBase
                 .ThenInclude(uploader => uploader!.ClubMemberships)
             .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程或资源不存在。");
-        if (request.FileUrl?.Trim().StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true &&
-            request.FileUrl.Trim() != $"{LocalFileUrlPrefix}{itemId}/file")
+        if (IsInternalFileReference(request.FileUrl) &&
+            request.FileUrl?.Trim() != item.FileUrl?.Trim())
         {
             return BadRequest("不能将资源关联到其他上传文件。");
         }
@@ -880,6 +902,25 @@ public class LearningController : ControllerBase
                 return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
             }
 
+            var downloadUrl = item.FileUrl!.Trim();
+            if (_objectStorage.IsStorageReference(downloadUrl))
+            {
+                try
+                {
+                    downloadUrl = await _objectStorage.CreateDownloadUrlAsync(
+                        downloadUrl,
+                        HttpContext.RequestAborted);
+                }
+                catch (Exception exception) when (IsObjectStorageFailure(exception))
+                {
+                    _logger.LogError(exception, "资源 {ItemId} 的 MinIO 下载链接生成失败。", itemId);
+                    return Problem(
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        title: "资源存储暂不可用",
+                        detail: "无法生成资源下载链接，请稍后重试。");
+                }
+            }
+
             var now = LearningWorkflow.BusinessNow();
             if (record is null)
             {
@@ -913,7 +954,7 @@ public class LearningController : ControllerBase
                 {
                     ItemId = item.ItemId,
                     Title = item.Title,
-                    FileUrl = item.FileUrl!.Trim(),
+                    FileUrl = downloadUrl,
                     DownloadedAt = LearningWorkflow.AsUtc(now)
                 });
             }
@@ -1893,6 +1934,32 @@ public class LearningController : ControllerBase
     private static bool IsBlockedUploadExtension(string extension) =>
         extension is ".exe" or ".dll" or ".com" or ".bat" or ".cmd" or ".ps1" or
             ".sh" or ".msi" or ".scr" or ".js" or ".vbs";
+
+    private static bool IsInternalFileReference(string? fileUrl)
+    {
+        var normalized = fileUrl?.Trim();
+        return normalized?.StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true ||
+               normalized?.StartsWith(MinioFileUrlPrefix, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static bool IsObjectStorageFailure(Exception exception) =>
+        exception is MinioException or InvalidOperationException or HttpRequestException or IOException;
+
+    private async Task TryRemoveObjectAsync(string? storageReference, int itemId)
+    {
+        if (!_objectStorage.IsStorageReference(storageReference)) return;
+        try
+        {
+            await _objectStorage.RemoveAsync(storageReference!, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "资源 {ItemId} 的数据库状态已更新，但 MinIO 对象清理失败。",
+                itemId);
+        }
+    }
 
     /// <summary>
     /// 清理可选文本并将空白值转换为空。

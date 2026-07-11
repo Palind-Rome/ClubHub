@@ -872,10 +872,12 @@ async function downloadItem(item: LearningItem) {
   }
 
   downloadingId.value = item.id;
+  const opened = window.open("about:blank", "_blank");
+  if (opened) opened.opener = null;
   try {
     const result = await api.downloadLearningItem({ itemId: item.id });
-    let opened: Window | null = null;
     if (result.fileUrl.startsWith("/api/learning/items/") && result.fileUrl.endsWith("/file")) {
+      opened?.close();
       const response = await fetch(result.fileUrl, {
         headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
       });
@@ -886,13 +888,18 @@ async function downloadItem(item: LearningItem) {
       link.download = item.title;
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+    } else if (opened) {
+      opened.location.replace(result.fileUrl);
     } else {
-      opened = window.open(result.fileUrl, "_blank", "noopener,noreferrer");
+      const link = document.createElement("a");
+      link.href = result.fileUrl;
+      link.download = item.title;
+      link.click();
     }
-    if (opened) opened.opener = null;
     ElMessage.success("下载权限校验通过，已记录本次下载");
     await loadLearningItems();
   } catch (error) {
+    opened?.close();
     ElMessage.error(toErrorMessage(error, "资源下载失败"));
   } finally {
     downloadingId.value = null;
