@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
+using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -2444,12 +2445,6 @@ public class UpdateClubMemberTermRequest
     public DateTime? TermEnd { get; set; }
     public string? MemberStatus { get; set; }
     public decimal? ContributionScore { get; set; }
-}
-
-public class UpdateClubMemberGroupingRequest
-{
-    public string? DepartmentName { get; set; }
-    public string? GroupName { get; set; }
 }
 
 public record ClubEvaluationRecordDto(
