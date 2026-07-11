@@ -31,7 +31,6 @@ public class ClubsController : ControllerBase
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
     private const string ClubAdvisorRoleCode = "ADVISOR";
-    private const int MaxStudentClubMemberships = 3;
     private const int ClubMemberTextMaxLength = 255;
     private const int MaxStudentClubMemberships = RecruitmentWorkflow.MaxStudentClubMemberships;
     private const string EvaluationSemester = "semester";
@@ -1285,7 +1284,12 @@ public class ClubsController : ControllerBase
             targetGroup,
             scope.DepartmentName,
             scope.GroupName));
-        if (!canAssignToOwnGroup)
+        var canManageCurrentGroup = scopes.Any(scope => GroupingMatchesScope(
+            member.DepartmentName,
+            member.GroupName,
+            scope.DepartmentName,
+            scope.GroupName));
+        if (!canAssignToOwnGroup || !canManageCurrentGroup)
         {
             return (StatusCode(403, new { message = "干部只能将成员纳入自己所在小组，部长只能维护本部门小组。" }), null);
         }

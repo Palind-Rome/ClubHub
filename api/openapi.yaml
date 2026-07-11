@@ -699,6 +699,44 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/clubs/{clubId}/members/{memberId}/grouping:
+    patch:
+      summary: 更新社团成员部门和小组归属
+      description: 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+      operationId: updateClubMemberGrouping
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubMemberTermRequest"
+      responses:
+        "200":
+          description: 社团成员部门和小组已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubMemberRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该成员分组的权限
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态或成员任期状态不允许维护
+
   /api/clubs/{clubId}/members/self/exit:
     patch:
       summary: 学生主动退出社团

@@ -21,13 +21,9 @@ public class ClubHubDbContext : DbContext
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
     public DbSet<NoticeRead> NoticeReads => Set<NoticeRead>();
-    public DbSet<Recruitment> Recruitments => Set<Recruitment>();
-    public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
-    public DbSet<Venue> Venues => Set<Venue>();
-    public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

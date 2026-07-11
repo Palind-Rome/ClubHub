@@ -35,11 +35,14 @@ export async function requestJson<T>(
 
   if (!res.ok) {
     let message = `请求失败（${res.status}）`;
-    try {
-      const body = (await res.json()) as ApiError;
-      message = body.message || body.title || message;
-    } catch {
-      /* Keep the default error message. */
+    const text = await res.text();
+    if (text) {
+      try {
+        const body = JSON.parse(text) as ApiError;
+        message = body.message || body.title || message;
+      } catch {
+        message = text;
+      }
     }
     throw new Error(message);
   }

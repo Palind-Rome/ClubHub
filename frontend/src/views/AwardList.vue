@@ -399,11 +399,15 @@ watch(selectedClubId, () => {
   void Promise.all([loadAwards(), loadMembers()]);
 });
 
-watch(activeTab, () => {
-  if (activeTab.value === "manage" && !canMaintainSelectedClub.value) {
-    activeTab.value = "public";
-  }
-});
+watch(
+  [activeTab, canMaintainSelectedClub],
+  ([tab, canMaintain]) => {
+    if (tab === "manage" && !canMaintain) {
+      activeTab.value = "public";
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   stopSessionListener = onSessionChange(() => {
