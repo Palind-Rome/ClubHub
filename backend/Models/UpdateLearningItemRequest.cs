@@ -42,11 +42,11 @@ namespace Org.OpenAPITools.Models
         public string? Description { get; set; }
 
         /// <summary>
-        /// 课程授课人；课程类型必填。
+        /// 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         /// </summary>
-        /// <value>课程授课人；课程类型必填。</value>
-        [DataMember(Name="teacherUserId", EmitDefaultValue=true)]
-        public int? TeacherUserId { get; set; }
+        /// <value>可选的课程授课人，可以是教师或学生；非课程资源可为空。</value>
+        [DataMember(Name="instructorUserId", EmitDefaultValue=true)]
+        public int? InstructorUserId { get; set; }
 
         /// <summary>
         /// 支持 course、lecture、training、video、document、material。

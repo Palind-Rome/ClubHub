@@ -505,6 +505,11 @@ export interface GetClubMembersRequest {
   termName?: string;
 }
 
+export interface GetLearningInstructorByUserNumberRequest {
+  clubId: number;
+  userNumber: string;
+}
+
 export interface GetLearningItemStatisticsRequest {
   itemId: number;
 }
@@ -515,10 +520,6 @@ export interface GetLearningItemsRequest {
 
 export interface GetLearningRecordsRequest {
   itemId?: number;
-}
-
-export interface GetLearningTeacherCandidatesRequest {
-  clubId: number;
 }
 
 export interface GetNoticesRequest {
@@ -2966,6 +2967,89 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getLearningInstructorByUserNumber without sending the request
+   */
+  async getLearningInstructorByUserNumberRequestOpts(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getLearningInstructorByUserNumber().',
+      );
+    }
+
+    if (requestParameters["userNumber"] == null) {
+      throw new runtime.RequiredError(
+        "userNumber",
+        'Required parameter "userNumber" was null or undefined when calling getLearningInstructorByUserNumber().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["userNumber"] != null) {
+      queryParameters["userNumber"] = requestParameters["userNumber"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/instructor-lookup`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumberRaw(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningTeacherCandidate>> {
+    const requestOptions =
+      await this.getLearningInstructorByUserNumberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningTeacherCandidateFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumber(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningTeacherCandidate> {
+    const response = await this.getLearningInstructorByUserNumberRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getLearningItemStatistics without sending the request
    */
   async getLearningItemStatisticsRequestOpts(
@@ -3149,74 +3233,6 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningRecord>> {
     const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
-    return await response.value();
-  }
-
-  /**
-   * Creates request options for getLearningTeacherCandidates without sending the request
-   */
-  async getLearningTeacherCandidatesRequestOpts(
-    requestParameters: GetLearningTeacherCandidatesRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling getLearningTeacherCandidates().',
-      );
-    }
-
-    const queryParameters: any = {};
-
-    if (requestParameters["clubId"] != null) {
-      queryParameters["clubId"] = requestParameters["clubId"];
-    }
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    if (this.configuration && this.configuration.accessToken) {
-      const token = this.configuration.accessToken;
-      const tokenString = await token("bearerAuth", []);
-
-      if (tokenString) {
-        headerParameters["Authorization"] = `Bearer ${tokenString}`;
-      }
-    }
-
-    let urlPath = `/api/learning/teacher-candidates`;
-
-    return {
-      path: urlPath,
-      method: "GET",
-      headers: headerParameters,
-      query: queryParameters,
-    };
-  }
-
-  /**
-   * 需要登录；仅返回当前用户有权维护的指定社团可选教师。
-   * 获取课程授课教师候选人
-   */
-  async getLearningTeacherCandidatesRaw(
-    requestParameters: GetLearningTeacherCandidatesRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
-    const requestOptions = await this.getLearningTeacherCandidatesRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(LearningTeacherCandidateFromJSON),
-    );
-  }
-
-  /**
-   * 需要登录；仅返回当前用户有权维护的指定社团可选教师。
-   * 获取课程授课教师候选人
-   */
-  async getLearningTeacherCandidates(
-    requestParameters: GetLearningTeacherCandidatesRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<LearningTeacherCandidate>> {
-    const response = await this.getLearningTeacherCandidatesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

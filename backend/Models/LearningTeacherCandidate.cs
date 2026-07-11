@@ -20,41 +20,41 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// User-facing instructor option used by the learning course form.
+    /// 课程表单使用的授课人候选项；授课人可以是教师或学生。
     /// </summary>
     [DataContract]
     public partial class LearningTeacherCandidate 
     {
         /// <summary>
-        /// Internal user id submitted by the client after the user selects an instructor.
+        /// 选择授课人后提交的内部用户 ID。
         /// </summary>
-        /// <value>Internal user id submitted by the client after the user selects an instructor.</value>
+        /// <value>选择授课人后提交的内部用户 ID。</value>
         /* <example>30</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Instructor real name.
+        /// 授课人姓名。
         /// </summary>
-        /// <value>Instructor real name.</value>
+        /// <value>授课人姓名。</value>
         /* <example>???</example> */
         [DataMember(Name="realName", EmitDefaultValue=true)]
         public string? RealName { get; set; }
 
         /// <summary>
-        /// Instructor staff number.
+        /// 授课人的学号或工号。
         /// </summary>
-        /// <value>Instructor staff number.</value>
+        /// <value>授课人的学号或工号。</value>
         /* <example>10001</example> */
         [DataMember(Name="studentNo", EmitDefaultValue=true)]
         public string? StudentNo { get; set; }
 
         /// <summary>
-        /// User-facing label containing the instructor name and staff number.
+        /// 包含教师或学生身份、姓名及学工号的展示文本。
         /// </summary>
-        /// <value>User-facing label containing the instructor name and staff number.</value>
-        /* <example>????10001?</example> */
+        /// <value>包含教师或学生身份、姓名及学工号的展示文本。</value>
+        /* <example>学生 · 张同学（2350001）</example> */
         [Required]
         [DataMember(Name="displayName", EmitDefaultValue=false)]
         public string DisplayName { get; set; }

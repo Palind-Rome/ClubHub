@@ -52,12 +52,12 @@ namespace Org.OpenAPITools.Models
         public int? UploaderUserId { get; set; }
 
         /// <summary>
-        /// 课程授课人；非课程资源可为空。
+        /// 课程授课人，可以是教师或学生；非课程资源可为空。
         /// </summary>
-        /// <value>课程授课人；非课程资源可为空。</value>
+        /// <value>课程授课人，可以是教师或学生；非课程资源可为空。</value>
         /* <example>30</example> */
-        [DataMember(Name="teacherUserId", EmitDefaultValue=true)]
-        public int? TeacherUserId { get; set; }
+        [DataMember(Name="instructorUserId", EmitDefaultValue=true)]
+        public int? InstructorUserId { get; set; }
 
         /// <summary>
         /// 课程或资源标题。

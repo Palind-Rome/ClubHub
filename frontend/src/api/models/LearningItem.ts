@@ -39,11 +39,11 @@ export interface LearningItem {
    */
   uploaderUserId?: number | null;
   /**
-   * 课程授课人；非课程资源可为空。
+   * 课程授课人，可以是教师或学生；非课程资源可为空。
    * @type {number}
    * @memberof LearningItem
    */
-  teacherUserId?: number | null;
+  instructorUserId?: number | null;
   /**
    * 课程或资源标题。
    * @type {string}
@@ -253,7 +253,7 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     id: json["id"],
     clubId: json["clubId"],
     uploaderUserId: json["uploaderUserId"] == null ? undefined : json["uploaderUserId"],
-    teacherUserId: json["teacherUserId"] == null ? undefined : json["teacherUserId"],
+    instructorUserId: json["instructorUserId"] == null ? undefined : json["instructorUserId"],
     title: json["title"],
     itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
@@ -297,7 +297,7 @@ export function LearningItemToJSONTyped(
     id: value["id"],
     clubId: value["clubId"],
     uploaderUserId: value["uploaderUserId"],
-    teacherUserId: value["teacherUserId"],
+    instructorUserId: value["instructorUserId"],
     title: value["title"],
     itemType: value["itemType"],
     categoryName: value["categoryName"],

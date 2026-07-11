@@ -39,11 +39,11 @@ export interface CreateLearningItemRequest {
    */
   description?: string | null;
   /**
-   * 课程授课人；课程类型必填。
+   * 可选的课程授课人，可以是教师或学生；非课程资源可为空。
    * @type {number}
    * @memberof CreateLearningItemRequest
    */
-  teacherUserId?: number | null;
+  instructorUserId?: number | null;
   /**
    * 支持 course、lecture、training、video、document、material。
    * @type {string}
@@ -162,7 +162,7 @@ export function CreateLearningItemRequestFromJSONTyped(
     clubId: json["clubId"],
     title: json["title"],
     description: json["description"] == null ? undefined : json["description"],
-    teacherUserId: json["teacherUserId"] == null ? undefined : json["teacherUserId"],
+    instructorUserId: json["instructorUserId"] == null ? undefined : json["instructorUserId"],
     itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
     fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
@@ -191,7 +191,7 @@ export function CreateLearningItemRequestToJSONTyped(
     clubId: value["clubId"],
     title: value["title"],
     description: value["description"],
-    teacherUserId: value["teacherUserId"],
+    instructorUserId: value["instructorUserId"],
     itemType: value["itemType"],
     categoryName: value["categoryName"],
     fileUrl: value["fileUrl"],
