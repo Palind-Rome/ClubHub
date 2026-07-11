@@ -539,9 +539,10 @@ const focusedClubRows = computed(() => {
   const club = selectedClub.value;
   return club && canViewClubInfo(club) ? [club] : [];
 });
-const visibleClubInfoRows = computed(() =>
-  isGlobalClubGovernance.value ? clubInfoRows.value : focusedClubRows.value,
-);
+const visibleClubInfoRows = computed(() => {
+  if (selectedClubId.value) return focusedClubRows.value;
+  return isGlobalClubGovernance.value ? clubInfoRows.value : focusedClubRows.value;
+});
 const manageableClubs = computed(() => clubs.value.filter((club) => canManageClub(club)));
 const profileRows = computed(() => (canManageClubProfiles.value ? manageableClubs.value : []));
 const memberViewClubs = computed(() =>
@@ -696,6 +697,15 @@ const canCreateMemberGroup = computed(
     memberWorkspaceMode.value === "current" &&
     (canManageSelectedClub.value || selectedDepartmentManagerScopes.value.length > 0),
 );
+const canShowMemberOperationColumn = computed(
+  () =>
+    memberWorkspaceMode.value === "current" &&
+    (canAdministerMemberTerms.value ||
+      canManageSelectedClub.value ||
+      canRemoveSelectedClubMember.value ||
+      canExitSelectedClub.value ||
+      selectedCadreGroupingScopes.value.length > 0),
+);
 const groupCreateDepartmentOptions = computed(() =>
   canManageSelectedClub.value
     ? memberDepartmentOptions.value
@@ -830,7 +840,7 @@ const workspaceEmptyDescription = computed(() => {
   return "当前账号暂无社团身份或可查看的社团信息";
 });
 const visibleIdentityRows = computed(() => {
-  if (isGlobalClubGovernance.value || !selectedClubId.value) return identityRows.value;
+  if (!selectedClubId.value) return identityRows.value;
   return identityRows.value.filter((row) => row.clubId === selectedClubId.value);
 });
 const visibleTabs = computed(() => {
@@ -1501,7 +1511,7 @@ function canEditMemberPosition(row: ClubMemberRecord) {
 
 function memberTermEditDeniedMessage(row: ClubMemberRecord) {
   if (canManageSelectedClub.value && row.userId === currentUserId.value) {
-    return "负责人不能修改自己的任期，请由指导老师或社团管理员处理。";
+    return "负责人不能修改自己的任期，请由指导老师或系统管理员处理。";
   }
 
   return "当前身份不能维护该社团成员任期。";
@@ -2334,6 +2344,17 @@ function canRemoveMemberRow(row: ClubMemberRecord) {
   );
 }
 
+function hasMemberRowActions(row: ClubMemberRecord) {
+  return (
+    canUpdateMemberDepartment(row) ||
+    canUpdateMemberGroup(row) ||
+    canEditMemberPosition(row) ||
+    canEditMemberTerm(row) ||
+    canExitMemberRow(row) ||
+    canRemoveMemberRow(row)
+  );
+}
+
 function memberExitDisabledReason(row: IdentityRow | ClubMemberRecord) {
   const status = "isCurrent" in row ? (row.isCurrent ? "active" : "ended") : row.memberStatus;
   if (!isActiveStatus(status)) return "只能处理当前有效成员身份。";
@@ -2728,12 +2749,14 @@ onUnmounted(() => {
       >
         <div class="workspace-head">
           <div>
-            <h3>{{ isGlobalClubGovernance ? "社团治理" : selectedClub?.name }}</h3>
+            <h3>{{ selectedClub?.name || "社团治理" }}</h3>
             <p>
               {{
-                isGlobalClubGovernance
-                  ? "查看全校社团档案，处理社团运营状态。"
-                  : "当前社团的基础档案、负责人、指导老师和备案信息。"
+                selectedClub
+                  ? "当前社团的基础档案、负责人、指导老师和备案信息。"
+                  : isGlobalClubGovernance
+                    ? "查看全校社团档案，处理社团运营状态。"
+                    : "当前社团的基础档案、负责人、指导老师和备案信息。"
               }}
             </p>
           </div>
@@ -3075,66 +3098,22 @@ onUnmounted(() => {
           <el-table-column prop="studentNo" label="学号/工号" width="130" />
           <el-table-column label="部门" width="150">
             <template #default="{ row }">
-              <span class="editable-cell">
-                <span>{{ row.departmentName || "-" }}</span>
-                <el-button
-                  v-if="memberWorkspaceMode === 'current' && canUpdateMemberDepartment(row)"
-                  link
-                  type="primary"
-                  :icon="Edit"
-                  title="修改部门"
-                  class="cell-edit-button"
-                  @click="openMemberGroupingDialog(row, 'departmentName')"
-                />
-              </span>
+              <span>{{ row.departmentName || "-" }}</span>
             </template>
           </el-table-column>
           <el-table-column label="小组" width="140">
             <template #default="{ row }">
-              <span class="editable-cell">
-                <span>{{ row.groupName || "-" }}</span>
-                <el-button
-                  v-if="memberWorkspaceMode === 'current' && canUpdateMemberGroup(row)"
-                  link
-                  type="primary"
-                  :icon="Edit"
-                  :title="canFreelyUpdateMemberGrouping(row) ? '修改小组' : '纳入我的小组'"
-                  class="cell-edit-button"
-                  @click="openMemberGroupingDialog(row, 'groupName')"
-                />
-              </span>
+              <span>{{ row.groupName || "-" }}</span>
             </template>
           </el-table-column>
           <el-table-column label="职位" width="150">
             <template #default="{ row }">
-              <span class="editable-cell">
-                <span>{{ row.positionName || "-" }}</span>
-                <el-button
-                  v-if="memberWorkspaceMode === 'current' && canEditMemberPosition(row)"
-                  link
-                  type="primary"
-                  :icon="Edit"
-                  title="修改职位名称"
-                  class="cell-edit-button"
-                  @click="editMemberPosition(row)"
-                />
-              </span>
+              <span>{{ row.positionName || "-" }}</span>
             </template>
           </el-table-column>
           <el-table-column label="任期" min-width="170">
             <template #default="{ row }">
-              <span class="editable-cell">
-                <span>{{ row.termName || "-" }}</span>
-                <el-button
-                  v-if="memberWorkspaceMode === 'current' && canEditMemberTerm(row)"
-                  link
-                  type="primary"
-                  :icon="Edit"
-                  title="修改任期"
-                  class="cell-edit-button"
-                  @click="openEditMemberTermDialog(row)"
-                />
-              </span>
+              <span>{{ row.termName || "-" }}</span>
             </template>
           </el-table-column>
           <el-table-column label="任期开始" width="130">
@@ -3159,44 +3138,71 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
           <el-table-column
-            v-if="
-              memberWorkspaceMode === 'current' &&
-              (canManageSelectedClub || canRemoveSelectedClubMember || canExitSelectedClub)
-            "
+            v-if="canShowMemberOperationColumn"
             label="操作"
-            width="210"
+            width="320"
             fixed="right"
           >
             <template #default="{ row }">
-              <el-button
-                v-if="canManageSelectedClub"
-                type="primary"
-                plain
-                :icon="Edit"
-                @click="openEditMemberTermDialog(row)"
-              >
-                编辑
-              </el-button>
-              <el-button
-                v-if="canExitMemberRow(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingClubId === row.clubId"
-                @click="exitCurrentClub(row)"
-              >
-                退出
-              </el-button>
-              <el-button
-                v-if="canRemoveMemberRow(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingMemberId === row.memberId"
-                @click="removeClubMember(row)"
-              >
-                移出
-              </el-button>
+              <div class="row-actions member-row-actions">
+                <el-button
+                  v-if="canUpdateMemberDepartment(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openMemberGroupingDialog(row, 'departmentName')"
+                >
+                  部门
+                </el-button>
+                <el-button
+                  v-if="canUpdateMemberGroup(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openMemberGroupingDialog(row, 'groupName')"
+                >
+                  小组
+                </el-button>
+                <el-button
+                  v-if="canEditMemberPosition(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="editMemberPosition(row)"
+                >
+                  职位
+                </el-button>
+                <el-button
+                  v-if="canEditMemberTerm(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="openEditMemberTermDialog(row)"
+                >
+                  任期
+                </el-button>
+                <el-button
+                  v-if="canExitMemberRow(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingClubId === row.clubId"
+                  @click="exitCurrentClub(row)"
+                >
+                  退出
+                </el-button>
+                <el-button
+                  v-if="canRemoveMemberRow(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingMemberId === row.memberId"
+                  @click="removeClubMember(row)"
+                >
+                  移出
+                </el-button>
+                <span v-if="!hasMemberRowActions(row)" class="muted">仅查看</span>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -4075,27 +4081,6 @@ onUnmounted(() => {
 
 .row-actions {
   align-items: center;
-}
-
-.editable-cell {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  gap: 4px;
-  vertical-align: middle;
-}
-
-.editable-cell span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cell-edit-button {
-  flex: 0 0 auto;
-  min-height: 22px;
-  padding: 0 2px;
 }
 
 .member-head {
