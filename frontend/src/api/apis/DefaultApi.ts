@@ -473,6 +473,8 @@ export interface GetClubEvaluationsRequest {
 export interface GetClubMembersRequest {
   clubId: number;
   includeHistory?: boolean;
+  departmentName?: string;
+  groupName?: string;
   termName?: string;
 }
 
@@ -2678,6 +2680,14 @@ export class DefaultApi extends runtime.BaseAPI {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
     }
 
+    if (requestParameters["departmentName"] != null) {
+      queryParameters["departmentName"] = requestParameters["departmentName"];
+    }
+
+    if (requestParameters["groupName"] != null) {
+      queryParameters["groupName"] = requestParameters["groupName"];
+    }
+
     if (requestParameters["termName"] != null) {
       queryParameters["termName"] = requestParameters["termName"];
     }
@@ -2696,7 +2706,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届筛选。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembersRaw(
@@ -2712,7 +2722,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届筛选。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembers(
