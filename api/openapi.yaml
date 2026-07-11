@@ -2502,6 +2502,100 @@ paths:
         "403":
           description: ?????????????
 
+  /api/learning/resources/upload:
+    post:
+      summary: 上传社团学习资源
+      description: 社团负责人、干部或指导老师可通过 multipart/form-data 上传单个文件并创建学习资源；客户端可重复调用以完成批量上传。
+      operationId: uploadLearningResource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - clubId
+                - file
+                - visibility
+                - downloadPermission
+              properties:
+                clubId:
+                  type: integer
+                  minimum: 1
+                  description: 文件所属社团。
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的资源文件。
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  nullable: true
+                  description: 可选的资源标题；未填写时使用原文件名。
+                categoryName:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                  description: 可选的资源分类。
+                description:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+                  description: 可选的资源内容摘要、用途、版本或注意事项。
+                visibility:
+                  type: string
+                  enum: [public, club, department]
+                  description: 资源可见范围。
+                downloadPermission:
+                  type: string
+                  enum: [allow, deny, approval]
+                  description: 资源下载设置。
+      responses:
+        "201":
+          description: 文件上传并创建资源成功。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: 文件、社团或权限参数无效。
+        "403":
+          description: 当前用户无权为该社团上传资源。
+        "404":
+          description: 当前用户或社团不存在。
+        "413":
+          description: 文件超过 50 MB。
+
+  /api/learning/items/{itemId}/file:
+    get:
+      summary: 获取本地上传的学习资源文件
+      description: 校验当前用户的资源可见权限后返回文件内容；下载行为由下载校验接口记录。
+      operationId: getLearningResourceFile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 文件内容。
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: 当前用户无权查看该资源。
+        "404":
+          description: 资源或物理文件不存在。
+
   /api/learning/items/{itemId}:
     put:
       summary: 更新课程或学习资源
@@ -2537,6 +2631,28 @@ paths:
           description: ?????
         "409":
           description: ?????????????
+    delete:
+      summary: 删除学习资源
+      description: 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录和本地上传文件。
+      operationId: deleteLearningResource
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 资源已删除。
+        "400":
+          description: 目标是课程或资源编号无效。
+        "403":
+          description: 当前用户无权删除该资源。
+        "404":
+          description: 资源或当前用户不存在。
 
   /api/learning/items/{itemId}/enrollments:
     post:
@@ -5453,6 +5569,7 @@ components:
         description:
           type: string
           nullable: true
+          maxLength: 1000
           description: 课程或资源说明。
         fileUrl:
           type: string
@@ -5557,6 +5674,7 @@ components:
         description:
           type: string
           nullable: true
+          maxLength: 1000
           description: 课程或资源说明。
         instructorUserId:
           type: integer

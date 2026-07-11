@@ -5,6 +5,7 @@ using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using ApiLearningDownloadResult = Org.OpenAPITools.Models.LearningDownloadResult;
 using ApiLearningItem = Org.OpenAPITools.Models.LearningItem;
@@ -28,6 +29,8 @@ namespace ClubHub.Api.Controllers;
 public class LearningController : ControllerBase
 {
     private const int MaxCreateRetries = 3;
+    private const long MaxUploadBytes = 50L * 1024 * 1024;
+    private const string LocalFileUrlPrefix = "/api/learning/items/";
 
     private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -37,13 +40,16 @@ public class LearningController : ControllerBase
     };
 
     private readonly ClubHubDbContext _db;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
         ClubHubDbContext db,
+        IWebHostEnvironment environment,
         ILogger<LearningController> logger)
     {
         _db = db;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -200,6 +206,10 @@ public class LearningController : ControllerBase
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (request.ClubId <= 0) return BadRequest("社团 ID 必须大于 0。");
+        if (request.FileUrl?.Trim().StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true)
+        {
+            return BadRequest("本地文件地址只能通过资源上传生成。");
+        }
 
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
@@ -220,6 +230,7 @@ public class LearningController : ControllerBase
             request.InstructorUserId,
             request.ItemType,
             request.CategoryName,
+            request.Description,
             request.FileUrl,
             request.StartAt,
             request.EndAt,
@@ -292,6 +303,240 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
+    /// 接收拖拽或文件选择器提交的单个文件，并直接创建对应的社团学习资源。
+    /// </summary>
+    [HttpPost("resources/upload")]
+    [RequestSizeLimit(MaxUploadBytes + 1024 * 1024)]
+    public async Task<IActionResult> UploadResource(
+        [FromForm] int clubId,
+        [FromForm] IFormFile? file,
+        [FromForm] string? title,
+        [FromForm] string? categoryName,
+        [FromForm] string? description,
+        [FromForm] string? visibility,
+        [FromForm] string? downloadPermission)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+        if (clubId <= 0) return BadRequest("请选择文件所属社团。");
+        if (file is null || file.Length <= 0) return BadRequest("请选择需要上传的文件。");
+        if (file.Length > MaxUploadBytes)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, "单个文件不能超过 50 MB。");
+        }
+
+        var originalFileName = Path.GetFileName(file.FileName).Trim();
+        if (string.IsNullOrWhiteSpace(originalFileName) || originalFileName.Length > 255)
+        {
+            return BadRequest("文件名不能为空且不能超过 255 个字符。");
+        }
+        var normalizedTitle = NormalizeOptionalText(title) ?? originalFileName;
+        if (normalizedTitle.Length > 100)
+        {
+            return BadRequest("资源标题不能超过 100 个字符；文件名较长时请单独填写标题。");
+        }
+
+        var normalizedCategory = NormalizeOptionalText(categoryName);
+        if (normalizedCategory?.Length > 100) return BadRequest("资源分类不能超过 100 个字符。");
+        var normalizedDescription = NormalizeOptionalText(description);
+        if (normalizedDescription?.Length > 1000) return BadRequest("资源说明不能超过 1000 个字符。");
+        var normalizedVisibility = LearningWorkflow.NormalizeVisibility(visibility);
+        if (normalizedVisibility is null) return BadRequest("资源可见范围无效。");
+        var normalizedDownloadPermission =
+            LearningWorkflow.NormalizeDownloadPermission(downloadPermission);
+        if (normalizedDownloadPermission is null) return BadRequest("资源下载设置无效。");
+
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        if (extension.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            return BadRequest("文件扩展名包含无效字符。");
+        }
+        if (IsBlockedUploadExtension(extension)) return BadRequest("不允许上传可执行文件或脚本文件。");
+
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
+        if (operatorUser is null) return NotFound("当前用户不存在。");
+        if (!UsersController.IsActive(operatorUser.AccountStatus)) return BadRequest("当前用户账号已停用。");
+        var club = await _db.Clubs.FirstOrDefaultAsync(candidate => candidate.ClubId == clubId);
+        if (club is null) return NotFound("文件所属社团不存在。");
+        if (!UsersController.IsActive(club.ClubStatus)) return BadRequest("只有正常运营的社团可以上传资源。");
+        if (!CanCreateLearningItem(operatorUser, club))
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                "只有本社团负责人、干部或指导老师可以上传资源。");
+        }
+
+        await using var transaction =
+            await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var itemId = await GetNextLearningItemId();
+        var clubStoragePath = Path.Combine(
+            _environment.ContentRootPath,
+            "App_Data",
+            "learning-files",
+            clubId.ToString());
+        Directory.CreateDirectory(clubStoragePath);
+        var storedPath = Path.Combine(clubStoragePath, $"{itemId}{extension}");
+
+        try
+        {
+            await using (var stream = new FileStream(storedPath, FileMode.CreateNew, FileAccess.Write))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var item = new DbLearningItem
+            {
+                ItemId = itemId,
+                ClubId = clubId,
+                UploaderUserId = currentUserId.Value,
+                Title = normalizedTitle,
+                ItemType = InferResourceType(file.ContentType, extension),
+                CategoryName = normalizedCategory,
+                Description = normalizedDescription,
+                FileUrl = $"{LocalFileUrlPrefix}{itemId}/file",
+                Visibility = normalizedVisibility,
+                DownloadPermission = normalizedDownloadPermission,
+                ItemStatus = LearningWorkflow.ItemStatusPublished,
+                CreatedAt = LearningWorkflow.BusinessNow()
+            };
+            _db.LearningItems.Add(item);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var now = LearningWorkflow.BusinessNow();
+            var itemDto = TryMapItemDto(item, 0, null, true, null, now);
+            return itemDto is null
+                ? CourseDataIntegrityProblem(itemId)
+                : CreatedAtAction(nameof(GetItems), null, itemDto);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            if (System.IO.File.Exists(storedPath)) System.IO.File.Delete(storedPath);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 返回资源上传生成的物理文件；仍执行资源可见范围和下载权限校验。
+    /// </summary>
+    [HttpGet("items/{itemId:int}/file")]
+    public async Task<IActionResult> GetResourceFile(int itemId)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+        var item = await LoadLearningItemForAccessAsync(itemId);
+        if (item is null || item.FileUrl != $"{LocalFileUrlPrefix}{itemId}/file")
+        {
+            return NotFound("上传文件不存在。");
+        }
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null) return NotFound("当前用户不存在。");
+        var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+        var canManage = CanManageLearningItem(user, item);
+        var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+        if (accessDecision is not null)
+        {
+            return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+        }
+        var downloadDecision = GetDownloadDecision(item);
+        if (downloadDecision is not null)
+        {
+            return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
+        }
+
+        var clubStoragePath = Path.Combine(
+            _environment.ContentRootPath,
+            "App_Data",
+            "learning-files",
+            item.ClubId.ToString());
+        var storedPath = Directory.Exists(clubStoragePath)
+            ? Directory.EnumerateFiles(clubStoragePath, $"{itemId}.*").SingleOrDefault()
+            : null;
+        if (storedPath is null) return NotFound("上传文件不存在。");
+
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(storedPath, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+        return PhysicalFile(storedPath, contentType, item.Title, enableRangeProcessing: true);
+    }
+
+    /// <summary>
+    /// 删除非课程资源，同时清理关联学习记录和本地上传文件。
+    /// </summary>
+    [HttpDelete("items/{itemId:int}")]
+    public async Task<IActionResult> DeleteResource(int itemId)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        var item = await _db.LearningItems
+            .Include(candidate => candidate.Club)
+            .Include(candidate => candidate.Uploader)
+                .ThenInclude(uploader => uploader!.ClubMemberships)
+            .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
+        if (item is null) return NotFound("学习资源不存在。");
+        if (!LearningWorkflow.IsSupportedResourceType(item.ItemType))
+        {
+            return BadRequest("课程不能通过资源删除功能删除。");
+        }
+
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
+        if (operatorUser is null) return NotFound("当前用户不存在。");
+        if (!CanManageLearningItem(operatorUser, item))
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                "只有资源上传者或本社团负责人、干部、指导老师可以删除资源。");
+        }
+
+        var isLocalUpload = item.FileUrl == $"{LocalFileUrlPrefix}{itemId}/file";
+        var clubId = item.ClubId;
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var records = await _db.LearningRecords
+            .Where(record => record.ItemId == itemId)
+            .ToListAsync();
+        _db.LearningRecords.RemoveRange(records);
+        _db.LearningItems.Remove(item);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        if (isLocalUpload)
+        {
+            var clubStoragePath = Path.Combine(
+                _environment.ContentRootPath,
+                "App_Data",
+                "learning-files",
+                clubId.ToString());
+            if (Directory.Exists(clubStoragePath))
+            {
+                foreach (var storedPath in Directory.EnumerateFiles(clubStoragePath, $"{itemId}.*"))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(storedPath);
+                    }
+                    catch (IOException exception)
+                    {
+                        _logger.LogWarning(
+                            exception,
+                            "资源 {ItemId} 已从数据库删除，但物理文件 {StoredPath} 清理失败。",
+                            itemId,
+                            storedPath);
+                    }
+                }
+            }
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// 修改课程信息、开放范围和加入状态。
     /// </summary>
     [HttpPut("items/{itemId:int}")]
@@ -310,6 +555,11 @@ public class LearningController : ControllerBase
                 .ThenInclude(uploader => uploader!.ClubMemberships)
             .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程或资源不存在。");
+        if (request.FileUrl?.Trim().StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true &&
+            request.FileUrl.Trim() != $"{LocalFileUrlPrefix}{itemId}/file")
+        {
+            return BadRequest("不能将资源关联到其他上传文件。");
+        }
 
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
@@ -326,6 +576,7 @@ public class LearningController : ControllerBase
             request.InstructorUserId,
             request.ItemType,
             request.CategoryName,
+            request.Description,
             request.FileUrl,
             request.StartAt,
             request.EndAt,
@@ -860,6 +1111,7 @@ public class LearningController : ControllerBase
         int? instructorUserId,
         string? itemType,
         string? categoryName,
+        string? description,
         string? fileUrl,
         DateTime? startAt,
         DateTime? endAt,
@@ -878,6 +1130,10 @@ public class LearningController : ControllerBase
         if (NormalizeOptionalText(categoryName)?.Length > 100)
         {
             return BadRequest("资源分类不能超过 100 个字符。");
+        }
+        if (NormalizeOptionalText(description)?.Length > 1000)
+        {
+            return BadRequest("课程或资源说明不能超过 1000 个字符。");
         }
         if (!LearningWorkflow.IsVisibilityValid(visibility))
         {
@@ -1614,6 +1870,29 @@ public class LearningController : ControllerBase
             ? $"{identity} · {name}"
             : $"{identity} · {name}（{userNumber}）";
     }
+
+    /// <summary>
+    /// 根据 MIME 类型和扩展名确定现有资源类型，不引入新的数据库枚举值。
+    /// </summary>
+    private static string InferResourceType(string? contentType, string extension)
+    {
+        if (contentType?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "video";
+        }
+
+        return extension is ".pdf" or ".doc" or ".docx" or ".xls" or ".xlsx" or
+            ".ppt" or ".pptx" or ".txt" or ".md"
+            ? "document"
+            : "material";
+    }
+
+    /// <summary>
+    /// 阻止服务器端可能被误执行的常见可执行文件和脚本类型。
+    /// </summary>
+    private static bool IsBlockedUploadExtension(string extension) =>
+        extension is ".exe" or ".dll" or ".com" or ".bat" or ".cmd" or ".ps1" or
+            ".sh" or ".msi" or ".scr" or ".js" or ".vbs";
 
     /// <summary>
     /// 清理可选文本并将空白值转换为空。

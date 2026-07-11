@@ -121,12 +121,20 @@ public static class LearningWorkflow
         };
 
     /// <summary>
-    /// 校验文件地址必须为 HTTP 或 HTTPS 绝对地址。
+    /// 校验文件地址为 HTTP/HTTPS 绝对地址，或本系统受鉴权的上传文件地址。
     /// </summary>
     public static bool IsFileUrlValid(string? fileUrl)
     {
         if (string.IsNullOrWhiteSpace(fileUrl) || fileUrl.Trim().Length > 255) return false;
-        if (!Uri.TryCreate(fileUrl.Trim(), UriKind.Absolute, out var uri)) return false;
+        var normalized = fileUrl.Trim();
+        var localSegments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (localSegments is ["api", "learning", "items", var itemId, "file"] &&
+            int.TryParse(itemId, out var parsedItemId) &&
+            parsedItemId > 0)
+        {
+            return true;
+        }
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri)) return false;
         return string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
     }

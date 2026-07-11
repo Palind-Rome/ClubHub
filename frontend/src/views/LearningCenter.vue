@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type UploadUserFile,
+} from "element-plus";
 import {
   CreateLearningItemRequestDownloadPermissionEnum,
   CreateLearningItemRequestItemStatusEnum,
@@ -26,6 +32,12 @@ const itemTypeOptions = [
   { label: "文档", value: "document" },
   { label: "资料", value: "material" },
 ];
+const courseTypeOptions = itemTypeOptions.filter((option) =>
+  ["course", "lecture", "training"].includes(option.value),
+);
+const resourceTypeOptions = itemTypeOptions.filter((option) =>
+  ["video", "document", "material"].includes(option.value),
+);
 const visibilityOptions = [
   { label: "面向全校", value: "public" },
   { label: "仅本社团成员", value: "club" },
@@ -70,13 +82,26 @@ const cancellingId = ref<number | null>(null);
 const progressSavingId = ref<number | null>(null);
 const learningId = ref<number | null>(null);
 const downloadingId = ref<number | null>(null);
+const deletingId = ref<number | null>(null);
 const statistics = ref<LearningItemStatistics | null>(null);
 const statisticsLoading = ref(false);
-const statusFilter = ref<string>("all");
-const kindFilter = ref<"all" | "course" | "resource">("all");
-const categoryFilter = ref("all");
-const keyword = ref("");
+const learningSection = ref<"course" | "resource">("course");
+const courseScope = ref<"mine" | "club" | "all">("mine");
+const courseStatusFilter = ref("all");
+const courseCategoryFilter = ref("all");
+const courseKeyword = ref("");
+const resourceClubFilter = ref<number | "all">("all");
+const resourceScope = ref<"mine" | "club" | "all">("all");
+const resourceVisibilityFilter = ref<ItemVisibility | "all">("all");
+const resourceStatusFilter = ref("all");
+const resourceCategoryFilter = ref("all");
+const resourceKeyword = ref("");
 const courseDialogVisible = ref(false);
+const detailDrawerVisible = ref(false);
+const detailItem = ref<LearningItem | null>(null);
+const uploadDialogVisible = ref(false);
+const uploading = ref(false);
+const uploadFiles = ref<UploadUserFile[]>([]);
 const recordDialogVisible = ref(false);
 const statisticsDialogVisible = ref(false);
 const courseDialogMode = ref<"create" | "edit">("create");
@@ -108,6 +133,15 @@ const progressForm = reactive({
   recordId: 0,
   progress: 0,
   durationMinutes: 0,
+});
+
+const uploadForm = reactive({
+  clubId: null as number | null,
+  title: "",
+  categoryName: "",
+  description: "",
+  visibility: "club" as ItemVisibility,
+  downloadPermission: "allow" as DownloadPermission,
 });
 
 const courseRules: FormRules<typeof courseForm> = {
@@ -157,23 +191,67 @@ const clubNameMap = computed(() => new Map(clubs.value.map((club) => [club.id, c
 const itemMap = computed(() => new Map(learningItems.value.map((item) => [item.id, item])));
 const manageableClubs = computed(() => clubs.value.filter((club) => canCreateForClub(club.id)));
 const isCourseForm = computed(() => courseTypes.has(courseForm.itemType));
-const categoryOptions = computed(() =>
+const courseCategoryOptions = computed(() =>
   [
     ...new Set(
       learningItems.value
+        .filter(isCourseItem)
+        .map((item) => item.categoryName?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ].sort(),
+);
+const resourceCategoryOptions = computed(() =>
+  [
+    ...new Set(
+      learningItems.value
+        .filter((item) => !isCourseItem(item))
         .map((item) => item.categoryName?.trim())
         .filter((value): value is string => Boolean(value)),
     ),
   ].sort(),
 );
 const filteredItems = computed(() => {
-  const search = keyword.value.trim().toLowerCase();
+  const courseSection = learningSection.value === "course";
+  const search = (courseSection ? courseKeyword.value : resourceKeyword.value).trim().toLowerCase();
+  const status = courseSection ? courseStatusFilter.value : resourceStatusFilter.value;
+  const category = courseSection ? courseCategoryFilter.value : resourceCategoryFilter.value;
   return learningItems.value.filter((item) => {
     const course = isCourseItem(item);
-    if (statusFilter.value !== "all" && item.itemStatus !== statusFilter.value) return false;
-    if (kindFilter.value === "course" && !course) return false;
-    if (kindFilter.value === "resource" && course) return false;
-    if (categoryFilter.value !== "all" && item.categoryName !== categoryFilter.value) return false;
+    if (status !== "all" && item.itemStatus !== status) return false;
+    if (courseSection !== course) return false;
+    if (courseSection && courseScope.value === "mine") {
+      const status = item.currentUserRecordStatus;
+      if (!status || status === "none" || status === recordStatus.cancelled) return false;
+    }
+    if (courseSection && courseScope.value === "club" && item.visibility === "public") {
+      return false;
+    }
+    if (
+      !courseSection &&
+      resourceScope.value === "mine" &&
+      item.uploaderUserId !== currentUserId.value
+    ) {
+      return false;
+    }
+    if (!courseSection && resourceScope.value === "club" && item.visibility === "public") {
+      return false;
+    }
+    if (
+      !courseSection &&
+      resourceClubFilter.value !== "all" &&
+      item.clubId !== resourceClubFilter.value
+    ) {
+      return false;
+    }
+    if (
+      !courseSection &&
+      resourceVisibilityFilter.value !== "all" &&
+      item.visibility !== resourceVisibilityFilter.value
+    ) {
+      return false;
+    }
+    if (category !== "all" && item.categoryName !== category) return false;
     if (!search) return true;
     return [item.title, item.categoryName, item.description]
       .filter(Boolean)
@@ -181,14 +259,26 @@ const filteredItems = computed(() => {
   });
 });
 const courseDialogTitle = computed(() =>
-  courseDialogMode.value === "edit" ? "编辑课程或资源" : "发布课程或上传资源",
+  courseDialogMode.value === "create"
+    ? "发布课程"
+    : isCourseForm.value
+      ? "编辑课程"
+      : "编辑资源信息",
 );
 const recordDialogTitle = computed(() => {
   const item = selectedRecordItemId.value
     ? itemMap.value.get(selectedRecordItemId.value)
     : undefined;
-  if (!item) return "我的学习记录";
+  if (!item) return learningSection.value === "course" ? "我的课程记录" : "我的资源学习";
   return item.canManage ? `${item.title} - 学习用户` : `${item.title} - 学习记录`;
+});
+const visibleLearningRecords = computed(() => {
+  if (selectedRecordItemId.value) return learningRecords.value;
+  const courseSection = learningSection.value === "course";
+  return learningRecords.value.filter((record) => {
+    const item = itemMap.value.get(record.itemId);
+    return item ? isCourseItem(item) === courseSection : false;
+  });
 });
 
 /** 将课程状态转换为用户可读文本。 */
@@ -258,6 +348,19 @@ function recordStatusLabel(status?: string | null) {
   }
 }
 
+/** 课程展示加入状态，资源展示学习进度，避免把资源描述成“加入”。 */
+function itemRecordStatusLabel(item: LearningItem) {
+  if (isCourseItem(item)) return recordStatusLabel(item.currentUserRecordStatus);
+  switch (item.currentUserRecordStatus) {
+    case recordStatus.learning:
+      return "学习中";
+    case recordStatus.completed:
+      return "已完成";
+    default:
+      return "未开始";
+  }
+}
+
 /** 返回资源类型的展示名称。 */
 function itemTypeLabel(value?: string | null) {
   return itemTypeOptions.find((option) => option.value === value)?.label ?? value ?? "资源";
@@ -278,6 +381,132 @@ function canCreateForClub(clubId: number) {
   return currentRoles.value.some(
     (role) => manageableRoleCodes.has(normalize(role.code)) && roleCoversClub(role, clubId),
   );
+}
+
+/** 打开资源上传窗口，并默认选中首个可管理社团。 */
+function openUploadDialog() {
+  if (!currentUserId.value) {
+    ElMessage.warning("请先登录后再上传资源");
+    return;
+  }
+  if (manageableClubs.value.length === 0) {
+    ElMessage.warning("当前账号没有可上传资源的社团");
+    return;
+  }
+  uploadForm.clubId = manageableClubs.value[0]?.id ?? null;
+  uploadForm.title = "";
+  uploadForm.categoryName = "";
+  uploadForm.description = "";
+  uploadForm.visibility = "club";
+  uploadForm.downloadPermission = "allow";
+  uploadFiles.value = [];
+  uploadDialogVisible.value = true;
+}
+
+/** 将拖入队列的文件逐个提交，单个失败不会阻止其余文件继续上传。 */
+async function uploadPendingResources() {
+  if (!uploadForm.clubId) {
+    ElMessage.warning("请选择文件所属社团");
+    return;
+  }
+  const queuedFiles = uploadFiles.value.flatMap((entry) => (entry.raw ? [entry.raw] : []));
+  if (queuedFiles.length === 0) {
+    ElMessage.warning("请拖入或选择至少一个文件");
+    return;
+  }
+
+  const oversized = queuedFiles.find((file) => file.size > 50 * 1024 * 1024);
+  if (oversized) {
+    ElMessage.warning(`“${oversized.name}”超过 50 MB，无法上传`);
+    return;
+  }
+
+  uploading.value = true;
+  let succeeded = 0;
+  const failed: string[] = [];
+  try {
+    for (const file of queuedFiles) {
+      const formData = new FormData();
+      formData.append("clubId", String(uploadForm.clubId));
+      formData.append("file", file, file.name);
+      if (queuedFiles.length === 1 && uploadForm.title.trim()) {
+        formData.append("title", uploadForm.title.trim());
+      }
+      formData.append("categoryName", uploadForm.categoryName.trim());
+      formData.append("description", uploadForm.description.trim());
+      formData.append("visibility", uploadForm.visibility);
+      formData.append("downloadPermission", uploadForm.downloadPermission);
+
+      try {
+        const response = await fetch("/api/learning/resources/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+          body: formData,
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || `HTTP ${response.status}`);
+        }
+        succeeded += 1;
+      } catch {
+        failed.push(file.name);
+      }
+    }
+
+    if (succeeded > 0) await loadLearningItems();
+    if (failed.length === 0) {
+      ElMessage.success(`已成功上传 ${succeeded} 个文件`);
+      uploadDialogVisible.value = false;
+      uploadFiles.value = [];
+    } else {
+      ElMessage.warning(`成功 ${succeeded} 个，失败 ${failed.length} 个：${failed.join("、")}`);
+    }
+  } finally {
+    uploading.value = false;
+  }
+}
+
+/** 打开当前课程或资源的只读详情。 */
+function openItemDetail(item: LearningItem) {
+  detailItem.value = item;
+  detailDrawerVisible.value = true;
+}
+
+/** 确认后删除可管理的非课程资源，并刷新当前列表。 */
+async function deleteResource(item: LearningItem) {
+  if (isCourseItem(item) || !item.canManage) return;
+  try {
+    await ElMessageBox.confirm(
+      `确认删除资源“${item.title}”吗？相关学习记录和本地上传文件也会被删除，此操作不可撤销。`,
+      "删除资源",
+      {
+        confirmButtonText: "确认删除",
+        cancelButtonText: "取消",
+        type: "warning",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  deletingId.value = item.id;
+  try {
+    const response = await fetch(`/api/learning/items/${item.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+    });
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `HTTP ${response.status}`);
+    }
+    ElMessage.success("资源已删除");
+    if (detailItem.value?.id === item.id) detailDrawerVisible.value = false;
+    await loadLearningItems();
+  } catch (error) {
+    ElMessage.error(toErrorMessage(error, "资源删除失败"));
+  } finally {
+    deletingId.value = null;
+  }
 }
 
 /** 判断角色授权范围是否覆盖指定社团。 */
@@ -422,10 +651,11 @@ function handleCourseClubChange() {
   resetInstructorLookup();
 }
 
-/** 资源类型切换时清理不适用字段。 */
+/** 编辑条目类型切换时清理不适用字段。新建入口仅允许课程类型。 */
 function handleItemTypeChange() {
   if (isCourseForm.value) {
-    courseForm.downloadPermission = courseForm.fileUrl ? "allow" : "deny";
+    courseForm.fileUrl = "";
+    courseForm.downloadPermission = "deny";
     return;
   }
   courseForm.instructorUserId = null;
@@ -519,12 +749,12 @@ async function submitCourse() {
       instructorUserId: isCourseForm.value ? courseForm.instructorUserId : undefined,
       itemType: courseForm.itemType,
       categoryName: courseForm.categoryName.trim() || undefined,
-      fileUrl: courseForm.fileUrl.trim() || undefined,
+      fileUrl: isCourseForm.value ? undefined : courseForm.fileUrl.trim() || undefined,
       startAt: isCourseForm.value ? courseForm.startAt : undefined,
       endAt: isCourseForm.value ? (courseForm.endAt ?? undefined) : undefined,
       capacity: isCourseForm.value ? courseForm.capacity : undefined,
       visibility: courseForm.visibility,
-      downloadPermission: courseForm.downloadPermission,
+      downloadPermission: isCourseForm.value ? "deny" : courseForm.downloadPermission,
     };
 
     if (courseDialogMode.value === "edit" && editingItemId.value) {
@@ -537,7 +767,7 @@ async function submitCourse() {
           itemStatus: courseForm.itemStatus as UpdateLearningItemRequestItemStatusEnum,
         },
       });
-      ElMessage.success("课程信息已更新");
+      ElMessage.success(isCourseForm.value ? "课程信息已更新" : "资源信息已更新");
     } else {
       await api.createLearningItem({
         createLearningItemRequest: {
@@ -644,7 +874,21 @@ async function downloadItem(item: LearningItem) {
   downloadingId.value = item.id;
   try {
     const result = await api.downloadLearningItem({ itemId: item.id });
-    const opened = window.open(result.fileUrl, "_blank", "noopener,noreferrer");
+    let opened: Window | null = null;
+    if (result.fileUrl.startsWith("/api/learning/items/") && result.fileUrl.endsWith("/file")) {
+      const response = await fetch(result.fileUrl, {
+        headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+      });
+      if (!response.ok) throw new Error("文件内容获取失败");
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = item.title;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+    } else {
+      opened = window.open(result.fileUrl, "_blank", "noopener,noreferrer");
+    }
     if (opened) opened.opener = null;
     ElMessage.success("下载权限校验通过，已记录本次下载");
     await loadLearningItems();
@@ -767,50 +1011,119 @@ onUnmounted(() => {
     <div class="page-header">
       <div>
         <h1>学习中心</h1>
-        <p>统一管理培训课程、视频、文档和资料，控制可见与下载范围并查看学习统计。</p>
-      </div>
-      <div class="toolbar">
-        <el-input v-model="keyword" clearable placeholder="搜索标题、分类或说明" class="search" />
-        <el-select v-model="categoryFilter" class="category-filter">
-          <el-option label="全部分类" value="all" />
-          <el-option
-            v-for="category in categoryOptions"
-            :key="category"
-            :label="category"
-            :value="category"
-          />
-        </el-select>
-        <el-segmented
-          v-model="kindFilter"
-          :options="[
-            { label: '全部类型', value: 'all' },
-            { label: '培训课程', value: 'course' },
-            { label: '视频与资料', value: 'resource' },
-          ]"
-        />
-        <el-segmented
-          v-model="statusFilter"
-          :options="[
-            { label: '全部', value: 'all' },
-            { label: '开放加入', value: 'published' },
-            { label: '已停止加入', value: 'closed' },
-            { label: '已结束', value: 'finished' },
-            { label: '草稿', value: 'draft' },
-          ]"
-        />
-        <el-button @click="openRecords()">我的学习记录</el-button>
-        <el-button
-          type="primary"
-          :disabled="manageableClubs.length === 0"
-          @click="openCreateDialog"
-        >
-          发布课程或资源
-        </el-button>
+        <p>课程用于报名与排期，资源用于在线学习与下载，两类内容独立管理。</p>
       </div>
     </div>
 
-    <el-table v-loading="loading" :data="filteredItems" empty-text="暂无可查看的课程或资源">
-      <el-table-column prop="title" label="标题" min-width="180" />
+    <el-tabs v-model="learningSection" class="learning-tabs">
+      <el-tab-pane label="课程" name="course" />
+      <el-tab-pane label="资源" name="resource" />
+    </el-tabs>
+
+    <div v-if="learningSection === 'course'" class="section-toolbar">
+      <el-input
+        v-model="courseKeyword"
+        clearable
+        placeholder="搜索课程名称、分类或说明"
+        class="search"
+      />
+      <el-select v-model="courseCategoryFilter" class="category-filter">
+        <el-option label="全部分类" value="all" />
+        <el-option
+          v-for="category in courseCategoryOptions"
+          :key="category"
+          :label="category"
+          :value="category"
+        />
+      </el-select>
+      <el-segmented
+        v-model="courseScope"
+        :options="[
+          { label: '我的课程', value: 'mine' },
+          { label: '社内课程', value: 'club' },
+          { label: '所有课程', value: 'all' },
+        ]"
+      />
+      <el-select v-model="courseStatusFilter" class="status-filter">
+        <el-option label="全部状态" value="all" />
+        <el-option label="开放加入" value="published" />
+        <el-option label="停止加入" value="closed" />
+        <el-option label="已结束" value="finished" />
+        <el-option label="草稿" value="draft" />
+      </el-select>
+      <span class="toolbar-spacer" />
+      <el-button @click="openRecords()">我的课程记录</el-button>
+      <el-button type="primary" :disabled="manageableClubs.length === 0" @click="openCreateDialog">
+        发布课程
+      </el-button>
+    </div>
+
+    <div v-else class="section-toolbar">
+      <el-segmented
+        v-model="resourceScope"
+        :options="[
+          { label: '我的资源', value: 'mine' },
+          { label: '社内资源', value: 'club' },
+          { label: '所有资源', value: 'all' },
+        ]"
+      />
+      <el-input
+        v-model="resourceKeyword"
+        clearable
+        placeholder="搜索资源名称、分类或说明"
+        class="search"
+      />
+      <el-select v-model="resourceCategoryFilter" class="category-filter">
+        <el-option label="全部分类" value="all" />
+        <el-option
+          v-for="category in resourceCategoryOptions"
+          :key="category"
+          :label="category"
+          :value="category"
+        />
+      </el-select>
+      <el-select v-model="resourceClubFilter" class="resource-filter" placeholder="按社团筛选">
+        <el-option label="所有社团" value="all" />
+        <el-option v-for="club in clubs" :key="club.id" :label="club.name" :value="club.id" />
+      </el-select>
+      <el-select
+        v-model="resourceVisibilityFilter"
+        class="resource-filter"
+        placeholder="按可见范围筛选"
+      >
+        <el-option label="所有可见范围" value="all" />
+        <el-option
+          v-for="option in visibilityOptions"
+          :key="option.value"
+          :label="option.label"
+          :value="option.value"
+        />
+      </el-select>
+      <el-select v-model="resourceStatusFilter" class="status-filter">
+        <el-option label="全部状态" value="all" />
+        <el-option label="已发布" value="published" />
+        <el-option label="已下架" value="closed" />
+        <el-option label="草稿" value="draft" />
+      </el-select>
+      <span class="toolbar-spacer" />
+      <el-button @click="openRecords()">我的资源学习</el-button>
+      <el-button type="success" :disabled="manageableClubs.length === 0" @click="openUploadDialog">
+        资源上传
+      </el-button>
+    </div>
+
+    <el-table
+      v-loading="loading"
+      :data="filteredItems"
+      :empty-text="learningSection === 'course' ? '暂无符合条件的课程' : '暂无符合条件的资源'"
+    >
+      <el-table-column label="标题" min-width="180">
+        <template #default="{ row }">
+          <el-link type="primary" :underline="false" @click="openItemDetail(row)">
+            {{ row.title }}
+          </el-link>
+        </template>
+      </el-table-column>
       <el-table-column label="发布社团" min-width="130">
         <template #default="{ row }">
           {{ clubNameMap.get(row.clubId) ?? `社团 ${row.clubId}` }}
@@ -826,22 +1139,24 @@ onUnmounted(() => {
           {{ row.categoryName || "未分类" }}
         </template>
       </el-table-column>
+      <el-table-column prop="description" label="说明" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span class="description-preview">{{ row.description || "暂无说明" }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="可见范围" min-width="145">
         <template #default="{ row }">
           {{ visibilityLabel(row.visibility) }}
         </template>
       </el-table-column>
-      <el-table-column label="下载设置" width="120">
+      <el-table-column v-if="learningSection === 'resource'" label="下载设置" width="120">
         <template #default="{ row }">
           {{ downloadPermissionLabel(row.downloadPermission) }}
         </template>
       </el-table-column>
-      <el-table-column label="学习安排" min-width="230">
+      <el-table-column v-if="learningSection === 'course'" label="课程安排" min-width="230">
         <template #default="{ row }">
-          <template v-if="isCourseItem(row)">
-            {{ formatDate(row.startAt) }} 至 {{ formatDate(row.endAt) }}
-          </template>
-          <span v-else>在线学习资源</span>
+          {{ formatDate(row.startAt) }} 至 {{ formatDate(row.endAt) }}
         </template>
       </el-table-column>
       <el-table-column label="学习人数" width="100" align="center">
@@ -855,9 +1170,13 @@ onUnmounted(() => {
           <el-tag>{{ statusLabel(row.itemStatus, row) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="我的状态" width="110" align="center">
+      <el-table-column
+        :label="learningSection === 'course' ? '报名状态' : '学习状态'"
+        width="110"
+        align="center"
+      >
         <template #default="{ row }">
-          {{ recordStatusLabel(row.currentUserRecordStatus) }}
+          {{ itemRecordStatusLabel(row) }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="430" fixed="right">
@@ -911,6 +1230,15 @@ onUnmounted(() => {
             统计
           </el-button>
           <el-button
+            v-if="!isCourseItem(row) && row.canManage"
+            size="small"
+            type="danger"
+            :loading="deletingId === row.id"
+            @click="deleteResource(row)"
+          >
+            删除
+          </el-button>
+          <el-button
             v-if="row.canManage || row.currentUserRecordStatus !== 'none'"
             size="small"
             @click="openRecords(row)"
@@ -920,6 +1248,146 @@ onUnmounted(() => {
         </template>
       </el-table-column>
     </el-table>
+
+    <el-drawer
+      v-model="detailDrawerVisible"
+      :title="detailItem ? `${isCourseItem(detailItem) ? '课程' : '资源'}详情` : '详情'"
+      size="520px"
+    >
+      <template v-if="detailItem">
+        <h2 class="detail-title">{{ detailItem.title }}</h2>
+        <p class="detail-description">{{ detailItem.description || "暂无说明" }}</p>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="所属社团">
+            {{ clubNameMap.get(detailItem.clubId) ?? `社团 ${detailItem.clubId}` }}
+          </el-descriptions-item>
+          <el-descriptions-item label="类型">
+            {{ itemTypeLabel(detailItem.itemType) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="分类">
+            {{ detailItem.categoryName || "未分类" }}
+          </el-descriptions-item>
+          <el-descriptions-item label="可见范围">
+            {{ visibilityLabel(detailItem.visibility) }}
+          </el-descriptions-item>
+          <template v-if="isCourseItem(detailItem)">
+            <el-descriptions-item label="开始时间">
+              {{ formatDate(detailItem.startAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="结束时间">
+              {{ formatDate(detailItem.endAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="课程容量">
+              {{ detailItem.capacity ?? "未设置" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="报名状态">
+              {{ itemRecordStatusLabel(detailItem) }}
+            </el-descriptions-item>
+          </template>
+          <template v-else>
+            <el-descriptions-item label="下载设置">
+              {{ downloadPermissionLabel(detailItem.downloadPermission) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="学习状态">
+              {{ itemRecordStatusLabel(detailItem) }}
+            </el-descriptions-item>
+          </template>
+          <el-descriptions-item label="发布状态">
+            {{ statusLabel(detailItem.itemStatus, detailItem) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="学习人数">
+            {{ detailItem.currentEnrollments }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </template>
+    </el-drawer>
+
+    <el-dialog v-model="uploadDialogVisible" title="资源上传" width="620px">
+      <el-form label-width="100px">
+        <el-form-item label="所属社团" required>
+          <el-select v-model="uploadForm.clubId" class="upload-field">
+            <el-option
+              v-for="club in manageableClubs"
+              :key="club.id"
+              :label="club.name"
+              :value="club.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="资源标题">
+          <el-input
+            v-model="uploadForm.title"
+            maxlength="100"
+            show-word-limit
+            :disabled="uploadFiles.length > 1"
+            :placeholder="
+              uploadFiles.length > 1 ? '批量上传时使用各自文件名' : '不填则使用原文件名'
+            "
+          />
+        </el-form-item>
+        <el-form-item label="资源分类">
+          <el-input
+            v-model="uploadForm.categoryName"
+            maxlength="100"
+            show-word-limit
+            placeholder="例如：培训资料、往届文档"
+          />
+        </el-form-item>
+        <el-form-item label="资源说明">
+          <el-input
+            v-model="uploadForm.description"
+            type="textarea"
+            :rows="3"
+            maxlength="1000"
+            show-word-limit
+            placeholder="填写内容摘要、用途、版本或注意事项（可选）"
+          />
+        </el-form-item>
+        <el-form-item label="可见范围" required>
+          <el-select v-model="uploadForm.visibility" class="upload-field">
+            <el-option
+              v-for="option in visibilityOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="下载设置" required>
+          <el-select v-model="uploadForm.downloadPermission" class="upload-field">
+            <el-option
+              v-for="option in downloadPermissionOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="选择文件" required>
+          <el-upload
+            v-model:file-list="uploadFiles"
+            class="resource-uploader"
+            drag
+            multiple
+            action="#"
+            :auto-upload="false"
+          >
+            <div class="upload-copy">将文件拖到此处，或点击选择文件</div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持批量上传，单个文件最大 50 MB，不允许可执行文件和脚本。
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="uploading" @click="uploadDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="uploadPendingResources">
+          上传 {{ uploadFiles.length || "" }} 个文件
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="courseDialogVisible" :title="courseDialogTitle" width="680px">
       <el-form ref="courseFormRef" :model="courseForm" :rules="courseRules" label-width="120px">
@@ -942,7 +1410,7 @@ onUnmounted(() => {
         <el-form-item label="标题" prop="title" required>
           <el-input v-model="courseForm.title" maxlength="100" show-word-limit />
         </el-form-item>
-        <el-form-item label="资源说明">
+        <el-form-item :label="isCourseForm ? '课程说明' : '资源说明'">
           <el-input
             v-model="courseForm.description"
             type="textarea"
@@ -983,28 +1451,26 @@ onUnmounted(() => {
             {{ courseForm.instructorUserId ? "不输入新学工号将保留当前授课人。" : "" }}
           </span>
         </el-form-item>
-        <el-form-item label="资源类型" prop="itemType" required>
+        <el-form-item :label="isCourseForm ? '课程类型' : '资源类型'" prop="itemType" required>
           <el-select v-model="courseForm.itemType" @change="handleItemTypeChange">
             <el-option
-              v-for="option in itemTypeOptions"
+              v-for="option in isCourseForm ? courseTypeOptions : resourceTypeOptions"
               :key="option.value"
               :label="option.label"
               :value="option.value"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="资源分类">
+        <el-form-item :label="isCourseForm ? '课程分类' : '资源分类'">
           <el-input v-model="courseForm.categoryName" maxlength="100" />
         </el-form-item>
-        <el-form-item label="文件地址" prop="fileUrl" :required="!isCourseForm">
+        <el-form-item v-if="!isCourseForm" label="文件地址" prop="fileUrl" required>
           <el-input
             v-model="courseForm.fileUrl"
             maxlength="255"
             placeholder="https://example.com/resource.pdf"
           />
-          <span class="field-tip">
-            {{ isCourseForm ? "课程可不填；填写后可按下载设置提供附件" : "视频、文档和资料必填" }}
-          </span>
+          <span class="field-tip">资源上传生成的文件地址由系统维护，也可替换为外部链接。</span>
         </el-form-item>
         <el-form-item v-if="isCourseForm" label="开始时间" prop="startAt" required>
           <el-date-picker
@@ -1037,7 +1503,7 @@ onUnmounted(() => {
             部门范围以上传人在该社团的当前有效部门为准
           </span>
         </el-form-item>
-        <el-form-item label="下载设置" prop="downloadPermission" required>
+        <el-form-item v-if="!isCourseForm" label="下载设置" prop="downloadPermission" required>
           <el-radio-group v-model="courseForm.downloadPermission">
             <el-radio-button
               v-for="option in downloadPermissionOptions"
@@ -1067,7 +1533,7 @@ onUnmounted(() => {
     </el-dialog>
 
     <el-dialog v-model="recordDialogVisible" :title="recordDialogTitle" width="1100px">
-      <el-table v-loading="recordLoading" :data="learningRecords" empty-text="暂无学习记录">
+      <el-table v-loading="recordLoading" :data="visibleLearningRecords" empty-text="暂无学习记录">
         <el-table-column label="课程或资源" min-width="160">
           <template #default="{ row }">
             {{ itemMap.get(row.itemId)?.title ?? `资源 ${row.itemId}` }}
@@ -1203,12 +1669,15 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
 }
 
-.toolbar {
+.section-toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 24px;
 }
 
 .search {
@@ -1217,6 +1686,47 @@ onUnmounted(() => {
 
 .category-filter {
   width: 140px;
+}
+
+.status-filter {
+  width: 140px;
+}
+
+.learning-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
+}
+
+.resource-filter {
+  width: 180px;
+}
+
+.upload-field,
+.resource-uploader {
+  width: 100%;
+}
+
+.upload-copy {
+  color: var(--el-text-color-regular);
+}
+
+.description-preview {
+  display: block;
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-title {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.detail-description {
+  margin: 0 0 20px;
+  color: var(--el-text-color-regular);
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .field-tip {
@@ -1255,8 +1765,12 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
-  .toolbar {
+  .section-toolbar {
     justify-content: flex-start;
+  }
+
+  .toolbar-spacer {
+    display: none;
   }
 }
 </style>
