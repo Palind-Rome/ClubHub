@@ -1522,7 +1522,6 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
   memberTermForm.termName = row.termName ?? "";
   memberTermForm.termStart = dateOnly(row.termStart);
   memberTermForm.termEnd = dateOnly(row.termEnd);
-  applyAcademicTermToMemberForm(memberTermForm.termName);
   memberTermForm.memberStatus = normalizeMemberStatus(row.memberStatus);
   memberTermForm.contributionScore = row.contributionScore ?? 0;
   memberTermForm.closeCurrentTerm = false;

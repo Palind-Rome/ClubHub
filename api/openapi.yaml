@@ -594,7 +594,7 @@ paths:
   /api/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
-      description: 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届筛选。社团管理员不查看社团内部任期。
+      description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
       operationId: getClubMembers
       parameters:
         - name: clubId
@@ -608,6 +608,20 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: departmentName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "宣传部"
+          description: 按 CLUB_MEMBERS.department_name 精确筛选。
+        - name: groupName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "摄影组"
+          description: 按 CLUB_MEMBERS.group_name 精确筛选。
         - name: termName
           in: query
           required: false

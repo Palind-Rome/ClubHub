@@ -1094,19 +1094,19 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "社团成员任期记录不存在。" }), club, viewer, null);
         }
 
-        if (UsersController.IsPlatformAdmin(viewer))
+        if (UsersController.IsSystemAdmin(viewer))
         {
             return (null, club, viewer, member);
         }
 
         if (!IsClubPrincipal(viewer, club) && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有社团管理员、系统管理员、本社团负责人或指导老师可以维护成员任期。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以维护成员任期。" }), club, viewer, member);
         }
 
         if (member.UserId == viewer.UserId && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由指导老师或社团管理员处理。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由指导老师或系统管理员处理。" }), club, viewer, member);
         }
 
         return (null, club, viewer, member);
@@ -1260,7 +1260,7 @@ public class ClubsController : ControllerBase
             return (BadRequest(new { message = validationError }), null);
         }
 
-        if (UsersController.IsPlatformAdmin(viewer) ||
+        if (UsersController.IsSystemAdmin(viewer) ||
             IsClubPrincipal(viewer, club) ||
             IsClubAdvisor(viewer, clubId))
         {
@@ -1277,7 +1277,7 @@ public class ClubsController : ControllerBase
         var scopes = GetCadreGroupingScopes(viewer, clubId).ToList();
         if (scopes.Count == 0)
         {
-            return (StatusCode(403, new { message = "只有本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null);
         }
 
         var canAssignToOwnGroup = scopes.Any(scope => GroupingMatchesScope(
