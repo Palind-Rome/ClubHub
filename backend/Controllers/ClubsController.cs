@@ -654,7 +654,7 @@ public class ClubsController : ControllerBase
         if (IsCurrentMemberTerm(member) &&
             await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
         {
-            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，当前已达到上限。" });
+            return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。" });
         }
 
         _db.ClubMembers.Add(member);
@@ -1730,7 +1730,7 @@ public class ClubsController : ControllerBase
         if (!hasMember &&
             await CountCurrentMembershipClubsAsync(club.ApplicantUserId.Value, club.ClubId) >= MaxStudentClubMemberships)
         {
-            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，社团申请人已达到上限。" });
+            return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，社团申请人已达到上限。" });
         }
 
         await EnsureClubMemberRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);

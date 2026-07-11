@@ -99,7 +99,9 @@ public class RecruitmentApplicationService
         var currentClubCount = await CountCurrentMembershipClubsAsync(applicant.UserId);
         if (currentClubCount >= MaxStudentClubMemberships)
         {
-            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "一个学生最多只能同时加入 3 个社团，当前已达到上限。");
+            return ServiceResult<RecruitmentApplicationDto>.Fail(
+                409,
+                $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。");
         }
 
         if (recruitment.Quota is not null && recruitment.Applications.Count(a => a.ApplicationStatus == ApplicationAccepted) >= recruitment.Quota.Value)
@@ -210,7 +212,9 @@ public class RecruitmentApplicationService
         var currentClubCount = await CountCurrentMembershipClubsAsync(application.UserId);
         if (currentClubCount >= MaxStudentClubMemberships)
         {
-            return ServiceResult<RecruitmentApplicationDto>.Fail(409, "一个学生最多只能同时加入 3 个社团，该学生已达到上限。");
+            return ServiceResult<RecruitmentApplicationDto>.Fail(
+                409,
+                $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，该学生已达到上限。");
         }
 
         var acceptedCount = await _db.RecruitmentApplications.CountAsync(a =>
