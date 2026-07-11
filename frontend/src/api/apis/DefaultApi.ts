@@ -2442,7 +2442,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP，并返回文件地址。
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；MinIO 文件返回短时有效的预签名地址，历史本地文件和外部资源返回原访问地址。
    * 校验权限并记录学习资源下载
    */
   async downloadLearningItemRaw(
@@ -2458,7 +2458,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP，并返回文件地址。
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；MinIO 文件返回短时有效的预签名地址，历史本地文件和外部资源返回原访问地址。
    * 校验权限并记录学习资源下载
    */
   async downloadLearningItem(
@@ -3354,8 +3354,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验当前用户的资源可见权限后返回文件内容；下载行为由下载校验接口记录。
-   * 获取本地上传的学习资源文件
+   * 兼容改用 MinIO 前保存在后端本地目录中的资源；校验当前用户的资源可见权限后返回文件内容，下载行为由下载校验接口记录。
+   * 获取历史本地上传的学习资源文件
    */
   async getLearningResourceFileRaw(
     requestParameters: GetLearningResourceFileRequest,
@@ -3368,8 +3368,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验当前用户的资源可见权限后返回文件内容；下载行为由下载校验接口记录。
-   * 获取本地上传的学习资源文件
+   * 兼容改用 MinIO 前保存在后端本地目录中的资源；校验当前用户的资源可见权限后返回文件内容，下载行为由下载校验接口记录。
+   * 获取历史本地上传的学习资源文件
    */
   async getLearningResourceFile(
     requestParameters: GetLearningResourceFileRequest,
@@ -6192,7 +6192,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可通过 multipart/form-data 上传单个文件并创建学习资源；客户端可重复调用以完成批量上传。
+   * 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有 MinIO 存储并创建学习资源；客户端可重复调用以完成批量上传。
    * 上传社团学习资源
    */
   async uploadLearningResourceRaw(
@@ -6206,7 +6206,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可通过 multipart/form-data 上传单个文件并创建学习资源；客户端可重复调用以完成批量上传。
+   * 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有 MinIO 存储并创建学习资源；客户端可重复调用以完成批量上传。
    * 上传社团学习资源
    */
   async uploadLearningResource(

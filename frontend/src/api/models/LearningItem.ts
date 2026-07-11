@@ -69,7 +69,7 @@ export interface LearningItem {
    */
   description?: string | null;
   /**
-   * 文件地址；列表仅向资源管理者返回，普通用户通过下载接口获取。
+   * 外部文件地址或内部存储引用；列表仅向资源管理者返回，普通用户通过下载接口获取可访问地址。
    * @type {string}
    * @memberof LearningItem
    */

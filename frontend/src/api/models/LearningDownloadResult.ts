@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 下载权限校验通过后返回的资源地址与记录时间。
+ * 下载权限校验通过后返回的可访问资源地址与记录时间；MinIO 地址为短时有效的预签名 URL。
  * @export
  * @interface LearningDownloadResult
  */
