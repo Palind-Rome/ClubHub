@@ -29,6 +29,14 @@ const activeMenu = computed(() => {
   if (route.path.startsWith("/learning")) return "/learning";
   return route.path;
 });
+const canAccessClubRegistration = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    permissions.includes("club:apply") ||
+    permissions.includes("club:review")
+  );
+});
 const canManageVenues = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return (
@@ -84,9 +92,13 @@ onUnmounted(() => {
   <el-container>
     <el-header v-if="hasSession">
       <div class="brand">ClubHub</div>
-      <el-menu mode="horizontal" router :default-active="activeMenu" class="nav">
+      <el-menu mode="horizontal" router :default-active="activeMenu" :ellipsis="false" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
-        <el-menu-item index="/clubs">社团</el-menu-item>
+        <el-menu-item index="/clubs">我的社团</el-menu-item>
+        <el-menu-item index="/club-members">成员管理</el-menu-item>
+        <el-menu-item v-if="canAccessClubRegistration" index="/club-registration">
+          社团注册
+        </el-menu-item>
         <el-menu-item index="/recruitments">纳新</el-menu-item>
         <el-menu-item index="/evaluations">成员考核</el-menu-item>
         <el-menu-item index="/awards">评奖评优</el-menu-item>
@@ -99,19 +111,22 @@ onUnmounted(() => {
         </el-menu-item>
         <el-menu-item index="/learning">课程</el-menu-item>
       </el-menu>
-      <div class="header-aside">
-        <div class="role-tags" :title="roleSummary">
-          <el-tag
-            v-for="(label, index) in roleLabels"
-            :key="`${label}-${index}`"
-            class="role-tag"
-            type="success"
-            size="small"
-          >
-            {{ label }}
-          </el-tag>
+      <div class="header-actions">
+        <div class="session">
+          <div class="role-list" :title="roleSummary" aria-label="当前职务">
+            <el-tag
+              v-for="(role, roleIdx) in roleLabels"
+              :key="`${role}-${roleIdx}`"
+              class="role-tag"
+              type="success"
+              size="small"
+              :title="role"
+            >
+              {{ role }}
+            </el-tag>
+          </div>
+          <el-button class="logout-button" link type="danger" @click="logout">退出</el-button>
         </div>
-        <el-button link type="danger" @click="logout">退出</el-button>
         <el-tag
           class="health-tag"
           :type="healthOk ? 'success' : 'danger'"
@@ -141,8 +156,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--el-border-color-light);
-  padding: 0 16px;
+  min-height: 60px;
+  height: auto;
+  padding: 8px 16px;
 }
 .brand {
   font-size: 18px;
@@ -151,31 +169,61 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .nav {
-  flex: 1;
-  min-width: 0;
-  border-bottom: none !important;
-}
-.header-aside {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.role-tags {
+  flex: 1 1 720px;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  min-width: min(100%, 720px);
+  height: auto;
+  min-height: 40px;
+  overflow: visible;
+  border-bottom: none !important;
+}
+.nav :deep(.el-menu-item),
+.nav :deep(.el-sub-menu__title) {
+  flex: 0 0 auto;
+  height: 40px;
+  line-height: 40px;
+  white-space: nowrap;
+}
+.header-actions {
+  display: flex;
+  flex: 1 1 480px;
+  align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  margin-left: 16px;
+}
+.session {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(100%, 680px);
+}
+.logout-button {
+  flex: 0 0 auto;
+}
+.role-list {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  width: 320px;
-  max-height: 52px;
-  overflow: hidden;
+  min-width: 0;
 }
 .role-tag {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
+}
+.role-tag :deep(.el-tag__content) {
+  overflow: visible;
   white-space: nowrap;
 }
 .health-tag {

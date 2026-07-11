@@ -59,6 +59,7 @@ export * from "./RoleAssignmentResult";
 export * from "./RoleDefinition";
 export * from "./UpdateCheckinSettingsRequest";
 export * from "./UpdateClubEvaluationRequest";
+export * from "./UpdateClubMemberGroupingRequest";
 export * from "./UpdateClubMemberTermRequest";
 export * from "./UpdateClubProfileRequest";
 export * from "./UpdateClubRequest";

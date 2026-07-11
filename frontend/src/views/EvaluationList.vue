@@ -4,7 +4,12 @@ import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
-import { collectManageableClubIds, roleCoversClub } from "../composables/useManageableClubs";
+import {
+  collectManageableClubIds,
+  collectScopedClubIds,
+  normalizedRoleCodeOf,
+  roleCoversClub,
+} from "../composables/useManageableClubs";
 
 type PublicStatus = "draft" | "published";
 type EvaluationFormMode = "create" | "edit";
@@ -67,6 +72,14 @@ const wholeClubMaintainRoleCodes = new Set([
   "club_manager",
   "club_president",
   "president",
+]);
+const globalViewRoleCodes = new Set([
+  "admin",
+  "club_admin",
+  "club_reviewer",
+  "platform_admin",
+  "system_admin",
+  "sysadmin",
 ]);
 const officerRoleCodes = new Set(["club_officer"]);
 const cadrePositionNames = new Set([
@@ -141,6 +154,19 @@ const manageableClubIds = computed(() =>
     evaluationDraftPermission,
     evaluationReviewPermission,
   ]),
+);
+const scopedClubIds = computed(() => collectScopedClubIds(auth.value?.roles ?? []));
+const canViewAllClubs = computed(
+  () =>
+    hasAllPermissions.value ||
+    (auth.value?.roles ?? []).some((role) => globalViewRoleCodes.has(normalizedRoleCodeOf(role))),
+);
+const accessibleClubs = computed(() =>
+  canViewAllClubs.value
+    ? clubs.value
+    : clubs.value.filter(
+        (club) => scopedClubIds.value.has(club.id) || manageableClubIds.value.has(club.id),
+      ),
 );
 const selectedClub = computed(() => clubs.value.find((club) => club.id === selectedClubId.value));
 const canMaintainSelectedClub = computed(
@@ -268,11 +294,15 @@ async function loadClubs() {
 
   try {
     clubs.value = await requestJson<Club[]>(`/api/clubs`);
-    if (!selectedClubId.value || !clubs.value.some((club) => club.id === selectedClubId.value)) {
-      selectedClubId.value = clubs.value[0]?.id;
+    if (
+      !selectedClubId.value ||
+      !accessibleClubs.value.some((club) => club.id === selectedClubId.value)
+    ) {
+      selectedClubId.value = accessibleClubs.value[0]?.id;
     }
   } catch (error) {
     clubs.value = [];
+    selectedClubId.value = undefined;
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
   }
 }
@@ -599,7 +629,12 @@ onUnmounted(() => {
 
     <div class="toolbar">
       <el-select v-model="selectedClubId" class="club-select" placeholder="选择社团" filterable>
-        <el-option v-for="club in clubs" :key="club.id" :label="club.name" :value="club.id" />
+        <el-option
+          v-for="club in accessibleClubs"
+          :key="club.id"
+          :label="club.name"
+          :value="club.id"
+        />
       </el-select>
       <el-select
         v-model="filters.termName"

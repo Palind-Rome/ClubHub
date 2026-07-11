@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
+using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -30,8 +32,8 @@ public class ClubsController : ControllerBase
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
     private const string ClubAdvisorRoleCode = "ADVISOR";
-    private const int MaxStudentClubMemberships = 3;
     private const int ClubMemberTextMaxLength = 255;
+    private const int MaxStudentClubMemberships = RecruitmentWorkflow.MaxStudentClubMemberships;
     private const string EvaluationSemester = "semester";
     private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
@@ -65,6 +67,13 @@ public class ClubsController : ControllerBase
         "cadre",
         "minister",
         "group leader"
+    };
+    private static readonly HashSet<string> DepartmentManagerPositionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\u90e8\u957f",
+        "\u526f\u90e8\u957f",
+        "\u90e8\u95e8\u8d1f\u8d23\u4eba",
+        "minister"
     };
 
     public ClubsController(ClubHubDbContext db) => _db = db;
@@ -482,6 +491,7 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> GetMembers(
         int clubId,
         [FromQuery] bool includeHistory = false,
+        [FromQuery] string? termName = null,
         [FromQuery] string? departmentName = null,
         [FromQuery] string? groupName = null)
     {
@@ -519,6 +529,12 @@ public class ClubsController : ControllerBase
             query = query.Where(cm => cm.GroupName == groupFilter);
         }
 
+        var termFilter = EmptyToNull(termName);
+        if (termFilter is not null)
+        {
+            query = query.Where(cm => cm.TermName == termFilter);
+        }
+
         var members = await query
             .OrderBy(cm => cm.DepartmentName)
             .ThenBy(cm => cm.GroupName)
@@ -534,7 +550,7 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> UpdateMemberGrouping(
         int clubId,
         int memberId,
-        [FromBody] UpdateClubMemberTermRequest req)
+        [FromBody] UpdateClubMemberGroupingRequest req)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -638,7 +654,7 @@ public class ClubsController : ControllerBase
         if (IsCurrentMemberTerm(member) &&
             await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
         {
-            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，当前已达到上限。" });
+            return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。" });
         }
 
         _db.ClubMembers.Add(member);
@@ -1033,9 +1049,11 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "社团不存在。" }), null, viewer);
         }
 
-        if (!UsersController.IsSystemAdmin(viewer) && !UsersController.IsClubPrincipal(viewer, clubId))
+        if (!UsersController.IsSystemAdmin(viewer) &&
+            !IsClubPrincipal(viewer, club) &&
+            !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有系统管理员或本社团负责人可以维护该社团。" }), club, viewer);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以维护该社团。" }), club, viewer);
         }
 
         return (null, club, viewer);
@@ -1076,19 +1094,19 @@ public class ClubsController : ControllerBase
             return (NotFound(new { message = "社团成员任期记录不存在。" }), club, viewer, null);
         }
 
-        if (UsersController.IsPlatformAdmin(viewer))
+        if (UsersController.IsSystemAdmin(viewer))
         {
             return (null, club, viewer, member);
         }
 
-        if (!UsersController.IsClubPrincipal(viewer, clubId))
+        if (!IsClubPrincipal(viewer, club) && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "只有社团管理员、系统管理员或本社团负责人可以维护成员任期。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以维护成员任期。" }), club, viewer, member);
         }
 
-        if (member.UserId == viewer.UserId)
+        if (member.UserId == viewer.UserId && !IsClubAdvisor(viewer, clubId))
         {
-            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由社团管理员处理。" }), club, viewer, member);
+            return (StatusCode(403, new { message = "负责人不能修改自己的任期，请由指导老师或系统管理员处理。" }), club, viewer, member);
         }
 
         return (null, club, viewer, member);
@@ -1117,7 +1135,7 @@ public class ClubsController : ControllerBase
 
         var canView =
             UsersController.IsPlatformAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId) ||
+            IsClubPrincipal(viewer, club) ||
             HasClubParticipantRole(viewer, clubId) ||
             viewer.ClubMemberships.Any(cm =>
                 cm.ClubId == clubId &&
@@ -1155,7 +1173,7 @@ public class ClubsController : ControllerBase
 
         var canRemove =
             UsersController.IsSystemAdmin(viewer) ||
-            UsersController.IsClubPrincipal(viewer, clubId) ||
+            IsClubPrincipal(viewer, club) ||
             HasClubOfficerRole(viewer, clubId);
         if (!isSelfExit && !canRemove)
         {
@@ -1205,7 +1223,7 @@ public class ClubsController : ControllerBase
         int clubId,
         int memberId,
         int currentUserId,
-        UpdateClubMemberTermRequest req)
+        UpdateClubMemberGroupingRequest req)
     {
         var viewer = await LoadUserAsync(currentUserId);
         if (viewer is null)
@@ -1242,7 +1260,9 @@ public class ClubsController : ControllerBase
             return (BadRequest(new { message = validationError }), null);
         }
 
-        if (UsersController.IsPlatformAdmin(viewer) || UsersController.IsClubPrincipal(viewer, clubId))
+        if (UsersController.IsSystemAdmin(viewer) ||
+            IsClubPrincipal(viewer, club) ||
+            IsClubAdvisor(viewer, clubId))
         {
             return (null, member);
         }
@@ -1257,7 +1277,7 @@ public class ClubsController : ControllerBase
         var scopes = GetCadreGroupingScopes(viewer, clubId).ToList();
         if (scopes.Count == 0)
         {
-            return (StatusCode(403, new { message = "只有本社团负责人或已登记部门、小组的干部可以维护成员分组。" }), null);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null);
         }
 
         var canAssignToOwnGroup = scopes.Any(scope => GroupingMatchesScope(
@@ -1265,9 +1285,14 @@ public class ClubsController : ControllerBase
             targetGroup,
             scope.DepartmentName,
             scope.GroupName));
-        if (!canAssignToOwnGroup)
+        var canManageCurrentGroup = scopes.Any(scope => GroupingMatchesScope(
+            member.DepartmentName,
+            member.GroupName,
+            scope.DepartmentName,
+            scope.GroupName));
+        if (!canAssignToOwnGroup || !canManageCurrentGroup)
         {
-            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在的小组。" }), null);
+            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在小组，部长只能维护本部门小组。" }), null);
         }
 
         return (null, member);
@@ -1705,7 +1730,7 @@ public class ClubsController : ControllerBase
         if (!hasMember &&
             await CountCurrentMembershipClubsAsync(club.ApplicantUserId.Value, club.ClubId) >= MaxStudentClubMemberships)
         {
-            return Conflict(new { message = "一个学生最多只能同时加入 3 个社团，社团申请人已达到上限。" });
+            return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，社团申请人已达到上限。" });
         }
 
         await EnsureClubMemberRoleAsync(club.ClubId, club.ApplicantUserId.Value, now);
@@ -1713,13 +1738,15 @@ public class ClubsController : ControllerBase
 
         if (!hasMember)
         {
+            var academicTerm = AcademicTermHelper.FromDate(today);
             _db.ClubMembers.Add(new ClubMember
             {
                 ClubId = club.ClubId,
                 UserId = club.ApplicantUserId.Value,
                 PositionName = "负责人",
-                TermName = $"{now.Year} 创始任期",
-                TermStart = today,
+                TermName = academicTerm.Label,
+                TermStart = academicTerm.Start,
+                TermEnd = academicTerm.End,
                 MemberStatus = "active",
                 JoinAt = now,
                 ContributionScore = 0
@@ -1981,14 +2008,19 @@ public class ClubsController : ControllerBase
         return CadrePositionNames.Contains(normalized);
     }
 
-    private static IEnumerable<ClubMember> GetCadreGroupingScopes(User user, int clubId)
+    private static IEnumerable<GroupingScope> GetCadreGroupingScopes(User user, int clubId)
     {
         var hasOfficerRole = HasClubOfficerRole(user, clubId);
-        return user.ClubMemberships.Where(cm =>
-            cm.ClubId == clubId &&
-            IsCurrentMemberTerm(cm) &&
-            !string.IsNullOrWhiteSpace(cm.GroupName) &&
-            (hasOfficerRole || IsCadrePosition(cm.PositionName)));
+        return user.ClubMemberships
+            .Where(cm =>
+                cm.ClubId == clubId &&
+                IsCurrentMemberTerm(cm) &&
+                (hasOfficerRole || IsCadrePosition(cm.PositionName)) &&
+                (!string.IsNullOrWhiteSpace(cm.GroupName) ||
+                 (IsDepartmentManagerPosition(cm.PositionName) && !string.IsNullOrWhiteSpace(cm.DepartmentName))))
+            .Select(cm => IsDepartmentManagerPosition(cm.PositionName)
+                ? new GroupingScope(cm.DepartmentName, null)
+                : new GroupingScope(cm.DepartmentName, cm.GroupName));
     }
 
     private static bool GroupingMatchesScope(
@@ -1997,7 +2029,16 @@ public class ClubsController : ControllerBase
         string? scopeDepartment,
         string? scopeGroup)
     {
-        if (string.IsNullOrWhiteSpace(targetGroup) || string.IsNullOrWhiteSpace(scopeGroup))
+        if (string.IsNullOrWhiteSpace(scopeGroup))
+        {
+            return !string.IsNullOrWhiteSpace(scopeDepartment) &&
+                   string.Equals(
+                       (targetDepartment ?? string.Empty).Trim(),
+                       scopeDepartment.Trim(),
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (string.IsNullOrWhiteSpace(targetGroup))
         {
             return false;
         }
@@ -2014,6 +2055,14 @@ public class ClubsController : ControllerBase
                 StringComparison.OrdinalIgnoreCase);
 
         return groupMatches && departmentMatches;
+    }
+
+    private static bool IsDepartmentManagerPosition(string? positionName)
+    {
+        if (string.IsNullOrWhiteSpace(positionName)) return false;
+
+        var normalized = positionName.Trim();
+        return DepartmentManagerPositionNames.Contains(normalized);
     }
 
     private static bool CanViewEvaluationRecord(User viewer, int clubId, Evaluation evaluation)
@@ -2061,6 +2110,11 @@ public class ClubsController : ControllerBase
             ur.Role is not null &&
             string.Equals(ur.Role.RoleCode, ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase));
 
+    private static bool IsClubPrincipal(User viewer, Club club) =>
+        club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
+
+    private sealed record GroupingScope(string? DepartmentName, string? GroupName);
+
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships
             .Where(cm => cm.ClubId == clubId)
@@ -2096,7 +2150,13 @@ public class ClubsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(evaluationType)) return null;
 
-        return evaluationType.Trim().ToLowerInvariant() switch
+        var normalized = evaluationType.Trim().ToLowerInvariant();
+        if (normalized is "award" or "honor" or "prize" or "评奖评优" or "评优评奖")
+        {
+            return EvaluationAward;
+        }
+
+        return normalized switch
         {
             "semester" or "term" or "assessment" or "学期考核" or "成员考核" => EvaluationSemester,
             "award" or "honor" or "prize" or "评优评奖" or "奖项" => EvaluationAward,

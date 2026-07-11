@@ -266,6 +266,11 @@ import {
   UpdateClubEvaluationRequestToJSON,
 } from "../models/UpdateClubEvaluationRequest";
 import {
+  type UpdateClubMemberGroupingRequest,
+  UpdateClubMemberGroupingRequestFromJSON,
+  UpdateClubMemberGroupingRequestToJSON,
+} from "../models/UpdateClubMemberGroupingRequest";
+import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
   UpdateClubMemberTermRequestToJSON,
@@ -468,6 +473,9 @@ export interface GetClubEvaluationsRequest {
 export interface GetClubMembersRequest {
   clubId: number;
   includeHistory?: boolean;
+  departmentName?: string;
+  groupName?: string;
+  termName?: string;
 }
 
 export interface GetLearningItemsRequest {
@@ -614,6 +622,12 @@ export interface UpdateClubEvaluationOperationRequest {
   clubId: number;
   evaluationId: number;
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
+}
+
+export interface UpdateClubMemberGroupingOperationRequest {
+  clubId: number;
+  memberId: number;
+  updateClubMemberGroupingRequest: UpdateClubMemberGroupingRequest;
 }
 
 export interface UpdateClubMemberTermOperationRequest {
@@ -1483,7 +1497,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTermRaw(
@@ -1499,7 +1513,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+   * 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
    * 新增社团成员或干部任期
    */
   async createClubMemberTerm(
@@ -2666,6 +2680,18 @@ export class DefaultApi extends runtime.BaseAPI {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
     }
 
+    if (requestParameters["departmentName"] != null) {
+      queryParameters["departmentName"] = requestParameters["departmentName"];
+    }
+
+    if (requestParameters["groupName"] != null) {
+      queryParameters["groupName"] = requestParameters["groupName"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     let urlPath = `/api/clubs/{clubId}/members`;
@@ -2680,7 +2706,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembersRaw(
@@ -2696,7 +2722,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+   * 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
    * 查询社团成员与干部任期记录
    */
   async getClubMembers(
@@ -4801,6 +4827,85 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubMemberGrouping without sending the request
+   */
+  async updateClubMemberGroupingRequestOpts(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["memberId"] == null) {
+      throw new runtime.RequiredError(
+        "memberId",
+        'Required parameter "memberId" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    if (requestParameters["updateClubMemberGroupingRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubMemberGroupingRequest",
+        'Required parameter "updateClubMemberGroupingRequest" was null or undefined when calling updateClubMemberGrouping().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/members/{memberId}/grouping`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{memberId}",
+      encodeURIComponent(String(requestParameters["memberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubMemberGroupingRequestToJSON(
+        requestParameters["updateClubMemberGroupingRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGroupingRaw(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
+    const requestOptions = await this.updateClubMemberGroupingRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubMemberRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+   * 更新社团成员部门和小组归属
+   */
+  async updateClubMemberGrouping(
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubMemberRecord> {
+    const response = await this.updateClubMemberGroupingRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubMemberTerm without sending the request
    */
   async updateClubMemberTermRequestOpts(
@@ -4850,7 +4955,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTermRaw(
@@ -4866,7 +4971,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+   * 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
    * 更新社团成员或干部任期
    */
   async updateClubMemberTerm(
@@ -4916,7 +5021,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfileRaw(
@@ -4930,7 +5035,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+   * 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
    * 维护社团基础信息
    */
   async updateClubProfile(

@@ -561,7 +561,7 @@ paths:
   /api/clubs/{clubId}/profile:
     patch:
       summary: 维护社团基础信息
-      description: 系统管理员或本社团负责人可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
+      description: 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
       operationId: updateClubProfile
       parameters:
         - name: clubId
@@ -594,7 +594,7 @@ paths:
   /api/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
-      description: 系统管理员、本社团负责人、干部、成员和指导老师可以查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录。社团管理员不查看社团内部任期。
+      description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
       operationId: getClubMembers
       parameters:
         - name: clubId
@@ -608,6 +608,27 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: departmentName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "宣传部"
+          description: 按 CLUB_MEMBERS.department_name 精确筛选。
+        - name: groupName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "摄影组"
+          description: 按 CLUB_MEMBERS.group_name 精确筛选。
+        - name: termName
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-2027学年"
+          description: 按 CLUB_MEMBERS.term_name 精确筛选，例如 2026-2027学年。
       responses:
         "200":
           description: 社团成员与任期记录列表
@@ -625,7 +646,7 @@ paths:
   /api/clubs/{clubId}/members/terms:
     post:
       summary: 新增社团成员或干部任期
-      description: 系统管理员或本社团负责人可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+      description: 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
       operationId: createClubMemberTerm
       parameters:
         - name: clubId
@@ -658,19 +679,23 @@ paths:
   /api/clubs/{clubId}/members/{memberId}:
     patch:
       summary: 更新社团成员或干部任期
-      description: 系统管理员或本社团负责人可以修正成员部门、职位、任期和状态，不删除历史记录。
+      description: 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
       operationId: updateClubMemberTerm
       parameters:
         - name: clubId
           in: path
           required: true
+          description: 社团 ID。
           schema:
             type: integer
+            example: 1
         - name: memberId
           in: path
           required: true
+          description: 成员任期记录 ID。
           schema:
             type: integer
+            example: 101
       requestBody:
         required: true
         content:
@@ -692,6 +717,48 @@ paths:
           description: 当前用户、社团或成员任期记录不存在
         "409":
           description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/members/{memberId}/grouping:
+    patch:
+      summary: 更新社团成员部门和小组归属
+      description: 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
+      operationId: updateClubMemberGrouping
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: 社团 ID。
+          schema:
+            type: integer
+            example: 1
+        - name: memberId
+          in: path
+          required: true
+          description: 成员任期记录 ID。
+          schema:
+            type: integer
+            example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubMemberGroupingRequest"
+      responses:
+        "200":
+          description: 社团成员部门和小组已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubMemberRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该成员分组的权限
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态或成员任期状态不允许维护
 
   /api/clubs/{clubId}/members/self/exit:
     patch:
@@ -1471,7 +1538,7 @@ paths:
           required: false
           schema:
             type: integer
-          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人或干部可获取该社团有效成员。
+          description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人、干部或指导老师可获取该社团有效成员。
       responses:
         "200":
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
@@ -3316,6 +3383,21 @@ components:
           type: number
           format: decimal
           nullable: true
+
+    UpdateClubMemberGroupingRequest:
+      type: object
+      description: 更新成员部门和小组归属的请求体。
+      properties:
+        departmentName:
+          type: string
+          nullable: true
+          description: 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+          example: 技术部
+        groupName:
+          type: string
+          nullable: true
+          description: 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+          example: 后端组
     ClubEvaluationRecord:
       type: object
       description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
