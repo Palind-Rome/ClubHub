@@ -2415,17 +2415,12 @@ paths:
 
   /api/learning/teacher-candidates:
     get:
-      summary: ????????
-      description: ?????????????????????????????????????????????
+      summary: 获取课程授课教师候选人
+      description: 需要登录；仅返回当前用户有权维护的指定社团可选教师。
       operationId: getLearningTeacherCandidates
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-          description: ?????? ID???????????????????????????
         - name: clubId
           in: query
           required: true
@@ -2451,17 +2446,12 @@ paths:
 
   /api/learning/items:
     get:
-      summary: ????????
-      description: ?????????????????????????????????????
+      summary: 获取可见的课程与学习资源
+      description: 按登录用户身份、社团成员关系和资源可见范围过滤结果。
       operationId: getLearningItems
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-          description: ?????? ID??????????????????????
         - name: clubId
           in: query
           required: false
@@ -2483,9 +2473,11 @@ paths:
         "404":
           description: ???????
     post:
-      summary: ?????????
-      description: ??????????????????????????????????????
+      summary: 发布课程或上传学习资源
+      description: 社团负责人、干部或指导老师可创建课程、视频、文档和资料资源。
       operationId: createLearningItem
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -2506,9 +2498,11 @@ paths:
 
   /api/learning/items/{itemId}:
     put:
-      summary: ??????
-      description: ??????????????????????????????????????
+      summary: 更新课程或学习资源
+      description: 发布者及本社团负责人、干部、指导老师可维护资源元数据与权限设置。
       operationId: updateLearningItem
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2540,9 +2534,11 @@ paths:
 
   /api/learning/items/{itemId}/enrollments:
     post:
-      summary: ??????
-      description: ??????????????????????????????????????????????????????
+      summary: 加入培训课程
+      description: 当前登录用户加入有名额且对其可见的培训课程。
       operationId: enrollLearningItem
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2550,12 +2546,6 @@ paths:
           schema:
             type: integer
             minimum: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "201":
           description: ????????????
@@ -2572,9 +2562,11 @@ paths:
         "404":
           description: ??????????
     delete:
-      summary: ??????
-      description: ???????????????????????????????????????
+      summary: 退出培训课程
+      description: 当前登录用户在课程结束前退出尚未完成的课程。
       operationId: cancelLearningEnrollment
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2582,12 +2574,6 @@ paths:
           schema:
             type: integer
             minimum: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "200":
           description: ?????
@@ -2602,18 +2588,102 @@ paths:
         "404":
           description: ??????????
 
-  /api/learning/records:
-    get:
-      summary: ??????
-      description: ?????????????????????????????????
-      operationId: getLearningRecords
+  /api/learning/items/{itemId}/learning:
+    post:
+      summary: 开始或继续学习资源
+      description: 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+      operationId: startLearningItem
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
+        - name: itemId
+          in: path
           required: true
           schema:
             type: integer
             minimum: 1
+      responses:
+        "200":
+          description: 已存在的学习记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "201":
+          description: 新建或恢复的学习记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: 资源状态或类型不允许开始学习
+        "403":
+          description: 当前用户不在资源可见范围内
+        "404":
+          description: 学习资源不存在
+
+  /api/learning/items/{itemId}/download:
+    post:
+      summary: 校验权限并记录学习资源下载
+      description: 校验可见范围和下载设置，通过后记录下载用户、时间和 IP，并返回文件地址。
+      operationId: downloadLearningItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 下载权限校验通过且行为已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningDownloadResult"
+        "400":
+          description: 资源没有有效文件地址
+        "403":
+          description: 当前用户不可见该资源或资源不允许直接下载
+        "404":
+          description: 学习资源不存在
+
+  /api/learning/items/{itemId}/statistics:
+    get:
+      summary: 获取学习资源统计
+      description: 仅资源发布者及本社团负责人、干部、指导老师可查看学习人数、完成情况、平均进度、学习时长和下载人数。
+      operationId: getLearningItemStatistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 学习资源统计
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItemStatistics"
+        "403":
+          description: 当前用户无权查看该资源统计
+        "404":
+          description: 学习资源不存在
+
+  /api/learning/records:
+    get:
+      summary: 获取学习记录
+      description: 当前登录用户查看本人记录；资源管理者可查看指定资源的学习记录。
+      operationId: getLearningRecords
+      security:
+        - bearerAuth: []
+      parameters:
         - name: itemId
           in: query
           required: false
@@ -2634,9 +2704,11 @@ paths:
 
   /api/learning/records/{recordId}/progress:
     put:
-      summary: ??????
-      description: ?????????????????? 100 ????????
+      summary: 更新学习进度和累计时长
+      description: 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
       operationId: updateLearningProgress
+      security:
+        - bearerAuth: []
       parameters:
         - name: recordId
           in: path
@@ -5339,251 +5411,274 @@ components:
 
     LearningItem:
       type: object
-      description: Training course or learning resource published by a club.
+      description: 社团发布的培训课程、视频、文档或资料资源。
       properties:
         id:
           type: integer
-          description: Learning item id in LEARNING_ITEMS.ITEM_ID.
+          description: LEARNING_ITEMS.ITEM_ID。
           example: 2001
         clubId:
           type: integer
-          description: Club that publishes the course.
+          description: 发布资源的社团。
           example: 1
         uploaderUserId:
           type: integer
           nullable: true
-          description: User who created or uploaded the learning item.
+          description: 创建或上传资源的用户。
           example: 12
         teacherUserId:
           type: integer
           nullable: true
-          description: Instructor user id.
+          description: 课程授课人；非课程资源可为空。
           example: 30
         title:
           type: string
-          description: Course title.
-          example: ???????
+          description: 课程或资源标题。
+          example: Oracle 入门培训视频
         itemType:
           type: string
-          nullable: true
-          description: Course type, video, document, or other learning resource type.
-          example: course
+          description: 资源类型，支持 course、lecture、training、video、document、material。
+          example: video
         categoryName:
           type: string
           nullable: true
-          description: Course category.
-          example: ????
+          description: 资源分类。
+          example: 数据库培训
         description:
           type: string
           nullable: true
-          description: Course introduction.
-          example: ???????????????
+          description: 课程或资源说明。
+        fileUrl:
+          type: string
+          nullable: true
+          description: 文件地址；列表仅向资源管理者返回，普通用户通过下载接口获取。
         startAt:
           type: string
           format: date-time
-          description: Required course start time; learning progress cannot be updated before this time.
+          nullable: true
+          description: 课程开始时间；非课程资源可为空。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; when omitted, users may join at any time.
+          description: 课程结束时间。
         capacity:
           type: integer
-          description: Maximum number of users who may join the course.
+          nullable: true
+          description: 课程容量；非课程资源可为空。
           example: 40
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club means active club members, public means all active school accounts.
+          enum: [public, club, department]
+          description: 可见范围；department 表示与上传人同一社团部门的有效成员。
           example: club
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 下载设置；approval 表示需要审批，当前不可直接下载。
+          example: allow
         itemStatus:
           type: string
           enum: [draft, published, closed, finished]
-          description: Current course publication status.
+          description: 发布状态。
           example: published
         currentEnrollments:
           type: integer
-          description: Number of users currently joined.
+          description: 当前有效学习记录数量。
           example: 8
         currentUserRecordStatus:
           type: string
           enum: [none, enrolled, learning, completed, cancelled]
-          description: Current viewer's learning record status; none means not enrolled.
+          description: 当前用户的学习状态。
         canManage:
           type: boolean
-          description: Whether the current viewer may edit this course and view its roster.
+          description: 当前用户是否可维护资源并查看统计。
         canEnroll:
           type: boolean
-          description: Whether the current viewer may join the course now.
+          description: 当前用户是否可加入课程；非课程资源恒为 false。
         canCancelEnrollment:
           type: boolean
-          description: Whether the current viewer may exit the course now.
+          description: 当前用户是否可退出课程。
         enrollmentUnavailableReason:
           type: string
           nullable: true
-          description: Chinese explanation shown when enrollment is unavailable.
+          description: 无法加入课程的中文原因。
+        canStartLearning:
+          type: boolean
+          description: 当前用户是否可开始或继续学习非课程资源。
+        learningUnavailableReason:
+          type: string
+          nullable: true
+          description: 无法开始学习资源的中文原因。
+        canDownload:
+          type: boolean
+          description: 当前用户是否可通过下载接口获取文件地址。
+        downloadUnavailableReason:
+          type: string
+          nullable: true
+          description: 无法直接下载的中文原因。
       required:
         - id
         - clubId
         - title
-        - startAt
-        - capacity
+        - itemType
         - visibility
+        - downloadPermission
         - itemStatus
         - currentEnrollments
         - currentUserRecordStatus
         - canManage
         - canEnroll
         - canCancelEnrollment
+        - canStartLearning
+        - canDownload
 
     CreateLearningItemRequest:
       type: object
-      description: Request body for creating a club training course.
+      description: 创建课程或上传学习资源的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current operator user id.
-          example: 12
         clubId:
           type: integer
           minimum: 1
-          description: Club that publishes the course.
+          description: 发布资源的社团。
           example: 1
         title:
           type: string
           minLength: 1
           maxLength: 100
-          description: Course title.
-          example: ???????
+          description: 课程或资源标题。
+          example: Oracle 入门培训视频
         description:
           type: string
           nullable: true
-          description: Course introduction.
+          description: 课程或资源说明。
         teacherUserId:
           type: integer
+          nullable: true
           minimum: 1
-          description: Instructor user id.
+          description: 课程授课人；课程类型必填。
         itemType:
           type: string
           maxLength: 30
-          description: Course type.
-          example: course
+          description: 支持 course、lecture、training、video、document、material。
+          example: video
         categoryName:
           type: string
           nullable: true
           maxLength: 100
-          description: Course category.
+          description: 资源分类。
+        fileUrl:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。
         startAt:
           type: string
           format: date-time
-          description: Required course start time.
+          nullable: true
+          description: 课程开始时间；课程类型必填。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; omit it for a long-running course.
+          description: 课程结束时间。
         capacity:
           type: integer
+          nullable: true
           minimum: 1
-          description: Enrollment capacity.
+          description: 课程容量；课程类型必填。
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club or public.
+          enum: [public, club, department]
+          description: 公开、社团内或上传人所在部门内可见。
           example: club
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 是否允许直接下载；课程无文件时建议 deny。
+          example: allow
         itemStatus:
           type: string
           enum: [draft, published]
           default: draft
-          description: Initial course status.
+          description: 初始发布状态。
       required:
-        - currentUserId
         - clubId
         - title
-        - teacherUserId
         - itemType
-        - startAt
-        - capacity
         - visibility
+        - downloadPermission
         - itemStatus
 
     UpdateLearningItemRequest:
       type: object
-      description: Request body for updating a club training course.
+      description: 更新课程或学习资源的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current operator user id.
         title:
           type: string
           minLength: 1
           maxLength: 100
-          description: Course title.
+          description: 课程或资源标题。
         description:
           type: string
           nullable: true
-          description: Course introduction.
+          description: 课程或资源说明。
         teacherUserId:
           type: integer
+          nullable: true
           minimum: 1
-          description: Instructor user id.
+          description: 课程授课人；课程类型必填。
         itemType:
           type: string
           maxLength: 30
-          description: Course type.
+          description: 支持 course、lecture、training、video、document、material。
         categoryName:
           type: string
           nullable: true
           maxLength: 100
-          description: Course category.
+          description: 资源分类。
+        fileUrl:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 视频、文档或资料的 HTTP/HTTPS 文件地址。
         startAt:
           type: string
           format: date-time
-          description: Required course start time.
+          nullable: true
+          description: 课程开始时间。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; omit it for a long-running course.
+          description: 课程结束时间。
         capacity:
           type: integer
+          nullable: true
           minimum: 1
-          description: Enrollment capacity.
+          description: 课程容量。
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club or public.
+          enum: [public, club, department]
+          description: 公开、社团内或上传人所在部门内可见。
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 下载设置。
         itemStatus:
           type: string
           enum: [draft, published, closed]
-          description: Updated course publication status.
+          description: 更新后的发布状态。
       required:
-        - currentUserId
         - title
-        - teacherUserId
         - itemType
-        - startAt
-        - capacity
         - visibility
+        - downloadPermission
         - itemStatus
-
-    EnrollLearningItemRequest:
-      type: object
-      description: Request body for joining or exiting a training course.
-      properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current user id.
-          example: 21
-      required:
-        - currentUserId
 
     LearningRecord:
       type: object
-      description: Course enrollment and learning progress record.
+      description: 课程报名、资源学习进度和下载行为记录。
       properties:
         id:
           type: integer
@@ -5637,7 +5732,16 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: Completion time.
+          description: 完成时间。
+        downloadedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最近一次下载时间。
+        downloadIp:
+          type: string
+          nullable: true
+          description: 最近一次下载 IP。
       required:
         - id
         - itemId
@@ -5647,13 +5751,8 @@ components:
 
     UpdateLearningProgressRequest:
       type: object
-      description: Request body for updating learning progress.
+      description: 更新当前登录用户学习进度的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current learning user id.
-          example: 21
         progress:
           type: number
           format: double
@@ -5668,8 +5767,64 @@ components:
           description: Latest accumulated learning duration in seconds.
           example: 3600
       required:
-        - currentUserId
         - progress
+
+    LearningDownloadResult:
+      type: object
+      description: 下载权限校验通过后返回的资源地址与记录时间。
+      properties:
+        itemId:
+          type: integer
+        title:
+          type: string
+        fileUrl:
+          type: string
+        downloadedAt:
+          type: string
+          format: date-time
+      required:
+        - itemId
+        - title
+        - fileUrl
+        - downloadedAt
+
+    LearningItemStatistics:
+      type: object
+      description: 基于 LEARNING_RECORDS 聚合的资源学习与下载统计。
+      properties:
+        itemId:
+          type: integer
+        title:
+          type: string
+        learnerCount:
+          type: integer
+          description: 非取消状态的学习人数。
+        completedCount:
+          type: integer
+          description: 已完成学习人数。
+        downloadCount:
+          type: integer
+          description: 发生过下载行为的人数。
+        averageProgress:
+          type: number
+          format: double
+          description: 学习记录平均进度。
+        averageDurationSeconds:
+          type: number
+          format: double
+          description: 平均累计学习时长（秒）。
+        totalDurationSeconds:
+          type: integer
+          description: 累计学习时长（秒）。
+      required:
+        - itemId
+        - title
+        - learnerCount
+        - completedCount
+        - downloadCount
+        - averageProgress
+        - averageDurationSeconds
+        - totalDurationSeconds
 
     ActivityRegistrationResult:
       type: object

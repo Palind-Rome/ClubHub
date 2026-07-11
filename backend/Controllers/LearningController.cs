@@ -2,24 +2,28 @@ using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiLearningDownloadResult = Org.OpenAPITools.Models.LearningDownloadResult;
 using ApiLearningItem = Org.OpenAPITools.Models.LearningItem;
+using ApiLearningItemStatistics = Org.OpenAPITools.Models.LearningItemStatistics;
 using ApiLearningRecord = Org.OpenAPITools.Models.LearningRecord;
 using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using CreateLearningItemRequest = Org.OpenAPITools.Models.CreateLearningItemRequest;
 using DbLearningItem = ClubHub.Api.Data.Entities.LearningItem;
 using DbLearningRecord = ClubHub.Api.Data.Entities.LearningRecord;
-using EnrollLearningItemRequest = Org.OpenAPITools.Models.EnrollLearningItemRequest;
 using UpdateLearningItemRequest = Org.OpenAPITools.Models.UpdateLearningItemRequest;
 using UpdateLearningProgressRequest = Org.OpenAPITools.Models.UpdateLearningProgressRequest;
 
 namespace ClubHub.Api.Controllers;
 
 /// <summary>
-/// 培训课程发布、加入和学习记录接口。
+/// 培训课程、学习资源、权限下载和学习统计接口。
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/learning")]
 public class LearningController : ControllerBase
 {
@@ -48,13 +52,13 @@ public class LearningController : ControllerBase
     /// </summary>
     [HttpGet("teacher-candidates")]
     public async Task<IActionResult> GetTeacherCandidates(
-        [FromQuery] int currentUserId,
         [FromQuery] int clubId)
     {
-        if (currentUserId <= 0) return BadRequest("当前登录用户无效。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (clubId <= 0) return BadRequest("请选择发布课程的社团。");
 
-        var operatorUser = await LoadUserAsync(currentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前登录用户不存在。");
         if (!UsersController.IsActive(operatorUser.AccountStatus))
         {
@@ -72,7 +76,7 @@ public class LearningController : ControllerBase
 
         var ownsClubCourse = await _db.LearningItems
             .AsNoTracking()
-            .AnyAsync(item => item.ClubId == clubId && item.UploaderUserId == currentUserId);
+            .AnyAsync(item => item.ClubId == clubId && item.UploaderUserId == currentUserId.Value);
         if (!CanCreateLearningItem(operatorUser, club) && !ownsClubCourse)
         {
             return StatusCode(
@@ -113,18 +117,21 @@ public class LearningController : ControllerBase
     /// 按登录用户的角色、社团成员关系和课程开放范围返回课程。
     /// </summary>
     [HttpGet("items")]
-    public async Task<IActionResult> GetItems([FromQuery] int currentUserId, [FromQuery] int? clubId)
+    public async Task<IActionResult> GetItems([FromQuery] int? clubId)
     {
-        if (currentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (clubId is not null and <= 0) return BadRequest("社团 ID 必须大于 0。");
 
-        var viewer = await LoadUserAsync(currentUserId);
+        var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(viewer.AccountStatus)) return BadRequest("当前用户账号已停用。");
 
         var query = _db.LearningItems
             .AsNoTracking()
             .Include(item => item.Club)
+            .Include(item => item.Uploader)
+                .ThenInclude(uploader => uploader!.ClubMemberships)
             .AsQueryable();
         if (clubId is not null) query = query.Where(item => item.ClubId == clubId.Value);
 
@@ -147,7 +154,7 @@ public class LearningController : ControllerBase
 
         var currentRecords = await _db.LearningRecords
             .AsNoTracking()
-            .Where(record => itemIds.Contains(record.ItemId) && record.UserId == currentUserId)
+            .Where(record => itemIds.Contains(record.ItemId) && record.UserId == currentUserId.Value)
             .OrderByDescending(record => record.EnrolledAt)
             .ThenByDescending(record => record.RecordId)
             .ToListAsync();
@@ -193,37 +200,44 @@ public class LearningController : ControllerBase
     [HttpPost("items")]
     public async Task<IActionResult> CreateItem([FromBody] CreateLearningItemRequest? request)
     {
-        if (request is null) return BadRequest("课程信息不能为空。");
-        if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        if (request is null) return BadRequest("课程或资源信息不能为空。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (request.ClubId <= 0) return BadRequest("社团 ID 必须大于 0。");
 
-        var operatorUser = await LoadUserAsync(request.CurrentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(operatorUser.AccountStatus)) return BadRequest("当前用户账号已停用。");
 
         var club = await _db.Clubs.FirstOrDefaultAsync(candidate => candidate.ClubId == request.ClubId);
-        if (club is null) return NotFound("发布课程的社团不存在。");
-        if (!UsersController.IsActive(club.ClubStatus)) return BadRequest("只有正常运营的社团可以发布课程。");
+        if (club is null) return NotFound("发布资源的社团不存在。");
+        if (!UsersController.IsActive(club.ClubStatus)) return BadRequest("只有正常运营的社团可以发布资源。");
         if (!CanCreateLearningItem(operatorUser, club))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有本社团负责人、干部或指导老师可以发布课程。");
+                "只有本社团负责人、干部或指导老师可以发布资源。");
         }
 
-        var validation = await ValidateCourseInputAsync(
+        var validation = await ValidateLearningItemInputAsync(
             request.Title,
             request.TeacherUserId,
             request.ItemType,
             request.CategoryName,
+            request.FileUrl,
             request.StartAt,
             request.EndAt,
             request.Capacity,
-            ToVisibilityValue(request.Visibility));
+            ToVisibilityValue(request.Visibility),
+            ToDownloadPermissionValue(request.DownloadPermission),
+            operatorUser,
+            request.ClubId);
         if (validation is not null) return validation;
 
         var itemStatus = ToCreateStatusValue(request.ItemStatus);
-        if (itemStatus is null) return BadRequest("课程初始状态只能是草稿或开放加入。");
+        if (itemStatus is null) return BadRequest("资源初始状态只能是草稿或已发布。");
+
+        var isCourse = LearningWorkflow.IsSupportedCourseType(request.ItemType);
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
@@ -233,17 +247,18 @@ public class LearningController : ControllerBase
             {
                 ItemId = await GetNextLearningItemId(),
                 ClubId = request.ClubId,
-                UploaderUserId = request.CurrentUserId,
-                TeacherUserId = request.TeacherUserId,
+                UploaderUserId = currentUserId.Value,
+                TeacherUserId = isCourse ? request.TeacherUserId : null,
                 Title = request.Title.Trim(),
                 ItemType = Normalize(request.ItemType),
                 CategoryName = NormalizeOptionalText(request.CategoryName),
                 Description = NormalizeOptionalText(request.Description),
-                StartAt = LearningWorkflow.AsUtc(request.StartAt),
-                EndAt = LearningWorkflow.AsUtc(request.EndAt),
-                Capacity = request.Capacity,
+                FileUrl = NormalizeOptionalText(request.FileUrl),
+                StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null,
+                EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null,
+                Capacity = isCourse ? request.Capacity : null,
                 Visibility = ToVisibilityValue(request.Visibility),
-                DownloadPermission = "none",
+                DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission),
                 ItemStatus = itemStatus,
                 CreatedAt = LearningWorkflow.BusinessNow()
             };
@@ -267,7 +282,7 @@ public class LearningController : ControllerBase
 
                 return CreatedAtAction(
                     nameof(GetItems),
-                    new { currentUserId = request.CurrentUserId },
+                    null,
                     itemDto);
             }
             catch (DbUpdateException) when (attempt < MaxCreateRetries)
@@ -277,7 +292,7 @@ public class LearningController : ControllerBase
             }
         }
 
-        return Conflict("课程编号生成冲突，请重试。");
+        return Conflict("资源编号生成冲突，请重试。");
     }
 
     /// <summary>
@@ -288,59 +303,69 @@ public class LearningController : ControllerBase
         int itemId,
         [FromBody] UpdateLearningItemRequest? request)
     {
-        if (request is null) return BadRequest("课程信息不能为空。");
-        if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
-        if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        if (request is null) return BadRequest("课程或资源信息不能为空。");
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
         var item = await _db.LearningItems
             .Include(candidate => candidate.Club)
+            .Include(candidate => candidate.Uploader)
+                .ThenInclude(uploader => uploader!.ClubMemberships)
             .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
-        if (item is null) return NotFound("课程不存在。");
+        if (item is null) return NotFound("课程或资源不存在。");
 
-        var operatorUser = await LoadUserAsync(request.CurrentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(operatorUser.AccountStatus)) return BadRequest("当前用户账号已停用。");
         if (!CanManageLearningItem(operatorUser, item))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有课程发布者或本社团负责人、干部、指导老师可以修改课程。");
+                "只有资源发布者或本社团负责人、干部、指导老师可以修改资源。");
         }
 
-        var validation = await ValidateCourseInputAsync(
+        var validation = await ValidateLearningItemInputAsync(
             request.Title,
             request.TeacherUserId,
             request.ItemType,
             request.CategoryName,
+            request.FileUrl,
             request.StartAt,
             request.EndAt,
             request.Capacity,
-            ToVisibilityValue(request.Visibility));
+            ToVisibilityValue(request.Visibility),
+            ToDownloadPermissionValue(request.DownloadPermission),
+            item.Uploader ?? operatorUser,
+            item.ClubId);
         if (validation is not null) return validation;
 
         var itemStatus = ToUpdateStatusValue(request.ItemStatus);
-        if (itemStatus is null) return BadRequest("课程状态只能是草稿、开放加入或已停止加入。");
+        if (itemStatus is null) return BadRequest("资源状态只能是草稿、已发布或已停止。");
 
+        var isCourse = LearningWorkflow.IsSupportedCourseType(request.ItemType);
         var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
-        if (request.Capacity < activeEnrollmentCount)
+        if (isCourse && request.Capacity < activeEnrollmentCount)
         {
             return Conflict($"课程容量不能小于当前已加入人数 {activeEnrollmentCount}。");
         }
 
-        item.TeacherUserId = request.TeacherUserId;
+        item.TeacherUserId = isCourse ? request.TeacherUserId : null;
         item.Title = request.Title.Trim();
         item.ItemType = Normalize(request.ItemType);
         item.CategoryName = NormalizeOptionalText(request.CategoryName);
         item.Description = NormalizeOptionalText(request.Description);
-        item.StartAt = LearningWorkflow.AsUtc(request.StartAt);
-        item.EndAt = LearningWorkflow.AsUtc(request.EndAt);
-        item.Capacity = request.Capacity;
+        item.FileUrl = NormalizeOptionalText(request.FileUrl);
+        item.StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null;
+        item.EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null;
+        item.Capacity = isCourse ? request.Capacity : null;
         item.Visibility = ToVisibilityValue(request.Visibility);
+        item.DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission);
         item.ItemStatus = itemStatus;
 
         await _db.SaveChangesAsync();
 
-        var currentRecord = await GetLatestLearningRecordAsync(itemId, request.CurrentUserId);
+        var currentRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
         var now = LearningWorkflow.BusinessNow();
         var decision = GetEnrollmentDecision(
             operatorUser,
@@ -365,13 +390,11 @@ public class LearningController : ControllerBase
     /// 加入课程；退出后再次加入会恢复原学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/enrollments")]
-    public async Task<IActionResult> Enroll(
-        int itemId,
-        [FromBody] EnrollLearningItemRequest? request)
+    public async Task<IActionResult> Enroll(int itemId)
     {
-        if (request is null) return BadRequest("加入课程的用户信息不能为空。");
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
-        if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
@@ -383,11 +406,11 @@ public class LearningController : ControllerBase
                 .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
             if (item is null) return NotFound("课程不存在。");
 
-            var user = await LoadUserAsync(request.CurrentUserId);
+            var user = await LoadUserAsync(currentUserId.Value);
             if (user is null) return NotFound("当前用户不存在。");
             if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
 
-            var existingRecord = await GetLatestLearningRecordAsync(itemId, request.CurrentUserId);
+            var existingRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
             var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
             var canManage = CanManageLearningItem(user, item);
             var decision = GetEnrollmentDecision(
@@ -410,7 +433,7 @@ public class LearningController : ControllerBase
                 {
                     RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
-                    UserId = request.CurrentUserId
+                    UserId = currentUserId.Value
                 };
                 _db.LearningRecords.Add(record);
             }
@@ -429,7 +452,7 @@ public class LearningController : ControllerBase
                 await transaction.CommitAsync();
                 return CreatedAtAction(
                     nameof(GetRecords),
-                    new { currentUserId = request.CurrentUserId, itemId },
+                    new { itemId },
                     ToRecordDto(record));
             }
             catch (DbUpdateException) when (attempt < MaxCreateRetries)
@@ -446,16 +469,18 @@ public class LearningController : ControllerBase
     /// 在课程结束前退出当前用户已加入的课程。
     /// </summary>
     [HttpDelete("items/{itemId:int}/enrollments")]
-    public async Task<IActionResult> CancelEnrollment(
-        int itemId,
-        [FromBody] EnrollLearningItemRequest? request)
+    public async Task<IActionResult> CancelEnrollment(int itemId)
     {
-        if (request is null) return BadRequest("退出课程的用户信息不能为空。");
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
-        if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
         var item = await _db.LearningItems.FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程不存在。");
+        if (!LearningWorkflow.IsSupportedCourseType(item.ItemType))
+        {
+            return BadRequest("学习资源无需退出课程，可直接保留学习记录。");
+        }
         if (item.EndAt.HasValue &&
             LearningWorkflow.BusinessNow() >= item.EndAt.Value)
         {
@@ -466,7 +491,7 @@ public class LearningController : ControllerBase
             .Include(candidate => candidate.User)
             .Where(candidate =>
                 candidate.ItemId == itemId &&
-                candidate.UserId == request.CurrentUserId)
+                candidate.UserId == currentUserId.Value)
             .OrderByDescending(candidate => candidate.EnrolledAt)
             .ThenByDescending(candidate => candidate.RecordId)
             .FirstOrDefaultAsync();
@@ -488,17 +513,239 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
+    /// 为视频、文档或资料创建或恢复当前用户的学习记录。
+    /// </summary>
+    [HttpPost("items/{itemId:int}/learning")]
+    public async Task<IActionResult> StartLearning(int itemId)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        {
+            await using var transaction =
+                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            var item = await LoadLearningItemForAccessAsync(itemId);
+            if (item is null) return NotFound("学习资源不存在。");
+            if (!LearningWorkflow.IsSupportedResourceType(item.ItemType))
+            {
+                return BadRequest("培训课程请使用加入课程功能。");
+            }
+
+            var user = await LoadUserAsync(currentUserId.Value);
+            if (user is null) return NotFound("当前用户不存在。");
+            if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+
+            var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+            var canManage = CanManageLearningItem(user, item);
+            var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+            if (accessDecision is not null)
+            {
+                return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+            }
+
+            var previousStatus = record is null
+                ? null
+                : LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus);
+            if (previousStatus == LearningWorkflow.RecordStatusCompleted)
+            {
+                return Conflict("该资源已经完成学习，不能重新开始。");
+            }
+            if (record is not null && previousStatus != LearningWorkflow.RecordStatusCancelled)
+            {
+                return Ok(ToRecordDto(record));
+            }
+
+            var now = LearningWorkflow.BusinessNow();
+            var created = record is null;
+            if (record is null)
+            {
+                record = new DbLearningRecord
+                {
+                    RecordId = await GetNextLearningRecordId(),
+                    ItemId = itemId,
+                    UserId = currentUserId.Value
+                };
+                _db.LearningRecords.Add(record);
+            }
+
+            record.EnrollStatus = LearningWorkflow.RecordStatusLearning;
+            record.EnrolledAt = now;
+            record.Progress ??= 0;
+            record.DurationSeconds ??= 0;
+            record.LastLearnAt = now;
+            record.CompletedAt = null;
+            record.User = user;
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return created
+                    ? CreatedAtAction(nameof(GetRecords), new { itemId }, ToRecordDto(record))
+                    : Ok(ToRecordDto(record));
+            }
+            catch (DbUpdateException) when (attempt < MaxCreateRetries)
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+            }
+        }
+
+        return Conflict("创建学习记录时发生并发冲突，请重试。");
+    }
+
+    /// <summary>
+    /// 校验资源可见范围和下载设置，记录下载用户、时间及来源 IP。
+    /// </summary>
+    [HttpPost("items/{itemId:int}/download")]
+    public async Task<IActionResult> DownloadItem(int itemId)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        {
+            await using var transaction =
+                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            var item = await LoadLearningItemForAccessAsync(itemId);
+            if (item is null) return NotFound("学习资源不存在。");
+
+            var user = await LoadUserAsync(currentUserId.Value);
+            if (user is null) return NotFound("当前用户不存在。");
+            if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+
+            var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+            var canManage = CanManageLearningItem(user, item);
+            var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+            if (accessDecision is not null)
+            {
+                return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+            }
+
+            var downloadDecision = GetDownloadDecision(item);
+            if (downloadDecision is not null)
+            {
+                return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
+            }
+
+            var now = LearningWorkflow.BusinessNow();
+            if (record is null)
+            {
+                record = new DbLearningRecord
+                {
+                    RecordId = await GetNextLearningRecordId(),
+                    ItemId = itemId,
+                    UserId = currentUserId.Value,
+                    EnrollStatus = LearningWorkflow.RecordStatusLearning,
+                    EnrolledAt = now,
+                    Progress = 0,
+                    DurationSeconds = 0
+                };
+                _db.LearningRecords.Add(record);
+            }
+            else if (LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
+                     LearningWorkflow.RecordStatusCancelled)
+            {
+                record.EnrollStatus = LearningWorkflow.RecordStatusLearning;
+                record.EnrolledAt = now;
+            }
+
+            record.DownloadedAt = now;
+            record.DownloadIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(new ApiLearningDownloadResult
+                {
+                    ItemId = item.ItemId,
+                    Title = item.Title,
+                    FileUrl = item.FileUrl!.Trim(),
+                    DownloadedAt = LearningWorkflow.AsUtc(now)
+                });
+            }
+            catch (DbUpdateException) when (attempt < MaxCreateRetries)
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+            }
+        }
+
+        return Conflict("记录下载行为时发生并发冲突，请重试。");
+    }
+
+    /// <summary>
+    /// 返回资源学习人数、完成数、平均进度、学习时长和下载人数。
+    /// </summary>
+    [HttpGet("items/{itemId:int}/statistics")]
+    public async Task<IActionResult> GetStatistics(int itemId)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null) return NotFound("当前用户不存在。");
+        if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+
+        var item = await _db.LearningItems
+            .AsNoTracking()
+            .Include(candidate => candidate.Club)
+            .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
+        if (item is null) return NotFound("学习资源不存在。");
+        if (!CanManageLearningItem(user, item))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户无权查看该资源统计。");
+        }
+
+        var records = await _db.LearningRecords
+            .AsNoTracking()
+            .Where(record => record.ItemId == itemId)
+            .ToListAsync();
+        var activeRecords = records
+            .Where(record => LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) !=
+                             LearningWorkflow.RecordStatusCancelled)
+            .ToList();
+        var learnerCount = activeRecords.Count;
+        var totalDuration = activeRecords.Sum(record => (long)(record.DurationSeconds ?? 0));
+
+        return Ok(new ApiLearningItemStatistics
+        {
+            ItemId = item.ItemId,
+            Title = item.Title,
+            LearnerCount = learnerCount,
+            CompletedCount = activeRecords.Count(record =>
+                LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
+                    LearningWorkflow.RecordStatusCompleted ||
+                record.Progress >= 100),
+            DownloadCount = records.Count(record => record.DownloadedAt.HasValue),
+            AverageProgress = learnerCount == 0
+                ? 0
+                : Math.Round(activeRecords.Average(record => (double)(record.Progress ?? 0)), 2),
+            AverageDurationSeconds = learnerCount == 0
+                ? 0
+                : Math.Round(activeRecords.Average(record => (double)(record.DurationSeconds ?? 0)), 2),
+            TotalDurationSeconds = (int)Math.Min(int.MaxValue, totalDuration)
+        });
+    }
+
+    /// <summary>
     /// 用户查看自己的学习记录，课程管理者可查看课程成员名单。
     /// </summary>
     [HttpGet("records")]
-    public async Task<IActionResult> GetRecords(
-        [FromQuery] int currentUserId,
-        [FromQuery] int? itemId)
+    public async Task<IActionResult> GetRecords([FromQuery] int? itemId)
     {
-        if (currentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
-        if (itemId is not null and <= 0) return BadRequest("课程 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+        if (itemId is not null and <= 0) return BadRequest("资源 ID 必须大于 0。");
 
-        var user = await LoadUserAsync(currentUserId);
+        var user = await LoadUserAsync(currentUserId.Value);
         if (user is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
 
@@ -509,7 +756,7 @@ public class LearningController : ControllerBase
 
         if (itemId is null)
         {
-            query = query.Where(record => record.UserId == currentUserId);
+            query = query.Where(record => record.UserId == currentUserId.Value);
         }
         else
         {
@@ -517,13 +764,13 @@ public class LearningController : ControllerBase
                 .AsNoTracking()
                 .Include(candidate => candidate.Club)
                 .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId.Value);
-            if (item is null) return NotFound("课程不存在。");
+            if (item is null) return NotFound("课程或资源不存在。");
 
             query = CanManageLearningItem(user, item)
                 ? query.Where(record => record.ItemId == itemId.Value)
                 : query.Where(record =>
                     record.ItemId == itemId.Value &&
-                    record.UserId == currentUserId);
+                    record.UserId == currentUserId.Value);
         }
 
         var records = await query
@@ -544,7 +791,8 @@ public class LearningController : ControllerBase
     {
         if (request is null) return BadRequest("学习进度信息不能为空。");
         if (recordId <= 0) return BadRequest("学习记录 ID 必须大于 0。");
-        if (request.CurrentUserId <= 0) return BadRequest("当前用户 ID 必须大于 0。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (!LearningWorkflow.IsProgressValid((decimal)request.Progress))
         {
             return BadRequest("学习进度必须在 0 到 100 之间。");
@@ -553,10 +801,14 @@ public class LearningController : ControllerBase
 
         var record = await _db.LearningRecords
             .Include(candidate => candidate.Item)
+                .ThenInclude(item => item!.Club)
+            .Include(candidate => candidate.Item)
+                .ThenInclude(item => item!.Uploader)
+                    .ThenInclude(uploader => uploader!.ClubMemberships)
             .Include(candidate => candidate.User)
             .FirstOrDefaultAsync(candidate => candidate.RecordId == recordId);
         if (record is null) return NotFound("学习记录不存在。");
-        if (record.UserId != request.CurrentUserId)
+        if (record.UserId != currentUserId.Value)
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -572,8 +824,20 @@ public class LearningController : ControllerBase
         {
             return Conflict("已完成的学习记录不能再次修改。");
         }
-        if (record.Item?.StartAt is null ||
-            LearningWorkflow.BusinessNow() < record.Item.StartAt.Value)
+        if (record.Item is null) return Problem("学习记录关联的资源不存在。");
+
+        var currentUser = await LoadUserAsync(currentUserId.Value);
+        if (currentUser is null) return NotFound("当前用户不存在。");
+        var canManage = CanManageLearningItem(currentUser, record.Item);
+        var accessDecision = GetLearningAccessDecision(currentUser, record.Item, record, canManage);
+        if (accessDecision is not null)
+        {
+            return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+        }
+
+        if (LearningWorkflow.IsSupportedCourseType(record.Item.ItemType) &&
+            (record.Item.StartAt is null ||
+             LearningWorkflow.BusinessNow() < record.Item.StartAt.Value))
         {
             return BadRequest("课程尚未开始，不能更新学习进度。");
         }
@@ -593,43 +857,74 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 校验课程必填信息、时间、容量、范围及授课教师资格。
+    /// 校验课程或资源的类型、文件地址、课程字段、可见范围及下载设置。
     /// </summary>
-    private async Task<IActionResult?> ValidateCourseInputAsync(
+    private async Task<IActionResult?> ValidateLearningItemInputAsync(
         string? title,
-        int teacherUserId,
+        int? teacherUserId,
         string? itemType,
         string? categoryName,
+        string? fileUrl,
         DateTime? startAt,
         DateTime? endAt,
         int? capacity,
-        string? visibility)
+        string? visibility,
+        string? downloadPermission,
+        User operatorUser,
+        int clubId)
     {
-        if (string.IsNullOrWhiteSpace(title)) return BadRequest("课程名称不能为空。");
-        if (title.Trim().Length > 100) return BadRequest("课程名称不能超过 100 个字符。");
-        if (!LearningWorkflow.IsSupportedCourseType(itemType))
+        if (string.IsNullOrWhiteSpace(title)) return BadRequest("课程或资源标题不能为空。");
+        if (title.Trim().Length > 100) return BadRequest("课程或资源标题不能超过 100 个字符。");
+        if (!LearningWorkflow.IsSupportedItemType(itemType))
         {
-            return BadRequest("课程类型只能是课程、讲座或培训。");
+            return BadRequest("资源类型只能是课程、讲座、培训、视频、文档或资料。");
         }
         if (NormalizeOptionalText(categoryName)?.Length > 100)
         {
-            return BadRequest("课程分类不能超过 100 个字符。");
+            return BadRequest("资源分类不能超过 100 个字符。");
         }
+        if (!LearningWorkflow.IsVisibilityValid(visibility))
+        {
+            return BadRequest("可见范围只能是公开、社团内或部门内。");
+        }
+        if (!LearningWorkflow.IsDownloadPermissionValid(downloadPermission))
+        {
+            return BadRequest("下载设置只能是允许、禁止或需要审批。");
+        }
+        if (!string.IsNullOrWhiteSpace(fileUrl) && !LearningWorkflow.IsFileUrlValid(fileUrl))
+        {
+            return BadRequest("文件地址必须是长度不超过 255 的 HTTP 或 HTTPS 地址。");
+        }
+
+        if (visibility == LearningWorkflow.VisibilityDepartment &&
+            GetActiveDepartmentName(operatorUser, clubId) is null)
+        {
+            return BadRequest("设置部门内可见前，上传人必须是该社团已设置部门的有效成员。");
+        }
+
+        if (LearningWorkflow.IsSupportedResourceType(itemType))
+        {
+            if (!LearningWorkflow.IsFileUrlValid(fileUrl))
+            {
+                return BadRequest("视频、文档和资料必须填写有效的 HTTP 或 HTTPS 文件地址。");
+            }
+            return null;
+        }
+
         if (!LearningWorkflow.IsCourseTimeValid(startAt, endAt))
         {
-            return BadRequest(
-                "课程开始时间必填；结束时间可不填，填写时必须晚于开始时间。");
+            return BadRequest("课程开始时间必填；结束时间可不填，填写时必须晚于开始时间。");
         }
         if (!LearningWorkflow.IsCapacityValid(capacity))
         {
             return BadRequest("课程容量必填且必须大于 0。");
         }
-        if (!LearningWorkflow.IsVisibilityValid(visibility))
+        if (teacherUserId is null or <= 0)
         {
-            return BadRequest("课程开放范围只能是本社团或全校。");
+            return BadRequest("课程必须选择授课教师。");
         }
 
-        var teacher = await LoadUserAsync(teacherUserId);
+        var teacher = await LoadUserAsync(teacherUserId.Value);
         if (teacher is null ||
             !UsersController.IsActive(teacher.AccountStatus) ||
             !IsTeacherAccount(teacher))
@@ -651,6 +946,10 @@ public class LearningController : ControllerBase
         bool canManage,
         DateTime now)
     {
+        if (!LearningWorkflow.IsSupportedCourseType(item.ItemType))
+        {
+            return new EnrollmentDecision(StatusCodes.Status400BadRequest, "该资源无需报名，请直接开始学习。");
+        }
         if (!LearningWorkflow.IsPublished(item))
         {
             return new EnrollmentDecision(StatusCodes.Status400BadRequest, "课程当前未开放加入。");
@@ -682,6 +981,14 @@ public class LearningController : ControllerBase
             return new EnrollmentDecision(
                 StatusCodes.Status403Forbidden,
                 "该课程仅面向本社团有效成员开放。");
+        }
+        if (visibility == LearningWorkflow.VisibilityDepartment &&
+            !canManage &&
+            !IsSameActiveDepartment(user, item))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "该课程仅面向上传人所在部门的有效成员开放。");
         }
         if (!LearningWorkflow.HasEnrollmentCapacity(item, activeEnrollmentCount))
         {
@@ -717,8 +1024,108 @@ public class LearningController : ControllerBase
         {
             LearningWorkflow.VisibilityPublic => true,
             LearningWorkflow.VisibilityClub => IsActiveClubMember(viewer, item.ClubId),
+            LearningWorkflow.VisibilityDepartment => IsSameActiveDepartment(viewer, item),
             _ => false
         };
+    }
+
+    /// <summary>
+    /// 返回当前用户不能学习或下载资源的原因；允许访问时返回空。
+    /// </summary>
+    private static EnrollmentDecision? GetLearningAccessDecision(
+        User user,
+        DbLearningItem item,
+        DbLearningRecord? currentRecord,
+        bool canManage)
+    {
+        if (!CanViewLearningItem(user, item, currentRecord, canManage))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "当前用户不在该资源的可见范围内。");
+        }
+        if (!LearningWorkflow.IsPublished(item))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status400BadRequest,
+                "资源当前未发布，不能学习或下载。");
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 返回资源无法直接下载的原因；允许下载时返回空。
+    /// </summary>
+    private static EnrollmentDecision? GetDownloadDecision(DbLearningItem item)
+    {
+        if (!LearningWorkflow.IsFileUrlValid(item.FileUrl))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status400BadRequest,
+                "资源没有有效的文件地址。");
+        }
+
+        return LearningWorkflow.NormalizeDownloadPermission(item.DownloadPermission) switch
+        {
+            LearningWorkflow.DownloadPermissionAllow => null,
+            LearningWorkflow.DownloadPermissionApproval => new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "该资源需要审批后下载，当前不能直接下载。"),
+            _ => new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "该资源已禁止下载。")
+        };
+    }
+
+    /// <summary>
+    /// 返回非课程资源当前无法开始学习的原因。
+    /// </summary>
+    private static EnrollmentDecision? GetLearningAvailabilityDecision(DbLearningItem item)
+    {
+        if (!LearningWorkflow.IsSupportedResourceType(item.ItemType))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status400BadRequest,
+                "培训课程请使用加入课程功能。");
+        }
+        return LearningWorkflow.IsPublished(item)
+            ? null
+            : new EnrollmentDecision(
+                StatusCodes.Status400BadRequest,
+                "资源当前未发布，不能开始学习。");
+    }
+
+    /// <summary>
+    /// 判断查看者与资源上传人是否为同一社团、同一部门的有效成员。
+    /// </summary>
+    private static bool IsSameActiveDepartment(User viewer, DbLearningItem item)
+    {
+        var viewerDepartment = GetActiveDepartmentName(viewer, item.ClubId);
+        var uploaderDepartment = item.Uploader is null
+            ? null
+            : GetActiveDepartmentName(item.Uploader, item.ClubId);
+        return viewerDepartment is not null &&
+               uploaderDepartment is not null &&
+               string.Equals(
+                   viewerDepartment,
+                   uploaderDepartment,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 返回用户在指定社团最近一条有效成员关系中的部门名称。
+    /// </summary>
+    private static string? GetActiveDepartmentName(User user, int clubId)
+    {
+        return user.ClubMemberships
+            .Where(membership =>
+                membership.ClubId == clubId &&
+                UsersController.IsActive(membership.MemberStatus) &&
+                !string.IsNullOrWhiteSpace(membership.DepartmentName))
+            .OrderByDescending(membership => membership.JoinAt)
+            .ThenByDescending(membership => membership.MemberId)
+            .Select(membership => membership.DepartmentName!.Trim())
+            .FirstOrDefault();
     }
 
     /// <summary>
@@ -774,6 +1181,18 @@ public class LearningController : ControllerBase
                 .ThenInclude(userRole => userRole.Role)
             .Include(user => user.ClubMemberships)
             .FirstOrDefaultAsync(user => user.UserId == userId);
+    }
+
+    /// <summary>
+    /// 加载资源可见范围判断所需的社团和上传人部门成员关系。
+    /// </summary>
+    private Task<DbLearningItem?> LoadLearningItemForAccessAsync(int itemId)
+    {
+        return _db.LearningItems
+            .Include(item => item.Club)
+            .Include(item => item.Uploader)
+                .ThenInclude(uploader => uploader!.ClubMemberships)
+            .FirstOrDefaultAsync(item => item.ItemId == itemId);
     }
 
     /// <summary>
@@ -909,7 +1328,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 将完整课程实体映射为 API 模型；数据缺失时记录错误并返回空。
+    /// 将完整课程或学习资源实体映射为 API 模型；核心数据缺失时记录错误并返回空。
     /// </summary>
     private ApiLearningItem? TryMapItemDto(
         DbLearningItem item,
@@ -920,14 +1339,23 @@ public class LearningController : ControllerBase
         DateTime now)
     {
         var normalizedVisibility = LearningWorkflow.NormalizeVisibility(item.Visibility);
-        if (item.StartAt is null || item.Capacity is null || normalizedVisibility is null)
+        var normalizedDownloadPermission =
+            LearningWorkflow.NormalizeDownloadPermission(item.DownloadPermission);
+        var isCourse = LearningWorkflow.IsSupportedCourseType(item.ItemType);
+        var isResource = LearningWorkflow.IsSupportedResourceType(item.ItemType);
+        if ((!isCourse && !isResource) ||
+            normalizedVisibility is null ||
+            normalizedDownloadPermission is null ||
+            (isCourse && (item.StartAt is null || item.Capacity is null)))
         {
             _logger.LogError(
-                "课程 {ItemId} 数据不完整：StartAtMissing={StartAtMissing}, CapacityMissing={CapacityMissing}, VisibilityInvalid={VisibilityInvalid}。",
+                "学习资源 {ItemId} 数据不完整：Type={ItemType}, StartAtMissing={StartAtMissing}, CapacityMissing={CapacityMissing}, VisibilityInvalid={VisibilityInvalid}, DownloadPermissionInvalid={DownloadPermissionInvalid}。",
                 item.ItemId,
+                item.ItemType,
                 item.StartAt is null,
                 item.Capacity is null,
-                normalizedVisibility is null);
+                normalizedVisibility is null,
+                normalizedDownloadPermission is null);
             return null;
         }
 
@@ -935,9 +1363,25 @@ public class LearningController : ControllerBase
             ? LearningWorkflow.RecordStatusNone
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
         var canCancelEnrollment =
+            isCourse &&
             (currentRecordStatus is LearningWorkflow.RecordStatusEnrolled or
                 LearningWorkflow.RecordStatusLearning) &&
             (!item.EndAt.HasValue || now < item.EndAt.Value);
+        var learningDecision = isResource &&
+            currentRecordStatus == LearningWorkflow.RecordStatusCompleted
+            ? new EnrollmentDecision(
+                StatusCodes.Status409Conflict,
+                "该资源已经完成学习，可在学习记录中查看结果。")
+            : isResource
+                ? GetLearningAvailabilityDecision(item)
+                : new EnrollmentDecision(
+                    StatusCodes.Status400BadRequest,
+                    "培训课程请使用加入课程功能。");
+        var downloadDecision = LearningWorkflow.IsPublished(item)
+            ? GetDownloadDecision(item)
+            : new EnrollmentDecision(
+                StatusCodes.Status400BadRequest,
+                "资源当前未发布，不能下载。");
 
         return new ApiLearningItem
         {
@@ -946,21 +1390,29 @@ public class LearningController : ControllerBase
             UploaderUserId = item.UploaderUserId,
             TeacherUserId = item.TeacherUserId,
             Title = item.Title,
-            ItemType = item.ItemType,
+            ItemType = item.ItemType ?? string.Empty,
             CategoryName = item.CategoryName,
             Description = item.Description,
-            StartAt = LearningWorkflow.AsUtc(item.StartAt.Value),
+            FileUrl = canManage ? item.FileUrl : null,
+            StartAt = LearningWorkflow.AsUtc(item.StartAt),
             EndAt = LearningWorkflow.AsUtc(item.EndAt),
-            Capacity = item.Capacity.Value,
+            Capacity = item.Capacity,
             Visibility = ToItemVisibilityEnum(normalizedVisibility),
+            DownloadPermission = ToItemDownloadPermissionEnum(normalizedDownloadPermission),
             ItemStatus = ToItemStatusEnum(
                 LearningWorkflow.ResolveEffectiveItemStatus(item, now)),
             CurrentEnrollments = activeEnrollmentCount,
             CurrentUserRecordStatus = ToCurrentUserRecordStatusEnum(currentRecordStatus),
             CanManage = canManage,
-            CanEnroll = enrollmentDecision is null,
+            CanEnroll = isCourse && enrollmentDecision is null,
             CanCancelEnrollment = canCancelEnrollment,
-            EnrollmentUnavailableReason = enrollmentDecision?.Message
+            EnrollmentUnavailableReason = isCourse
+                ? enrollmentDecision?.Message
+                : "该资源无需报名，请直接开始学习。",
+            CanStartLearning = isResource && learningDecision is null,
+            LearningUnavailableReason = learningDecision?.Message,
+            CanDownload = downloadDecision is null,
+            DownloadUnavailableReason = downloadDecision?.Message
         };
     }
 
@@ -981,7 +1433,9 @@ public class LearningController : ControllerBase
             Progress = record.Progress is null ? null : (double)record.Progress.Value,
             DurationSeconds = record.DurationSeconds,
             LastLearnAt = LearningWorkflow.AsUtc(record.LastLearnAt),
-            CompletedAt = LearningWorkflow.AsUtc(record.CompletedAt)
+            CompletedAt = LearningWorkflow.AsUtc(record.CompletedAt),
+            DownloadedAt = LearningWorkflow.AsUtc(record.DownloadedAt),
+            DownloadIp = record.DownloadIp
         };
     }
 
@@ -992,8 +1446,8 @@ public class LearningController : ControllerBase
     {
         return Problem(
             statusCode: StatusCodes.Status500InternalServerError,
-            title: "课程数据异常",
-            detail: $"课程 {itemId} 缺少必填信息，请联系管理员检查数据。");
+            title: "学习资源数据异常",
+            detail: $"学习资源 {itemId} 缺少必填信息，请联系管理员检查数据。");
     }
 
     /// <summary>
@@ -1007,6 +1461,8 @@ public class LearningController : ControllerBase
                 LearningWorkflow.VisibilityPublic,
             CreateLearningItemRequest.VisibilityEnum.ClubEnum =>
                 LearningWorkflow.VisibilityClub,
+            CreateLearningItemRequest.VisibilityEnum.DepartmentEnum =>
+                LearningWorkflow.VisibilityDepartment,
             _ => string.Empty
         };
     }
@@ -1022,6 +1478,8 @@ public class LearningController : ControllerBase
                 LearningWorkflow.VisibilityPublic,
             UpdateLearningItemRequest.VisibilityEnum.ClubEnum =>
                 LearningWorkflow.VisibilityClub,
+            UpdateLearningItemRequest.VisibilityEnum.DepartmentEnum =>
+                LearningWorkflow.VisibilityDepartment,
             _ => string.Empty
         };
     }
@@ -1031,9 +1489,60 @@ public class LearningController : ControllerBase
     /// </summary>
     private static ApiLearningItem.VisibilityEnum ToItemVisibilityEnum(string visibility)
     {
-        return visibility == LearningWorkflow.VisibilityPublic
-            ? ApiLearningItem.VisibilityEnum.PublicEnum
-            : ApiLearningItem.VisibilityEnum.ClubEnum;
+        return visibility switch
+        {
+            LearningWorkflow.VisibilityPublic => ApiLearningItem.VisibilityEnum.PublicEnum,
+            LearningWorkflow.VisibilityDepartment => ApiLearningItem.VisibilityEnum.DepartmentEnum,
+            _ => ApiLearningItem.VisibilityEnum.ClubEnum
+        };
+    }
+
+    /// <summary>
+    /// 将创建请求的下载设置转换为数据库值。
+    /// </summary>
+    private static string ToDownloadPermissionValue(
+        CreateLearningItemRequest.DownloadPermissionEnum permission)
+    {
+        return permission switch
+        {
+            CreateLearningItemRequest.DownloadPermissionEnum.AllowEnum =>
+                LearningWorkflow.DownloadPermissionAllow,
+            CreateLearningItemRequest.DownloadPermissionEnum.ApprovalEnum =>
+                LearningWorkflow.DownloadPermissionApproval,
+            _ => LearningWorkflow.DownloadPermissionDeny
+        };
+    }
+
+    /// <summary>
+    /// 将更新请求的下载设置转换为数据库值。
+    /// </summary>
+    private static string ToDownloadPermissionValue(
+        UpdateLearningItemRequest.DownloadPermissionEnum permission)
+    {
+        return permission switch
+        {
+            UpdateLearningItemRequest.DownloadPermissionEnum.AllowEnum =>
+                LearningWorkflow.DownloadPermissionAllow,
+            UpdateLearningItemRequest.DownloadPermissionEnum.ApprovalEnum =>
+                LearningWorkflow.DownloadPermissionApproval,
+            _ => LearningWorkflow.DownloadPermissionDeny
+        };
+    }
+
+    /// <summary>
+    /// 将数据库下载设置转换为响应枚举。
+    /// </summary>
+    private static ApiLearningItem.DownloadPermissionEnum ToItemDownloadPermissionEnum(
+        string permission)
+    {
+        return permission switch
+        {
+            LearningWorkflow.DownloadPermissionAllow =>
+                ApiLearningItem.DownloadPermissionEnum.AllowEnum,
+            LearningWorkflow.DownloadPermissionApproval =>
+                ApiLearningItem.DownloadPermissionEnum.ApprovalEnum,
+            _ => ApiLearningItem.DownloadPermissionEnum.DenyEnum
+        };
     }
 
     /// <summary>

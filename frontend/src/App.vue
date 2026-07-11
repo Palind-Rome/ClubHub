@@ -110,7 +110,7 @@ onUnmounted(() => {
         <el-menu-item v-if="canAccessVenueReservations" index="/venue-reservations">
           场地预约
         </el-menu-item>
-        <el-menu-item index="/learning">课程</el-menu-item>
+        <el-menu-item index="/learning">学习中心</el-menu-item>
       </el-menu>
       <div class="header-actions">
         <div class="session">
