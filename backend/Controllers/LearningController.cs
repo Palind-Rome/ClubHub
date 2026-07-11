@@ -10,7 +10,7 @@ using ApiLearningDownloadResult = Org.OpenAPITools.Models.LearningDownloadResult
 using ApiLearningItem = Org.OpenAPITools.Models.LearningItem;
 using ApiLearningItemStatistics = Org.OpenAPITools.Models.LearningItemStatistics;
 using ApiLearningRecord = Org.OpenAPITools.Models.LearningRecord;
-using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
+using ApiLearningInstructorCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using CreateLearningItemRequest = Org.OpenAPITools.Models.CreateLearningItemRequest;
 using DbLearningItem = ClubHub.Api.Data.Entities.LearningItem;
 using DbLearningRecord = ClubHub.Api.Data.Entities.LearningRecord;
@@ -48,15 +48,19 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 返回课程表单可选择的授课教师，界面展示姓名和学工号，内部用户编号仅随选项提交。
+    /// 按学工号查询课程表单可使用的授课人，教师和学生均可选择，内部用户编号仅随选项提交。
     /// </summary>
-    [HttpGet("teacher-candidates")]
-    public async Task<IActionResult> GetTeacherCandidates(
-        [FromQuery] int clubId)
+    [HttpGet("instructor-lookup")]
+    public async Task<IActionResult> GetInstructorByUserNumber(
+        [FromQuery] int clubId,
+        [FromQuery] string? userNumber)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         if (clubId <= 0) return BadRequest("请选择发布课程的社团。");
+        var normalizedUserNumber = NormalizeOptionalText(userNumber);
+        if (normalizedUserNumber is null) return BadRequest("请输入授课人的学号或工号。");
+        if (normalizedUserNumber.Length > 30) return BadRequest("授课人的学号或工号不能超过 30 个字符。");
 
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前登录用户不存在。");
@@ -81,36 +85,28 @@ public class LearningController : ControllerBase
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有本社团课程发布者、负责人、干部或指导老师可以选择授课教师。");
+                "只有本社团课程发布者、负责人、干部或指导老师可以查询授课人。");
         }
 
-        var users = await _db.Users
+        var instructor = await _db.Users
             .AsNoTracking()
             .Include(user => user.UserRoles)
                 .ThenInclude(userRole => userRole.Role)
-            .Where(user =>
-                user.AccountStatus == null ||
-                user.AccountStatus == string.Empty ||
-                user.AccountStatus.ToLower() == "active" ||
-                user.AccountStatus.ToLower() == "normal" ||
-                user.AccountStatus.ToLower() == "enabled")
-            .OrderBy(user => user.RealName)
-            .ThenBy(user => user.StudentNo)
-            .ThenBy(user => user.UserId)
-            .ToListAsync();
+            .FirstOrDefaultAsync(user => user.StudentNo == normalizedUserNumber);
+        if (instructor is null ||
+            !UsersController.IsActive(instructor.AccountStatus) ||
+            (!IsTeacherAccount(instructor) && !IsStudentAccount(instructor)))
+        {
+            return NotFound("未找到正常状态的教师或学生账号，请核对学号或工号。");
+        }
 
-        var candidates = users
-            .Where(IsTeacherAccount)
-            .Select(user => new ApiLearningTeacherCandidate
-            {
-                Id = user.UserId,
-                RealName = user.RealName,
-                StudentNo = user.StudentNo,
-                DisplayName = BuildTeacherCandidateDisplayName(user)
-            })
-            .ToList();
-
-        return Ok(candidates);
+        return Ok(new ApiLearningInstructorCandidate
+        {
+            Id = instructor.UserId,
+            RealName = instructor.RealName,
+            StudentNo = instructor.StudentNo,
+            DisplayName = BuildInstructorCandidateDisplayName(instructor)
+        });
     }
 
     /// <summary>
@@ -221,7 +217,7 @@ public class LearningController : ControllerBase
 
         var validation = await ValidateLearningItemInputAsync(
             request.Title,
-            request.TeacherUserId,
+            request.InstructorUserId,
             request.ItemType,
             request.CategoryName,
             request.FileUrl,
@@ -248,7 +244,7 @@ public class LearningController : ControllerBase
                 ItemId = await GetNextLearningItemId(),
                 ClubId = request.ClubId,
                 UploaderUserId = currentUserId.Value,
-                TeacherUserId = isCourse ? request.TeacherUserId : null,
+                TeacherUserId = isCourse ? request.InstructorUserId : null,
                 Title = request.Title.Trim(),
                 ItemType = Normalize(request.ItemType),
                 CategoryName = NormalizeOptionalText(request.CategoryName),
@@ -327,7 +323,7 @@ public class LearningController : ControllerBase
 
         var validation = await ValidateLearningItemInputAsync(
             request.Title,
-            request.TeacherUserId,
+            request.InstructorUserId,
             request.ItemType,
             request.CategoryName,
             request.FileUrl,
@@ -350,7 +346,7 @@ public class LearningController : ControllerBase
             return Conflict($"课程容量不能小于当前已加入人数 {activeEnrollmentCount}。");
         }
 
-        item.TeacherUserId = isCourse ? request.TeacherUserId : null;
+        item.TeacherUserId = isCourse ? request.InstructorUserId : null;
         item.Title = request.Title.Trim();
         item.ItemType = Normalize(request.ItemType);
         item.CategoryName = NormalizeOptionalText(request.CategoryName);
@@ -861,7 +857,7 @@ public class LearningController : ControllerBase
     /// </summary>
     private async Task<IActionResult?> ValidateLearningItemInputAsync(
         string? title,
-        int? teacherUserId,
+        int? instructorUserId,
         string? itemType,
         string? categoryName,
         string? fileUrl,
@@ -919,17 +915,15 @@ public class LearningController : ControllerBase
         {
             return BadRequest("课程容量必填且必须大于 0。");
         }
-        if (teacherUserId is null or <= 0)
-        {
-            return BadRequest("课程必须选择授课教师。");
-        }
+        if (instructorUserId is null) return null;
+        if (instructorUserId <= 0) return BadRequest("授课人信息无效。");
 
-        var teacher = await LoadUserAsync(teacherUserId.Value);
-        if (teacher is null ||
-            !UsersController.IsActive(teacher.AccountStatus) ||
-            !IsTeacherAccount(teacher))
+        var instructor = await LoadUserAsync(instructorUserId.Value);
+        if (instructor is null ||
+            !UsersController.IsActive(instructor.AccountStatus) ||
+            (!IsTeacherAccount(instructor) && !IsStudentAccount(instructor)))
         {
-            return BadRequest("授课人必须是正常状态的教师或指导老师账号。");
+            return BadRequest("授课人必须是正常状态的教师或学生账号。");
         }
 
         return null;
@@ -1254,14 +1248,23 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 根据工号或角色判断账号是否属于教师。
+    /// 根据系统身份角色判断账号是否属于教师。
     /// </summary>
     private static bool IsTeacherAccount(User user)
     {
-        return IsStaffNumber(user.StudentNo) ||
-               user.UserRoles.Any(userRole =>
-                   userRole.Role is not null &&
-                   IsTeacherRole(userRole.Role));
+        return user.UserRoles.Any(userRole =>
+            userRole.Role is not null &&
+            IsTeacherRole(userRole.Role));
+    }
+
+    /// <summary>
+    /// 根据系统身份角色判断账号是否属于学生。
+    /// </summary>
+    private static bool IsStudentAccount(User user)
+    {
+        return user.UserRoles.Any(userRole =>
+            userRole.Role is not null &&
+            Normalize(userRole.Role.RoleCode) == "student");
     }
 
     /// <summary>
@@ -1273,16 +1276,6 @@ public class LearningController : ControllerBase
         return code is "teacher" or "advisor" or "club_advisor" or "teacher_advisor" ||
                (role.RoleName ?? string.Empty).Contains("教师", StringComparison.Ordinal) ||
                (role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// 判断学工号是否符合当前五位教师工号约定。
-    /// </summary>
-    private static bool IsStaffNumber(string? userNumber)
-    {
-        return !string.IsNullOrWhiteSpace(userNumber) &&
-               userNumber.Trim().Length == 5 &&
-               userNumber.Trim().All(char.IsDigit);
     }
 
     /// <summary>
@@ -1388,7 +1381,7 @@ public class LearningController : ControllerBase
             Id = item.ItemId,
             ClubId = item.ClubId,
             UploaderUserId = item.UploaderUserId,
-            TeacherUserId = item.TeacherUserId,
+            InstructorUserId = item.TeacherUserId,
             Title = item.Title,
             ItemType = item.ItemType ?? string.Empty,
             CategoryName = item.CategoryName,
@@ -1610,13 +1603,16 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 生成包含姓名和学工号的授课教师候选展示文本。
+    /// 生成包含身份、姓名和学工号的授课人候选展示文本。
     /// </summary>
-    private static string BuildTeacherCandidateDisplayName(User user)
+    private static string BuildInstructorCandidateDisplayName(User user)
     {
         var name = BuildUserDisplayName(user, user.UserId);
-        var staffNumber = user.StudentNo?.Trim();
-        return string.IsNullOrWhiteSpace(staffNumber) ? name : $"{name}（{staffNumber}）";
+        var userNumber = user.StudentNo?.Trim();
+        var identity = IsTeacherAccount(user) ? "教师" : "学生";
+        return string.IsNullOrWhiteSpace(userNumber)
+            ? $"{identity} · {name}"
+            : $"{identity} · {name}（{userNumber}）";
     }
 
     /// <summary>

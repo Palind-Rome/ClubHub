@@ -2,10 +2,8 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
-  Configuration,
   CreateLearningItemRequestDownloadPermissionEnum,
   CreateLearningItemRequestItemStatusEnum,
-  DefaultApi,
   LearningItemItemStatusEnum,
   UpdateLearningItemRequestDownloadPermissionEnum,
   UpdateLearningItemRequestItemStatusEnum,
@@ -15,9 +13,10 @@ import {
   type LearningRecord,
   type LearningTeacherCandidate,
 } from "../api";
+import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
 
-const api = new DefaultApi(new Configuration({ accessToken: async () => readAuth()?.token ?? "" }));
+const api = apiClient;
 
 const itemTypeOptions = [
   { label: "课程", value: "course" },
@@ -60,10 +59,11 @@ const auth = ref(readAuth());
 const clubs = ref<Club[]>([]);
 const learningItems = ref<LearningItem[]>([]);
 const learningRecords = ref<LearningRecord[]>([]);
-const teacherCandidates = ref<LearningTeacherCandidate[]>([]);
+const instructorLookupResult = ref<LearningTeacherCandidate | null>(null);
+const instructorLookupError = ref("");
 const loading = ref(false);
 const recordLoading = ref(false);
-const teacherCandidateLoading = ref(false);
+const instructorLookupLoading = ref(false);
 const saving = ref(false);
 const enrollingId = ref<number | null>(null);
 const cancellingId = ref<number | null>(null);
@@ -85,13 +85,14 @@ const selectedRecordItemId = ref<number | undefined>();
 const courseFormRef = ref<FormInstance>();
 const progressFormRef = ref<FormInstance>();
 let stopSessionChange: (() => void) | undefined;
-let teacherCandidateClubId: number | null = null;
+let instructorLookupRequestId = 0;
 
 const courseForm = reactive({
   clubId: null as number | null,
   title: "",
   description: "",
-  teacherUserId: null as number | null,
+  instructorUserId: null as number | null,
+  instructorUserNumber: "",
   itemType: "course",
   categoryName: "",
   fileUrl: "",
@@ -115,7 +116,6 @@ const courseRules: FormRules<typeof courseForm> = {
     { required: true, message: "请输入课程名称", trigger: "blur" },
     { min: 1, max: 100, message: "课程名称不能超过 100 个字符", trigger: "blur" },
   ],
-  teacherUserId: [{ validator: validateTeacher, trigger: "change" }],
   itemType: [{ required: true, message: "请选择资源类型", trigger: "change" }],
   fileUrl: [{ validator: validateFileUrl, trigger: "blur" }],
   startAt: [{ validator: validateStartAt, trigger: "change" }],
@@ -208,15 +208,6 @@ function statusLabel(status?: string | null, item?: LearningItem) {
 /** 判断条目是否为需要报名和排期的课程类资源。 */
 function isCourseItem(item: Pick<LearningItem, "itemType">) {
   return courseTypes.has(item.itemType ?? "");
-}
-
-/** 课程类型下要求选择有效授课教师。 */
-function validateTeacher(_rule: unknown, value: number | null, callback: (error?: Error) => void) {
-  if (isCourseForm.value && (!value || value <= 0)) {
-    callback(new Error("课程类型必须选择授课教师"));
-    return;
-  }
-  callback();
 }
 
 /** 非课程资源要求填写 HTTP/HTTPS 文件地址。 */
@@ -377,53 +368,73 @@ async function loadLearningItems() {
   }
 }
 
-/** 加载指定社团可选择的授课教师。 */
-async function loadTeacherCandidates(clubId?: number | null) {
-  if (!clubId || !currentUserId.value) {
-    teacherCandidates.value = [];
-    teacherCandidateClubId = null;
+/** 清除已查询到的授课人，仅在输入新学工号后重新确定授课人。 */
+function resetInstructorLookup(clearSelectedInstructor = true) {
+  instructorLookupRequestId += 1;
+  instructorLookupResult.value = null;
+  instructorLookupError.value = "";
+  instructorLookupLoading.value = false;
+  if (clearSelectedInstructor) courseForm.instructorUserId = null;
+}
+
+/** 输入新学工号后，使之前查询结果失效。 */
+function handleInstructorNumberInput() {
+  resetInstructorLookup();
+}
+
+/** 按学工号精确查询授课人；授课人可选，但填写后必须是正常状态的教师或学生。 */
+async function lookupInstructor() {
+  const userNumber = courseForm.instructorUserNumber.trim();
+  resetInstructorLookup(false);
+  if (!userNumber) return;
+  if (!courseForm.clubId) {
+    instructorLookupError.value = "请先选择发布社团，再查询授课人。";
     return;
   }
 
-  if (teacherCandidateClubId === clubId && teacherCandidates.value.length > 0) return;
-
-  teacherCandidateLoading.value = true;
+  const requestId = ++instructorLookupRequestId;
+  instructorLookupLoading.value = true;
   try {
-    teacherCandidates.value = await api.getLearningTeacherCandidates({ clubId });
-    teacherCandidateClubId = clubId;
+    const result = await api.getLearningInstructorByUserNumber({
+      clubId: courseForm.clubId,
+      userNumber,
+    });
+    if (requestId !== instructorLookupRequestId) return;
+
+    courseForm.instructorUserId = result.id;
+    instructorLookupResult.value = result;
   } catch (error) {
-    teacherCandidates.value = [];
-    teacherCandidateClubId = null;
-    ElMessage.error(toErrorMessage(error, "授课教师候选人加载失败"));
+    if (requestId !== instructorLookupRequestId) return;
+
+    courseForm.instructorUserId = null;
+    instructorLookupError.value = toErrorMessage(
+      error,
+      "未找到正常状态的教师或学生账号，请核对学号或工号。",
+    );
   } finally {
-    teacherCandidateLoading.value = false;
+    if (requestId === instructorLookupRequestId) instructorLookupLoading.value = false;
   }
 }
 
-/** 返回授课教师候选人的姓名与学工号文本。 */
-function teacherCandidateLabel(candidate: LearningTeacherCandidate) {
-  return candidate.displayName.trim();
+/** 社团切换后清空已查询的授课人，避免跨社团误用查询结果。 */
+function handleCourseClubChange() {
+  courseForm.instructorUserNumber = "";
+  resetInstructorLookup();
 }
 
-/** 社团切换后清空教师并刷新候选列表。 */
-async function handleCourseClubChange(clubId?: number) {
-  courseForm.teacherUserId = null;
-  if (isCourseForm.value) await loadTeacherCandidates(clubId);
-}
-
-/** 资源类型切换时清理不适用字段并刷新课程教师候选。 */
-async function handleItemTypeChange() {
+/** 资源类型切换时清理不适用字段。 */
+function handleItemTypeChange() {
   if (isCourseForm.value) {
     courseForm.downloadPermission = courseForm.fileUrl ? "allow" : "deny";
-    await loadTeacherCandidates(courseForm.clubId);
     return;
   }
-  courseForm.teacherUserId = null;
+  courseForm.instructorUserId = null;
+  courseForm.instructorUserNumber = "";
   courseForm.startAt = null;
   courseForm.endAt = null;
   courseForm.capacity = null;
   courseForm.downloadPermission = "allow";
-  teacherCandidates.value = [];
+  resetInstructorLookup(false);
   courseFormRef.value?.clearValidate();
 }
 
@@ -432,7 +443,9 @@ function resetCourseForm() {
   courseForm.clubId = manageableClubs.value[0]?.id ?? null;
   courseForm.title = "";
   courseForm.description = "";
-  courseForm.teacherUserId = null;
+  courseForm.instructorUserId = null;
+  courseForm.instructorUserNumber = "";
+  resetInstructorLookup(false);
   courseForm.itemType = "course";
   courseForm.categoryName = "";
   courseForm.fileUrl = "";
@@ -459,7 +472,6 @@ async function openCreateDialog() {
   courseDialogMode.value = "create";
   editingItemId.value = null;
   resetCourseForm();
-  await loadTeacherCandidates(courseForm.clubId);
   courseDialogVisible.value = true;
 }
 
@@ -475,7 +487,9 @@ async function openEditDialog(item: LearningItem) {
   courseForm.clubId = item.clubId;
   courseForm.title = item.title;
   courseForm.description = item.description ?? "";
-  courseForm.teacherUserId = item.teacherUserId ?? null;
+  courseForm.instructorUserId = item.instructorUserId ?? null;
+  courseForm.instructorUserNumber = "";
+  resetInstructorLookup(false);
   courseForm.itemType = item.itemType ?? "course";
   courseForm.categoryName = item.categoryName ?? "";
   courseForm.fileUrl = item.fileUrl ?? "";
@@ -486,7 +500,6 @@ async function openEditDialog(item: LearningItem) {
   courseForm.downloadPermission = item.downloadPermission;
   courseForm.itemStatus =
     item.itemStatus === LearningItemItemStatusEnum.Finished ? "closed" : item.itemStatus;
-  if (isCourseForm.value) await loadTeacherCandidates(item.clubId);
   courseFormRef.value?.clearValidate();
   courseDialogVisible.value = true;
 }
@@ -496,18 +509,14 @@ async function submitCourse() {
   if (!currentUserId.value) return;
   if (!(await validateForm(courseFormRef.value))) return;
   if (!courseForm.clubId) return;
-  if (
-    isCourseForm.value &&
-    (!courseForm.teacherUserId || !courseForm.startAt || !courseForm.capacity)
-  )
-    return;
+  if (isCourseForm.value && (!courseForm.startAt || !courseForm.capacity)) return;
 
   saving.value = true;
   try {
     const commonFields = {
       title: courseForm.title.trim(),
       description: courseForm.description.trim() || undefined,
-      teacherUserId: isCourseForm.value ? courseForm.teacherUserId : undefined,
+      instructorUserId: isCourseForm.value ? courseForm.instructorUserId : undefined,
       itemType: courseForm.itemType,
       categoryName: courseForm.categoryName.trim() || undefined,
       fileUrl: courseForm.fileUrl.trim() || undefined,
@@ -914,7 +923,7 @@ onUnmounted(() => {
 
     <el-dialog v-model="courseDialogVisible" :title="courseDialogTitle" width="680px">
       <el-form ref="courseFormRef" :model="courseForm" :rules="courseRules" label-width="120px">
-        <el-form-item label="发布社团" prop="clubId">
+        <el-form-item label="发布社团" prop="clubId" required>
           <el-select
             v-model="courseForm.clubId"
             placeholder="请选择社团"
@@ -930,7 +939,7 @@ onUnmounted(() => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题" prop="title">
+        <el-form-item label="标题" prop="title" required>
           <el-input v-model="courseForm.title" maxlength="100" show-word-limit />
         </el-form-item>
         <el-form-item label="资源说明">
@@ -942,23 +951,39 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item v-if="isCourseForm" label="授课教师" prop="teacherUserId">
-          <el-select
-            v-model="courseForm.teacherUserId"
-            filterable
-            :loading="teacherCandidateLoading"
-            placeholder="按姓名或学工号搜索"
+        <el-form-item v-if="isCourseForm" label="授课人学工号（可选）">
+          <el-input
+            v-model="courseForm.instructorUserNumber"
+            clearable
+            maxlength="30"
+            placeholder="输入学号或工号后点击查询"
+            @input="handleInstructorNumberInput"
+            @clear="resetInstructorLookup"
           >
-            <el-option
-              v-for="candidate in teacherCandidates"
-              :key="candidate.id"
-              :label="teacherCandidateLabel(candidate)"
-              :value="candidate.id"
-            />
-          </el-select>
-          <span class="field-tip">仅显示正常状态的教师或指导老师账号</span>
+            <template #append>
+              <el-button :loading="instructorLookupLoading" @click="lookupInstructor">
+                查询
+              </el-button>
+            </template>
+          </el-input>
+          <el-alert
+            v-if="instructorLookupResult"
+            class="instructor-result"
+            type="success"
+            :closable="false"
+            show-icon
+          >
+            <template #title> 已识别：{{ instructorLookupResult.displayName }} </template>
+          </el-alert>
+          <el-text v-else-if="instructorLookupError" class="field-tip" type="danger">
+            {{ instructorLookupError }}
+          </el-text>
+          <span v-else class="field-tip">
+            可选；只接受正常状态的教师或学生账号。
+            {{ courseForm.instructorUserId ? "不输入新学工号将保留当前授课人。" : "" }}
+          </span>
         </el-form-item>
-        <el-form-item label="资源类型" prop="itemType">
+        <el-form-item label="资源类型" prop="itemType" required>
           <el-select v-model="courseForm.itemType" @change="handleItemTypeChange">
             <el-option
               v-for="option in itemTypeOptions"
@@ -971,7 +996,7 @@ onUnmounted(() => {
         <el-form-item label="资源分类">
           <el-input v-model="courseForm.categoryName" maxlength="100" />
         </el-form-item>
-        <el-form-item label="文件地址" prop="fileUrl">
+        <el-form-item label="文件地址" prop="fileUrl" :required="!isCourseForm">
           <el-input
             v-model="courseForm.fileUrl"
             maxlength="255"
@@ -981,7 +1006,7 @@ onUnmounted(() => {
             {{ isCourseForm ? "课程可不填；填写后可按下载设置提供附件" : "视频、文档和资料必填" }}
           </span>
         </el-form-item>
-        <el-form-item v-if="isCourseForm" label="开始时间" prop="startAt">
+        <el-form-item v-if="isCourseForm" label="开始时间" prop="startAt" required>
           <el-date-picker
             v-model="courseForm.startAt"
             type="datetime"
@@ -995,10 +1020,10 @@ onUnmounted(() => {
             placeholder="不填则课程长期开放"
           />
         </el-form-item>
-        <el-form-item v-if="isCourseForm" label="课程容量" prop="capacity">
+        <el-form-item v-if="isCourseForm" label="课程容量" prop="capacity" required>
           <el-input-number v-model="courseForm.capacity" :min="1" controls-position="right" />
         </el-form-item>
-        <el-form-item label="可见范围" prop="visibility">
+        <el-form-item label="可见范围" prop="visibility" required>
           <el-radio-group v-model="courseForm.visibility">
             <el-radio-button
               v-for="option in visibilityOptions"
@@ -1012,7 +1037,7 @@ onUnmounted(() => {
             部门范围以上传人在该社团的当前有效部门为准
           </span>
         </el-form-item>
-        <el-form-item label="下载设置" prop="downloadPermission">
+        <el-form-item label="下载设置" prop="downloadPermission" required>
           <el-radio-group v-model="courseForm.downloadPermission">
             <el-radio-button
               v-for="option in downloadPermissionOptions"
@@ -1023,7 +1048,7 @@ onUnmounted(() => {
             </el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="发布状态" prop="itemStatus">
+        <el-form-item label="发布状态" prop="itemStatus" required>
           <el-radio-group v-model="courseForm.itemStatus">
             <el-radio-button value="draft">草稿</el-radio-button>
             <el-radio-button value="published">{{
@@ -1198,6 +1223,11 @@ onUnmounted(() => {
   margin-left: 10px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+
+.instructor-result {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .progress-form {

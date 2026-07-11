@@ -2413,11 +2413,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/learning/teacher-candidates:
+  /api/learning/instructor-lookup:
     get:
-      summary: 获取课程授课教师候选人
-      description: 需要登录；仅返回当前用户有权维护的指定社团可选教师。
-      operationId: getLearningTeacherCandidates
+      summary: 按学工号查询课程授课人
+      description: 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+      operationId: getLearningInstructorByUserNumber
       security:
         - bearerAuth: []
       parameters:
@@ -2427,22 +2427,28 @@ paths:
           schema:
             type: integer
             minimum: 1
-          description: ????????? ID?
+          description: 需要发布或维护课程的社团 ID。
+        - name: userNumber
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 30
+          description: 要查询的学号或工号。
       responses:
         "200":
-          description: ????????
+          description: 已找到的授课人。
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LearningTeacherCandidate"
+                $ref: "#/components/schemas/LearningTeacherCandidate"
         "400":
-          description: ?????????????????
+          description: 社团 ID、学工号或账号状态无效。
         "403":
-          description: ?????????????
+          description: 当前用户无权维护该社团的课程。
         "404":
-          description: ??????????
+          description: 当前用户、社团或对应的正常状态教师/学生不存在。
 
   /api/learning/items:
     get:
@@ -5385,29 +5391,29 @@ components:
 
     LearningTeacherCandidate:
       type: object
-      description: User-facing instructor option used by the learning course form.
+      description: 课程表单使用的授课人候选项；授课人可以是教师或学生。
       required:
         - id
         - displayName
       properties:
         id:
           type: integer
-          description: Internal user id submitted by the client after the user selects an instructor.
+          description: 选择授课人后提交的内部用户 ID。
           example: 30
         realName:
           type: string
           nullable: true
-          description: Instructor real name.
+          description: 授课人姓名。
           example: ???
         studentNo:
           type: string
           nullable: true
-          description: Instructor staff number.
+          description: 授课人的学号或工号。
           example: "10001"
         displayName:
           type: string
-          description: User-facing label containing the instructor name and staff number.
-          example: ????10001?
+          description: 包含教师或学生身份、姓名及学工号的展示文本。
+          example: 学生 · 张同学（2350001）
 
     LearningItem:
       type: object
@@ -5426,10 +5432,10 @@ components:
           nullable: true
           description: 创建或上传资源的用户。
           example: 12
-        teacherUserId:
+        instructorUserId:
           type: integer
           nullable: true
-          description: 课程授课人；非课程资源可为空。
+          description: 课程授课人，可以是教师或学生；非课程资源可为空。
           example: 30
         title:
           type: string
@@ -5552,11 +5558,11 @@ components:
           type: string
           nullable: true
           description: 课程或资源说明。
-        teacherUserId:
+        instructorUserId:
           type: integer
           nullable: true
           minimum: 1
-          description: 课程授课人；课程类型必填。
+          description: 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         itemType:
           type: string
           maxLength: 30
@@ -5623,11 +5629,11 @@ components:
           type: string
           nullable: true
           description: 课程或资源说明。
-        teacherUserId:
+        instructorUserId:
           type: integer
           nullable: true
           minimum: 1
-          description: 课程授课人；课程类型必填。
+          description: 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         itemType:
           type: string
           maxLength: 30
