@@ -868,10 +868,8 @@ public class ClubsController : ControllerBase
         var learningScore = req.LearningScore!.Value;
         var awardScore = req.AwardScore!.Value;
         var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
-        var nextId = (await _db.Evaluations.MaxAsync(ev => (int?)ev.EvaluationId) ?? 0) + 1;
         var evaluation = new Evaluation
         {
-            EvaluationId = nextId,
             EvaluationType = NormalizeEvaluationType(req.EvaluationType)!,
             ClubId = clubId,
             UserId = req.UserId,
