@@ -20,6 +20,11 @@ import {
   saveAuth,
 } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import {
+  collectCadreScopesFromMemberships,
+  groupingMatchesScope,
+  type MemberGroupingScope,
+} from "../composables/useClubEvaluationScope";
 import { hasScopedRole, roleCoversClub } from "../composables/useManageableClubs";
 
 type AuditStatus = "pending" | "approved" | "rejected";
@@ -190,12 +195,6 @@ interface IdentityRow {
   memberStatus: string | null;
 }
 
-interface MemberGroupingScope {
-  departmentName: string;
-  groupName: string;
-  label: string;
-}
-
 interface MemberGroupOption {
   departmentName: string;
   groupName: string;
@@ -229,21 +228,6 @@ const principalPositionNames = new Set([
   "leader",
   "club president",
   "club leader",
-]);
-const cadrePositionNames = new Set([
-  "干部",
-  "部长",
-  "副部长",
-  "组长",
-  "副组长",
-  "干事",
-  "社团干部",
-  "部门负责人",
-  "小组负责人",
-  "officer",
-  "cadre",
-  "minister",
-  "group leader",
 ]);
 const clubParticipantRoleCodes = new Set([
   "club_member",
@@ -648,40 +632,7 @@ const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const clubId = selectedClubId.value;
   if (!user || !clubId) return [];
 
-  const hasOfficerRole = user.roles.some(
-    (role) =>
-      roleCoversClub(role, clubId) && (role.roleCode ?? "").toLowerCase() === "club_officer",
-  );
-  const scopeMap = new Map<string, MemberGroupingScope>();
-
-  user.memberships
-    .filter(
-      (membership) =>
-        membership.clubId === clubId &&
-        isActiveStatus(membership.memberStatus) &&
-        (hasOfficerRole || isCadrePosition(membership.positionName)) &&
-        (Boolean(membership.groupName?.trim()) ||
-          (isDepartmentManagerPosition(membership.positionName) &&
-            Boolean(membership.departmentName?.trim()))),
-    )
-    .forEach((membership) => {
-      const departmentName = membership.departmentName?.trim() ?? "";
-      const groupName = isDepartmentManagerPosition(membership.positionName)
-        ? ""
-        : (membership.groupName?.trim() ?? "");
-      const key = `${departmentName}\n${groupName}`;
-      scopeMap.set(key, {
-        departmentName,
-        groupName,
-        label: groupName
-          ? departmentName
-            ? `${departmentName} / ${groupName}`
-            : groupName
-          : departmentName,
-      });
-    });
-
-  return Array.from(scopeMap.values());
+  return collectCadreScopesFromMemberships(user.memberships, user.roles, clubId);
 });
 const selectedDepartmentManagerScopes = computed(() =>
   selectedCadreGroupingScopes.value.filter(
@@ -1789,26 +1740,6 @@ function canMaintainEvaluationRecord(row: ClubEvaluationRecord) {
   return Boolean(member && canMaintainEvaluationForMember(member));
 }
 
-function groupingMatchesScope(
-  targetDepartment: string | null | undefined,
-  targetGroup: string | null | undefined,
-  scopeDepartment: string | null | undefined,
-  scopeGroup: string | null | undefined,
-) {
-  if (!scopeGroup?.trim()) {
-    return (
-      Boolean(scopeDepartment?.trim()) &&
-      (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment!.trim().toLowerCase()
-    );
-  }
-  if (!targetGroup?.trim()) return false;
-  const groupMatches = targetGroup.trim().toLowerCase() === scopeGroup.trim().toLowerCase();
-  const departmentMatches =
-    !scopeDepartment?.trim() ||
-    (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment.trim().toLowerCase();
-  return groupMatches && departmentMatches;
-}
-
 function resetEvaluationForm() {
   evaluationForm.evaluationType = "semester";
   evaluationForm.userId = evaluationTargetOptions.value[0]?.userId;
@@ -2380,18 +2311,6 @@ function isPrincipalPosition(positionName: string | null | undefined) {
   const normalized = positionName.trim().toLowerCase();
   if (positionName.trim().startsWith("副")) return false;
   return principalPositionNames.has(normalized) || principalPositionNames.has(positionName.trim());
-}
-
-function isCadrePosition(positionName: string | null | undefined) {
-  if (!positionName) return false;
-  const normalized = positionName.trim().toLowerCase();
-  return cadrePositionNames.has(normalized) || cadrePositionNames.has(positionName.trim());
-}
-
-function isDepartmentManagerPosition(positionName: string | null | undefined) {
-  if (!positionName) return false;
-  const normalized = positionName.trim().toLowerCase();
-  return ["部长", "副部长", "部门负责人", "minister"].includes(normalized);
 }
 
 function isActiveStatus(status: string | null | undefined) {

@@ -5,11 +5,13 @@ import { Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 import {
-  collectManageableClubIds,
-  collectScopedClubIds,
-  normalizedRoleCodeOf,
-  roleCoversClub,
-} from "../composables/useManageableClubs";
+  canMaintainScopedMember,
+  collectCadreScopesFromMembers,
+  hasGlobalClubViewRole,
+  hasWholeClubMaintainRole,
+  type MemberGroupingScope,
+} from "../composables/useClubEvaluationScope";
+import { collectManageableClubIds, collectScopedClubIds } from "../composables/useManageableClubs";
 
 type PublicStatus = "draft" | "published";
 type EvaluationFormMode = "create" | "edit";
@@ -59,44 +61,8 @@ interface ClubEvaluationRecord {
   createdAt: string | null;
 }
 
-interface MemberGroupingScope {
-  departmentName: string;
-  groupName: string;
-}
-
 const evaluationDraftPermission = "evaluation:draft";
 const evaluationReviewPermission = "evaluation:review";
-const wholeClubMaintainRoleCodes = new Set([
-  "advisor",
-  "club_leader",
-  "club_manager",
-  "club_president",
-  "president",
-]);
-const globalViewRoleCodes = new Set([
-  "admin",
-  "club_admin",
-  "club_reviewer",
-  "platform_admin",
-  "system_admin",
-  "sysadmin",
-]);
-const officerRoleCodes = new Set(["club_officer"]);
-const cadrePositionNames = new Set([
-  "干部",
-  "部长",
-  "副部长",
-  "组长",
-  "副组长",
-  "干事",
-  "社团干部",
-  "部门负责人",
-  "小组负责人",
-  "officer",
-  "cadre",
-  "minister",
-  "group leader",
-]);
 
 const auth = ref<AuthResponse | null>(readAuth());
 const clubs = ref<Club[]>([]);
@@ -157,9 +123,7 @@ const manageableClubIds = computed(() =>
 );
 const scopedClubIds = computed(() => collectScopedClubIds(auth.value?.roles ?? []));
 const canViewAllClubs = computed(
-  () =>
-    hasAllPermissions.value ||
-    (auth.value?.roles ?? []).some((role) => globalViewRoleCodes.has(normalizedRoleCodeOf(role))),
+  () => hasAllPermissions.value || hasGlobalClubViewRole(auth.value?.roles ?? []),
 );
 const accessibleClubs = computed(() =>
   canViewAllClubs.value
@@ -180,36 +144,14 @@ const canMaintainWholeClub = computed(() => {
   if (!clubId || !canMaintainSelectedClub.value) return false;
   if (hasAllPermissions.value) return true;
 
-  return (auth.value?.roles ?? []).some(
-    (role) => roleCoversClub(role, clubId) && wholeClubMaintainRoleCodes.has(roleCodeOf(role)),
-  );
+  return hasWholeClubMaintainRole(auth.value?.roles ?? [], clubId);
 });
 const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const clubId = selectedClubId.value;
   const userId = currentUserId.value;
   if (!clubId || !userId || !canMaintainSelectedClub.value || canMaintainWholeClub.value) return [];
 
-  const hasOfficerRole = (auth.value?.roles ?? []).some(
-    (role) => roleCoversClub(role, clubId) && officerRoleCodes.has(roleCodeOf(role)),
-  );
-  const scopeMap = new Map<string, MemberGroupingScope>();
-
-  members.value
-    .filter(
-      (member) =>
-        member.clubId === clubId &&
-        member.userId === userId &&
-        member.isCurrent &&
-        Boolean(member.groupName?.trim()) &&
-        (hasOfficerRole || isCadrePosition(member.positionName)),
-    )
-    .forEach((member) => {
-      const departmentName = member.departmentName?.trim() ?? "";
-      const groupName = member.groupName?.trim() ?? "";
-      scopeMap.set(`${departmentName}\n${groupName}`, { departmentName, groupName });
-    });
-
-  return Array.from(scopeMap.values());
+  return collectCadreScopesFromMembers(members.value, auth.value?.roles ?? [], clubId, userId);
 });
 const filteredEvaluations = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase();
@@ -487,42 +429,11 @@ function canMaintainEvaluationRecord(row: ClubEvaluationRecord) {
 }
 
 function canMaintainMember(member: ClubMemberRecord) {
-  if (!member.isCurrent || !canMaintainSelectedClub.value) return false;
-  if (canMaintainWholeClub.value) return true;
-
-  return selectedCadreGroupingScopes.value.some((scope) =>
-    groupingMatchesScope(
-      member.departmentName,
-      member.groupName,
-      scope.departmentName,
-      scope.groupName,
-    ),
-  );
-}
-
-function groupingMatchesScope(
-  targetDepartment: string | null | undefined,
-  targetGroup: string | null | undefined,
-  scopeDepartment: string | null | undefined,
-  scopeGroup: string | null | undefined,
-) {
-  if (!targetGroup?.trim() || !scopeGroup?.trim()) return false;
-
-  const groupMatches = targetGroup.trim().toLowerCase() === scopeGroup.trim().toLowerCase();
-  const departmentMatches =
-    !scopeDepartment?.trim() ||
-    (targetDepartment ?? "").trim().toLowerCase() === scopeDepartment.trim().toLowerCase();
-  return groupMatches && departmentMatches;
-}
-
-function isCadrePosition(positionName: string | null | undefined) {
-  if (!positionName) return false;
-  const normalized = positionName.trim().toLowerCase();
-  return cadrePositionNames.has(normalized) || cadrePositionNames.has(positionName.trim());
-}
-
-function roleCodeOf(role: { code?: string | null; roleCode?: string | null }) {
-  return (role.code ?? role.roleCode ?? "").trim().toLowerCase();
+  return canMaintainScopedMember(member, {
+    canMaintainSelectedClub: canMaintainSelectedClub.value,
+    canMaintainWholeClub: canMaintainWholeClub.value,
+    scopes: selectedCadreGroupingScopes.value,
+  });
 }
 
 function memberLabel(member: ClubMemberRecord) {
