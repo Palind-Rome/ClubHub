@@ -438,6 +438,10 @@ export interface CreateVenueReservationOperationRequest {
   createVenueReservationRequest: CreateVenueReservationRequest;
 }
 
+export interface DeleteLearningResourceRequest {
+  itemId: number;
+}
+
 export interface DeleteRecruitmentRequest {
   currentUserId: number;
   recruitId: number;
@@ -520,6 +524,10 @@ export interface GetLearningItemsRequest {
 
 export interface GetLearningRecordsRequest {
   itemId?: number;
+}
+
+export interface GetLearningResourceFileRequest {
+  itemId: number;
 }
 
 export interface GetNoticesRequest {
@@ -711,6 +719,16 @@ export interface UpdateVenueOperationRequest {
 export interface UpdateVenueStatusOperationRequest {
   venueId: number;
   updateVenueStatusRequest: UpdateVenueStatusRequest;
+}
+
+export interface UploadLearningResourceRequest {
+  clubId: number;
+  file: Blob;
+  visibility: UploadLearningResourceVisibilityEnum;
+  downloadPermission: UploadLearningResourceDownloadPermissionEnum;
+  title?: string | null;
+  categoryName?: string | null;
+  description?: string | null;
 }
 
 /**
@@ -2068,6 +2086,68 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for deleteLearningResource without sending the request
+   */
+  async deleteLearningResourceRequestOpts(
+    requestParameters: DeleteLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling deleteLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录和本地上传文件。
+   * 删除学习资源
+   */
+  async deleteLearningResourceRaw(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录和本地上传文件。
+   * 删除学习资源
+   */
+  async deleteLearningResource(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteLearningResourceRaw(requestParameters, initOverrides);
+  }
+
+  /**
    * Creates request options for deleteRecruitment without sending the request
    */
   async deleteRecruitmentRequestOpts(
@@ -3233,6 +3313,69 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningRecord>> {
     const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningResourceFile without sending the request
+   */
+  async getLearningResourceFileRequestOpts(
+    requestParameters: GetLearningResourceFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningResourceFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/file`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验当前用户的资源可见权限后返回文件内容；下载行为由下载校验接口记录。
+   * 获取本地上传的学习资源文件
+   */
+  async getLearningResourceFileRaw(
+    requestParameters: GetLearningResourceFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getLearningResourceFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验当前用户的资源可见权限后返回文件内容；下载行为由下载校验接口记录。
+   * 获取本地上传的学习资源文件
+   */
+  async getLearningResourceFile(
+    requestParameters: GetLearningResourceFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getLearningResourceFileRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5948,6 +6091,131 @@ export class DefaultApi extends runtime.BaseAPI {
     const response = await this.updateVenueStatusRaw(requestParameters, initOverrides);
     return await response.value();
   }
+
+  /**
+   * Creates request options for uploadLearningResource without sending the request
+   */
+  async uploadLearningResourceRequestOpts(
+    requestParameters: UploadLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["visibility"] == null) {
+      throw new runtime.RequiredError(
+        "visibility",
+        'Required parameter "visibility" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["downloadPermission"] == null) {
+      throw new runtime.RequiredError(
+        "downloadPermission",
+        'Required parameter "downloadPermission" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["clubId"] != null) {
+      formParams.append("clubId", requestParameters["clubId"] as any);
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    if (requestParameters["title"] != null) {
+      formParams.append("title", requestParameters["title"] as any);
+    }
+
+    if (requestParameters["categoryName"] != null) {
+      formParams.append("categoryName", requestParameters["categoryName"] as any);
+    }
+
+    if (requestParameters["description"] != null) {
+      formParams.append("description", requestParameters["description"] as any);
+    }
+
+    if (requestParameters["visibility"] != null) {
+      formParams.append("visibility", requestParameters["visibility"] as any);
+    }
+
+    if (requestParameters["downloadPermission"] != null) {
+      formParams.append("downloadPermission", requestParameters["downloadPermission"] as any);
+    }
+
+    let urlPath = `/api/learning/resources/upload`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 社团负责人、干部或指导老师可通过 multipart/form-data 上传单个文件并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResourceRaw(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.uploadLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 社团负责人、干部或指导老师可通过 multipart/form-data 上传单个文件并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResource(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.uploadLearningResourceRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
 }
 
 /**
@@ -6022,3 +6290,23 @@ export const GetVenuesStatusEnum = {
   Maintenance: "maintenance",
 } as const;
 export type GetVenuesStatusEnum = (typeof GetVenuesStatusEnum)[keyof typeof GetVenuesStatusEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceVisibilityEnum = {
+  Public: "public",
+  Club: "club",
+  Department: "department",
+} as const;
+export type UploadLearningResourceVisibilityEnum =
+  (typeof UploadLearningResourceVisibilityEnum)[keyof typeof UploadLearningResourceVisibilityEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type UploadLearningResourceDownloadPermissionEnum =
+  (typeof UploadLearningResourceDownloadPermissionEnum)[keyof typeof UploadLearningResourceDownloadPermissionEnum];

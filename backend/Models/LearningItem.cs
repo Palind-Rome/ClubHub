@@ -89,6 +89,7 @@ namespace Org.OpenAPITools.Models
         /// 课程或资源说明。
         /// </summary>
         /// <value>课程或资源说明。</value>
+        [MaxLength(1000)]
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
