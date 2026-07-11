@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// Course enrollment and learning progress record.
+    /// 课程报名、资源学习进度和下载行为记录。
     /// </summary>
     [DataContract]
     public partial class LearningRecord 
@@ -142,11 +142,25 @@ namespace Org.OpenAPITools.Models
         public DateTime? LastLearnAt { get; set; }
 
         /// <summary>
-        /// Completion time.
+        /// 完成时间。
         /// </summary>
-        /// <value>Completion time.</value>
+        /// <value>完成时间。</value>
         [DataMember(Name="completedAt", EmitDefaultValue=true)]
         public DateTime? CompletedAt { get; set; }
+
+        /// <summary>
+        /// 最近一次下载时间。
+        /// </summary>
+        /// <value>最近一次下载时间。</value>
+        [DataMember(Name="downloadedAt", EmitDefaultValue=true)]
+        public DateTime? DownloadedAt { get; set; }
+
+        /// <summary>
+        /// 最近一次下载 IP。
+        /// </summary>
+        /// <value>最近一次下载 IP。</value>
+        [DataMember(Name="downloadIp", EmitDefaultValue=true)]
+        public string? DownloadIp { get; set; }
 
     }
 }

@@ -15,73 +15,79 @@
 
 import { mapValues } from "../runtime";
 /**
- * Request body for updating a club training course.
+ * 更新课程或学习资源的请求。
  * @export
  * @interface UpdateLearningItemRequest
  */
 export interface UpdateLearningItemRequest {
   /**
-   * Current operator user id.
-   * @type {number}
-   * @memberof UpdateLearningItemRequest
-   */
-  currentUserId: number;
-  /**
-   * Course title.
+   * 课程或资源标题。
    * @type {string}
    * @memberof UpdateLearningItemRequest
    */
   title: string;
   /**
-   * Course introduction.
+   * 课程或资源说明。
    * @type {string}
    * @memberof UpdateLearningItemRequest
    */
   description?: string | null;
   /**
-   * Instructor user id.
+   * 课程授课人；课程类型必填。
    * @type {number}
    * @memberof UpdateLearningItemRequest
    */
-  teacherUserId: number;
+  teacherUserId?: number | null;
   /**
-   * Course type.
+   * 支持 course、lecture、training、video、document、material。
    * @type {string}
    * @memberof UpdateLearningItemRequest
    */
   itemType: string;
   /**
-   * Course category.
+   * 资源分类。
    * @type {string}
    * @memberof UpdateLearningItemRequest
    */
   categoryName?: string | null;
   /**
-   * Required course start time.
+   * 视频、文档或资料的 HTTP/HTTPS 文件地址。
+   * @type {string}
+   * @memberof UpdateLearningItemRequest
+   */
+  fileUrl?: string | null;
+  /**
+   * 课程开始时间。
    * @type {Date}
    * @memberof UpdateLearningItemRequest
    */
-  startAt: Date;
+  startAt?: Date | null;
   /**
-   * Optional course end time; omit it for a long-running course.
+   * 课程结束时间。
    * @type {Date}
    * @memberof UpdateLearningItemRequest
    */
   endAt?: Date | null;
   /**
-   * Enrollment capacity.
+   * 课程容量。
    * @type {number}
    * @memberof UpdateLearningItemRequest
    */
-  capacity: number;
+  capacity?: number | null;
   /**
-   * Course audience; club or public.
+   * 公开、社团内或上传人所在部门内可见。
    * @type {UpdateLearningItemRequestVisibilityEnum}
    * @memberof UpdateLearningItemRequest
    */
   visibility: UpdateLearningItemRequestVisibilityEnum;
   /**
-   * Updated course publication status.
+   * 下载设置。
+   * @type {UpdateLearningItemRequestDownloadPermissionEnum}
+   * @memberof UpdateLearningItemRequest
+   */
+  downloadPermission: UpdateLearningItemRequestDownloadPermissionEnum;
+  /**
+   * 更新后的发布状态。
    * @type {UpdateLearningItemRequestItemStatusEnum}
    * @memberof UpdateLearningItemRequest
    */
@@ -92,11 +98,23 @@ export interface UpdateLearningItemRequest {
  * @export
  */
 export const UpdateLearningItemRequestVisibilityEnum = {
-  Club: "club",
   Public: "public",
+  Club: "club",
+  Department: "department",
 } as const;
 export type UpdateLearningItemRequestVisibilityEnum =
   (typeof UpdateLearningItemRequestVisibilityEnum)[keyof typeof UpdateLearningItemRequestVisibilityEnum];
+
+/**
+ * @export
+ */
+export const UpdateLearningItemRequestDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type UpdateLearningItemRequestDownloadPermissionEnum =
+  (typeof UpdateLearningItemRequestDownloadPermissionEnum)[keyof typeof UpdateLearningItemRequestDownloadPermissionEnum];
 
 /**
  * @export
@@ -115,13 +133,10 @@ export type UpdateLearningItemRequestItemStatusEnum =
 export function instanceOfUpdateLearningItemRequest(
   value: object,
 ): value is UpdateLearningItemRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
-  if (!("teacherUserId" in value) || value["teacherUserId"] === undefined) return false;
   if (!("itemType" in value) || value["itemType"] === undefined) return false;
-  if (!("startAt" in value) || value["startAt"] === undefined) return false;
-  if (!("capacity" in value) || value["capacity"] === undefined) return false;
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
+  if (!("downloadPermission" in value) || value["downloadPermission"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
   return true;
 }
@@ -138,16 +153,17 @@ export function UpdateLearningItemRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     title: json["title"],
     description: json["description"] == null ? undefined : json["description"],
-    teacherUserId: json["teacherUserId"],
+    teacherUserId: json["teacherUserId"] == null ? undefined : json["teacherUserId"],
     itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
-    startAt: new Date(json["startAt"]),
+    fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
+    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
     endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    capacity: json["capacity"],
+    capacity: json["capacity"] == null ? undefined : json["capacity"],
     visibility: json["visibility"],
+    downloadPermission: json["downloadPermission"],
     itemStatus: json["itemStatus"],
   };
 }
@@ -165,16 +181,17 @@ export function UpdateLearningItemRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     title: value["title"],
     description: value["description"],
     teacherUserId: value["teacherUserId"],
     itemType: value["itemType"],
     categoryName: value["categoryName"],
-    startAt: value["startAt"].toISOString(),
+    fileUrl: value["fileUrl"],
+    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
     endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     capacity: value["capacity"],
     visibility: value["visibility"],
+    downloadPermission: value["downloadPermission"],
     itemStatus: value["itemStatus"],
   };
 }

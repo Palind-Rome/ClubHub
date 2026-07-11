@@ -15,136 +15,184 @@
 
 import { mapValues } from "../runtime";
 /**
- * Training course or learning resource published by a club.
+ * 社团发布的培训课程、视频、文档或资料资源。
  * @export
  * @interface LearningItem
  */
 export interface LearningItem {
   /**
-   * Learning item id in LEARNING_ITEMS.ITEM_ID.
+   * LEARNING_ITEMS.ITEM_ID。
    * @type {number}
    * @memberof LearningItem
    */
   id: number;
   /**
-   * Club that publishes the course.
+   * 发布资源的社团。
    * @type {number}
    * @memberof LearningItem
    */
   clubId: number;
   /**
-   * User who created or uploaded the learning item.
+   * 创建或上传资源的用户。
    * @type {number}
    * @memberof LearningItem
    */
   uploaderUserId?: number | null;
   /**
-   * Instructor user id.
+   * 课程授课人；非课程资源可为空。
    * @type {number}
    * @memberof LearningItem
    */
   teacherUserId?: number | null;
   /**
-   * Course title.
+   * 课程或资源标题。
    * @type {string}
    * @memberof LearningItem
    */
   title: string;
   /**
-   * Course type, video, document, or other learning resource type.
+   * 资源类型，支持 course、lecture、training、video、document、material。
    * @type {string}
    * @memberof LearningItem
    */
-  itemType?: string | null;
+  itemType: string;
   /**
-   * Course category.
+   * 资源分类。
    * @type {string}
    * @memberof LearningItem
    */
   categoryName?: string | null;
   /**
-   * Course introduction.
+   * 课程或资源说明。
    * @type {string}
    * @memberof LearningItem
    */
   description?: string | null;
   /**
-   * Required course start time; learning progress cannot be updated before this time.
+   * 文件地址；列表仅向资源管理者返回，普通用户通过下载接口获取。
+   * @type {string}
+   * @memberof LearningItem
+   */
+  fileUrl?: string | null;
+  /**
+   * 课程开始时间；非课程资源可为空。
    * @type {Date}
    * @memberof LearningItem
    */
-  startAt: Date;
+  startAt?: Date | null;
   /**
-   * Optional course end time; when omitted, users may join at any time.
+   * 课程结束时间。
    * @type {Date}
    * @memberof LearningItem
    */
   endAt?: Date | null;
   /**
-   * Maximum number of users who may join the course.
+   * 课程容量；非课程资源可为空。
    * @type {number}
    * @memberof LearningItem
    */
-  capacity: number;
+  capacity?: number | null;
   /**
-   * Course audience; club means active club members, public means all active school accounts.
+   * 可见范围；department 表示与上传人同一社团部门的有效成员。
    * @type {LearningItemVisibilityEnum}
    * @memberof LearningItem
    */
   visibility: LearningItemVisibilityEnum;
   /**
-   * Current course publication status.
+   * 下载设置；approval 表示需要审批，当前不可直接下载。
+   * @type {LearningItemDownloadPermissionEnum}
+   * @memberof LearningItem
+   */
+  downloadPermission: LearningItemDownloadPermissionEnum;
+  /**
+   * 发布状态。
    * @type {LearningItemItemStatusEnum}
    * @memberof LearningItem
    */
   itemStatus: LearningItemItemStatusEnum;
   /**
-   * Number of users currently joined.
+   * 当前有效学习记录数量。
    * @type {number}
    * @memberof LearningItem
    */
   currentEnrollments: number;
   /**
-   * Current viewer's learning record status; none means not enrolled.
+   * 当前用户的学习状态。
    * @type {LearningItemCurrentUserRecordStatusEnum}
    * @memberof LearningItem
    */
   currentUserRecordStatus: LearningItemCurrentUserRecordStatusEnum;
   /**
-   * Whether the current viewer may edit this course and view its roster.
+   * 当前用户是否可维护资源并查看统计。
    * @type {boolean}
    * @memberof LearningItem
    */
   canManage: boolean;
   /**
-   * Whether the current viewer may join the course now.
+   * 当前用户是否可加入课程；非课程资源恒为 false。
    * @type {boolean}
    * @memberof LearningItem
    */
   canEnroll: boolean;
   /**
-   * Whether the current viewer may exit the course now.
+   * 当前用户是否可退出课程。
    * @type {boolean}
    * @memberof LearningItem
    */
   canCancelEnrollment: boolean;
   /**
-   * Chinese explanation shown when enrollment is unavailable.
+   * 无法加入课程的中文原因。
    * @type {string}
    * @memberof LearningItem
    */
   enrollmentUnavailableReason?: string | null;
+  /**
+   * 当前用户是否可开始或继续学习非课程资源。
+   * @type {boolean}
+   * @memberof LearningItem
+   */
+  canStartLearning: boolean;
+  /**
+   * 无法开始学习资源的中文原因。
+   * @type {string}
+   * @memberof LearningItem
+   */
+  learningUnavailableReason?: string | null;
+  /**
+   * 当前用户是否可通过下载接口获取文件地址。
+   * @type {boolean}
+   * @memberof LearningItem
+   */
+  canDownload: boolean;
+  /**
+   * 无法直接下载的中文原因。
+   * @type {string}
+   * @memberof LearningItem
+   */
+  downloadUnavailableReason?: string | null;
 }
 
 /**
  * @export
  */
 export const LearningItemVisibilityEnum = {
-  Club: "club",
   Public: "public",
+  Club: "club",
+  Department: "department",
 } as const;
 export type LearningItemVisibilityEnum =
   (typeof LearningItemVisibilityEnum)[keyof typeof LearningItemVisibilityEnum];
+
+/**
+ * @export
+ */
+export const LearningItemDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type LearningItemDownloadPermissionEnum =
+  (typeof LearningItemDownloadPermissionEnum)[keyof typeof LearningItemDownloadPermissionEnum];
 
 /**
  * @export
@@ -178,9 +226,9 @@ export function instanceOfLearningItem(value: object): value is LearningItem {
   if (!("id" in value) || value["id"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
-  if (!("startAt" in value) || value["startAt"] === undefined) return false;
-  if (!("capacity" in value) || value["capacity"] === undefined) return false;
+  if (!("itemType" in value) || value["itemType"] === undefined) return false;
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
+  if (!("downloadPermission" in value) || value["downloadPermission"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
   if (!("currentEnrollments" in value) || value["currentEnrollments"] === undefined) return false;
   if (!("currentUserRecordStatus" in value) || value["currentUserRecordStatus"] === undefined)
@@ -188,6 +236,8 @@ export function instanceOfLearningItem(value: object): value is LearningItem {
   if (!("canManage" in value) || value["canManage"] === undefined) return false;
   if (!("canEnroll" in value) || value["canEnroll"] === undefined) return false;
   if (!("canCancelEnrollment" in value) || value["canCancelEnrollment"] === undefined) return false;
+  if (!("canStartLearning" in value) || value["canStartLearning"] === undefined) return false;
+  if (!("canDownload" in value) || value["canDownload"] === undefined) return false;
   return true;
 }
 
@@ -205,13 +255,15 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     uploaderUserId: json["uploaderUserId"] == null ? undefined : json["uploaderUserId"],
     teacherUserId: json["teacherUserId"] == null ? undefined : json["teacherUserId"],
     title: json["title"],
-    itemType: json["itemType"] == null ? undefined : json["itemType"],
+    itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
     description: json["description"] == null ? undefined : json["description"],
-    startAt: new Date(json["startAt"]),
+    fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
+    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
     endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    capacity: json["capacity"],
+    capacity: json["capacity"] == null ? undefined : json["capacity"],
     visibility: json["visibility"],
+    downloadPermission: json["downloadPermission"],
     itemStatus: json["itemStatus"],
     currentEnrollments: json["currentEnrollments"],
     currentUserRecordStatus: json["currentUserRecordStatus"],
@@ -220,6 +272,12 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     canCancelEnrollment: json["canCancelEnrollment"],
     enrollmentUnavailableReason:
       json["enrollmentUnavailableReason"] == null ? undefined : json["enrollmentUnavailableReason"],
+    canStartLearning: json["canStartLearning"],
+    learningUnavailableReason:
+      json["learningUnavailableReason"] == null ? undefined : json["learningUnavailableReason"],
+    canDownload: json["canDownload"],
+    downloadUnavailableReason:
+      json["downloadUnavailableReason"] == null ? undefined : json["downloadUnavailableReason"],
   };
 }
 
@@ -244,10 +302,12 @@ export function LearningItemToJSONTyped(
     itemType: value["itemType"],
     categoryName: value["categoryName"],
     description: value["description"],
-    startAt: value["startAt"].toISOString(),
+    fileUrl: value["fileUrl"],
+    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
     endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     capacity: value["capacity"],
     visibility: value["visibility"],
+    downloadPermission: value["downloadPermission"],
     itemStatus: value["itemStatus"],
     currentEnrollments: value["currentEnrollments"],
     currentUserRecordStatus: value["currentUserRecordStatus"],
@@ -255,5 +315,9 @@ export function LearningItemToJSONTyped(
     canEnroll: value["canEnroll"],
     canCancelEnrollment: value["canCancelEnrollment"],
     enrollmentUnavailableReason: value["enrollmentUnavailableReason"],
+    canStartLearning: value["canStartLearning"],
+    learningUnavailableReason: value["learningUnavailableReason"],
+    canDownload: value["canDownload"],
+    downloadUnavailableReason: value["downloadUnavailableReason"],
   };
 }

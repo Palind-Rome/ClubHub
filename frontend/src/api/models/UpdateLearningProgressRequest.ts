@@ -15,17 +15,11 @@
 
 import { mapValues } from "../runtime";
 /**
- * Request body for updating learning progress.
+ * 更新当前登录用户学习进度的请求。
  * @export
  * @interface UpdateLearningProgressRequest
  */
 export interface UpdateLearningProgressRequest {
-  /**
-   * Current learning user id.
-   * @type {number}
-   * @memberof UpdateLearningProgressRequest
-   */
-  currentUserId: number;
   /**
    * Latest learning progress percentage.
    * @type {number}
@@ -46,7 +40,6 @@ export interface UpdateLearningProgressRequest {
 export function instanceOfUpdateLearningProgressRequest(
   value: object,
 ): value is UpdateLearningProgressRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("progress" in value) || value["progress"] === undefined) return false;
   return true;
 }
@@ -63,7 +56,6 @@ export function UpdateLearningProgressRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     progress: json["progress"],
     durationSeconds: json["durationSeconds"] == null ? undefined : json["durationSeconds"],
   };
@@ -82,7 +74,6 @@ export function UpdateLearningProgressRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     progress: value["progress"],
     durationSeconds: value["durationSeconds"],
   };

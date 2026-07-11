@@ -20,128 +20,139 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// Training course or learning resource published by a club.
+    /// 社团发布的培训课程、视频、文档或资料资源。
     /// </summary>
     [DataContract]
     public partial class LearningItem 
     {
         /// <summary>
-        /// Learning item id in LEARNING_ITEMS.ITEM_ID.
+        /// LEARNING_ITEMS.ITEM_ID。
         /// </summary>
-        /// <value>Learning item id in LEARNING_ITEMS.ITEM_ID.</value>
+        /// <value>LEARNING_ITEMS.ITEM_ID。</value>
         /* <example>2001</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Club that publishes the course.
+        /// 发布资源的社团。
         /// </summary>
-        /// <value>Club that publishes the course.</value>
+        /// <value>发布资源的社团。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// User who created or uploaded the learning item.
+        /// 创建或上传资源的用户。
         /// </summary>
-        /// <value>User who created or uploaded the learning item.</value>
+        /// <value>创建或上传资源的用户。</value>
         /* <example>12</example> */
         [DataMember(Name="uploaderUserId", EmitDefaultValue=true)]
         public int? UploaderUserId { get; set; }
 
         /// <summary>
-        /// Instructor user id.
+        /// 课程授课人；非课程资源可为空。
         /// </summary>
-        /// <value>Instructor user id.</value>
+        /// <value>课程授课人；非课程资源可为空。</value>
         /* <example>30</example> */
         [DataMember(Name="teacherUserId", EmitDefaultValue=true)]
         public int? TeacherUserId { get; set; }
 
         /// <summary>
-        /// Course title.
+        /// 课程或资源标题。
         /// </summary>
-        /// <value>Course title.</value>
-        /* <example>???????</example> */
+        /// <value>课程或资源标题。</value>
+        /* <example>Oracle 入门培训视频</example> */
         [Required]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
-        /// Course type, video, document, or other learning resource type.
+        /// 资源类型，支持 course、lecture、training、video、document、material。
         /// </summary>
-        /// <value>Course type, video, document, or other learning resource type.</value>
-        /* <example>course</example> */
-        [DataMember(Name="itemType", EmitDefaultValue=true)]
-        public string? ItemType { get; set; }
+        /// <value>资源类型，支持 course、lecture、training、video、document、material。</value>
+        /* <example>video</example> */
+        [Required]
+        [DataMember(Name="itemType", EmitDefaultValue=false)]
+        public string ItemType { get; set; }
 
         /// <summary>
-        /// Course category.
+        /// 资源分类。
         /// </summary>
-        /// <value>Course category.</value>
-        /* <example>????</example> */
+        /// <value>资源分类。</value>
+        /* <example>数据库培训</example> */
         [DataMember(Name="categoryName", EmitDefaultValue=true)]
         public string? CategoryName { get; set; }
 
         /// <summary>
-        /// Course introduction.
+        /// 课程或资源说明。
         /// </summary>
-        /// <value>Course introduction.</value>
-        /* <example>???????????????</example> */
+        /// <value>课程或资源说明。</value>
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Required course start time; learning progress cannot be updated before this time.
+        /// 文件地址；列表仅向资源管理者返回，普通用户通过下载接口获取。
         /// </summary>
-        /// <value>Required course start time; learning progress cannot be updated before this time.</value>
-        [Required]
-        [DataMember(Name="startAt", EmitDefaultValue=true)]
-        public DateTime StartAt { get; set; }
+        /// <value>文件地址；列表仅向资源管理者返回，普通用户通过下载接口获取。</value>
+        [DataMember(Name="fileUrl", EmitDefaultValue=true)]
+        public string? FileUrl { get; set; }
 
         /// <summary>
-        /// Optional course end time; when omitted, users may join at any time.
+        /// 课程开始时间；非课程资源可为空。
         /// </summary>
-        /// <value>Optional course end time; when omitted, users may join at any time.</value>
+        /// <value>课程开始时间；非课程资源可为空。</value>
+        [DataMember(Name="startAt", EmitDefaultValue=true)]
+        public DateTime? StartAt { get; set; }
+
+        /// <summary>
+        /// 课程结束时间。
+        /// </summary>
+        /// <value>课程结束时间。</value>
         [DataMember(Name="endAt", EmitDefaultValue=true)]
         public DateTime? EndAt { get; set; }
 
         /// <summary>
-        /// Maximum number of users who may join the course.
+        /// 课程容量；非课程资源可为空。
         /// </summary>
-        /// <value>Maximum number of users who may join the course.</value>
+        /// <value>课程容量；非课程资源可为空。</value>
         /* <example>40</example> */
-        [Required]
         [DataMember(Name="capacity", EmitDefaultValue=true)]
-        public int Capacity { get; set; }
+        public int? Capacity { get; set; }
 
 
         /// <summary>
-        /// Course audience; club means active club members, public means all active school accounts.
+        /// 可见范围；department 表示与上传人同一社团部门的有效成员。
         /// </summary>
-        /// <value>Course audience; club means active club members, public means all active school accounts.</value>
+        /// <value>可见范围；department 表示与上传人同一社团部门的有效成员。</value>
         
         public enum VisibilityEnum
         {
             
             /// <summary>
-            /// Enum ClubEnum for club
-            /// </summary>
-            [EnumMember(Value = "club")]
-            ClubEnum = 1,
-            
-            /// <summary>
             /// Enum PublicEnum for public
             /// </summary>
             [EnumMember(Value = "public")]
-            PublicEnum = 2
+            PublicEnum = 1,
+            
+            /// <summary>
+            /// Enum ClubEnum for club
+            /// </summary>
+            [EnumMember(Value = "club")]
+            ClubEnum = 2,
+            
+            /// <summary>
+            /// Enum DepartmentEnum for department
+            /// </summary>
+            [EnumMember(Value = "department")]
+            DepartmentEnum = 3
         }
 
         /// <summary>
-        /// Course audience; club means active club members, public means all active school accounts.
+        /// 可见范围；department 表示与上传人同一社团部门的有效成员。
         /// </summary>
-        /// <value>Course audience; club means active club members, public means all active school accounts.</value>
+        /// <value>可见范围；department 表示与上传人同一社团部门的有效成员。</value>
         /* <example>club</example> */
         [Required]
         [DataMember(Name="visibility", EmitDefaultValue=true)]
@@ -149,9 +160,46 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Current course publication status.
+        /// 下载设置；approval 表示需要审批，当前不可直接下载。
         /// </summary>
-        /// <value>Current course publication status.</value>
+        /// <value>下载设置；approval 表示需要审批，当前不可直接下载。</value>
+        
+        public enum DownloadPermissionEnum
+        {
+            
+            /// <summary>
+            /// Enum AllowEnum for allow
+            /// </summary>
+            [EnumMember(Value = "allow")]
+            AllowEnum = 1,
+            
+            /// <summary>
+            /// Enum DenyEnum for deny
+            /// </summary>
+            [EnumMember(Value = "deny")]
+            DenyEnum = 2,
+            
+            /// <summary>
+            /// Enum ApprovalEnum for approval
+            /// </summary>
+            [EnumMember(Value = "approval")]
+            ApprovalEnum = 3
+        }
+
+        /// <summary>
+        /// 下载设置；approval 表示需要审批，当前不可直接下载。
+        /// </summary>
+        /// <value>下载设置；approval 表示需要审批，当前不可直接下载。</value>
+        /* <example>allow</example> */
+        [Required]
+        [DataMember(Name="downloadPermission", EmitDefaultValue=true)]
+        public DownloadPermissionEnum DownloadPermission { get; set; }
+
+
+        /// <summary>
+        /// 发布状态。
+        /// </summary>
+        /// <value>发布状态。</value>
         
         public enum ItemStatusEnum
         {
@@ -182,18 +230,18 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Current course publication status.
+        /// 发布状态。
         /// </summary>
-        /// <value>Current course publication status.</value>
+        /// <value>发布状态。</value>
         /* <example>published</example> */
         [Required]
         [DataMember(Name="itemStatus", EmitDefaultValue=true)]
         public ItemStatusEnum ItemStatus { get; set; }
 
         /// <summary>
-        /// Number of users currently joined.
+        /// 当前有效学习记录数量。
         /// </summary>
-        /// <value>Number of users currently joined.</value>
+        /// <value>当前有效学习记录数量。</value>
         /* <example>8</example> */
         [Required]
         [DataMember(Name="currentEnrollments", EmitDefaultValue=true)]
@@ -201,9 +249,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Current viewer's learning record status; none means not enrolled.
+        /// 当前用户的学习状态。
         /// </summary>
-        /// <value>Current viewer's learning record status; none means not enrolled.</value>
+        /// <value>当前用户的学习状态。</value>
         
         public enum CurrentUserRecordStatusEnum
         {
@@ -240,43 +288,73 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Current viewer&#39;s learning record status; none means not enrolled.
+        /// 当前用户的学习状态。
         /// </summary>
-        /// <value>Current viewer&#39;s learning record status; none means not enrolled.</value>
+        /// <value>当前用户的学习状态。</value>
         [Required]
         [DataMember(Name="currentUserRecordStatus", EmitDefaultValue=true)]
         public CurrentUserRecordStatusEnum CurrentUserRecordStatus { get; set; }
 
         /// <summary>
-        /// Whether the current viewer may edit this course and view its roster.
+        /// 当前用户是否可维护资源并查看统计。
         /// </summary>
-        /// <value>Whether the current viewer may edit this course and view its roster.</value>
+        /// <value>当前用户是否可维护资源并查看统计。</value>
         [Required]
         [DataMember(Name="canManage", EmitDefaultValue=true)]
         public bool CanManage { get; set; }
 
         /// <summary>
-        /// Whether the current viewer may join the course now.
+        /// 当前用户是否可加入课程；非课程资源恒为 false。
         /// </summary>
-        /// <value>Whether the current viewer may join the course now.</value>
+        /// <value>当前用户是否可加入课程；非课程资源恒为 false。</value>
         [Required]
         [DataMember(Name="canEnroll", EmitDefaultValue=true)]
         public bool CanEnroll { get; set; }
 
         /// <summary>
-        /// Whether the current viewer may exit the course now.
+        /// 当前用户是否可退出课程。
         /// </summary>
-        /// <value>Whether the current viewer may exit the course now.</value>
+        /// <value>当前用户是否可退出课程。</value>
         [Required]
         [DataMember(Name="canCancelEnrollment", EmitDefaultValue=true)]
         public bool CanCancelEnrollment { get; set; }
 
         /// <summary>
-        /// Chinese explanation shown when enrollment is unavailable.
+        /// 无法加入课程的中文原因。
         /// </summary>
-        /// <value>Chinese explanation shown when enrollment is unavailable.</value>
+        /// <value>无法加入课程的中文原因。</value>
         [DataMember(Name="enrollmentUnavailableReason", EmitDefaultValue=true)]
         public string? EnrollmentUnavailableReason { get; set; }
+
+        /// <summary>
+        /// 当前用户是否可开始或继续学习非课程资源。
+        /// </summary>
+        /// <value>当前用户是否可开始或继续学习非课程资源。</value>
+        [Required]
+        [DataMember(Name="canStartLearning", EmitDefaultValue=true)]
+        public bool CanStartLearning { get; set; }
+
+        /// <summary>
+        /// 无法开始学习资源的中文原因。
+        /// </summary>
+        /// <value>无法开始学习资源的中文原因。</value>
+        [DataMember(Name="learningUnavailableReason", EmitDefaultValue=true)]
+        public string? LearningUnavailableReason { get; set; }
+
+        /// <summary>
+        /// 当前用户是否可通过下载接口获取文件地址。
+        /// </summary>
+        /// <value>当前用户是否可通过下载接口获取文件地址。</value>
+        [Required]
+        [DataMember(Name="canDownload", EmitDefaultValue=true)]
+        public bool CanDownload { get; set; }
+
+        /// <summary>
+        /// 无法直接下载的中文原因。
+        /// </summary>
+        /// <value>无法直接下载的中文原因。</value>
+        [DataMember(Name="downloadUnavailableReason", EmitDefaultValue=true)]
+        public string? DownloadUnavailableReason { get; set; }
 
     }
 }
