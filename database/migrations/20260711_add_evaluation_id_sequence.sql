@@ -4,6 +4,15 @@
 --   1. 备份目标 schema。
 --   2. 使用 CLUBHUB schema 所有者执行。
 --
+-- 影响范围：仅新增 SEQ_EVALUATIONS，并修改 EVALUATIONS.evaluation_id 的默认值；
+-- 不更新或删除任何已有 EVALUATIONS 行。
+--
+-- 回滚方案：Oracle DDL 会隐式提交，WHENEVER SQLERROR ROLLBACK 无法撤销已经
+-- 生效的 DDL。如需回退，请在停止评价写入后手工执行：
+--   ALTER TABLE evaluations MODIFY (evaluation_id DEFAULT NULL);
+--   DROP SEQUENCE seq_evaluations;
+-- 随后再回退到仍由应用层生成主键的后端版本，或从执行前备份恢复。
+--
 -- 脚本可重复执行。sequence 会被推进到当前最大 evaluation_id 之后，
 -- 且不会低于 1000000，避免显式历史 ID 与后续数据库生成 ID 冲突。
 
