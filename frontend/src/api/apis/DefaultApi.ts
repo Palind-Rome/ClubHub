@@ -266,6 +266,11 @@ import {
   UpdateClubEvaluationRequestToJSON,
 } from "../models/UpdateClubEvaluationRequest";
 import {
+  type UpdateClubMemberGroupingRequest,
+  UpdateClubMemberGroupingRequestFromJSON,
+  UpdateClubMemberGroupingRequestToJSON,
+} from "../models/UpdateClubMemberGroupingRequest";
+import {
   type UpdateClubMemberTermRequest,
   UpdateClubMemberTermRequestFromJSON,
   UpdateClubMemberTermRequestToJSON,
@@ -617,10 +622,10 @@ export interface UpdateClubEvaluationOperationRequest {
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
 }
 
-export interface UpdateClubMemberGroupingRequest {
+export interface UpdateClubMemberGroupingOperationRequest {
   clubId: number;
   memberId: number;
-  updateClubMemberTermRequest: UpdateClubMemberTermRequest;
+  updateClubMemberGroupingRequest: UpdateClubMemberGroupingRequest;
 }
 
 export interface UpdateClubMemberTermOperationRequest {
@@ -4815,7 +4820,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for updateClubMemberGrouping without sending the request
    */
   async updateClubMemberGroupingRequestOpts(
-    requestParameters: UpdateClubMemberGroupingRequest,
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
@@ -4831,10 +4836,10 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["updateClubMemberTermRequest"] == null) {
+    if (requestParameters["updateClubMemberGroupingRequest"] == null) {
       throw new runtime.RequiredError(
-        "updateClubMemberTermRequest",
-        'Required parameter "updateClubMemberTermRequest" was null or undefined when calling updateClubMemberGrouping().',
+        "updateClubMemberGroupingRequest",
+        'Required parameter "updateClubMemberGroupingRequest" was null or undefined when calling updateClubMemberGrouping().',
       );
     }
 
@@ -4856,7 +4861,9 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "PATCH",
       headers: headerParameters,
       query: queryParameters,
-      body: UpdateClubMemberTermRequestToJSON(requestParameters["updateClubMemberTermRequest"]),
+      body: UpdateClubMemberGroupingRequestToJSON(
+        requestParameters["updateClubMemberGroupingRequest"],
+      ),
     };
   }
 
@@ -4865,7 +4872,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 更新社团成员部门和小组归属
    */
   async updateClubMemberGroupingRaw(
-    requestParameters: UpdateClubMemberGroupingRequest,
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<ClubMemberRecord>> {
     const requestOptions = await this.updateClubMemberGroupingRequestOpts(requestParameters);
@@ -4881,7 +4888,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 更新社团成员部门和小组归属
    */
   async updateClubMemberGrouping(
-    requestParameters: UpdateClubMemberGroupingRequest,
+    requestParameters: UpdateClubMemberGroupingOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubMemberRecord> {
     const response = await this.updateClubMemberGroupingRaw(requestParameters, initOverrides);
