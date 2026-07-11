@@ -13,7 +13,8 @@ WHERE sequence_name IN (
   'SEQ_USERS',
   'SEQ_USER_ROLES',
   'SEQ_CLUBS',
-  'SEQ_CLUB_MEMBERS'
+  'SEQ_CLUB_MEMBERS',
+  'SEQ_EVALUATIONS'
 )
 ORDER BY sequence_name;
 
@@ -32,6 +33,7 @@ WHERE (table_name, column_name) IN (
   ('USERS', 'USER_ID'),
   ('USER_ROLES', 'USER_ROLE_ID'),
   ('CLUBS', 'CLUB_ID'),
-  ('CLUB_MEMBERS', 'MEMBER_ID')
+  ('CLUB_MEMBERS', 'MEMBER_ID'),
+  ('EVALUATIONS', 'EVALUATION_ID')
 )
 ORDER BY table_name, column_name;

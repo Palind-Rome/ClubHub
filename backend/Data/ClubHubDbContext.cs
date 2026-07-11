@@ -263,6 +263,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Evaluation>(e =>
         {
             e.HasKey(ev => ev.EvaluationId);
+            e.Property(ev => ev.EvaluationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_EVALUATIONS.NEXTVAL");
             e.HasOne(ev => ev.Club)
              .WithMany()
              .HasForeignKey(ev => ev.ClubId)
