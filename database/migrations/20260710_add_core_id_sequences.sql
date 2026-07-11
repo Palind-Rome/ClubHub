@@ -6,7 +6,9 @@
 --   3. 使用 CLUBHUB schema 所有者执行。
 --
 -- 脚本可重复执行。已存在的 sequence 会被推进到当前表最大主键之后，
--- 避免显式 seed ID 或历史数据与后续数据库生成 ID 冲突。
+-- 且不会低于 1000000，避免显式 seed ID 或历史数据与后续数据库生成 ID 冲突。
+
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
 
 DECLARE
   duplicate_count NUMBER;
@@ -53,12 +55,14 @@ END;
 
 DECLARE
   max_id NUMBER;
+  target_id NUMBER;
   sequence_value NUMBER;
 BEGIN
   SELECT NVL(MAX(user_id), 0) INTO max_id FROM users;
+  target_id := GREATEST(max_id + 1, 1000000);
   BEGIN
     EXECUTE IMMEDIATE
-      'CREATE SEQUENCE SEQ_USERS START WITH ' || TO_CHAR(max_id + 1, 'FM99999999999999999990') ||
+      'CREATE SEQUENCE SEQ_USERS START WITH ' || TO_CHAR(target_id, 'FM99999999999999999990') ||
       ' INCREMENT BY 1 NOCACHE NOCYCLE';
   EXCEPTION
     WHEN OTHERS THEN
@@ -68,25 +72,27 @@ BEGIN
   END;
 
   SELECT SEQ_USERS.NEXTVAL INTO sequence_value FROM dual;
-  IF sequence_value <= max_id THEN
+  IF sequence_value < target_id THEN
     EXECUTE IMMEDIATE
       'ALTER SEQUENCE SEQ_USERS INCREMENT BY ' ||
-      TO_CHAR(max_id + 1 - sequence_value, 'FM99999999999999999990');
+      TO_CHAR(target_id - sequence_value, 'FM99999999999999999990');
     SELECT SEQ_USERS.NEXTVAL INTO sequence_value FROM dual;
-    EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_USERS INCREMENT BY 1';
   END IF;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_USERS INCREMENT BY 1';
 END;
 /
 
 DECLARE
   max_id NUMBER;
+  target_id NUMBER;
   sequence_value NUMBER;
 BEGIN
   SELECT NVL(MAX(user_role_id), 0) INTO max_id FROM user_roles;
+  target_id := GREATEST(max_id + 1, 1000000);
   BEGIN
     EXECUTE IMMEDIATE
       'CREATE SEQUENCE SEQ_USER_ROLES START WITH ' ||
-      TO_CHAR(max_id + 1, 'FM99999999999999999990') ||
+      TO_CHAR(target_id, 'FM99999999999999999990') ||
       ' INCREMENT BY 1 NOCACHE NOCYCLE';
   EXCEPTION
     WHEN OTHERS THEN
@@ -96,24 +102,26 @@ BEGIN
   END;
 
   SELECT SEQ_USER_ROLES.NEXTVAL INTO sequence_value FROM dual;
-  IF sequence_value <= max_id THEN
+  IF sequence_value < target_id THEN
     EXECUTE IMMEDIATE
       'ALTER SEQUENCE SEQ_USER_ROLES INCREMENT BY ' ||
-      TO_CHAR(max_id + 1 - sequence_value, 'FM99999999999999999990');
+      TO_CHAR(target_id - sequence_value, 'FM99999999999999999990');
     SELECT SEQ_USER_ROLES.NEXTVAL INTO sequence_value FROM dual;
-    EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_USER_ROLES INCREMENT BY 1';
   END IF;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_USER_ROLES INCREMENT BY 1';
 END;
 /
 
 DECLARE
   max_id NUMBER;
+  target_id NUMBER;
   sequence_value NUMBER;
 BEGIN
   SELECT NVL(MAX(club_id), 0) INTO max_id FROM clubs;
+  target_id := GREATEST(max_id + 1, 1000000);
   BEGIN
     EXECUTE IMMEDIATE
-      'CREATE SEQUENCE SEQ_CLUBS START WITH ' || TO_CHAR(max_id + 1, 'FM99999999999999999990') ||
+      'CREATE SEQUENCE SEQ_CLUBS START WITH ' || TO_CHAR(target_id, 'FM99999999999999999990') ||
       ' INCREMENT BY 1 NOCACHE NOCYCLE';
   EXCEPTION
     WHEN OTHERS THEN
@@ -123,25 +131,27 @@ BEGIN
   END;
 
   SELECT SEQ_CLUBS.NEXTVAL INTO sequence_value FROM dual;
-  IF sequence_value <= max_id THEN
+  IF sequence_value < target_id THEN
     EXECUTE IMMEDIATE
       'ALTER SEQUENCE SEQ_CLUBS INCREMENT BY ' ||
-      TO_CHAR(max_id + 1 - sequence_value, 'FM99999999999999999990');
+      TO_CHAR(target_id - sequence_value, 'FM99999999999999999990');
     SELECT SEQ_CLUBS.NEXTVAL INTO sequence_value FROM dual;
-    EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CLUBS INCREMENT BY 1';
   END IF;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CLUBS INCREMENT BY 1';
 END;
 /
 
 DECLARE
   max_id NUMBER;
+  target_id NUMBER;
   sequence_value NUMBER;
 BEGIN
   SELECT NVL(MAX(member_id), 0) INTO max_id FROM club_members;
+  target_id := GREATEST(max_id + 1, 1000000);
   BEGIN
     EXECUTE IMMEDIATE
       'CREATE SEQUENCE SEQ_CLUB_MEMBERS START WITH ' ||
-      TO_CHAR(max_id + 1, 'FM99999999999999999990') ||
+      TO_CHAR(target_id, 'FM99999999999999999990') ||
       ' INCREMENT BY 1 NOCACHE NOCYCLE';
   EXCEPTION
     WHEN OTHERS THEN
@@ -151,13 +161,13 @@ BEGIN
   END;
 
   SELECT SEQ_CLUB_MEMBERS.NEXTVAL INTO sequence_value FROM dual;
-  IF sequence_value <= max_id THEN
+  IF sequence_value < target_id THEN
     EXECUTE IMMEDIATE
       'ALTER SEQUENCE SEQ_CLUB_MEMBERS INCREMENT BY ' ||
-      TO_CHAR(max_id + 1 - sequence_value, 'FM99999999999999999990');
+      TO_CHAR(target_id - sequence_value, 'FM99999999999999999990');
     SELECT SEQ_CLUB_MEMBERS.NEXTVAL INTO sequence_value FROM dual;
-    EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CLUB_MEMBERS INCREMENT BY 1';
   END IF;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CLUB_MEMBERS INCREMENT BY 1';
 END;
 /
 
