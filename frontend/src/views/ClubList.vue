@@ -502,7 +502,11 @@ const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubAppl
 const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermission));
 // Member evaluations now live in EvaluationList.vue; keep the legacy club tab disabled explicitly.
 const showLegacyEvaluationTab = false;
-const canManageMemberTerms = computed(() => hasPermission(clubMemberManagePermission));
+const hasAnyMemberTermManagePermission = computed(() => hasPermission(clubMemberManagePermission));
+const canManageMemberTerms = computed(() => {
+  const clubId = selectedClubId.value;
+  return Boolean(clubId && hasScopedClubPermission(clubId, clubMemberManagePermission));
+});
 const canViewAllClubWorkspaces = computed(() => hasAllPermissions.value || isReviewer.value);
 const canAdministerMemberTerms = computed(
   () => hasAllPermissions.value || canManageMemberTerms.value,
@@ -510,7 +514,7 @@ const canAdministerMemberTerms = computed(
 const canViewMemberDirectory = computed(
   () =>
     canViewAllClubWorkspaces.value ||
-    canManageMemberTerms.value ||
+    hasAnyMemberTermManagePermission.value ||
     hasPermission(clubInternalViewPermission) ||
     hasPermission(clubOperationViewPermission),
 );
@@ -2258,6 +2262,14 @@ function advisorOptionLabel(user: UserSummary) {
 function hasPermission(permission: string) {
   const permissions = auth.value?.permissions ?? [];
   return permissions.includes("*") || permissions.includes(permission);
+}
+
+function hasScopedClubPermission(clubId: number, permission: string) {
+  return (auth.value?.roles ?? []).some(
+    (role) =>
+      roleCoversClub(role, clubId) &&
+      (role.permissions?.includes("*") || role.permissions?.includes(permission)),
+  );
 }
 
 function buildSessionDisplayName(session: AuthResponse) {
