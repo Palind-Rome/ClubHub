@@ -1,4 +1,3 @@
-using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -179,7 +178,7 @@ public class AuthService
             return AuthServiceResult<AuthResponse>.Fail(400, StudentOrStaffNoRuleMessage());
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginTransactionAsync();
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
         {
@@ -223,7 +222,30 @@ public class AuthService
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
             await transaction.RollbackAsync();
-            return AuthServiceResult<AuthResponse>.Fail(409, "用户名或学工号已存在，请更换后再注册。");
+
+            var usernameExists = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(existingUser => existingUser.Username == username);
+            var studentNoExists = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(existingUser => existingUser.StudentNo == studentNo);
+
+            if (usernameExists && studentNoExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "用户名和学工号均已被注册，请更换后再注册。");
+            }
+
+            if (usernameExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "用户名已存在，请更换后再注册。");
+            }
+
+            if (studentNoExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "学工号已被注册，请确认信息。");
+            }
+
+            throw;
         }
 
         return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
@@ -249,9 +271,10 @@ public class AuthService
         }
 
         var roles = await GetBaseRoleRowsAsync();
-        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        var identityRole = await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow);
+        if (identityRole is not null)
         {
-            await SaveIdentityRoleAsync(user, roles);
+            await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -276,9 +299,10 @@ public class AuthService
         }
 
         var roles = await GetBaseRoleRowsAsync();
-        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        var identityRole = await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow);
+        if (identityRole is not null)
         {
-            await SaveIdentityRoleAsync(user, roles);
+            await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -800,12 +824,15 @@ public class AuthService
         return roles;
     }
 
-    private async Task<bool> EnsureIdentityRoleAsync(User user, IReadOnlyList<Role> roles, DateTime now)
+    private async Task<UserRole?> EnsureIdentityRoleAsync(
+        User user,
+        IReadOnlyList<Role> roles,
+        DateTime now)
     {
         var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
         if (roleCode is null)
         {
-            return false;
+            return null;
         }
 
         var role = roles.Single(r => r.RoleCode == roleCode);
@@ -815,20 +842,24 @@ public class AuthService
             ur.ClubId == null);
         if (exists)
         {
-            return false;
+            return null;
         }
 
-        _db.UserRoles.Add(new UserRole
+        var assignment = new UserRole
         {
             UserId = user.UserId,
             RoleId = role.RoleId,
             ClubId = null,
             AssignedAt = now
-        });
-        return true;
+        };
+        _db.UserRoles.Add(assignment);
+        return assignment;
     }
 
-    private async Task SaveIdentityRoleAsync(User user, IReadOnlyList<Role> roles)
+    private async Task SaveIdentityRoleAsync(
+        User user,
+        IReadOnlyList<Role> roles,
+        UserRole assignment)
     {
         try
         {
@@ -836,11 +867,7 @@ public class AuthService
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
-            foreach (var entry in _db.ChangeTracker.Entries<UserRole>()
-                .Where(entry => entry.State == EntityState.Added))
-            {
-                entry.State = EntityState.Detached;
-            }
+            _db.Entry(assignment).State = EntityState.Detached;
 
             var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
             var role = roles.Single(candidate => candidate.RoleCode == roleCode);
