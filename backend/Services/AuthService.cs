@@ -1,4 +1,3 @@
-using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -179,7 +178,7 @@ public class AuthService
             return AuthServiceResult<AuthResponse>.Fail(400, StudentOrStaffNoRuleMessage());
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginTransactionAsync();
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
         {
@@ -193,11 +192,9 @@ public class AuthService
 
         var roles = await GetBaseRoleRowsAsync();
         var now = DateTime.UtcNow;
-        var userId = (await _db.Users.MaxAsync(u => (int?)u.UserId) ?? 0) + 1;
 
         var user = new User
         {
-            UserId = userId,
             Username = username,
             PasswordHash = PasswordHasher.Hash(password),
             RealName = realName,
@@ -214,17 +211,41 @@ public class AuthService
         };
 
         _db.Users.Add(user);
-        await EnsureIdentityRoleAsync(user, roles, now);
 
         try
         {
+            await _db.SaveChangesAsync();
+            await EnsureIdentityRoleAsync(user, roles, now);
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
             await transaction.RollbackAsync();
-            return AuthServiceResult<AuthResponse>.Fail(409, "用户名或学工号已存在，请更换后再注册。");
+
+            var usernameExists = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(existingUser => existingUser.Username == username);
+            var studentNoExists = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(existingUser => existingUser.StudentNo == studentNo);
+
+            if (usernameExists && studentNoExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "用户名和学工号均已被注册，请更换后再注册。");
+            }
+
+            if (usernameExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "用户名已存在，请更换后再注册。");
+            }
+
+            if (studentNoExists)
+            {
+                return AuthServiceResult<AuthResponse>.Fail(409, "学工号已被注册，请确认信息。");
+            }
+
+            throw;
         }
 
         return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
@@ -250,9 +271,10 @@ public class AuthService
         }
 
         var roles = await GetBaseRoleRowsAsync();
-        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        var identityRole = await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow);
+        if (identityRole is not null)
         {
-            await _db.SaveChangesAsync();
+            await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -277,9 +299,10 @@ public class AuthService
         }
 
         var roles = await GetBaseRoleRowsAsync();
-        if (await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow))
+        var identityRole = await EnsureIdentityRoleAsync(user, roles, DateTime.UtcNow);
+        if (identityRole is not null)
         {
-            await _db.SaveChangesAsync();
+            await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
@@ -394,16 +417,38 @@ public class AuthService
                 "用户已经拥有该角色。"));
         }
 
-        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
-        _db.UserRoles.Add(new UserRole
+        var assignment = new UserRole
         {
-            UserRoleId = userRoleId,
             UserId = request.TargetUserId,
             RoleId = role.RoleId,
             ClubId = clubId,
             AssignedAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync();
+        };
+        _db.UserRoles.Add(assignment);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _db.Entry(assignment).State = EntityState.Detached;
+            var concurrentAssignmentExists = await _db.UserRoles
+                .AsNoTracking()
+                .AnyAsync(ur =>
+                    ur.UserId == request.TargetUserId &&
+                    ur.RoleId == role.RoleId &&
+                    ur.ClubId == clubId);
+            if (!concurrentAssignmentExists)
+            {
+                throw;
+            }
+
+            return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
+                request.TargetUserId,
+                authRole,
+                true,
+                "用户已经拥有该角色。"));
+        }
 
         return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
             request.TargetUserId,
@@ -779,12 +824,15 @@ public class AuthService
         return roles;
     }
 
-    private async Task<bool> EnsureIdentityRoleAsync(User user, IReadOnlyList<Role> roles, DateTime now)
+    private async Task<UserRole?> EnsureIdentityRoleAsync(
+        User user,
+        IReadOnlyList<Role> roles,
+        DateTime now)
     {
         var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
         if (roleCode is null)
         {
-            return false;
+            return null;
         }
 
         var role = roles.Single(r => r.RoleCode == roleCode);
@@ -794,19 +842,46 @@ public class AuthService
             ur.ClubId == null);
         if (exists)
         {
-            return false;
+            return null;
         }
 
-        var userRoleId = (await _db.UserRoles.MaxAsync(ur => (int?)ur.UserRoleId) ?? 0) + 1;
-        _db.UserRoles.Add(new UserRole
+        var assignment = new UserRole
         {
-            UserRoleId = userRoleId,
             UserId = user.UserId,
             RoleId = role.RoleId,
             ClubId = null,
             AssignedAt = now
-        });
-        return true;
+        };
+        _db.UserRoles.Add(assignment);
+        return assignment;
+    }
+
+    private async Task SaveIdentityRoleAsync(
+        User user,
+        IReadOnlyList<Role> roles,
+        UserRole assignment)
+    {
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _db.Entry(assignment).State = EntityState.Detached;
+
+            var roleCode = GetDefaultIdentityRoleCode(user.StudentNo);
+            var role = roles.Single(candidate => candidate.RoleCode == roleCode);
+            var concurrentAssignmentExists = await _db.UserRoles
+                .AsNoTracking()
+                .AnyAsync(ur =>
+                    ur.UserId == user.UserId &&
+                    ur.RoleId == role.RoleId &&
+                    ur.ClubId == null);
+            if (!concurrentAssignmentExists)
+            {
+                throw;
+            }
+        }
     }
 
     private static string BuildPermissionDesc(RoleDefinition roleDef)
