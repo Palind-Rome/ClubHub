@@ -1736,6 +1736,201 @@ paths:
         "404":
           description: 项目不存在
 
+  /api/projects/{projectId}/members:
+    get:
+      summary: 获取项目成员列表
+      description: 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+      operationId: getProjectMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: includeInactive
+          in: query
+          required: false
+          description: 是否包含已移除或已退出成员，仅项目负责人或本社团负责人、干部可设为 true。
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 项目成员列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMember"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目 active 成员或无权查看历史成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 添加项目成员
+      description: 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+      operationId: addProjectMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddProjectMemberRequest"
+      responses:
+        "201":
+          description: 项目成员已添加或恢复
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMember"
+        "400":
+          description: 请求参数无效，或候选用户不是所属社团 active 成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权维护项目成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或候选用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 用户已经是项目 active 成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/member-candidates:
+    get:
+      summary: 获取项目成员候选人
+      description: 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+      operationId: getProjectMemberCandidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 可添加的项目成员候选人
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMemberCandidate"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权维护项目成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/members/{projectMemberId}:
+    delete:
+      summary: 移除项目成员
+      description: 项目负责人或本社团负责人、干部可以软移除项目成员；当前项目负责人不能被移除。
+      operationId: removeProjectMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: projectMemberId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 项目成员已移除
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权维护项目成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目成员不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 当前项目负责人不能被移除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/venues:
     get:
       summary: 获取场地列表
@@ -4989,6 +5184,124 @@ components:
           nullable: true
       required:
         - currentUserId
+
+    ProjectMember:
+      type: object
+      description: 项目与用户之间的成员关系及展示信息。
+      properties:
+        projectMemberId:
+          type: integer
+          description: 项目成员关系 ID。
+          example: 3001
+        projectId:
+          type: integer
+          description: 所属项目 ID。
+          example: 1001
+        userId:
+          type: integer
+          description: 项目成员用户 ID。
+          example: 12
+        realName:
+          type: string
+          description: 成员真实姓名。
+          nullable: true
+          example: 王同学
+        studentNo:
+          type: string
+          description: 成员学号或工号。
+          nullable: true
+          example: "2450001"
+        memberRole:
+          type: string
+          description: 项目内角色。
+          enum: [leader, member, mentor]
+          example: member
+        memberStatus:
+          type: string
+          description: 项目成员状态。
+          enum: [active, removed, quit]
+          example: active
+        joinedAt:
+          type: string
+          format: date-time
+          description: 本次加入或恢复为 active 的时间。
+        leftAt:
+          type: string
+          format: date-time
+          description: 退出或移除时间；active 成员为空。
+          nullable: true
+        remark:
+          type: string
+          description: 项目成员备注。
+          maxLength: 255
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: 成员关系首次创建时间。
+        updatedAt:
+          type: string
+          format: date-time
+          description: 成员关系最近更新时间。
+      required:
+        - projectMemberId
+        - projectId
+        - userId
+        - memberRole
+        - memberStatus
+        - joinedAt
+        - createdAt
+        - updatedAt
+
+    ProjectMemberCandidate:
+      type: object
+      description: 可加入项目的所属社团 active 成员。
+      properties:
+        userId:
+          type: integer
+          description: 候选用户 ID。
+          example: 12
+        realName:
+          type: string
+          description: 候选用户真实姓名。
+          nullable: true
+          example: 王同学
+        studentNo:
+          type: string
+          description: 候选用户学号或工号。
+          nullable: true
+          example: "2450001"
+        displayName:
+          type: string
+          description: 前端下拉框展示文本。
+          example: 王同学（2450001）
+      required:
+        - userId
+        - displayName
+
+    AddProjectMemberRequest:
+      type: object
+      description: 添加或恢复项目成员的请求；负责人角色只能通过项目负责人分配流程维护。
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+          description: 所属社团 active 成员的用户 ID。
+          example: 12
+        memberRole:
+          type: string
+          description: 新成员的项目内角色。
+          enum: [member, mentor]
+          default: member
+          example: member
+        remark:
+          type: string
+          maxLength: 255
+          description: 可选备注。
+          nullable: true
+      required:
+        - userId
+        - memberRole
 
     LearningTeacherCandidate:
       type: object
