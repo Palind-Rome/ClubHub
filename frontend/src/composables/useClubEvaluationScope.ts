@@ -91,11 +91,16 @@ export function collectCadreScopesFromMembers(
         member.clubId === clubId &&
         member.userId === currentUserId &&
         member.isCurrent === true &&
-        Boolean(member.groupName?.trim()) &&
-        (hasOfficerRole || isCadrePosition(member.positionName)),
+        (hasOfficerRole || isCadrePosition(member.positionName)) &&
+        (Boolean(member.groupName?.trim()) ||
+          (isDepartmentManagerPosition(member.positionName) &&
+            Boolean(member.departmentName?.trim()))),
     )
     .forEach((member) => {
-      addScope(scopeMap, member.departmentName, member.groupName);
+      const groupName = isDepartmentManagerPosition(member.positionName)
+        ? ""
+        : (member.groupName ?? "");
+      addScope(scopeMap, member.departmentName, groupName);
     });
 
   return Array.from(scopeMap.values());

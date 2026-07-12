@@ -1456,8 +1456,8 @@ function canEditMemberTerm(row: ClubMemberRecord) {
   return canManageSelectedClub.value && row.userId !== currentUserId.value;
 }
 
-function canEditMemberPosition(row: ClubMemberRecord) {
-  return canEditMemberTerm(row);
+function canEditMemberRow(row: ClubMemberRecord) {
+  return canEditMemberTerm(row) || canUpdateMemberDepartment(row) || canUpdateMemberGroup(row);
 }
 
 function memberTermEditDeniedMessage(row: ClubMemberRecord) {
@@ -1488,6 +1488,25 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
   memberTermForm.closeCurrentTerm = false;
   memberTermFormRef.value?.clearValidate();
   memberTermDialogVisible.value = true;
+}
+
+function openMemberEditDialog(row: ClubMemberRecord) {
+  if (canEditMemberTerm(row)) {
+    openEditMemberTermDialog(row);
+    return;
+  }
+
+  if (canUpdateMemberDepartment(row)) {
+    openMemberGroupingDialog(row, "departmentName");
+    return;
+  }
+
+  if (canUpdateMemberGroup(row)) {
+    openMemberGroupingDialog(row, "groupName");
+    return;
+  }
+
+  ElMessage.warning("当前身份不能维护该成员。");
 }
 
 function canFreelyUpdateMemberGrouping(row: ClubMemberRecord) {
@@ -1540,86 +1559,6 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
   }
   handleMemberGroupingDepartmentChange();
   memberGroupingDialogVisible.value = true;
-}
-
-async function updateMemberTermFields(
-  row: ClubMemberRecord,
-  fields: Partial<{
-    positionName: string;
-    termName: string;
-    termStart: string | null;
-    termEnd: string | null;
-    memberStatus: MemberStatus;
-    contributionScore: number | null;
-  }>,
-  successText: string,
-) {
-  if (!selectedClubId.value || !currentUserId.value) return;
-
-  termSaving.value = true;
-  try {
-    await requestJson<ClubMemberRecord>(
-      `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...fields,
-        }),
-      },
-    );
-    ElMessage.success(successText);
-    await Promise.all([loadUsers(), loadMembers()]);
-  } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "成员任期更新失败");
-  } finally {
-    termSaving.value = false;
-  }
-}
-
-async function promptTextValue(options: {
-  title: string;
-  message: string;
-  inputValue: string;
-  requiredMessage: string;
-  maxLength: number;
-  maxLengthMessage: string;
-}) {
-  try {
-    const result = await ElMessageBox.prompt(options.message, options.title, {
-      inputValue: options.inputValue,
-      confirmButtonText: "保存",
-      cancelButtonText: "取消",
-      inputValidator: (value) => {
-        const text = String(value ?? "").trim();
-        if (!text) return options.requiredMessage;
-        if (text.length > options.maxLength) return options.maxLengthMessage;
-        return true;
-      },
-    });
-    return String(result.value ?? "").trim();
-  } catch {
-    return null;
-  }
-}
-
-async function editMemberPosition(row: ClubMemberRecord) {
-  if (!canEditMemberPosition(row)) {
-    ElMessage.warning(memberTermEditDeniedMessage(row));
-    return;
-  }
-
-  const nextPosition = await promptTextValue({
-    title: "修改职位",
-    message: "请输入新的职位名称。",
-    inputValue: row.positionName ?? "",
-    requiredMessage: "职位名称不能为空",
-    maxLength: 50,
-    maxLengthMessage: "职位名称不能超过 50 个字",
-  });
-  if (nextPosition === null) return;
-  if (nextPosition === (row.positionName ?? "").trim()) return;
-  await updateMemberTermFields(row, { positionName: nextPosition }, "职位名称已更新");
 }
 
 async function submitMemberGrouping() {
@@ -2276,14 +2215,7 @@ function canRemoveMemberRow(row: ClubMemberRecord) {
 }
 
 function hasMemberRowActions(row: ClubMemberRecord) {
-  return (
-    canUpdateMemberDepartment(row) ||
-    canUpdateMemberGroup(row) ||
-    canEditMemberPosition(row) ||
-    canEditMemberTerm(row) ||
-    canExitMemberRow(row) ||
-    canRemoveMemberRow(row)
-  );
+  return canEditMemberRow(row) || canExitMemberRow(row) || canRemoveMemberRow(row);
 }
 
 function memberExitDisabledReason(row: IdentityRow | ClubMemberRecord) {
@@ -3059,46 +2991,19 @@ onUnmounted(() => {
           <el-table-column
             v-if="canShowMemberOperationColumn"
             label="操作"
-            width="320"
+            width="220"
             fixed="right"
           >
             <template #default="{ row }">
               <div class="row-actions member-row-actions">
                 <el-button
-                  v-if="canUpdateMemberDepartment(row)"
+                  v-if="canEditMemberRow(row)"
                   type="primary"
                   plain
                   :icon="Edit"
-                  @click="openMemberGroupingDialog(row, 'departmentName')"
+                  @click="openMemberEditDialog(row)"
                 >
-                  部门
-                </el-button>
-                <el-button
-                  v-if="canUpdateMemberGroup(row)"
-                  type="primary"
-                  plain
-                  :icon="Edit"
-                  @click="openMemberGroupingDialog(row, 'groupName')"
-                >
-                  小组
-                </el-button>
-                <el-button
-                  v-if="canEditMemberPosition(row)"
-                  type="primary"
-                  plain
-                  :icon="Edit"
-                  @click="editMemberPosition(row)"
-                >
-                  职位
-                </el-button>
-                <el-button
-                  v-if="canEditMemberTerm(row)"
-                  type="primary"
-                  plain
-                  :icon="Edit"
-                  @click="openEditMemberTermDialog(row)"
-                >
-                  任期
+                  编辑
                 </el-button>
                 <el-button
                   v-if="canExitMemberRow(row)"
@@ -3590,7 +3495,7 @@ onUnmounted(() => {
           ? '处理换届任期'
           : memberTermMode === 'create'
             ? '新增成员任期'
-            : '编辑成员任期'
+            : '编辑成员信息'
       "
       width="660px"
     >
@@ -3622,7 +3527,7 @@ onUnmounted(() => {
         <el-form-item v-else label="成员">
           <el-input :model-value="memberTermTarget?.userName" disabled />
         </el-form-item>
-        <el-form-item v-if="memberTermMode === 'create'" label="部门">
+        <el-form-item label="部门">
           <el-select
             v-model="memberTermForm.departmentName"
             class="full-width"
@@ -3638,7 +3543,7 @@ onUnmounted(() => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="memberTermMode === 'create'" label="小组">
+        <el-form-item label="小组">
           <el-select
             v-model="memberTermForm.groupName"
             class="full-width"
@@ -3653,7 +3558,7 @@ onUnmounted(() => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="memberTermMode === 'create'" label="职位" prop="positionName">
+        <el-form-item label="职位" prop="positionName">
           <el-input v-model="memberTermForm.positionName" maxlength="60" />
         </el-form-item>
         <el-form-item label="任期名称" prop="termName">
@@ -3712,9 +3617,7 @@ onUnmounted(() => {
       </el-form>
       <template #footer>
         <el-button @click="memberTermDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="termSaving" @click="submitMemberTerm">
-          保存任期
-        </el-button>
+        <el-button type="primary" :loading="termSaving" @click="submitMemberTerm"> 保存 </el-button>
       </template>
     </el-dialog>
 
