@@ -1,4 +1,4 @@
-import { readAuth } from "../authSession";
+import { clearExpiredSession, readAuth } from "../authSession";
 
 interface ApiError {
   message?: string;
@@ -34,6 +34,11 @@ export async function requestJson<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401 && readAuth()) {
+      clearExpiredSession();
+      throw new Error("登录状态已失效，请重新登录。");
+    }
+
     let message = `请求失败（${res.status}）`;
     const text = await res.text();
     if (text) {
