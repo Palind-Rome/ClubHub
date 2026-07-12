@@ -17,15 +17,10 @@ services:
              dotnet watch run --project backend/ClubHub.Api.csproj --urls http://0.0.0.0:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - Minio__Endpoint=${MINIO_ENDPOINT:-}
-      - Minio__PublicEndpoint=${MINIO_PUBLIC_ENDPOINT:-}
-      - Minio__AccessKey=${MINIO_ACCESS_KEY:-}
-      - Minio__SecretKey=${MINIO_SECRET_KEY:-}
-      - Minio__Bucket=${MINIO_BUCKET:-clubhub-learning}
-      - Minio__UseSsl=${MINIO_USE_SSL:-true}
-      - Minio__PublicUseSsl=${MINIO_PUBLIC_USE_SSL:-true}
-      - Minio__AutoCreateBucket=${MINIO_AUTO_CREATE_BUCKET:-false}
-      - Minio__DownloadUrlExpirySeconds=${MINIO_DOWNLOAD_URL_EXPIRY_SECONDS:-300}
+      - Oss__Region=${OSS_REGION:-cn-shanghai}
+      - Oss__Endpoint=${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
+      - Oss__Bucket=${OSS_BUCKET:-clubhub-learning-prod-2026-c7h2}
+      - Oss__RoleName=${OSS_ROLE_NAME:-ClubHubOssProdRole}
 
   frontend:
     image: node:22-alpine

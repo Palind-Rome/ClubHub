@@ -1,32 +1,45 @@
+using System.Net.Http;
 using Microsoft.Extensions.Options;
-using Minio;
-using Minio.DataModel.Args;
+using OSS = AlibabaCloud.OSS.V2;
 
 namespace ClubHub.Api.Services;
 
-public sealed class LearningObjectStorage
+public sealed class LearningObjectStorage : IDisposable
 {
-    private const string ReferenceScheme = "minio";
-    private readonly MinioStorageOptions _options;
-    private readonly IMinioClient? _storageClient;
-    private readonly IMinioClient? _downloadClient;
+    private const string ReferenceScheme = "oss";
+    private readonly OssStorageOptions _options;
+    private readonly OSS.Client? _client;
     private readonly Exception? _configurationError;
-    private readonly SemaphoreSlim _bucketInitializationLock = new(1, 1);
-    private bool _bucketInitialized;
 
-    public LearningObjectStorage(IOptions<MinioStorageOptions> options)
+    public LearningObjectStorage(IOptions<OssStorageOptions> options)
     {
         _options = options.Value;
         if (!IsConfigured()) return;
 
         try
         {
-            _storageClient = CreateClient(_options.Endpoint, _options.UseSsl);
-            _downloadClient = string.IsNullOrWhiteSpace(_options.PublicEndpoint)
-                ? _storageClient
-                : CreateClient(
-                    _options.PublicEndpoint,
-                    _options.PublicUseSsl ?? _options.UseSsl);
+            var credentialClient = new Aliyun.Credentials.Client(
+                new Aliyun.Credentials.Models.Config
+                {
+                    Type = "ecs_ram_role",
+                    RoleName = _options.RoleName.Trim()
+                });
+            var credentialsProvider = new OSS.Credentials.CredentialsProviderFunc(() =>
+            {
+                var credential = credentialClient.GetCredential();
+                return new OSS.Credentials.Credentials(
+                    credential.AccessKeyId,
+                    credential.AccessKeySecret,
+                    credential.SecurityToken);
+            });
+
+            var configuration = OSS.Configuration.LoadDefault();
+            configuration.Region = _options.Region.Trim();
+            configuration.Endpoint = NormalizeEndpoint(_options.Endpoint);
+            configuration.CredentialsProvider = credentialsProvider;
+            configuration.ConnectTimeout = TimeSpan.FromSeconds(10);
+            configuration.ReadWriteTimeout = TimeSpan.FromMinutes(5);
+            _client = new OSS.Client(configuration);
         }
         catch (Exception exception)
         {
@@ -46,124 +59,119 @@ public sealed class LearningObjectStorage
         string originalFileName,
         CancellationToken cancellationToken)
     {
-        var client = GetStorageClient();
-        await EnsureBucketAsync(client, cancellationToken);
-
+        _ = contentLength;
+        var client = GetClient();
         var objectName = $"clubs/{clubId}/learning/{itemId}/{Guid.NewGuid():N}{extension}";
-        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        try
         {
-            ["Content-Disposition"] =
-                $"attachment; filename*=UTF-8''{Uri.EscapeDataString(originalFileName)}"
-        };
-        var args = new PutObjectArgs()
-            .WithBucket(_options.Bucket)
-            .WithObject(objectName)
-            .WithStreamData(content)
-            .WithObjectSize(contentLength)
-            .WithContentType(string.IsNullOrWhiteSpace(contentType)
-                ? "application/octet-stream"
-                : contentType)
-            .WithHeaders(headers);
-
-        await client.PutObjectAsync(args, cancellationToken);
-        return BuildReference(_options.Bucket, objectName);
+            await client.PutObjectAsync(
+                new OSS.Models.PutObjectRequest
+                {
+                    Bucket = _options.Bucket,
+                    Key = objectName,
+                    Body = content,
+                    ContentType = string.IsNullOrWhiteSpace(contentType)
+                        ? "application/octet-stream"
+                        : contentType,
+                    ContentDisposition =
+                        $"attachment; filename*=UTF-8''{Uri.EscapeDataString(originalFileName)}"
+                },
+                cancellationToken: cancellationToken);
+            return BuildReference(_options.Bucket, objectName);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException("Failed to upload the learning resource to OSS.", exception);
+        }
     }
 
-    public Task<string> CreateDownloadUrlAsync(
+    public async Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var client = GetDownloadClient();
+        var client = GetClient();
         var (bucket, objectName) = ParseOwnedReference(storageReference);
-        var expiry = Math.Clamp(_options.DownloadUrlExpirySeconds, 60, 604800);
-        var args = new PresignedGetObjectArgs()
-            .WithBucket(bucket)
-            .WithObject(objectName)
-            .WithExpiry(expiry);
-        return client.PresignedGetObjectAsync(args);
+        try
+        {
+            var result = await client.GetObjectAsync(
+                new OSS.Models.GetObjectRequest
+                {
+                    Bucket = bucket,
+                    Key = objectName
+                },
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken: cancellationToken);
+            if (result.Body is null)
+            {
+                throw new LearningObjectStorageException("OSS returned an empty response stream.");
+            }
+
+            return new StoredObjectDownload(
+                result.Body,
+                result.ContentType,
+                result.ContentDisposition,
+                result.ContentLength);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (LearningObjectStorageException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException("Failed to read the learning resource from OSS.", exception);
+        }
     }
 
     public async Task RemoveAsync(string storageReference, CancellationToken cancellationToken)
     {
-        var client = GetStorageClient();
+        var client = GetClient();
         var (bucket, objectName) = ParseOwnedReference(storageReference);
-        var args = new RemoveObjectArgs()
-            .WithBucket(bucket)
-            .WithObject(objectName);
-        await client.RemoveObjectAsync(args, cancellationToken);
-    }
-
-    private async Task EnsureBucketAsync(
-        IMinioClient client,
-        CancellationToken cancellationToken)
-    {
-        if (_bucketInitialized) return;
-        await _bucketInitializationLock.WaitAsync(cancellationToken);
         try
         {
-            if (_bucketInitialized) return;
-            var exists = await client.BucketExistsAsync(
-                new BucketExistsArgs().WithBucket(_options.Bucket),
-                cancellationToken);
-            if (!exists)
-            {
-                if (!_options.AutoCreateBucket)
+            await client.DeleteObjectAsync(
+                new OSS.Models.DeleteObjectRequest
                 {
-                    throw new InvalidOperationException(
-                        $"MinIO bucket '{_options.Bucket}' does not exist and automatic creation is disabled.");
-                }
-
-                await client.MakeBucketAsync(
-                    new MakeBucketArgs().WithBucket(_options.Bucket),
-                    cancellationToken);
-            }
-
-            _bucketInitialized = true;
+                    Bucket = bucket,
+                    Key = objectName
+                },
+                cancellationToken: cancellationToken);
         }
-        finally
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _bucketInitializationLock.Release();
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException("Failed to delete the learning resource from OSS.", exception);
         }
     }
 
-    private IMinioClient GetStorageClient() => _storageClient ?? throw NotConfigured();
+    public void Dispose() => _client?.Dispose();
 
-    private IMinioClient GetDownloadClient() => _downloadClient ?? throw NotConfigured();
+    private OSS.Client GetClient() => _client ?? throw new LearningObjectStorageException(
+        "OSS is not configured correctly. Check the Oss section and the ECS RAM role.",
+        _configurationError);
 
     private bool IsConfigured() =>
+        !string.IsNullOrWhiteSpace(_options.Region) &&
         !string.IsNullOrWhiteSpace(_options.Endpoint) &&
-        !string.IsNullOrWhiteSpace(_options.AccessKey) &&
-        !string.IsNullOrWhiteSpace(_options.SecretKey) &&
-        !string.IsNullOrWhiteSpace(_options.Bucket);
-
-    private IMinioClient CreateClient(string endpoint, bool useSsl)
-    {
-        var normalizedEndpoint = endpoint.Trim().TrimEnd('/');
-        if (Uri.TryCreate(normalizedEndpoint, UriKind.Absolute, out var uri))
-        {
-            if (uri.AbsolutePath != "/")
-            {
-                throw new InvalidOperationException("MinIO endpoint cannot contain a path.");
-            }
-
-            normalizedEndpoint = uri.Authority;
-            useSsl = string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return new MinioClient()
-            .WithEndpoint(normalizedEndpoint)
-            .WithCredentials(_options.AccessKey.Trim(), _options.SecretKey)
-            .WithSSL(useSsl)
-            .Build();
-    }
+        !string.IsNullOrWhiteSpace(_options.Bucket) &&
+        !string.IsNullOrWhiteSpace(_options.RoleName);
 
     private (string Bucket, string ObjectName) ParseOwnedReference(string storageReference)
     {
         if (!TryParseReference(storageReference, out var bucket, out var objectName) ||
             !string.Equals(bucket, _options.Bucket, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("The learning resource object reference is invalid.");
+            throw new LearningObjectStorageException("The learning resource OSS reference is invalid.");
         }
 
         return (bucket, objectName);
@@ -194,10 +202,29 @@ public sealed class LearningObjectStorage
         return true;
     }
 
+    private static string NormalizeEndpoint(string endpoint)
+    {
+        var normalized = endpoint.Trim().TrimEnd('/');
+        return normalized.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            ? normalized
+            : $"https://{normalized}";
+    }
+
     private static string BuildReference(string bucket, string objectName) =>
         $"{ReferenceScheme}://{bucket}/{objectName}";
+}
 
-    private InvalidOperationException NotConfigured() => new(
-        "MinIO is not configured correctly. Set Minio__Endpoint, Minio__AccessKey and Minio__SecretKey.",
-        _configurationError);
+public sealed record StoredObjectDownload(
+    Stream Content,
+    string? ContentType,
+    string? ContentDisposition,
+    long? ContentLength);
+
+public sealed class LearningObjectStorageException : Exception
+{
+    public LearningObjectStorageException(string message, Exception? innerException = null)
+        : base(message, innerException)
+    {
+    }
 }

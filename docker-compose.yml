@@ -11,6 +11,10 @@ services:
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__Default: ${DB_CONNECTION_STRING}
       Authentication__TokenSigningKey: ${AUTH_TOKEN_SIGNING_KEY}
+      Oss__Region: ${OSS_REGION:-cn-shanghai}
+      Oss__Endpoint: ${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
+      Oss__Bucket: ${OSS_BUCKET:-clubhub-learning-prod-2026-c7h2}
+      Oss__RoleName: ${OSS_ROLE_NAME:-ClubHubOssProdRole}
     expose:
       - "5000"
     networks:

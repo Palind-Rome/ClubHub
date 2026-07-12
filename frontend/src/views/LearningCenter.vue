@@ -477,7 +477,7 @@ async function deleteResource(item: LearningItem) {
   if (isCourseItem(item) || !item.canManage) return;
   try {
     await ElMessageBox.confirm(
-      `确认删除资源“${item.title}”吗？相关学习记录和本地上传文件也会被删除，此操作不可撤销。`,
+      `确认删除资源“${item.title}”吗？相关学习记录和已上传文件也会被删除，此操作不可撤销。`,
       "删除资源",
       {
         confirmButtonText: "确认删除",

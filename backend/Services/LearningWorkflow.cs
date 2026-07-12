@@ -121,7 +121,7 @@ public static class LearningWorkflow
         };
 
     /// <summary>
-    /// 校验文件地址为 HTTP/HTTPS 绝对地址，或本系统受鉴权的上传文件地址和 MinIO 对象引用。
+    /// 校验文件地址为 HTTP/HTTPS 绝对地址，或本系统受鉴权的上传文件地址和 OSS 对象引用。
     /// </summary>
     public static bool IsFileUrlValid(string? fileUrl)
     {
@@ -135,7 +135,7 @@ public static class LearningWorkflow
             return true;
         }
         if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri)) return false;
-        if (string.Equals(uri.Scheme, "minio", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(uri.Scheme, "oss", StringComparison.OrdinalIgnoreCase))
         {
             return !string.IsNullOrWhiteSpace(uri.Host) &&
                    !string.IsNullOrWhiteSpace(uri.AbsolutePath.Trim('/')) &&

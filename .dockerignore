@@ -1,0 +1,10 @@
+.git
+.env
+**/.env
+**/bin
+**/obj
+backend/App_Data
+backend/appsettings.Development.json
+frontend/dist
+frontend/node_modules
+docs/~$*

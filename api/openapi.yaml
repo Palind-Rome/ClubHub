@@ -2505,7 +2505,7 @@ paths:
   /api/learning/resources/upload:
     post:
       summary: 上传社团学习资源
-      description: 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有 MinIO 存储并创建学习资源；客户端可重复调用以完成批量上传。
+      description: 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
       operationId: uploadLearningResource
       security:
         - bearerAuth: []
@@ -2569,12 +2569,12 @@ paths:
         "413":
           description: 文件超过 50 MB。
         "503":
-          description: MinIO 未配置、不可访问或存储桶不可用。
+          description: OSS、ECS RAM 角色临时凭据或存储桶不可用。
 
   /api/learning/items/{itemId}/file:
     get:
-      summary: 获取历史本地上传的学习资源文件
-      description: 兼容改用 MinIO 前保存在后端本地目录中的资源；校验当前用户的资源可见权限后返回文件内容，下载行为由下载校验接口记录。
+      summary: 获取受保护的学习资源文件
+      description: 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
       operationId: getLearningResourceFile
       security:
         - bearerAuth: []
@@ -2597,6 +2597,8 @@ paths:
           description: 当前用户无权查看该资源。
         "404":
           description: 资源或物理文件不存在。
+        "503":
+          description: OSS、ECS RAM 角色临时凭据或对象读取暂不可用。
 
   /api/learning/items/{itemId}:
     put:
@@ -2635,7 +2637,7 @@ paths:
           description: ?????????????
     delete:
       summary: 删除学习资源
-      description: 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录和本地上传文件。
+      description: 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
       operationId: deleteLearningResource
       security:
         - bearerAuth: []
@@ -2749,7 +2751,7 @@ paths:
   /api/learning/items/{itemId}/download:
     post:
       summary: 校验权限并记录学习资源下载
-      description: 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；MinIO 文件返回短时有效的预签名地址，历史本地文件和外部资源返回原访问地址。
+      description: 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
       operationId: downloadLearningItem
       security:
         - bearerAuth: []
@@ -2773,8 +2775,6 @@ paths:
           description: 当前用户不可见该资源或资源不允许直接下载
         "404":
           description: 学习资源不存在
-        "503":
-          description: MinIO 下载地址生成失败。
 
   /api/learning/items/{itemId}/statistics:
     get:
@@ -5899,7 +5899,7 @@ components:
 
     LearningDownloadResult:
       type: object
-      description: 下载权限校验通过后返回的可访问资源地址与记录时间；MinIO 地址为短时有效的预签名 URL。
+      description: 下载权限校验通过后返回的可访问资源地址与记录时间；OSS 资源返回受鉴权的后端流式下载地址。
       properties:
         itemId:
           type: integer

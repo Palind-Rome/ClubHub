@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
-using Minio.Exceptions;
 using ApiLearningDownloadResult = Org.OpenAPITools.Models.LearningDownloadResult;
 using ApiLearningItem = Org.OpenAPITools.Models.LearningItem;
 using ApiLearningItemStatistics = Org.OpenAPITools.Models.LearningItemStatistics;
@@ -32,7 +31,7 @@ public class LearningController : ControllerBase
     private const int MaxCreateRetries = 3;
     private const long MaxUploadBytes = 50L * 1024 * 1024;
     private const string LocalFileUrlPrefix = "/api/learning/items/";
-    private const string MinioFileUrlPrefix = "minio://";
+    private const string OssFileUrlPrefix = "oss://";
 
     private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -418,11 +417,11 @@ public class LearningController : ControllerBase
         {
             await transaction.RollbackAsync();
             await TryRemoveObjectAsync(storageReference, itemId);
-            _logger.LogError(exception, "资源 {ItemId} 上传到 MinIO 失败。", itemId);
+            _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", itemId);
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "资源存储暂不可用",
-                detail: "无法连接 MinIO 或存储配置无效，请稍后重试。");
+                detail: "无法连接 OSS 或 ECS RAM 角色凭据不可用，请稍后重试。");
         }
         catch
         {
@@ -433,7 +432,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 返回资源上传生成的物理文件；仍执行资源可见范围和下载权限校验。
+    /// 校验资源访问权限后返回历史本地文件，或从私有 OSS 读取对象并流式传输。
     /// </summary>
     [HttpGet("items/{itemId:int}/file")]
     public async Task<IActionResult> GetResourceFile(int itemId)
@@ -442,10 +441,13 @@ public class LearningController : ControllerBase
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
         var item = await LoadLearningItemForAccessAsync(itemId);
-        if (item is null || item.FileUrl != $"{LocalFileUrlPrefix}{itemId}/file")
+        if (item is null)
         {
             return NotFound("上传文件不存在。");
         }
+        var isLocalUpload = item.FileUrl == $"{LocalFileUrlPrefix}{itemId}/file";
+        var isObjectStorageUpload = _objectStorage.IsStorageReference(item.FileUrl);
+        if (!isLocalUpload && !isObjectStorageUpload) return NotFound("上传文件不存在。");
 
         var user = await LoadUserAsync(currentUserId.Value);
         if (user is null) return NotFound("当前用户不存在。");
@@ -460,6 +462,40 @@ public class LearningController : ControllerBase
         if (downloadDecision is not null)
         {
             return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
+        }
+
+        if (isObjectStorageUpload)
+        {
+            try
+            {
+                var storedObject = await _objectStorage.OpenReadAsync(
+                    item.FileUrl!,
+                    HttpContext.RequestAborted);
+                if (storedObject.ContentLength is > 0)
+                {
+                    Response.ContentLength = storedObject.ContentLength;
+                }
+                if (!string.IsNullOrWhiteSpace(storedObject.ContentDisposition) &&
+                    storedObject.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
+                {
+                    Response.Headers.ContentDisposition = storedObject.ContentDisposition;
+                    return File(
+                        storedObject.Content,
+                        storedObject.ContentType ?? "application/octet-stream");
+                }
+                return File(
+                    storedObject.Content,
+                    storedObject.ContentType ?? "application/octet-stream",
+                    item.Title);
+            }
+            catch (Exception exception) when (IsObjectStorageFailure(exception))
+            {
+                _logger.LogError(exception, "资源 {ItemId} 无法从 OSS 读取。", itemId);
+                return Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "资源存储暂不可用",
+                    detail: "无法从 OSS 读取资源，请稍后重试。");
+            }
         }
 
         var clubStoragePath = Path.Combine(
@@ -481,7 +517,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 删除非课程资源，同时清理关联学习记录和本地上传文件。
+    /// 删除非课程资源，同时清理关联学习记录、OSS 对象或历史本地文件。
     /// </summary>
     [HttpDelete("items/{itemId:int}")]
     public async Task<IActionResult> DeleteResource(int itemId)
@@ -902,24 +938,9 @@ public class LearningController : ControllerBase
                 return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
             }
 
-            var downloadUrl = item.FileUrl!.Trim();
-            if (_objectStorage.IsStorageReference(downloadUrl))
-            {
-                try
-                {
-                    downloadUrl = await _objectStorage.CreateDownloadUrlAsync(
-                        downloadUrl,
-                        HttpContext.RequestAborted);
-                }
-                catch (Exception exception) when (IsObjectStorageFailure(exception))
-                {
-                    _logger.LogError(exception, "资源 {ItemId} 的 MinIO 下载链接生成失败。", itemId);
-                    return Problem(
-                        statusCode: StatusCodes.Status503ServiceUnavailable,
-                        title: "资源存储暂不可用",
-                        detail: "无法生成资源下载链接，请稍后重试。");
-                }
-            }
+            var downloadUrl = _objectStorage.IsStorageReference(item.FileUrl)
+                ? $"{LocalFileUrlPrefix}{itemId}/file"
+                : item.FileUrl!.Trim();
 
             var now = LearningWorkflow.BusinessNow();
             if (record is null)
@@ -1939,11 +1960,11 @@ public class LearningController : ControllerBase
     {
         var normalized = fileUrl?.Trim();
         return normalized?.StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true ||
-               normalized?.StartsWith(MinioFileUrlPrefix, StringComparison.OrdinalIgnoreCase) == true;
+               normalized?.StartsWith(OssFileUrlPrefix, StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static bool IsObjectStorageFailure(Exception exception) =>
-        exception is MinioException or InvalidOperationException or HttpRequestException or IOException;
+        exception is LearningObjectStorageException;
 
     private async Task TryRemoveObjectAsync(string? storageReference, int itemId)
     {
@@ -1956,7 +1977,7 @@ public class LearningController : ControllerBase
         {
             _logger.LogWarning(
                 exception,
-                "资源 {ItemId} 的数据库状态已更新，但 MinIO 对象清理失败。",
+                "资源 {ItemId} 的数据库状态已更新，但 OSS 对象清理失败。",
                 itemId);
         }
     }

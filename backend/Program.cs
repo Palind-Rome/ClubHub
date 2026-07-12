@@ -12,8 +12,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumMemberConverter());
     });
 builder.Services.AddSingleton<AuthTokenService>();
-builder.Services.Configure<MinioStorageOptions>(
-    builder.Configuration.GetSection(MinioStorageOptions.SectionName));
+builder.Services.Configure<OssStorageOptions>(
+    builder.Configuration.GetSection(OssStorageOptions.SectionName));
 builder.Services.AddSingleton<LearningObjectStorage>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RecruitmentApplicationService>();
