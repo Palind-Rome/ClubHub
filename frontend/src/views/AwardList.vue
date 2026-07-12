@@ -5,10 +5,13 @@ import { Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 import {
-  collectManageableClubIds,
-  collectScopedClubIds,
-  normalizedRoleCodeOf,
-} from "../composables/useManageableClubs";
+  canMaintainScopedMember,
+  collectCadreScopesFromMembers,
+  hasGlobalClubViewRole,
+  hasWholeClubMaintainRole,
+  type MemberGroupingScope,
+} from "../composables/useClubEvaluationScope";
+import { collectManageableClubIds, collectScopedClubIds } from "../composables/useManageableClubs";
 
 type PublicStatus = "draft" | "published";
 type AwardFormMode = "create" | "edit";
@@ -116,18 +119,7 @@ const manageableClubIds = computed(() =>
 );
 const scopedClubIds = computed(() => collectScopedClubIds(auth.value?.roles ?? []));
 const canViewAllClubs = computed(
-  () =>
-    hasAllPermissions.value ||
-    (auth.value?.roles ?? []).some((role) =>
-      [
-        "admin",
-        "club_admin",
-        "club_reviewer",
-        "platform_admin",
-        "system_admin",
-        "sysadmin",
-      ].includes(normalizedRoleCodeOf(role)),
-    ),
+  () => hasAllPermissions.value || hasGlobalClubViewRole(auth.value?.roles ?? []),
 );
 const accessibleClubs = computed(() =>
   canViewAllClubs.value
@@ -143,6 +135,20 @@ const canMaintainSelectedClub = computed(
     (hasAllPermissions.value ||
       (selectedClubId.value !== undefined && manageableClubIds.value.has(selectedClubId.value))),
 );
+const canMaintainWholeClub = computed(() => {
+  const clubId = selectedClubId.value;
+  if (!clubId || !canMaintainSelectedClub.value) return false;
+  if (hasAllPermissions.value) return true;
+
+  return hasWholeClubMaintainRole(auth.value?.roles ?? [], clubId);
+});
+const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
+  const clubId = selectedClubId.value;
+  const userId = currentUserId.value;
+  if (!clubId || !userId || !canMaintainSelectedClub.value || canMaintainWholeClub.value) return [];
+
+  return collectCadreScopesFromMembers(members.value, auth.value?.roles ?? [], clubId, userId);
+});
 const publicAwards = computed(() =>
   filteredAwards.value.filter((award) => award.publicStatus === "published"),
 );
@@ -172,7 +178,9 @@ const summary = computed(() => ({
   published: awards.value.filter((award) => award.publicStatus === "published").length,
   draft: awards.value.filter((award) => award.publicStatus !== "published").length,
 }));
-const memberOptions = computed(() => members.value.filter((member) => member.isCurrent));
+const memberOptions = computed(() =>
+  members.value.filter((member) => member.isCurrent && canMaintainMember(member)),
+);
 
 async function validateForm(form?: FormInstance) {
   if (!form) return false;
@@ -294,7 +302,7 @@ function openCreateDialog() {
 }
 
 function openEditDialog(row: ClubEvaluationRecord) {
-  if (!canMaintainSelectedClub.value) {
+  if (!canMaintainAwardRecord(row)) {
     ElMessage.warning("当前账号没有维护该社团评奖评优结果的权限。");
     return;
   }
@@ -375,6 +383,19 @@ function clearFilters() {
 function emptyToNull(value: string) {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function canMaintainAwardRecord(row: ClubEvaluationRecord) {
+  const member = members.value.find((item) => item.userId === row.userId);
+  return Boolean(member && canMaintainMember(member));
+}
+
+function canMaintainMember(member: ClubMemberRecord) {
+  return canMaintainScopedMember(member, {
+    canMaintainSelectedClub: canMaintainSelectedClub.value,
+    canMaintainWholeClub: canMaintainWholeClub.value,
+    scopes: selectedCadreGroupingScopes.value,
+  });
 }
 
 function statusTagType(status: PublicStatus) {
@@ -515,7 +536,7 @@ onUnmounted(() => {
         <div class="award-actions">
           <el-button :icon="View" @click="openDetail(award)">查看</el-button>
           <el-button
-            v-if="canMaintainSelectedClub"
+            v-if="canMaintainAwardRecord(award)"
             type="primary"
             plain
             :icon="Edit"
