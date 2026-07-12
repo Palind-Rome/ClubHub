@@ -3238,7 +3238,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系和资源可见范围过滤结果。
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
    * 获取可见的课程与学习资源
    */
   async getLearningItemsRaw(
@@ -3254,7 +3254,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系和资源可见范围过滤结果。
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
    * 获取可见的课程与学习资源
    */
   async getLearningItems(
@@ -5877,7 +5877,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
    * 更新课程或学习资源
    */
   async updateLearningItemRaw(
@@ -5891,7 +5891,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
    * 更新课程或学习资源
    */
   async updateLearningItem(

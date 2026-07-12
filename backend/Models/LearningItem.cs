@@ -309,9 +309,9 @@ namespace Org.OpenAPITools.Models
         public CurrentUserRecordStatusEnum CurrentUserRecordStatus { get; set; }
 
         /// <summary>
-        /// 当前用户是否可维护资源并查看统计。
+        /// 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
         /// </summary>
-        /// <value>当前用户是否可维护资源并查看统计。</value>
+        /// <value>当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。</value>
         [Required]
         [DataMember(Name="canManage", EmitDefaultValue=true)]
         public bool CanManage { get; set; }

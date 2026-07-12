@@ -123,7 +123,7 @@ export interface LearningItem {
    */
   currentUserRecordStatus: LearningItemCurrentUserRecordStatusEnum;
   /**
-   * 当前用户是否可维护资源并查看统计。
+   * 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
    * @type {boolean}
    * @memberof LearningItem
    */
