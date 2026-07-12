@@ -158,6 +158,7 @@ watch(projectId, loadWorkspace, { immediate: true });
             :project-id="project.id"
             :club-id="project.clubId"
             :leader-user-id="project.leaderUserId"
+            :project-status="project.projectStatus"
           />
         </el-tab-pane>
       </el-tabs>

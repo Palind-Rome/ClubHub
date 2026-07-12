@@ -191,6 +191,10 @@ public class ProjectsController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(project => project.ProjectId == projectId);
         if (projectSnapshot is null) return NotFound("Project does not exist.");
+        if (string.Equals(projectSnapshot.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict("项目已关闭，不能再更换项目负责人。");
+        }
 
         var operatorAccess = await EnsureActiveUserAsync(req.CurrentUserId, "assign project leader");
         if (operatorAccess.Result is not null) return operatorAccess.Result;

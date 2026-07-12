@@ -78,6 +78,12 @@ public class ProjectMembershipService
             (member.TermEnd == null || member.TermEnd >= businessDate));
     }
 
+    public static bool IsClosed(Project project) =>
+        string.Equals(project.ProjectStatus, "closed", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsTeacher(User user) =>
+        !string.IsNullOrWhiteSpace(user.StudentNo) && user.StudentNo.Length == 5 && user.StudentNo.All(char.IsDigit);
+
     /// <summary>
     /// 项目负责人、具备项目任务管理权限的社团角色，以及兼容旧数据的负责人/干部均可维护成员。
     /// </summary>

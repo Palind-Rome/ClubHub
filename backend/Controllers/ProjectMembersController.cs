@@ -50,7 +50,7 @@ public class ProjectMembersController : ControllerBase
 
         if (!canManage && !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
         {
-            return Error(403, "project_member_view_forbidden", "只有项目 active 成员可以查看当前成员列表。");
+            return Error(403, "project_member_view_forbidden", "只有正在参与该项目的成员可以查看当前成员列表。");
         }
 
         var query = _db.ProjectMembers
@@ -82,6 +82,7 @@ public class ProjectMembersController : ControllerBase
 
         var project = await FindProjectAsync(projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
+        if (ProjectMembershipService.IsClosed(project)) return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
         if (!await _membershipService.CanManageMembersAsync(project, userId.Value))
         {
             return Error(403, "project_member_manage_forbidden", "当前用户无权维护该项目成员。");
@@ -103,6 +104,7 @@ public class ProjectMembersController : ControllerBase
 
         var project = await FindProjectAsync(projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
+        if (ProjectMembershipService.IsClosed(project)) return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
         if (!await _membershipService.CanManageMembersAsync(project, userId.Value))
         {
             return Error(403, "project_member_manage_forbidden", "当前用户无权维护该项目成员。");
@@ -129,12 +131,16 @@ public class ProjectMembersController : ControllerBase
             return Error(400, "invalid_project_member_remark", "项目成员备注不能超过 255 个字符。");
         }
 
-        var candidateExists = await _db.Users
+        var candidate = await _db.Users
             .AsNoTracking()
-            .AnyAsync(candidate => candidate.UserId == request.UserId);
-        if (!candidateExists)
+            .FirstOrDefaultAsync(candidate => candidate.UserId == request.UserId);
+        if (candidate is null)
         {
             return Error(404, "project_member_candidate_not_found", "候选用户不存在。");
+        }
+        if (memberRole == ProjectMembershipService.MentorRole && !ProjectMembershipService.IsTeacher(candidate))
+        {
+            return Error(400, "project_member_mentor_requires_teacher", "项目导师必须选择教师账号。");
         }
 
         var alreadyActive = await _db.ProjectMembers
@@ -182,6 +188,7 @@ public class ProjectMembersController : ControllerBase
 
         var project = await FindProjectAsync(projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
+        if (ProjectMembershipService.IsClosed(project)) return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
         if (!await _membershipService.CanManageMembersAsync(project, userId.Value))
         {
             return Error(403, "project_member_manage_forbidden", "当前用户无权维护该项目成员。");

@@ -16,6 +16,7 @@ const props = defineProps<{
   projectId: number;
   clubId: number;
   leaderUserId?: number | null;
+  projectStatus?: string | null;
 }>();
 
 type AddMemberForm = {
@@ -55,6 +56,14 @@ const canManage = computed(() => {
     roleAllowsProjectMemberManagement(role, props.clubId),
   );
 });
+
+const projectClosed = computed(() => props.projectStatus === "closed");
+const editable = computed(() => canManage.value && !projectClosed.value);
+const visibleCandidates = computed(() =>
+  addForm.memberRole === AddProjectMemberRequestMemberRoleEnum.Mentor
+    ? candidates.value.filter((candidate) => /^\d{5}$/.test(candidate.studentNo ?? ""))
+    : candidates.value,
+);
 
 const addRules: FormRules<AddMemberForm> = {
   userId: [{ required: true, message: "请选择要加入项目的社团成员", trigger: "change" }],
@@ -123,8 +132,8 @@ async function handleHistoryChange() {
 }
 
 async function openAddDialog() {
-  if (!canManage.value) {
-    ElMessage.warning("当前账号没有项目成员维护权限。");
+  if (!editable.value) {
+    ElMessage.warning(projectClosed.value ? "项目已关闭，不能再调整项目成员。" : "当前账号没有项目成员维护权限。");
     return;
   }
 
@@ -303,7 +312,7 @@ onUnmounted(() => {
           @change="handleHistoryChange"
         />
         <el-button :loading="loading" @click="loadMembers">刷新</el-button>
-        <el-button v-if="canManage" type="primary" @click="openAddDialog">添加成员</el-button>
+        <el-button v-if="canManage" type="primary" :disabled="projectClosed" @click="openAddDialog">添加成员</el-button>
       </div>
     </div>
 
@@ -373,7 +382,7 @@ onUnmounted(() => {
                   text
                   type="danger"
                   size="small"
-                  :disabled="row.userId === leaderUserId"
+                  :disabled="row.userId === leaderUserId || projectClosed"
                   :loading="removingId === row.projectMemberId"
                   @click="removeMember(row)"
                 >
@@ -408,7 +417,7 @@ onUnmounted(() => {
             placeholder="按姓名或学工号搜索"
           >
             <el-option
-              v-for="candidate in candidates"
+              v-for="candidate in visibleCandidates"
               :key="candidate.userId"
               :label="candidate.displayName"
               :value="candidate.userId"
@@ -425,6 +434,7 @@ onUnmounted(() => {
             </el-radio-button>
           </el-radio-group>
           <div class="field-hint">负责人不能在此指定，请使用项目列表中的负责人分配功能。</div>
+          <div class="field-hint">选择“导师”时，仅显示教师账号。</div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input
