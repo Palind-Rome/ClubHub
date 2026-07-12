@@ -2517,7 +2517,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前登录用户加入有名额且对其可见的培训课程。
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
    * 加入培训课程
    */
   async enrollLearningItemRaw(
@@ -2531,7 +2531,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前登录用户加入有名额且对其可见的培训课程。
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
    * 加入培训课程
    */
   async enrollLearningItem(
@@ -5025,7 +5025,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 拥有 resource:review 权限的社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
    * 审核课程或学习资源
    */
   async reviewLearningItemRaw(
@@ -5039,7 +5039,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 拥有 resource:review 权限的社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
    * 审核课程或学习资源
    */
   async reviewLearningItem(
