@@ -38,6 +38,7 @@
 3. `002_sample_activities.sql`：活动样例。
 4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
+6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 
 样例账号统一密码为 `123456`：
 
@@ -50,6 +51,12 @@
 | `member_liu`     | `2450004` | 计算机协会成员，查看本人社团身份                 |
 | `zhang_guoxiong` | `2350007` | 多社团学生，在不同社团分别担任成员、干部、负责人 |
 | `advisor_zhang`  | `06005`   | 计算机协会指导老师，查看社团成员任期             |
+| `zhao_rui`       | `2450020` | 计算机协会技术部部长，有上一学年干事任期         |
+| `he_yuqing`      | `2350021` | 计算机协会宣传部部长，有上一学年社员任期         |
+| `lin_kexin`      | `2250023` | 摄影社现任社长，有上一学年副社长任期             |
+| `chen_moyang`    | `2350024` | 摄影社外拍部部长，有上一学年干事任期             |
+| `shen_yiming`    | `2350028` | 羽毛球协会竞训部部长，有上一学年干事任期         |
+| `ye_qingyang`    | `2450029` | 羽毛球协会赛事部裁判组组长，有上一学年社员任期   |
 
 ## 已有开发库迁移
 
