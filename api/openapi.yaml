@@ -2657,6 +2657,8 @@ paths:
           description: 当前用户无权删除该资源。
         "404":
           description: 资源或当前用户不存在。
+        "503":
+          description: OSS、ECS RAM 角色临时凭据或对象删除暂不可用，数据库记录保持不变。
 
   /api/learning/items/{itemId}/enrollments:
     post:

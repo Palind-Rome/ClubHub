@@ -14,7 +14,7 @@ builder.Services.AddControllers()
 builder.Services.AddSingleton<AuthTokenService>();
 builder.Services.Configure<OssStorageOptions>(
     builder.Configuration.GetSection(OssStorageOptions.SectionName));
-builder.Services.AddSingleton<LearningObjectStorage>();
+builder.Services.AddSingleton<ILearningObjectStorage, OssLearningObjectStorage>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RecruitmentApplicationService>();
 builder.Services.AddScoped<ProjectMembershipService>();

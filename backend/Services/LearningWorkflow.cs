@@ -121,7 +121,8 @@ public static class LearningWorkflow
         };
 
     /// <summary>
-    /// 校验文件地址为 HTTP/HTTPS 绝对地址，或本系统受鉴权的上传文件地址和 OSS 对象引用。
+    /// 校验文件地址为 HTTP/HTTPS 绝对地址、本系统受鉴权的上传文件地址，
+    /// 或厂商无关的对象 Key；历史 OSS 引用继续只读兼容。
     /// </summary>
     public static bool IsFileUrlValid(string? fileUrl)
     {
@@ -131,6 +132,13 @@ public static class LearningWorkflow
         if (localSegments is ["api", "learning", "items", var itemId, "file"] &&
             int.TryParse(itemId, out var parsedItemId) &&
             parsedItemId > 0)
+        {
+            return true;
+        }
+        if (normalized.StartsWith("clubs/", StringComparison.Ordinal) &&
+            normalized.Contains("/learning/", StringComparison.Ordinal) &&
+            !normalized.Contains('\\') &&
+            !normalized.Split('/').Any(segment => segment is "" or "." or ".."))
         {
             return true;
         }

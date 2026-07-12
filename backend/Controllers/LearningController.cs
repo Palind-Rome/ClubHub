@@ -31,7 +31,6 @@ public class LearningController : ControllerBase
     private const int MaxCreateRetries = 3;
     private const long MaxUploadBytes = 50L * 1024 * 1024;
     private const string LocalFileUrlPrefix = "/api/learning/items/";
-    private const string OssFileUrlPrefix = "oss://";
 
     private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -42,13 +41,13 @@ public class LearningController : ControllerBase
 
     private readonly ClubHubDbContext _db;
     private readonly IWebHostEnvironment _environment;
-    private readonly LearningObjectStorage _objectStorage;
+    private readonly ILearningObjectStorage _objectStorage;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
         ClubHubDbContext db,
         IWebHostEnvironment environment,
-        LearningObjectStorage objectStorage,
+        ILearningObjectStorage objectStorage,
         ILogger<LearningController> logger)
     {
         _db = db;
@@ -468,24 +467,27 @@ public class LearningController : ControllerBase
         {
             try
             {
+                var metadata = await _objectStorage.GetMetadataAsync(
+                    item.FileUrl!,
+                    HttpContext.RequestAborted);
                 var storedObject = await _objectStorage.OpenReadAsync(
                     item.FileUrl!,
                     HttpContext.RequestAborted);
-                if (storedObject.ContentLength is > 0)
+                if (metadata.ContentLength is > 0)
                 {
-                    Response.ContentLength = storedObject.ContentLength;
+                    Response.ContentLength = metadata.ContentLength;
                 }
-                if (!string.IsNullOrWhiteSpace(storedObject.ContentDisposition) &&
-                    storedObject.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
+                if (!string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
+                    metadata.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
                 {
-                    Response.Headers.ContentDisposition = storedObject.ContentDisposition;
+                    Response.Headers.ContentDisposition = metadata.ContentDisposition;
                     return File(
                         storedObject.Content,
-                        storedObject.ContentType ?? "application/octet-stream");
+                        metadata.ContentType ?? "application/octet-stream");
                 }
                 return File(
                     storedObject.Content,
-                    storedObject.ContentType ?? "application/octet-stream",
+                    metadata.ContentType ?? "application/octet-stream",
                     item.Title);
             }
             catch (Exception exception) when (IsObjectStorageFailure(exception))
@@ -558,6 +560,24 @@ public class LearningController : ControllerBase
         _db.LearningRecords.RemoveRange(records);
         _db.LearningItems.Remove(item);
         await _db.SaveChangesAsync();
+
+        if (storageReference is not null)
+        {
+            try
+            {
+                await _objectStorage.RemoveAsync(storageReference, HttpContext.RequestAborted);
+            }
+            catch (Exception exception) when (IsObjectStorageFailure(exception))
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(exception, "资源 {ItemId} 无法从对象存储删除。", itemId);
+                return Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "资源存储暂不可用",
+                    detail: "无法从对象存储删除资源，数据库记录已保留，请稍后重试。");
+            }
+        }
+
         await transaction.CommitAsync();
 
         if (isLocalUpload)
@@ -586,11 +606,6 @@ public class LearningController : ControllerBase
                 }
             }
         }
-        else if (storageReference is not null)
-        {
-            await TryRemoveObjectAsync(storageReference, itemId);
-        }
-
         return NoContent();
     }
 
@@ -1956,11 +1971,11 @@ public class LearningController : ControllerBase
         extension is ".exe" or ".dll" or ".com" or ".bat" or ".cmd" or ".ps1" or
             ".sh" or ".msi" or ".scr" or ".js" or ".vbs";
 
-    private static bool IsInternalFileReference(string? fileUrl)
+    private bool IsInternalFileReference(string? fileUrl)
     {
         var normalized = fileUrl?.Trim();
         return normalized?.StartsWith(LocalFileUrlPrefix, StringComparison.Ordinal) == true ||
-               normalized?.StartsWith(OssFileUrlPrefix, StringComparison.OrdinalIgnoreCase) == true;
+               _objectStorage.IsStorageReference(normalized);
     }
 
     private static bool IsObjectStorageFailure(Exception exception) =>

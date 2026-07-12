@@ -4,14 +4,14 @@ using OSS = AlibabaCloud.OSS.V2;
 
 namespace ClubHub.Api.Services;
 
-public sealed class LearningObjectStorage : IDisposable
+public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposable
 {
-    private const string ReferenceScheme = "oss";
+    private const string LegacyReferenceScheme = "oss";
     private readonly OssStorageOptions _options;
     private readonly OSS.Client? _client;
     private readonly Exception? _configurationError;
 
-    public LearningObjectStorage(IOptions<OssStorageOptions> options)
+    public OssLearningObjectStorage(IOptions<OssStorageOptions> options)
     {
         _options = options.Value;
         if (!IsConfigured()) return;
@@ -77,7 +77,7 @@ public sealed class LearningObjectStorage : IDisposable
                         $"attachment; filename*=UTF-8''{Uri.EscapeDataString(originalFileName)}"
                 },
                 cancellationToken: cancellationToken);
-            return BuildReference(_options.Bucket, objectName);
+            return objectName;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -89,18 +89,54 @@ public sealed class LearningObjectStorage : IDisposable
         }
     }
 
+    public async Task<StoredObjectMetadata> GetMetadataAsync(
+        string storageReference,
+        CancellationToken cancellationToken)
+    {
+        var client = GetClient();
+        var objectName = ParseOwnedReference(storageReference);
+        try
+        {
+            var result = await client.HeadObjectAsync(
+                new OSS.Models.HeadObjectRequest
+                {
+                    Bucket = _options.Bucket,
+                    Key = objectName
+                },
+                cancellationToken: cancellationToken);
+            return new StoredObjectMetadata(
+                result.ContentLength,
+                result.ContentType,
+                result.ContentDisposition,
+                result.ETag,
+                DateTimeOffset.TryParse(result.LastModified, out var lastModified)
+                    ? lastModified
+                    : null);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException(
+                "Failed to read learning resource metadata from object storage.",
+                exception);
+        }
+    }
+
     public async Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
         CancellationToken cancellationToken)
     {
         var client = GetClient();
-        var (bucket, objectName) = ParseOwnedReference(storageReference);
+        var objectName = ParseOwnedReference(storageReference);
         try
         {
             var result = await client.GetObjectAsync(
                 new OSS.Models.GetObjectRequest
                 {
-                    Bucket = bucket,
+                    Bucket = _options.Bucket,
                     Key = objectName
                 },
                 HttpCompletionOption.ResponseHeadersRead,
@@ -110,11 +146,7 @@ public sealed class LearningObjectStorage : IDisposable
                 throw new LearningObjectStorageException("OSS returned an empty response stream.");
             }
 
-            return new StoredObjectDownload(
-                result.Body,
-                result.ContentType,
-                result.ContentDisposition,
-                result.ContentLength);
+            return new StoredObjectDownload(result.Body);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -133,13 +165,13 @@ public sealed class LearningObjectStorage : IDisposable
     public async Task RemoveAsync(string storageReference, CancellationToken cancellationToken)
     {
         var client = GetClient();
-        var (bucket, objectName) = ParseOwnedReference(storageReference);
+        var objectName = ParseOwnedReference(storageReference);
         try
         {
             await client.DeleteObjectAsync(
                 new OSS.Models.DeleteObjectRequest
                 {
-                    Bucket = bucket,
+                    Bucket = _options.Bucket,
                     Key = objectName
                 },
                 cancellationToken: cancellationToken);
@@ -166,41 +198,54 @@ public sealed class LearningObjectStorage : IDisposable
         !string.IsNullOrWhiteSpace(_options.Bucket) &&
         !string.IsNullOrWhiteSpace(_options.RoleName);
 
-    private (string Bucket, string ObjectName) ParseOwnedReference(string storageReference)
+    private string ParseOwnedReference(string storageReference)
     {
         if (!TryParseReference(storageReference, out var bucket, out var objectName) ||
-            !string.Equals(bucket, _options.Bucket, StringComparison.Ordinal))
+            (bucket is not null && !string.Equals(bucket, _options.Bucket, StringComparison.Ordinal)))
         {
             throw new LearningObjectStorageException("The learning resource OSS reference is invalid.");
         }
 
-        return (bucket, objectName);
+        return objectName;
     }
 
     private static bool TryParseReference(
         string? value,
-        out string bucket,
+        out string? bucket,
         out string objectName)
     {
-        bucket = string.Empty;
+        bucket = null;
         objectName = string.Empty;
-        if (!Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) ||
-            !string.Equals(uri.Scheme, ReferenceScheme, StringComparison.OrdinalIgnoreCase) ||
-            string.IsNullOrWhiteSpace(uri.Host))
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
         {
             return false;
         }
 
-        var path = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/');
-        if (string.IsNullOrWhiteSpace(path) || path.Contains("..", StringComparison.Ordinal))
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
         {
-            return false;
+            if (!string.Equals(uri.Scheme, LegacyReferenceScheme, StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(uri.Host))
+            {
+                return false;
+            }
+
+            bucket = uri.Host;
+            normalized = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/');
         }
 
-        bucket = uri.Host;
-        objectName = path;
+        if (!IsValidObjectKey(normalized)) return false;
+        objectName = normalized;
         return true;
     }
+
+    private static bool IsValidObjectKey(string value) =>
+        value.Length <= 1024 &&
+        value.StartsWith("clubs/", StringComparison.Ordinal) &&
+        value.Contains("/learning/", StringComparison.Ordinal) &&
+        !value.StartsWith("/", StringComparison.Ordinal) &&
+        !value.Contains('\\') &&
+        !value.Split('/').Any(segment => segment is "" or "." or "..");
 
     private static string NormalizeEndpoint(string endpoint)
     {
@@ -211,20 +256,4 @@ public sealed class LearningObjectStorage : IDisposable
             : $"https://{normalized}";
     }
 
-    private static string BuildReference(string bucket, string objectName) =>
-        $"{ReferenceScheme}://{bucket}/{objectName}";
-}
-
-public sealed record StoredObjectDownload(
-    Stream Content,
-    string? ContentType,
-    string? ContentDisposition,
-    long? ContentLength);
-
-public sealed class LearningObjectStorageException : Exception
-{
-    public LearningObjectStorageException(string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-    }
 }
