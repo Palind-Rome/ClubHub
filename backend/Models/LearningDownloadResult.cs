@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 下载权限校验通过后返回的可访问资源地址与记录时间；MinIO 地址为短时有效的预签名 URL。
+    /// 下载权限校验通过后返回的可访问资源地址与记录时间；OSS 资源返回受鉴权的后端流式下载地址。
     /// </summary>
     [DataContract]
     public partial class LearningDownloadResult 
