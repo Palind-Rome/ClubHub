@@ -1610,6 +1610,8 @@ paths:
     post:
       summary: 社团负责人或指导老师提交项目立项申请
       operationId: createProject
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1625,6 +1627,28 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 请求参数或业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权为该社团提交项目立项申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团或当前用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}:
     get:
@@ -1650,6 +1674,8 @@ paths:
     put:
       summary: 分配或调整项目负责人
       operationId: assignProjectLeader
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1671,16 +1697,42 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 负责人不是有效用户或社团成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是本社团负责人或干部，无权分配项目负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目已关闭，不能再调整负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/review:
     post:
       summary: 指导老师审核项目立项申请
       description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
       operationId: reviewProject
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1702,16 +1754,36 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 审核状态或指导老师无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是本社团指导老师，无权审核项目立项申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/cancel:
     post:
       summary: 撤销待审核或进行中的项目
       description: 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
       operationId: cancelProject
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1733,15 +1805,33 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 项目不是待审核/进行中状态或当前用户无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户无权撤销该项目申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/members:
     get:
       summary: 获取项目成员列表
-      description: 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+      description: 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
       operationId: getProjectMembers
       security:
         - bearerAuth: []
@@ -1775,7 +1865,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
-          description: 当前用户不是项目 active 成员或无权查看历史成员
+          description: 当前用户未参与该项目或无权查看历史成员
           content:
             application/json:
               schema:
@@ -1788,7 +1878,7 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 添加项目成员
-      description: 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+      description: 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
       operationId: addProjectMember
       security:
         - bearerAuth: []
@@ -1813,7 +1903,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectMember"
         "400":
-          description: 请求参数无效，或候选用户不是所属社团 active 成员
+          description: 请求参数无效，或候选用户不是所属社团当前有效成员
           content:
             application/json:
               schema:
@@ -1846,7 +1936,7 @@ paths:
   /api/projects/{projectId}/member-candidates:
     get:
       summary: 获取项目成员候选人
-      description: 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+      description: 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
       operationId: getProjectMemberCandidates
       security:
         - bearerAuth: []
@@ -1934,6 +2024,168 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "409":
           description: 项目已关闭、当前项目负责人不能被移除，或成员仍有未完成任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks:
+    get:
+      summary: 获取项目任务列表
+      description: 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。
+      operationId: getProjectTasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 当前用户有权查看的项目任务列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectTask"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是正在参与该项目的成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 创建项目任务
+      description: 仅进行中项目的负责人可以创建任务，且执行人必须是正在参与该项目的成员。
+      operationId: createProjectTask
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectTaskRequest"
+      responses:
+        "201":
+          description: 项目任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+        "400":
+          description: 请求参数或任务日期无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人，或执行人不是正在参与该项目的成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或执行人不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目不是进行中状态，或任务创建发生并发冲突
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/progress:
+    patch:
+      summary: 更新项目任务进度
+      description: 仅仍在参与项目的任务执行人可以更新自己的任务；已完成任务不能重新打开。
+      operationId: updateProjectTaskProgress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectTaskProgressRequest"
+      responses:
+        "200":
+          description: 项目任务进度已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+        "400":
+          description: 进度、状态、完成日期或延期原因不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该任务的在项目执行人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 已完成任务不能重新打开，或成员关系发生并发变化
           content:
             application/json:
               schema:
@@ -5330,10 +5582,6 @@ components:
       type: object
       description: Request body for creating a project initiation application.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 12
         clubId:
           type: integer
           description: Club that submits the project application.
@@ -5368,7 +5616,6 @@ components:
           example: "2026-08-15T18:00:00Z"
           nullable: true
       required:
-        - currentUserId
         - clubId
         - projectName
         - startDate
@@ -5377,27 +5624,18 @@ components:
       type: object
       description: Request body for assigning or changing a project leader.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 7
         leaderUserId:
           type: integer
-          description: User id of an active club member.
+          description: User id of a current valid club member.
           minimum: 1
           example: 12
       required:
-        - currentUserId
         - leaderUserId
 
     ReviewProjectRequest:
       type: object
       description: Request body for reviewing a project initiation application.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 3
         projectStatus:
           type: string
           enum: [running, closed]
@@ -5409,26 +5647,18 @@ components:
           example: 立项材料完整，同意执行。
           nullable: true
       required:
-        - currentUserId
         - projectStatus
 
     CancelProjectRequest:
       type: object
       description: Request body for canceling a pending or running project.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 12
         cancelReason:
           type: string
           description: Optional applicant cancellation reason.
           maxLength: 200
           example: 申请材料需要补充，暂时撤销。
           nullable: true
-      required:
-        - currentUserId
-
     ProjectMember:
       type: object
       description: 项目与用户之间的成员关系及展示信息。
@@ -5468,11 +5698,11 @@ components:
         joinedAt:
           type: string
           format: date-time
-          description: 本次加入或恢复为 active 的时间。
+          description: 本次加入或恢复为正在参与状态的时间。
         leftAt:
           type: string
           format: date-time
-          description: 退出或移除时间；active 成员为空。
+          description: 退出或移除时间；正在参与的成员为空。
           nullable: true
         remark:
           type: string
@@ -5499,7 +5729,7 @@ components:
 
     ProjectMemberCandidate:
       type: object
-      description: 可加入项目的所属社团 active 成员。
+      description: 可加入项目的所属社团当前有效成员。
       properties:
         userId:
           type: integer
@@ -5530,7 +5760,7 @@ components:
         userId:
           type: integer
           minimum: 1
-          description: 所属社团 active 成员的用户 ID。
+          description: 所属社团当前有效成员的用户 ID。
           example: 12
         memberRole:
           type: string
@@ -5546,6 +5776,145 @@ components:
       required:
         - userId
         - memberRole
+
+    ProjectTask:
+      type: object
+      description: 项目任务及执行进度。
+      properties:
+        id:
+          type: integer
+          description: 项目任务 ID。
+          example: 5001
+        projectId:
+          type: integer
+          description: 所属项目 ID。
+          example: 1001
+        assigneeUserId:
+          type: integer
+          description: 任务执行人用户 ID。
+          example: 12
+        assigneeName:
+          type: string
+          description: 任务执行人姓名或账号展示名。
+          example: 王同学
+        title:
+          type: string
+          description: 任务标题。
+          example: 完成活动物资清单
+        content:
+          type: string
+          description: 任务详细内容。
+          nullable: true
+          example: 汇总采购物品、数量和预算。
+        priority:
+          type: string
+          description: 任务优先级。
+          enum: [low, medium, high, urgent]
+          example: high
+        startDate:
+          type: string
+          format: date-time
+          description: 任务创建或开始时间。
+        dueDate:
+          type: string
+          format: date-time
+          description: 任务截止时间。
+        finishDate:
+          type: string
+          format: date-time
+          description: 任务完成时间；未完成时为空。
+          nullable: true
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 完成进度百分比。
+          example: 60
+        taskStatus:
+          type: string
+          description: 任务状态。
+          enum: [pending, in_progress, completed, delayed]
+          example: in_progress
+        delayReason:
+          type: string
+          description: 延期原因；延期或逾期未完成时必填。
+          nullable: true
+          example: 供应商报价尚未到齐。
+      required:
+        - id
+        - projectId
+        - assigneeUserId
+        - assigneeName
+        - title
+        - priority
+        - startDate
+        - dueDate
+        - progress
+        - taskStatus
+
+    CreateProjectTaskRequest:
+      type: object
+      description: 项目负责人创建任务的请求。
+      properties:
+        assigneeUserId:
+          type: integer
+          minimum: 1
+          description: 正在参与该项目的执行人用户 ID。
+          example: 12
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: 任务标题。
+          example: 完成活动物资清单
+        content:
+          type: string
+          maxLength: 4000
+          description: 可选任务说明。
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          description: 任务优先级。
+          example: high
+        dueDate:
+          type: string
+          format: date-time
+          description: 截止时间，必须晚于任务创建时间。
+      required:
+        - assigneeUserId
+        - title
+        - priority
+        - dueDate
+
+    UpdateProjectTaskProgressRequest:
+      type: object
+      description: 任务执行人更新进度的请求。
+      properties:
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 完成进度百分比。
+          example: 100
+        taskStatus:
+          type: string
+          enum: [pending, in_progress, completed, delayed]
+          description: 更新后的任务状态。
+          example: completed
+        finishDate:
+          type: string
+          format: date-time
+          description: 完成时间；completed 时必填，其他状态会被清空。
+          nullable: true
+        delayReason:
+          type: string
+          maxLength: 255
+          description: 延期原因；delayed 或逾期未完成时必填，completed 时会被清空。
+          nullable: true
+      required:
+        - progress
+        - taskStatus
 
     LearningTeacherCandidate:
       type: object
