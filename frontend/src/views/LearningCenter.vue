@@ -52,6 +52,7 @@ const courseTypes = new Set(["course", "lecture", "training"]);
 
 const permissionCodes = {
   ownRecordsView: "own:records:view",
+  courseEnroll: "course:enroll",
   clubResourceView: "club:resource:view",
   clubOperationView: "club:operation:view",
   resourceUpload: "resource:upload",
@@ -201,6 +202,7 @@ const clubNameMap = computed(() => new Map(clubs.value.map((club) => [club.id, c
 const itemMap = computed(() => new Map(learningItems.value.map((item) => [item.id, item])));
 const manageableClubs = computed(() => clubs.value.filter((club) => canCreateForClub(club.id)));
 const canViewOwnRecords = computed(() => hasPermission(permissionCodes.ownRecordsView));
+const canEnrollCourses = computed(() => hasPermission(permissionCodes.courseEnroll));
 const isCourseForm = computed(() => courseTypes.has(courseForm.itemType));
 const courseCategoryOptions = computed(() =>
   [
@@ -1318,7 +1320,7 @@ onUnmounted(() => {
       <el-table-column label="操作" width="560" fixed="right">
         <template #default="{ row }">
           <el-button
-            v-if="isCourseItem(row)"
+            v-if="isCourseItem(row) && canEnrollCourses"
             size="small"
             type="primary"
             :disabled="!row.canEnroll"

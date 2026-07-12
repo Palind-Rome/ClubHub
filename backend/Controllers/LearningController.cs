@@ -34,6 +34,7 @@ public class LearningController : ControllerBase
     private const string LocalFileUrlPrefix = "/api/learning/items/";
     private const string PublicViewPermission = "public:view";
     private const string OwnRecordsViewPermission = "own:records:view";
+    private const string CourseEnrollPermission = "course:enroll";
     private const string ClubResourceViewPermission = "club:resource:view";
     private const string ClubOperationViewPermission = "club:operation:view";
     private const string ResourceUploadPermission = "resource:upload";
@@ -832,7 +833,7 @@ public class LearningController : ControllerBase
             if (user is null) return NotFound("当前用户不存在。");
             if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
             var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
-            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+            if (!HasPermission(permissionRoles, CourseEnrollPermission, item.ClubId))
             {
                 return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有参加课程的权限。");
             }
@@ -1422,7 +1423,7 @@ public class LearningController : ControllerBase
         bool canManage,
         DateTime now)
     {
-        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+        if (!HasPermission(permissionRoles, CourseEnrollPermission, item.ClubId))
         {
             return new EnrollmentDecision(
                 StatusCodes.Status403Forbidden,
