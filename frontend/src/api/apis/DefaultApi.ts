@@ -30,6 +30,11 @@ import {
   ActivitySignRequestFromJSON,
   ActivitySignRequestToJSON,
 } from "../models/ActivitySignRequest";
+import {
+  type AddProjectMemberRequest,
+  AddProjectMemberRequestFromJSON,
+  AddProjectMemberRequestToJSON,
+} from "../models/AddProjectMemberRequest";
 import { type ApiError, ApiErrorFromJSON, ApiErrorToJSON } from "../models/ApiError";
 import {
   type ApplyActivityBudgetRequest,
@@ -199,6 +204,16 @@ import {
   PermissionDefinitionToJSON,
 } from "../models/PermissionDefinition";
 import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
+import {
+  type ProjectMember,
+  ProjectMemberFromJSON,
+  ProjectMemberToJSON,
+} from "../models/ProjectMember";
+import {
+  type ProjectMemberCandidate,
+  ProjectMemberCandidateFromJSON,
+  ProjectMemberCandidateToJSON,
+} from "../models/ProjectMemberCandidate";
 import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
 import {
   type RecruitmentApplication,
@@ -322,6 +337,11 @@ import {
   VenueReservationFromJSON,
   VenueReservationToJSON,
 } from "../models/VenueReservation";
+
+export interface AddProjectMemberOperationRequest {
+  projectId: number;
+  addProjectMemberRequest: AddProjectMemberRequest;
+}
 
 export interface ApplyActivityBudgetOperationRequest {
   activityId: number;
@@ -505,6 +525,15 @@ export interface GetProjectByIdRequest {
   projectId: number;
 }
 
+export interface GetProjectMemberCandidatesRequest {
+  projectId: number;
+}
+
+export interface GetProjectMembersRequest {
+  projectId: number;
+  includeInactive?: boolean;
+}
+
 export interface GetProjectsRequest {
   clubId?: number;
   page?: number;
@@ -571,6 +600,11 @@ export interface RemoveClubMemberRequest {
   clubId: number;
   memberId: number;
   exitClubMemberRequest: ExitClubMemberRequest;
+}
+
+export interface RemoveProjectMemberRequest {
+  projectId: number;
+  projectMemberId: number;
 }
 
 export interface ReviewActivityOperationRequest {
@@ -670,6 +704,82 @@ export interface UpdateVenueStatusOperationRequest {
  *
  */
 export class DefaultApi extends runtime.BaseAPI {
+  /**
+   * Creates request options for addProjectMember without sending the request
+   */
+  async addProjectMemberRequestOpts(
+    requestParameters: AddProjectMemberOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling addProjectMember().',
+      );
+    }
+
+    if (requestParameters["addProjectMemberRequest"] == null) {
+      throw new runtime.RequiredError(
+        "addProjectMemberRequest",
+        'Required parameter "addProjectMemberRequest" was null or undefined when calling addProjectMember().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/members`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: AddProjectMemberRequestToJSON(requestParameters["addProjectMemberRequest"]),
+    };
+  }
+
+  /**
+   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 添加项目成员
+   */
+  async addProjectMemberRaw(
+    requestParameters: AddProjectMemberOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectMember>> {
+    const requestOptions = await this.addProjectMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectMemberFromJSON(jsonValue));
+  }
+
+  /**
+   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 添加项目成员
+   */
+  async addProjectMember(
+    requestParameters: AddProjectMemberOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectMember> {
+    const response = await this.addProjectMemberRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
   /**
    * Creates request options for applyActivityBudget without sending the request
    */
@@ -3136,6 +3246,146 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getProjectMemberCandidates without sending the request
+   */
+  async getProjectMemberCandidatesRequestOpts(
+    requestParameters: GetProjectMemberCandidatesRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectMemberCandidates().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/member-candidates`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 获取项目成员候选人
+   */
+  async getProjectMemberCandidatesRaw(
+    requestParameters: GetProjectMemberCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ProjectMemberCandidate>>> {
+    const requestOptions = await this.getProjectMemberCandidatesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ProjectMemberCandidateFromJSON),
+    );
+  }
+
+  /**
+   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 获取项目成员候选人
+   */
+  async getProjectMemberCandidates(
+    requestParameters: GetProjectMemberCandidatesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ProjectMemberCandidate>> {
+    const response = await this.getProjectMemberCandidatesRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getProjectMembers without sending the request
+   */
+  async getProjectMembersRequestOpts(
+    requestParameters: GetProjectMembersRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectMembers().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["includeInactive"] != null) {
+      queryParameters["includeInactive"] = requestParameters["includeInactive"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/members`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 获取项目成员列表
+   */
+  async getProjectMembersRaw(
+    requestParameters: GetProjectMembersRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ProjectMember>>> {
+    const requestOptions = await this.getProjectMembersRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ProjectMemberFromJSON),
+    );
+  }
+
+  /**
+   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 获取项目成员列表
+   */
+  async getProjectMembers(
+    requestParameters: GetProjectMembersRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ProjectMember>> {
+    const response = await this.getProjectMembersRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getProjects without sending the request
    */
   async getProjectsRequestOpts(
@@ -3379,6 +3629,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/users`;
 
@@ -4123,6 +4382,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.removeClubMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for removeProjectMember without sending the request
+   */
+  async removeProjectMemberRequestOpts(
+    requestParameters: RemoveProjectMemberRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling removeProjectMember().',
+      );
+    }
+
+    if (requestParameters["projectMemberId"] == null) {
+      throw new runtime.RequiredError(
+        "projectMemberId",
+        'Required parameter "projectMemberId" was null or undefined when calling removeProjectMember().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/members/{projectMemberId}`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace(
+      "{projectMemberId}",
+      encodeURIComponent(String(requestParameters["projectMemberId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 项目负责人或本社团负责人、干部可以软移除项目成员；当前项目负责人不能被移除。
+   * 移除项目成员
+   */
+  async removeProjectMemberRaw(
+    requestParameters: RemoveProjectMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.removeProjectMemberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 项目负责人或本社团负责人、干部可以软移除项目成员；当前项目负责人不能被移除。
+   * 移除项目成员
+   */
+  async removeProjectMember(
+    requestParameters: RemoveProjectMemberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.removeProjectMemberRaw(requestParameters, initOverrides);
   }
 
   /**

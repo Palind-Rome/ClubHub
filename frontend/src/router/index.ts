@@ -7,6 +7,7 @@ import AwardList from "../views/AwardList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
+import ProjectWorkspace from "../views/ProjectWorkspace.vue";
 import VenueManage from "../views/VenueManage.vue";
 import VenueReservationApply from "../views/VenueReservationApply.vue";
 import LearningCenter from "../views/LearningCenter.vue";
@@ -27,6 +28,7 @@ const router = createRouter({
     { path: "/activities", component: ActivityList },
     { path: "/notices", component: NoticeCenter },
     { path: "/projects", component: ProjectList },
+    { path: "/projects/:projectId/workspace", component: ProjectWorkspace },
     { path: "/venues", component: VenueManage },
     { path: "/venue-reservations", component: VenueReservationApply },
     { path: "/learning", component: LearningCenter },
