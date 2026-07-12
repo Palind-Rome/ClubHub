@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import {
   ElMessage,
   ElMessageBox,
@@ -95,6 +95,8 @@ const statistics = ref<LearningItemStatistics | null>(null);
 const statisticsLoading = ref(false);
 const learningSection = ref<"course" | "resource">("course");
 const courseScope = ref<"mine" | "club" | "all">("mine");
+const courseScopeRefreshVersion = ref(0);
+const resourceScopeRefreshVersion = ref(0);
 const courseStatusFilter = ref("all");
 const courseCategoryFilter = ref("all");
 const courseKeyword = ref("");
@@ -289,6 +291,16 @@ const visibleLearningRecords = computed(() => {
     return item ? isCourseItem(item) === courseSection : false;
   });
 });
+
+/**
+ * 表格 key 包含当前课程范围。切换“我的课程 / 社内课程 / 全部课程”时，
+ * 让 Element Plus 表格立即重建，避免沿用上一个范围的行缓存和布局状态。
+ */
+const learningTableKey = computed(() =>
+  learningSection.value === "course"
+    ? `course-${courseScope.value}-${courseScopeRefreshVersion.value}`
+    : `resource-${resourceScope.value}-${resourceScopeRefreshVersion.value}`,
+);
 
 /** 将课程状态转换为用户可读文本。 */
 function statusLabel(status?: string | null, item?: LearningItem) {
@@ -676,6 +688,20 @@ async function loadLearningItems() {
     loading.value = false;
   }
 }
+
+/** 课程范围变化时重新拉取数据，并刷新表格实例。 */
+watch(courseScope, async () => {
+  await loadLearningItems();
+  await nextTick();
+  courseScopeRefreshVersion.value += 1;
+});
+
+/** 资源范围变化时重新拉取数据，并刷新表格实例。 */
+watch(resourceScope, async () => {
+  await loadLearningItems();
+  await nextTick();
+  resourceScopeRefreshVersion.value += 1;
+});
 
 /** 清除已查询到的授课人，仅在输入新学工号后重新确定授课人。 */
 function resetInstructorLookup(clearSelectedInstructor = true) {
@@ -1146,7 +1172,7 @@ onUnmounted(() => {
         :options="[
           { label: '我的课程', value: 'mine' },
           { label: '社内课程', value: 'club' },
-          { label: '所有课程', value: 'all' },
+          { label: '全部课程', value: 'all' },
         ]"
       />
       <el-select v-model="courseStatusFilter" class="status-filter">
@@ -1222,6 +1248,7 @@ onUnmounted(() => {
     </div>
 
     <el-table
+      :key="learningTableKey"
       v-loading="loading"
       :data="filteredItems"
       :empty-text="learningSection === 'course' ? '暂无符合条件的课程' : '暂无符合条件的资源'"
