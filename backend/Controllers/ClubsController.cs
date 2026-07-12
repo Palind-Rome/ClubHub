@@ -881,6 +881,45 @@ public class ClubsController : ControllerBase
         return Ok(visible);
     }
 
+    [HttpGet("{clubId:int}/evaluations/score-preview")]
+    public async Task<IActionResult> PreviewEvaluationScores(
+        int clubId,
+        [FromQuery] int userId,
+        [FromQuery] string termName)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        if (userId <= 0)
+        {
+            return BadRequest(new { message = "请选择被考核成员。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(termName))
+        {
+            return BadRequest(new { message = "考核学期不能为空。" });
+        }
+
+        var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, userId);
+        if (access.Result is not null) return access.Result;
+
+        var scores = await CalculateSemesterEvaluationScoresAsync(clubId, userId, termName.Trim());
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
+
+        return Ok(new ClubEvaluationScorePreviewDto(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore,
+            totalScore,
+            EvaluationGrade(totalScore)));
+    }
+
     [HttpPost("{clubId:int}/evaluations")]
     public async Task<IActionResult> CreateEvaluation(
         int clubId,
@@ -2890,6 +2929,14 @@ public record ClubEvaluationRecordDto(
     string PublicStatusText,
     string? CommentText,
     DateTime? CreatedAt);
+
+public record ClubEvaluationScorePreviewDto(
+    decimal ActivityScore,
+    decimal TaskScore,
+    decimal LearningScore,
+    decimal AwardScore,
+    decimal TotalScore,
+    string Grade);
 
 public class CreateClubEvaluationRequest
 {

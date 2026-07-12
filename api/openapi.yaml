@@ -914,6 +914,47 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/clubs/{clubId}/evaluations/score-preview:
+    get:
+      summary: 预览成员考核系统生成分
+      description: 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；保存学期考核时后端会按同一规则重新生成。
+      operationId: previewClubEvaluationScores
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: 被考核成员用户 ID。
+        - name: termName
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: 考核学期；后端会用该学期匹配活动、任务、学习和评优记录。
+      responses:
+        "200":
+          description: 系统生成的成员考核分预览
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationScorePreview"
+        "400":
+          description: 请求参数不符合业务规则
+        "403":
+          description: 当前用户没有预览该成员考核分的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
       summary: 更新社团成员评价考核或评优评奖结果
@@ -4355,6 +4396,47 @@ components:
         - grade
         - publicStatus
         - publicStatusText
+
+    ClubEvaluationScorePreview:
+      type: object
+      description: 成员学期考核系统生成分预览；保存考核记录时后端会按同一规则重新生成。
+      properties:
+        activityScore:
+          type: number
+          format: decimal
+          description: 根据活动签到、签退和参与记录生成的活动分。
+          example: 80
+        taskScore:
+          type: number
+          format: decimal
+          description: 根据项目任务进度、完成状态和成果审核生成的任务分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          description: 根据课程学习记录和进度生成的学习分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          description: 根据同社团、同成员、同学期评优评奖记录汇总生成的奖项分。
+          example: 60
+        totalScore:
+          type: number
+          format: decimal
+          description: 四项系统生成分合计。
+          example: 323
+        grade:
+          type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
+      required:
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
 
     CreateClubEvaluationRequest:
       type: object
