@@ -45,4 +45,6 @@ public class Project
     public Club? Club { get; set; }
 
     public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
+
+    public ICollection<ProjectTask> Tasks { get; set; } = new List<ProjectTask>();
 }
