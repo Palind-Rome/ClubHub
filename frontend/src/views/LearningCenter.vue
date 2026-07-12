@@ -1189,10 +1189,7 @@ onUnmounted(() => {
           :value="category"
         />
       </el-select>
-      <el-segmented
-        v-model="courseScope"
-        :options="courseScopeOptions"
-      />
+      <el-segmented v-model="courseScope" :options="courseScopeOptions" />
       <el-select v-model="courseStatusFilter" class="status-filter">
         <el-option label="全部状态" value="all" />
         <el-option label="待审核" value="pending_review" />
@@ -1336,11 +1333,7 @@ onUnmounted(() => {
       <el-table-column label="操作" width="560" fixed="right">
         <template #default="{ row }">
           <el-button
-            v-if="
-              isCourseItem(row) &&
-              canEnrollCourses &&
-              row.instructorUserId !== currentUserId
-            "
+            v-if="isCourseItem(row) && canEnrollCourses && row.instructorUserId !== currentUserId"
             size="small"
             type="primary"
             :disabled="!row.canEnroll"
