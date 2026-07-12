@@ -1854,25 +1854,32 @@ public class ClubsController : ControllerBase
             club.UpdatedAt);
     }
 
-    private static ClubApplicationDto ToApplicationDto(Club club) => new(
-        club.ClubId,
-        club.ClubName,
-        club.Category,
-        club.Description,
-        club.ApplicantUserId,
-        DisplayUser(club.Applicant),
-        club.ApplyReason ?? string.Empty,
-        club.MaterialUrl ?? string.Empty,
-        club.AuditStatus ?? AuditPending,
-        AuditStatusText(club.AuditStatus),
-        club.ReviewerUserId,
-        DisplayUser(club.Reviewer),
-        club.ReviewComment,
-        club.ClubStatus,
-        ClubStatusText(club.ClubStatus),
-        club.FoundedAt,
-        club.CreatedAt,
-        club.UpdatedAt);
+    private static ClubApplicationDto ToApplicationDto(Club club)
+    {
+        var advisor = CurrentAdvisorAssignment(club);
+
+        return new ClubApplicationDto(
+            club.ClubId,
+            club.ClubName,
+            club.Category,
+            club.Description,
+            club.ApplicantUserId,
+            DisplayUser(club.Applicant),
+            advisor?.UserId,
+            advisor is null ? club.AdvisorName : DisplayUser(advisor.User),
+            club.ApplyReason ?? string.Empty,
+            club.MaterialUrl ?? string.Empty,
+            club.AuditStatus ?? AuditPending,
+            AuditStatusText(club.AuditStatus),
+            club.ReviewerUserId,
+            DisplayUser(club.Reviewer),
+            club.ReviewComment,
+            club.ClubStatus,
+            ClubStatusText(club.ClubStatus),
+            club.FoundedAt,
+            club.CreatedAt,
+            club.UpdatedAt);
+    }
 
     private static string? ValidateApplicationRequest(CreateClubApplicationRequest req)
     {
@@ -2407,6 +2414,8 @@ public record ClubApplicationDto(
     string? Description,
     int? ApplicantUserId,
     string? ApplicantName,
+    int? AdvisorUserId,
+    string? AdvisorName,
     string ApplyReason,
     string MaterialUrl,
     string AuditStatus,

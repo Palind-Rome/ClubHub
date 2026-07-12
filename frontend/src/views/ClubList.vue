@@ -104,6 +104,8 @@ interface ClubApplication {
   description: string | null;
   applicantUserId: number | null;
   applicantName: string | null;
+  advisorUserId: number | null;
+  advisorName: string | null;
   applyReason: string;
   materialUrl: string;
   auditStatus: AuditStatus;
@@ -2577,6 +2579,9 @@ onUnmounted(() => {
                   <el-descriptions-item label="申请理由">
                     {{ row.applyReason }}
                   </el-descriptions-item>
+                  <el-descriptions-item label="拟选指导老师">
+                    {{ row.advisorName || "-" }}
+                  </el-descriptions-item>
                   <el-descriptions-item label="材料地址">
                     {{ row.materialUrl }}
                   </el-descriptions-item>
@@ -2593,6 +2598,9 @@ onUnmounted(() => {
           <el-table-column prop="name" label="社团名称" min-width="160" />
           <el-table-column prop="category" label="类别" width="120" />
           <el-table-column prop="applicantName" label="申请人" width="130" />
+          <el-table-column prop="advisorName" label="指导老师" width="130">
+            <template #default="{ row }">{{ row.advisorName || "-" }}</template>
+          </el-table-column>
           <el-table-column label="审核状态" width="120">
             <template #default="{ row }">
               <el-tag :type="auditTagType(row.auditStatus)" effect="plain">
@@ -3327,7 +3335,7 @@ onUnmounted(() => {
             :loading="applicationAdvisorLoading"
             clearable
             filterable
-            placeholder="选择拟邀请指导老师"
+            placeholder="选择拟邀请指导老师（可选）"
             no-data-text="暂无可选指导老师"
           >
             <el-option
@@ -3381,6 +3389,9 @@ onUnmounted(() => {
       <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="90px">
         <el-form-item label="社团">
           <el-input :model-value="reviewTarget?.name" disabled />
+        </el-form-item>
+        <el-form-item label="指导老师">
+          <el-input :model-value="reviewTarget?.advisorName || '-'" disabled />
         </el-form-item>
         <el-form-item label="审核结果" prop="decision">
           <el-radio-group v-model="reviewForm.decision">

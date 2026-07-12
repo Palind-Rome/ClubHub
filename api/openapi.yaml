@@ -4536,6 +4536,14 @@ components:
         applicantName:
           type: string
           nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 拟邀请的指导老师用户 ID。
+        advisorName:
+          type: string
+          nullable: true
+          description: 拟邀请的指导老师姓名。
         applyReason:
           type: string
         materialUrl:
