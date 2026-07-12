@@ -2,6 +2,9 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 SET DEFINE OFF
 
 -- 已有共享开发/测试库的增量迁移；禁止用于生产或演示库。
+-- 影响范围：仅调整 PROJECT_MEMBERS.remark 的字符语义，并新增 UQ_PM_ACTIVE_LEADER 索引。
+-- 回滚方案（人工确认后执行）：先 DROP INDEX UQ_PM_ACTIVE_LEADER，再将 remark 恢复为 VARCHAR2(255)。
+-- 注意：若备注已有多字节字符，缩回 BYTE 语义前必须先核验数据长度，避免 ALTER TABLE 失败。
 DECLARE
   table_count NUMBER;
   duplicate_leader_count NUMBER;

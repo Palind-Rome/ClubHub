@@ -219,10 +219,11 @@ public class ProjectMembersController : ControllerBase
                 await transaction.CommitAsync();
                 return NoContent();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex) && attempt < 3)
+            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex))
             {
                 await transaction.RollbackAsync();
                 _db.ChangeTracker.Clear();
+                if (attempt == 3) break;
             }
         }
         return Error(409, "project_member_write_conflict", "项目成员关系发生并发冲突，请稍后重试。");
