@@ -21,6 +21,10 @@
 2. `20260711_add_evaluation_id_sequence.sql`：为 `EVALUATIONS.evaluation_id`
    增加数据库生成主键。脚本会把 sequence 推进到现有最大主键之后，并保持至少从
    `1000000` 起步；脚本可重复执行，中断后修复原因即可安全重跑。
+3. `20260712_add_activity_id_sequences.sql`：为 `ACTIVITIES.activity_id`、
+   `ACTIVITY_PARTICIPATIONS.participation_id` 增加数据库生成主键。脚本会把
+   sequence 推进到现有最大主键之后，并保持至少从 `1000000` 起步；脚本可重复执行，
+   中断后修复原因即可安全重跑。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引及列默认值均已生效。
 
