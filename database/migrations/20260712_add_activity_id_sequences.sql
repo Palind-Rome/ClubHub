@@ -1,8 +1,12 @@
 -- Issue #90：把活动与参与记录主键迁移为 Oracle sequence 生成。
 --
--- 执行前：
+-- 执行前（强制前置条件）：
 --   1. 备份目标 schema。
 --   2. 使用 CLUBHUB schema 所有者执行。
+--   3. 进入维护窗口，停止所有仍使用 MAX(id)+1 生成主键的后端实例
+--      （覆盖活动创建、报名、签到写入路径），直至本迁移完成。
+--   4. 迁移完成后先执行 verify.sql，确认 sequence 与列默认值生效，
+--      再恢复活动和报名相关写入。
 --
 -- 影响范围：新增 SEQ_ACTIVITIES、SEQ_ACTIVITY_PARTICIPATIONS，并修改
 -- ACTIVITIES.activity_id、ACTIVITY_PARTICIPATIONS.participation_id 的默认值；
@@ -16,7 +20,7 @@
 --   DROP SEQUENCE seq_activity_participations;
 -- 随后再回退到仍由应用层生成主键的后端版本，或从执行前备份恢复。
 --
--- 脚本可重复执行。sequence 会被推进到当前最大主键之后，
+-- 脚本可重复执行，但不能替代上述停写要求。sequence 会被推进到当前最大主键之后，
 -- 且不会低于 1000000，避免显式 seed ID 与后续数据库生成 ID 冲突。
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
