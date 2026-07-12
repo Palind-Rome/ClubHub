@@ -55,6 +55,7 @@ export * from "./RegisterRequest";
 export * from "./ReviewActivityBudgetRequest";
 export * from "./ReviewActivityRequest";
 export * from "./ReviewClubApplicationRequest";
+export * from "./ReviewLearningItemRequest";
 export * from "./ReviewProjectRequest";
 export * from "./ReviewRecruitmentApplicationRequest";
 export * from "./ReviewRecruitmentRequest";

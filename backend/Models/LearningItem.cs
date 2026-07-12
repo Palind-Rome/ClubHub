@@ -198,9 +198,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// 发布状态。
+        /// 发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。
         /// </summary>
-        /// <value>发布状态。</value>
+        /// <value>发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。</value>
         
         public enum ItemStatusEnum
         {
@@ -212,28 +212,40 @@ namespace Org.OpenAPITools.Models
             DraftEnum = 1,
             
             /// <summary>
+            /// Enum PendingReviewEnum for pending_review
+            /// </summary>
+            [EnumMember(Value = "pending_review")]
+            PendingReviewEnum = 2,
+            
+            /// <summary>
             /// Enum PublishedEnum for published
             /// </summary>
             [EnumMember(Value = "published")]
-            PublishedEnum = 2,
+            PublishedEnum = 3,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 4,
             
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>
             [EnumMember(Value = "closed")]
-            ClosedEnum = 3,
+            ClosedEnum = 5,
             
             /// <summary>
             /// Enum FinishedEnum for finished
             /// </summary>
             [EnumMember(Value = "finished")]
-            FinishedEnum = 4
+            FinishedEnum = 6
         }
 
         /// <summary>
-        /// 发布状态。
+        /// 发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。
         /// </summary>
-        /// <value>发布状态。</value>
+        /// <value>发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。</value>
         /* <example>published</example> */
         [Required]
         [DataMember(Name="itemStatus", EmitDefaultValue=true)]

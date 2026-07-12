@@ -246,6 +246,11 @@ import {
   ReviewClubApplicationRequestToJSON,
 } from "../models/ReviewClubApplicationRequest";
 import {
+  type ReviewLearningItemRequest,
+  ReviewLearningItemRequestFromJSON,
+  ReviewLearningItemRequestToJSON,
+} from "../models/ReviewLearningItemRequest";
+import {
   type ReviewProjectRequest,
   ReviewProjectRequestFromJSON,
   ReviewProjectRequestToJSON,
@@ -637,6 +642,11 @@ export interface ReviewActivityBudgetOperationRequest {
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
+}
+
+export interface ReviewLearningItemOperationRequest {
+  itemId: number;
+  reviewLearningItemRequest: ReviewLearningItemRequest;
 }
 
 export interface ReviewProjectOperationRequest {
@@ -1704,7 +1714,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可创建课程、视频、文档和资料资源。
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
    * 发布课程或上传学习资源
    */
   async createLearningItemRaw(
@@ -1718,7 +1728,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可创建课程、视频、文档和资料资源。
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
    * 发布课程或上传学习资源
    */
   async createLearningItem(
@@ -2123,8 +2133,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
-   * 删除学习资源
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
    */
   async deleteLearningResourceRaw(
     requestParameters: DeleteLearningResourceRequest,
@@ -2137,8 +2147,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 资源上传者及本社团负责人、干部或指导老师可删除非课程资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
-   * 删除学习资源
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
    */
   async deleteLearningResource(
     requestParameters: DeleteLearningResourceRequest,
@@ -3167,7 +3177,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅资源发布者及本社团负责人、干部、指导老师可查看学习人数、完成情况、平均进度、学习时长和下载人数。
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
    * 获取学习资源统计
    */
   async getLearningItemStatisticsRaw(
@@ -3183,7 +3193,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅资源发布者及本社团负责人、干部、指导老师可查看学习人数、完成情况、平均进度、学习时长和下载人数。
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
    * 获取学习资源统计
    */
   async getLearningItemStatistics(
@@ -3228,7 +3238,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按登录用户身份、社团成员关系和资源可见范围过滤结果。
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系和资源可见范围过滤结果。
    * 获取可见的课程与学习资源
    */
   async getLearningItemsRaw(
@@ -3244,7 +3254,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按登录用户身份、社团成员关系和资源可见范围过滤结果。
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系和资源可见范围过滤结果。
    * 获取可见的课程与学习资源
    */
   async getLearningItems(
@@ -3289,7 +3299,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前登录用户查看本人记录；资源管理者可查看指定资源的学习记录。
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
    * 获取学习记录
    */
   async getLearningRecordsRaw(
@@ -3305,7 +3315,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前登录用户查看本人记录；资源管理者可查看指定资源的学习记录。
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
    * 获取学习记录
    */
   async getLearningRecords(
@@ -4968,6 +4978,79 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewLearningItem without sending the request
+   */
+  async reviewLearningItemRequestOpts(
+    requestParameters: ReviewLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    if (requestParameters["reviewLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewLearningItemRequest",
+        'Required parameter "reviewLearningItemRequest" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/review`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewLearningItemRequestToJSON(requestParameters["reviewLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * 拥有 resource:review 权限的社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItemRaw(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.reviewLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 拥有 resource:review 权限的社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItem(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.reviewLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewProject without sending the request
    */
   async reviewProjectRequestOpts(
@@ -5794,7 +5877,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布者及本社团负责人、干部、指导老师可维护资源元数据与权限设置。
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。
    * 更新课程或学习资源
    */
   async updateLearningItemRaw(
@@ -5808,7 +5891,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布者及本社团负责人、干部、指导老师可维护资源元数据与权限设置。
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。
    * 更新课程或学习资源
    */
   async updateLearningItem(
@@ -6192,7 +6275,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
    * 上传社团学习资源
    */
   async uploadLearningResourceRaw(
@@ -6206,7 +6289,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人、干部或指导老师可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
    * 上传社团学习资源
    */
   async uploadLearningResource(

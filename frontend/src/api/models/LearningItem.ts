@@ -105,7 +105,7 @@ export interface LearningItem {
    */
   downloadPermission: LearningItemDownloadPermissionEnum;
   /**
-   * 发布状态。
+   * 发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。
    * @type {LearningItemItemStatusEnum}
    * @memberof LearningItem
    */
@@ -199,7 +199,9 @@ export type LearningItemDownloadPermissionEnum =
  */
 export const LearningItemItemStatusEnum = {
   Draft: "draft",
+  PendingReview: "pending_review",
   Published: "published",
+  Rejected: "rejected",
   Closed: "closed",
   Finished: "finished",
 } as const;
