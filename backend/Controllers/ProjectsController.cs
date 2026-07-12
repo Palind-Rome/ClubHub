@@ -217,6 +217,11 @@ public class ProjectsController : ControllerBase
                     await transaction.RollbackAsync();
                     return NotFound("Project does not exist.");
                 }
+                if (string.Equals(project.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    await transaction.RollbackAsync();
+                    return Conflict("项目已关闭，不能再更换项目负责人。");
+                }
 
                 var previousLeaderUserId = project.LeaderUserId;
                 var now = DateTime.UtcNow;

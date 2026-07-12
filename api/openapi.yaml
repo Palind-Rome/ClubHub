@@ -1837,7 +1837,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 用户已经是项目 active 成员
+          description: 项目已关闭、用户已经是正在参与该项目的成员，或成员关系发生并发冲突
           content:
             application/json:
               schema:
@@ -1880,6 +1880,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目已关闭，不能查询成员候选人
           content:
             application/json:
               schema:
@@ -1927,7 +1933,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 当前项目负责人不能被移除
+          description: 项目已关闭、当前项目负责人不能被移除，或成员仍有未完成任务
           content:
             application/json:
               schema:

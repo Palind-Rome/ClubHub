@@ -12,6 +12,7 @@ const clubs = ref<Club[]>([]);
 const loading = ref(true);
 const loadError = ref("");
 const activeTab = ref("members");
+let workspaceRequestVersion = 0;
 
 const projectId = computed(() => {
   const raw = Array.isArray(route.params.projectId)
@@ -41,8 +42,11 @@ const statusType: Record<string, "success" | "warning" | "info" | "danger" | "pr
   [ProjectProjectStatusEnum.Delayed]: "danger",
   [ProjectProjectStatusEnum.Closed]: "info",
 };
+const numericStatusMap: Record<string, string> = { "1": "pending", "2": "running", "3": "finished", "4": "delayed", "5": "closed" };
+const normalizedStatus = computed(() => project.value ? (numericStatusMap[String(project.value.projectStatus)] ?? String(project.value.projectStatus)) : "");
 
 async function loadWorkspace() {
+  const requestVersion = ++workspaceRequestVersion;
   loading.value = true;
   loadError.value = "";
   project.value = null;
@@ -58,13 +62,15 @@ async function loadWorkspace() {
       api.getProjectById({ projectId: projectId.value }),
       api.getClubs(),
     ]);
+    if (requestVersion !== workspaceRequestVersion) return;
     project.value = projectResult;
     clubs.value = clubResult;
   } catch (error) {
+    if (requestVersion !== workspaceRequestVersion) return;
     loadError.value = await toErrorMessage(error, "项目空间加载失败");
     ElMessage.error(loadError.value);
   } finally {
-    loading.value = false;
+    if (requestVersion === workspaceRequestVersion) loading.value = false;
   }
 }
 
@@ -125,8 +131,8 @@ watch(projectId, loadWorkspace, { immediate: true });
           <div class="eyebrow">项目空间 · #{{ project.id }}</div>
           <div class="title-row">
             <h1>{{ project.projectName }}</h1>
-            <el-tag :type="statusType[project.projectStatus] || 'info'" effect="plain">
-              {{ statusLabel[project.projectStatus] || project.projectStatus }}
+            <el-tag :type="statusType[normalizedStatus] || 'info'" effect="plain">
+              {{ statusLabel[normalizedStatus] || normalizedStatus }}
             </el-tag>
           </div>
           <p>{{ project.description || "该项目暂未填写简介。" }}</p>
@@ -158,7 +164,7 @@ watch(projectId, loadWorkspace, { immediate: true });
             :project-id="project.id"
             :club-id="project.clubId"
             :leader-user-id="project.leaderUserId"
-            :project-status="project.projectStatus"
+            :project-status="normalizedStatus"
           />
         </el-tab-pane>
       </el-tabs>

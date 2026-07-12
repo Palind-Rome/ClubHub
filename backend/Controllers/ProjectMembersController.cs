@@ -171,9 +171,7 @@ public class ProjectMembersController : ControllerBase
             request.Remark);
         if (!result.Succeeded || result.Value is null)
         {
-            var code = result.ErrorMessage?.Contains("已经是", StringComparison.Ordinal) == true
-                ? "project_member_already_active"
-                : "project_member_write_conflict";
+            var code = result.ErrorCode ?? "project_member_write_conflict";
             return Error(result.StatusCode, code, result.ErrorMessage ?? "添加项目成员失败。");
         }
 

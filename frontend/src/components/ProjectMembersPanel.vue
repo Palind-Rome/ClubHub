@@ -40,6 +40,7 @@ const addDialogVisible = ref(false);
 const loadError = ref("");
 const addFormRef = ref<FormInstance>();
 let stopSessionChange: (() => void) | undefined;
+let membersRequestVersion = 0;
 
 const addForm = reactive<AddMemberForm>({
   userId: null as number | null,
@@ -100,18 +101,22 @@ const statusType: Record<string, "success" | "warning" | "info"> = {
 };
 
 async function loadMembers() {
+  const requestVersion = ++membersRequestVersion;
+  const includeInactive = showHistory.value;
   loading.value = true;
   loadError.value = "";
   try {
     members.value = await api.getProjectMembers({
       projectId: props.projectId,
-      includeInactive: showHistory.value,
+      includeInactive,
     });
+    if (requestVersion !== membersRequestVersion) return;
   } catch (error) {
+    if (requestVersion !== membersRequestVersion) return;
     members.value = [];
     loadError.value = await toErrorMessage(error, "项目成员加载失败");
   } finally {
-    loading.value = false;
+    if (requestVersion === membersRequestVersion) loading.value = false;
   }
 }
 

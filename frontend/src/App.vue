@@ -250,7 +250,7 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
 
-  .role-tags {
+  .role-list {
     display: none;
   }
 }
