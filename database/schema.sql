@@ -191,12 +191,16 @@ CREATE TABLE PROJECT_MEMBERS (
   member_status varchar2(30) DEFAULT 'active' NOT NULL,
   joined_at date DEFAULT SYSDATE NOT NULL,
   left_at date,
-  remark varchar2(255),
+  remark varchar2(255 char),
   created_at date DEFAULT SYSDATE NOT NULL,
   updated_at date DEFAULT SYSDATE NOT NULL,
   CONSTRAINT UQ_PROJECT_MEMBERS_USER UNIQUE (project_id, user_id),
   CONSTRAINT CK_PROJECT_MEMBERS_ROLE CHECK (member_role IN ('leader', 'member', 'mentor')),
   CONSTRAINT CK_PROJECT_MEMBERS_STATUS CHECK (member_status IN ('active', 'removed', 'quit'))
+);
+
+CREATE UNIQUE INDEX UQ_PM_ACTIVE_LEADER ON PROJECT_MEMBERS (
+  CASE WHEN member_role = 'leader' AND member_status = 'active' THEN project_id END
 );
 
 CREATE TABLE PROJECT_TASKS (

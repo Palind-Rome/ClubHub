@@ -61,6 +61,10 @@ FROM user_constraints
 WHERE table_name = 'PROJECT_MEMBERS'
 ORDER BY constraint_type, constraint_name;
 
+SELECT index_name, uniqueness
+FROM user_indexes
+WHERE index_name = 'UQ_PM_ACTIVE_LEADER';
+
 -- 以下查询均应返回 0 行。
 SELECT project_id, user_id, COUNT(*) AS duplicate_count
 FROM project_members
@@ -83,3 +87,9 @@ WHERE p.leader_user_id IS NOT NULL
       AND pm.member_role = 'leader'
       AND pm.member_status = 'active'
   );
+
+SELECT project_id, COUNT(*) AS active_leader_count
+FROM project_members
+WHERE member_role = 'leader' AND member_status = 'active'
+GROUP BY project_id
+HAVING COUNT(*) > 1;

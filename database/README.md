@@ -6,7 +6,7 @@
 - `verify.sql`：验证当前用户、23 张核心表、项目成员约束、重复关系和负责人回填。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
-- `migrations/`：已有数据库的增量迁移脚本；当前包含 `001_add_project_members.sql`。
+- `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
 
 ### 结构迁移
 
@@ -53,7 +53,8 @@
 1. 确认当前连接用户和目标 schema 是共享开发库或明确测试库，不是生产/演示库。
 2. 确认 `PROJECTS`、`USERS` 已存在且 `PROJECT_MEMBERS` 尚不存在；若目标表已经存在，立即停止并检查当前结构。
 3. 使用 SQL*Plus、SQLcl 或 SQL Developer 执行 `migrations/001_add_project_members.sql`。脚本会创建关系表，并将现有项目负责人回填为 active leader。
-4. 执行 `verify.sql`；23 张核心表计数应为 23，重复关系、非法角色/状态、缺失负责人关系三组查询均应返回 0 行。
+4. 再执行 `migrations/002_harden_project_members_constraints.sql`。脚本将备注列改为 255 个字符语义，并在确认无重复有效负责人后创建唯一函数索引。
+5. 执行 `verify.sql`；23 张核心表计数应为 23，重复关系、非法角色/状态、缺失负责人关系和多有效负责人查询均应返回 0 行。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
