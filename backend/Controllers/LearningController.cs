@@ -1514,6 +1514,12 @@ public class LearningController : ControllerBase
             return true;
         }
 
+        // 待审核和已驳回内容仅对提交者本人可见，普通用户只能看到已发布或已结束的内容。
+        if (itemStatus is LearningWorkflow.ItemStatusPendingReview or LearningWorkflow.ItemStatusRejected)
+        {
+            return item.UploaderUserId == viewer.UserId;
+        }
+
         return LearningWorkflow.NormalizeVisibility(item.Visibility) switch
         {
             LearningWorkflow.VisibilityPublic =>
@@ -1546,6 +1552,12 @@ public class LearningController : ControllerBase
         }
         if (!LearningWorkflow.IsPublished(item))
         {
+            // 具有审核权限且非提交者本人的用户可以查看待审核资源文件以完成审核。
+            if (HasPermission(permissionRoles, ResourceReviewPermission, item.ClubId) &&
+                item.UploaderUserId != user.UserId)
+            {
+                return null;
+            }
             return new EnrollmentDecision(
                 StatusCodes.Status400BadRequest,
                 "资源当前未发布，不能学习或下载。");
