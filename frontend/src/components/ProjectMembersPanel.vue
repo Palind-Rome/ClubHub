@@ -106,11 +106,12 @@ async function loadMembers() {
   loading.value = true;
   loadError.value = "";
   try {
-    members.value = await api.getProjectMembers({
+    const nextMembers = await api.getProjectMembers({
       projectId: props.projectId,
       includeInactive,
     });
     if (requestVersion !== membersRequestVersion) return;
+    members.value = nextMembers;
   } catch (error) {
     if (requestVersion !== membersRequestVersion) return;
     members.value = [];

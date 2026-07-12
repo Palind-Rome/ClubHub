@@ -192,29 +192,40 @@ public class ProjectMembersController : ControllerBase
             return Error(403, "project_member_manage_forbidden", "当前用户无权维护该项目成员。");
         }
 
-        var member = await _db.ProjectMembers.FirstOrDefaultAsync(candidate =>
-            candidate.ProjectMemberId == projectMemberId &&
-            candidate.ProjectId == projectId);
-        if (member is null)
+        for (var attempt = 1; attempt <= 3; attempt++)
         {
-            return Error(404, "project_member_not_found", "项目成员不存在。");
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var currentProject = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == projectId);
+                if (currentProject is null) return Error(404, "project_not_found", "项目不存在。");
+                if (ProjectMembershipService.IsClosed(currentProject)) return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
 
-        if (project.LeaderUserId == member.UserId)
-        {
-            return Error(409, "project_leader_cannot_be_removed", "当前项目负责人不能被移除，请先调整项目负责人。");
-        }
+                var member = await _db.ProjectMembers.FirstOrDefaultAsync(candidate => candidate.ProjectMemberId == projectMemberId && candidate.ProjectId == projectId);
+                if (member is null) return Error(404, "project_member_not_found", "项目成员不存在。");
+                if (currentProject.LeaderUserId == member.UserId)
+                {
+                    return Error(409, "project_leader_cannot_be_removed", "当前项目负责人不能被移除，请先调整项目负责人。");
+                }
 
-        if (member.MemberStatus != ProjectMembershipService.RemovedStatus || member.LeftAt is null)
-        {
-            var now = DateTime.UtcNow;
-            member.MemberStatus = ProjectMembershipService.RemovedStatus;
-            member.LeftAt ??= now;
-            member.UpdatedAt = now;
-            await _db.SaveChangesAsync();
+                if (member.MemberStatus != ProjectMembershipService.RemovedStatus || member.LeftAt is null)
+                {
+                    var now = DateTime.UtcNow;
+                    member.MemberStatus = ProjectMembershipService.RemovedStatus;
+                    member.LeftAt ??= now;
+                    member.UpdatedAt = now;
+                    await _db.SaveChangesAsync();
+                }
+                await transaction.CommitAsync();
+                return NoContent();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex) && attempt < 3)
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+            }
         }
-
-        return NoContent();
+        return Error(409, "project_member_write_conflict", "项目成员关系发生并发冲突，请稍后重试。");
     }
 
     private Task<DbProject?> FindProjectAsync(int projectId)

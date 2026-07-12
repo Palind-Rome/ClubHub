@@ -162,6 +162,17 @@ public class ProjectMembershipService
             await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                var currentProject = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == project.ProjectId);
+                if (currentProject is null)
+                {
+                    await transaction.RollbackAsync();
+                    return ServiceResult<ProjectMember>.Fail(404, "项目不存在。", "project_not_found");
+                }
+                if (IsClosed(currentProject))
+                {
+                    await transaction.RollbackAsync();
+                    return ServiceResult<ProjectMember>.Fail(409, "项目已关闭，不能再调整项目成员。", "project_closed");
+                }
                 var member = await _db.ProjectMembers.FirstOrDefaultAsync(candidate =>
                     candidate.ProjectId == project.ProjectId &&
                     candidate.UserId == userId);
@@ -179,7 +190,7 @@ public class ProjectMembershipService
                     member = new ProjectMember
                     {
                         ProjectMemberId = await GetNextProjectMemberIdAsync(),
-                        ProjectId = project.ProjectId,
+                        ProjectId = currentProject.ProjectId,
                         UserId = userId,
                         MemberRole = memberRole,
                         MemberStatus = ActiveStatus,
