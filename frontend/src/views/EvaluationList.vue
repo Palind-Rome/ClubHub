@@ -105,7 +105,7 @@ const evaluationRules: FormRules = {
   activityScore: [{ required: true, message: "请填写参与分", trigger: "blur" }],
   taskScore: [{ required: true, message: "请填写任务分", trigger: "blur" }],
   learningScore: [{ required: true, message: "请填写学习分", trigger: "blur" }],
-  awardScore: [{ required: true, message: "请填写附加分", trigger: "blur" }],
+  awardScore: [{ required: true, message: "请填写奖项分", trigger: "blur" }],
 };
 
 const currentUserId = computed(() => auth.value?.user.id);
@@ -500,7 +500,7 @@ onUnmounted(() => {
     <div class="page-head">
       <div>
         <h2>成员考核</h2>
-        <div class="subtitle">查看成员学期考核，维护参与、任务、学习和附加分。</div>
+        <div class="subtitle">查看成员学期考核，维护参与、任务、学习和奖项分。</div>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -589,7 +589,7 @@ onUnmounted(() => {
       <el-table-column prop="activityScore" label="参与分" width="90" />
       <el-table-column prop="taskScore" label="任务分" width="90" />
       <el-table-column prop="learningScore" label="学习分" width="90" />
-      <el-table-column prop="awardScore" label="附加分" width="90" />
+      <el-table-column prop="awardScore" label="奖项分" width="90" />
       <el-table-column prop="totalScore" label="总分" width="90" />
       <el-table-column label="等级" width="95">
         <template #default="{ row }">
@@ -722,7 +722,7 @@ onUnmounted(() => {
               :precision="1"
             />
           </el-form-item>
-          <el-form-item label="附加分" prop="awardScore">
+          <el-form-item label="奖项分" prop="awardScore">
             <el-input-number
               v-model="evaluationForm.awardScore"
               :min="0"
