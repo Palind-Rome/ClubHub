@@ -1660,7 +1660,15 @@ public class ClubsController : ControllerBase
     private async Task<Role> EnsureClubRoleAsync(string roleCode, string roleName, string permissionDesc, DateTime now)
     {
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
-        if (role is not null) return role;
+        if (role is not null)
+        {
+            if (!string.Equals(role.PermissionDesc, permissionDesc, StringComparison.Ordinal))
+            {
+                role.PermissionDesc = permissionDesc;
+            }
+
+            return role;
+        }
 
         role = new Role
         {

@@ -532,7 +532,7 @@ public class LearningController : ControllerBase
             "learning-files",
             item.ClubId.ToString());
         var storedPath = Directory.Exists(clubStoragePath)
-            ? Directory.EnumerateFiles(clubStoragePath, $"{itemId}.*").SingleOrDefault()
+            ? Directory.EnumerateFiles(clubStoragePath, $"{itemId}.*").FirstOrDefault()
             : null;
         if (storedPath is null) return NotFound("上传文件不存在。");
 

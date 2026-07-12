@@ -19,8 +19,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - Oss__Region=${OSS_REGION:-cn-shanghai}
       - Oss__Endpoint=${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
-      - Oss__Bucket=${OSS_BUCKET:-clubhub-learning-prod-2026-c7h2}
-      - Oss__RoleName=${OSS_ROLE_NAME:-ClubHubOssProdRole}
+      - Oss__Bucket=${OSS_BUCKET:-}
+      - Oss__RoleName=${OSS_ROLE_NAME:-}
 
   frontend:
     image: node:22-alpine

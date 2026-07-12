@@ -349,7 +349,11 @@ function validateFileUrl(_rule: unknown, value: string, callback: (error?: Error
     callback(new Error("视频、文档和资料必须填写文件地址"));
     return;
   }
-  if (normalized && !/^https?:\/\/\S+$/i.test(normalized)) {
+  const isInternalRef =
+    normalized.startsWith("/api/learning/items/") ||
+    normalized.startsWith("clubs/") ||
+    normalized.startsWith("oss://");
+  if (normalized && !/^https?:\/\/\S+$/i.test(normalized) && !isInternalRef) {
     callback(new Error("文件地址必须以 http:// 或 https:// 开头"));
     return;
   }

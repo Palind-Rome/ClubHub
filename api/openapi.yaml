@@ -2464,10 +2464,10 @@ paths:
           schema:
             type: integer
             minimum: 1
-          description: ??? ID ?????
+          description: 可选的社团 ID 筛选条件。
       responses:
         "200":
-          description: ??????
+          description: 当前用户可见的课程与学习资源列表。
           content:
             application/json:
               schema:
@@ -2475,9 +2475,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ???? ID??? ID ???????
+          description: 社团 ID 或资源筛选参数无效。
         "404":
-          description: ???????
+          description: 当前用户不存在。
     post:
       summary: 发布课程或上传学习资源
       description: 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
@@ -2492,15 +2492,15 @@ paths:
               $ref: "#/components/schemas/CreateLearningItemRequest"
       responses:
         "201":
-          description: ???????
+          description: 课程或学习资源创建成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ?????????????
+          description: 请求参数、资源类型或排期无效。
         "403":
-          description: ?????????????
+          description: 当前用户无权为目标社团发布内容。
 
   /api/learning/resources/upload:
     post:
@@ -2622,19 +2622,19 @@ paths:
               $ref: "#/components/schemas/UpdateLearningItemRequest"
       responses:
         "200":
-          description: ???????
+          description: 课程或学习资源更新成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ?????????????????
+          description: 请求参数、资源类型、排期或状态无效。
         "403":
-          description: ???????????
+          description: 当前用户无权维护该内容。
         "404":
-          description: ?????
+          description: 课程、学习资源或当前用户不存在。
         "409":
-          description: ?????????????
+          description: 当前状态不允许执行本次更新。
     delete:
       summary: 删除课程或学习资源
       description: 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
@@ -2712,19 +2712,19 @@ paths:
             minimum: 1
       responses:
         "201":
-          description: ????????????
+          description: 已成功加入课程并创建学习记录。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ????????????????
+          description: 目标不是可报名课程或报名参数无效。
         "403":
-          description: ???????????????????????????
+          description: 当前用户没有课程报名权限、不可见该课程或不能报名本人授课的课程。
         "409":
-          description: ????????????
+          description: 已报名、课程名额已满或课程状态不允许报名。
         "404":
-          description: ??????????
+          description: 课程或当前用户不存在。
     delete:
       summary: 退出培训课程
       description: 当前登录用户在课程结束前退出尚未完成的课程。
@@ -2740,17 +2740,17 @@ paths:
             minimum: 1
       responses:
         "200":
-          description: ?????
+          description: 已退出课程。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ??????????????????????
+          description: 目标不是可退出的课程，或课程已结束、学习已完成。
         "403":
-          description: ?????????????
+          description: 当前用户无权退出该课程。
         "404":
-          description: ??????????
+          description: 课程、报名记录或当前用户不存在。
 
   /api/learning/items/{itemId}/learning:
     post:
@@ -2856,7 +2856,7 @@ paths:
             minimum: 1
       responses:
         "200":
-          description: ??????
+          description: 符合查询条件的学习记录列表。
           content:
             application/json:
               schema:
@@ -2864,7 +2864,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ???? ID ??
+          description: 资源 ID 无效。
 
   /api/learning/records/{recordId}/progress:
     put:
@@ -2888,17 +2888,17 @@ paths:
               $ref: "#/components/schemas/UpdateLearningProgressRequest"
       responses:
         "200":
-          description: ???????
+          description: 学习进度更新成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ????????????
+          description: 进度、学习时长或记录状态无效。
         "403":
-          description: ?????????????
+          description: 当前用户无权更新该学习记录。
         "404":
-          description: ???????
+          description: 学习记录或当前用户不存在。
 components:
   securitySchemes:
     bearerAuth:
@@ -5562,7 +5562,7 @@ components:
           type: string
           nullable: true
           description: 授课人姓名。
-          example: ???
+          example: 张老师
         studentNo:
           type: string
           nullable: true
@@ -5952,13 +5952,17 @@ components:
       properties:
         itemId:
           type: integer
+          description: 学习资源 ID。
         title:
           type: string
+          description: 资源标题。
         fileUrl:
           type: string
+          description: 受鉴权的后端文件地址或历史文件地址。
         downloadedAt:
           type: string
           format: date-time
+          description: 本次下载记录时间。
       required:
         - itemId
         - title
@@ -5971,8 +5975,10 @@ components:
       properties:
         itemId:
           type: integer
+          description: 学习资源 ID。
         title:
           type: string
+          description: 资源标题。
         learnerCount:
           type: integer
           description: 非取消状态的学习人数。

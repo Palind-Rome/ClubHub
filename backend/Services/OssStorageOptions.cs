@@ -4,11 +4,11 @@ public sealed class OssStorageOptions
 {
     public const string SectionName = "Oss";
 
-    public string Region { get; init; } = "cn-shanghai";
+    public string Region { get; init; } = string.Empty;
 
-    public string Endpoint { get; init; } = "oss-cn-shanghai-internal.aliyuncs.com";
+    public string Endpoint { get; init; } = string.Empty;
 
-    public string Bucket { get; init; } = "clubhub-learning-prod-2026-c7h2";
+    public string Bucket { get; init; } = string.Empty;
 
-    public string RoleName { get; init; } = "ClubHubOssProdRole";
+    public string RoleName { get; init; } = string.Empty;
 }
