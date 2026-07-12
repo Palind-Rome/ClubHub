@@ -4,6 +4,7 @@ import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import {
   CreateProjectTaskRequestPriorityEnum,
   ProjectMemberMemberStatusEnum,
+  ProjectProjectStatusEnum,
   ProjectTaskTaskStatusEnum,
   ResponseError,
   UpdateProjectTaskProgressRequestTaskStatusEnum,
@@ -17,7 +18,7 @@ import { readAuth } from "../authSession";
 const props = defineProps<{
   projectId: number;
   leaderUserId?: number | null;
-  projectStatus?: string | null;
+  projectStatus?: ProjectProjectStatusEnum | null;
 }>();
 
 const tasks = ref<ProjectTask[]>([]);
@@ -37,7 +38,9 @@ const currentUserId = computed(() => auth.value?.user.id ?? null);
 const isLeader = computed(
   () => currentUserId.value !== null && currentUserId.value === props.leaderUserId,
 );
-const canCreate = computed(() => isLeader.value && props.projectStatus === "running");
+const canCreate = computed(
+  () => isLeader.value && props.projectStatus === ProjectProjectStatusEnum.Running,
+);
 const activeMembers = computed(() =>
   members.value.filter((member) => member.memberStatus === ProjectMemberMemberStatusEnum.Active),
 );
@@ -63,7 +66,19 @@ const updateForm = reactive<{
 const createRules: FormRules = {
   assigneeUserId: [{ required: true, message: "请选择任务执行人", trigger: "change" }],
   title: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
-  dueDate: [{ required: true, message: "请选择截止时间", trigger: "change" }],
+  dueDate: [
+    { required: true, message: "请选择截止时间", trigger: "change" },
+    {
+      validator: (_rule, value: string, callback) => {
+        if (value && new Date(value) <= new Date()) {
+          callback(new Error("截止时间必须晚于当前时间"));
+          return;
+        }
+        callback();
+      },
+      trigger: "change",
+    },
+  ],
 };
 
 const priorityLabel: Record<string, string> = {
@@ -111,7 +126,7 @@ async function loadTasks() {
 async function openCreate() {
   if (!canCreate.value) {
     ElMessage.warning(
-      props.projectStatus === "running"
+      props.projectStatus === ProjectProjectStatusEnum.Running
         ? "当前账号不是项目负责人。"
         : "只有执行中的项目可以创建任务。",
     );

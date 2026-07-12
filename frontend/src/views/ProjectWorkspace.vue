@@ -43,16 +43,16 @@ const statusType: Record<string, "success" | "warning" | "info" | "danger" | "pr
   [ProjectProjectStatusEnum.Delayed]: "danger",
   [ProjectProjectStatusEnum.Closed]: "info",
 };
-const numericStatusMap: Record<string, string> = {
-  "1": "pending",
-  "2": "running",
-  "3": "finished",
-  "4": "delayed",
-  "5": "closed",
+const numericStatusMap: Record<string, ProjectProjectStatusEnum> = {
+  "1": ProjectProjectStatusEnum.Pending,
+  "2": ProjectProjectStatusEnum.Running,
+  "3": ProjectProjectStatusEnum.Finished,
+  "4": ProjectProjectStatusEnum.Delayed,
+  "5": ProjectProjectStatusEnum.Closed,
 };
-const normalizedStatus = computed(() =>
+const normalizedStatus = computed<ProjectProjectStatusEnum | "">(() =>
   project.value
-    ? (numericStatusMap[String(project.value.projectStatus)] ?? String(project.value.projectStatus))
+    ? (numericStatusMap[String(project.value.projectStatus)] ?? project.value.projectStatus)
     : "",
 );
 
@@ -182,7 +182,7 @@ watch(projectId, loadWorkspace, { immediate: true });
           <ProjectTasksPanel
             :project-id="project.id"
             :leader-user-id="project.leaderUserId"
-            :project-status="normalizedStatus"
+            :project-status="normalizedStatus || null"
           />
         </el-tab-pane>
       </el-tabs>
