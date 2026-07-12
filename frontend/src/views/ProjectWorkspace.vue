@@ -42,8 +42,18 @@ const statusType: Record<string, "success" | "warning" | "info" | "danger" | "pr
   [ProjectProjectStatusEnum.Delayed]: "danger",
   [ProjectProjectStatusEnum.Closed]: "info",
 };
-const numericStatusMap: Record<string, string> = { "1": "pending", "2": "running", "3": "finished", "4": "delayed", "5": "closed" };
-const normalizedStatus = computed(() => project.value ? (numericStatusMap[String(project.value.projectStatus)] ?? String(project.value.projectStatus)) : "");
+const numericStatusMap: Record<string, string> = {
+  "1": "pending",
+  "2": "running",
+  "3": "finished",
+  "4": "delayed",
+  "5": "closed",
+};
+const normalizedStatus = computed(() =>
+  project.value
+    ? (numericStatusMap[String(project.value.projectStatus)] ?? String(project.value.projectStatus))
+    : "",
+);
 
 async function loadWorkspace() {
   const requestVersion = ++workspaceRequestVersion;
