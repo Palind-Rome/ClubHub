@@ -26,15 +26,17 @@ namespace Org.OpenAPITools.Models
     public partial class LearningItemStatistics 
     {
         /// <summary>
-        /// Gets or Sets ItemId
+        /// 学习资源 ID。
         /// </summary>
+        /// <value>学习资源 ID。</value>
         [Required]
         [DataMember(Name="itemId", EmitDefaultValue=true)]
         public int ItemId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Title
+        /// 资源标题。
         /// </summary>
+        /// <value>资源标题。</value>
         [Required]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }

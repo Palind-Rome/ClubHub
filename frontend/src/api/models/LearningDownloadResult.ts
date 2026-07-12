@@ -21,25 +21,25 @@ import { mapValues } from "../runtime";
  */
 export interface LearningDownloadResult {
   /**
-   *
+   * 学习资源 ID。
    * @type {number}
    * @memberof LearningDownloadResult
    */
   itemId: number;
   /**
-   *
+   * 资源标题。
    * @type {string}
    * @memberof LearningDownloadResult
    */
   title: string;
   /**
-   *
+   * 受鉴权的后端文件地址或历史文件地址。
    * @type {string}
    * @memberof LearningDownloadResult
    */
   fileUrl: string;
   /**
-   *
+   * 本次下载记录时间。
    * @type {Date}
    * @memberof LearningDownloadResult
    */

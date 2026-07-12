@@ -21,13 +21,13 @@ import { mapValues } from "../runtime";
  */
 export interface LearningItemStatistics {
   /**
-   *
+   * 学习资源 ID。
    * @type {number}
    * @memberof LearningItemStatistics
    */
   itemId: number;
   /**
-   *
+   * 资源标题。
    * @type {string}
    * @memberof LearningItemStatistics
    */

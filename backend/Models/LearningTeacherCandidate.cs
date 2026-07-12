@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// 授课人姓名。
         /// </summary>
         /// <value>授课人姓名。</value>
-        /* <example>???</example> */
+        /* <example>张老师</example> */
         [DataMember(Name="realName", EmitDefaultValue=true)]
         public string? RealName { get; set; }
 

@@ -26,29 +26,33 @@ namespace Org.OpenAPITools.Models
     public partial class LearningDownloadResult 
     {
         /// <summary>
-        /// Gets or Sets ItemId
+        /// 学习资源 ID。
         /// </summary>
+        /// <value>学习资源 ID。</value>
         [Required]
         [DataMember(Name="itemId", EmitDefaultValue=true)]
         public int ItemId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Title
+        /// 资源标题。
         /// </summary>
+        /// <value>资源标题。</value>
         [Required]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
-        /// Gets or Sets FileUrl
+        /// 受鉴权的后端文件地址或历史文件地址。
         /// </summary>
+        /// <value>受鉴权的后端文件地址或历史文件地址。</value>
         [Required]
         [DataMember(Name="fileUrl", EmitDefaultValue=false)]
         public string FileUrl { get; set; }
 
         /// <summary>
-        /// Gets or Sets DownloadedAt
+        /// 本次下载记录时间。
         /// </summary>
+        /// <value>本次下载记录时间。</value>
         [Required]
         [DataMember(Name="downloadedAt", EmitDefaultValue=true)]
         public DateTime DownloadedAt { get; set; }
