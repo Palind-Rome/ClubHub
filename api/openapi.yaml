@@ -2453,7 +2453,7 @@ paths:
   /api/learning/items:
     get:
       summary: 获取可见的课程与学习资源
-      description: 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系和资源可见范围过滤结果。
+      description: 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
       operationId: getLearningItems
       security:
         - bearerAuth: []
@@ -2603,7 +2603,7 @@ paths:
   /api/learning/items/{itemId}:
     put:
       summary: 更新课程或学习资源
-      description: 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。
+      description: 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
       operationId: updateLearningItem
       security:
         - bearerAuth: []
@@ -5657,7 +5657,7 @@ components:
           description: 当前用户的学习状态。
         canManage:
           type: boolean
-          description: 当前用户是否可维护资源并查看统计。
+          description: 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
         canEnroll:
           type: boolean
           description: 当前用户是否可加入课程；非课程资源恒为 false。

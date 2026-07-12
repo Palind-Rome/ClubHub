@@ -198,6 +198,17 @@ const progressRules: FormRules<typeof progressForm> = {
 
 const currentUserId = computed(() => auth.value?.user.id ?? null);
 const currentRoles = computed(() => auth.value?.roles ?? []);
+const isCourseAdministrator = computed(() =>
+  currentRoles.value.some((role) => {
+    const roleCode = role.code?.trim().toUpperCase();
+    return roleCode === "CLUB_ADMIN" || roleCode === "SYSTEM_ADMIN";
+  }),
+);
+const courseScopeOptions = computed(() => [
+  { label: "我的课程", value: "mine" },
+  ...(isCourseAdministrator.value ? [] : [{ label: "社内课程", value: "club" }]),
+  { label: "全部课程", value: "all" },
+]);
 const clubNameMap = computed(() => new Map(clubs.value.map((club) => [club.id, club.name])));
 const itemMap = computed(() => new Map(learningItems.value.map((item) => [item.id, item])));
 const manageableClubs = computed(() => clubs.value.filter((club) => canCreateForClub(club.id)));
@@ -235,7 +246,11 @@ const filteredItems = computed(() => {
     if (courseSection !== course) return false;
     if (courseSection && courseScope.value === "mine") {
       const status = item.currentUserRecordStatus;
-      if (!status || status === "none" || status === recordStatus.cancelled) return false;
+      const hasActiveRecord = Boolean(
+        status && status !== "none" && status !== recordStatus.cancelled,
+      );
+      const isCurrentUserInstructor = item.instructorUserId === currentUserId.value;
+      if (!hasActiveRecord && !isCurrentUserInstructor) return false;
     }
     if (courseSection && courseScope.value === "club" && item.visibility === "public") {
       return false;
@@ -696,6 +711,11 @@ watch(courseScope, async () => {
   await loadLearningItems();
   await nextTick();
   courseScopeRefreshVersion.value += 1;
+});
+
+/** 管理员不提供“社内课程”范围；身份切换后回退到“全部课程”。 */
+watch(isCourseAdministrator, (isAdministrator) => {
+  if (isAdministrator && courseScope.value === "club") courseScope.value = "all";
 });
 
 /** 资源范围变化时重新拉取数据，并刷新表格实例。 */
@@ -1171,11 +1191,7 @@ onUnmounted(() => {
       </el-select>
       <el-segmented
         v-model="courseScope"
-        :options="[
-          { label: '我的课程', value: 'mine' },
-          { label: '社内课程', value: 'club' },
-          { label: '全部课程', value: 'all' },
-        ]"
+        :options="courseScopeOptions"
       />
       <el-select v-model="courseStatusFilter" class="status-filter">
         <el-option label="全部状态" value="all" />
@@ -1320,7 +1336,11 @@ onUnmounted(() => {
       <el-table-column label="操作" width="560" fixed="right">
         <template #default="{ row }">
           <el-button
-            v-if="isCourseItem(row) && canEnrollCourses"
+            v-if="
+              isCourseItem(row) &&
+              canEnrollCourses &&
+              row.instructorUserId !== currentUserId
+            "
             size="small"
             type="primary"
             :disabled="!row.canEnroll"

@@ -178,7 +178,7 @@ public class LearningController : ControllerBase
         foreach (var item in items)
         {
             currentRecordByItemId.TryGetValue(item.ItemId, out var currentRecord);
-            var canManage = CanManageLearningItem(permissionRoles, item);
+            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
             if (!CanViewLearningItem(viewer, permissionRoles, item, currentRecord, canManage)) continue;
 
             var activeEnrollmentCount = activeEnrollmentCounts.GetValueOrDefault(item.ItemId);
@@ -477,7 +477,7 @@ public class LearningController : ControllerBase
         if (user is null) return NotFound("当前用户不存在。");
         var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
         var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-        var canManage = CanManageLearningItem(permissionRoles, item);
+        var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
         var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
         if (accessDecision is not null)
         {
@@ -563,7 +563,7 @@ public class LearningController : ControllerBase
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
         var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
-        if (!CanManageLearningItem(permissionRoles, item) &&
+        if (!CanManageLearningItem(permissionRoles, item, currentUserId.Value) &&
             !HasPermission(permissionRoles, ResourceDeletePermission, item.ClubId))
         {
             return StatusCode(
@@ -690,7 +690,7 @@ public class LearningController : ControllerBase
 
         var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
         var currentRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-        var canManage = CanManageLearningItem(permissionRoles, item);
+        var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
         var dto = TryMapItemDto(
             item,
             activeEnrollmentCount,
@@ -738,7 +738,7 @@ public class LearningController : ControllerBase
         if (operatorUser is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(operatorUser.AccountStatus)) return BadRequest("当前用户账号已停用。");
         var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
-        if (!CanManageLearningItem(permissionRoles, item))
+        if (!CanManageLearningItem(permissionRoles, item, currentUserId.Value))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -840,7 +840,7 @@ public class LearningController : ControllerBase
 
             var existingRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
             var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
-            var canManage = CanManageLearningItem(permissionRoles, item);
+            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
             var decision = GetEnrollmentDecision(
                 user,
                 permissionRoles,
@@ -978,7 +978,7 @@ public class LearningController : ControllerBase
             }
 
             var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(permissionRoles, item);
+            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
             var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
             if (accessDecision is not null)
             {
@@ -1064,7 +1064,7 @@ public class LearningController : ControllerBase
             }
 
             var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(permissionRoles, item);
+            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
             var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
             if (accessDecision is not null)
             {
@@ -1296,7 +1296,7 @@ public class LearningController : ControllerBase
 
         var currentUser = await LoadUserAsync(currentUserId.Value);
         if (currentUser is null) return NotFound("当前用户不存在。");
-        var canManage = CanManageLearningItem(permissionRoles, record.Item);
+        var canManage = CanManageLearningItem(permissionRoles, record.Item, currentUserId.Value);
         var accessDecision = GetLearningAccessDecision(
             currentUser,
             permissionRoles,
@@ -1429,6 +1429,12 @@ public class LearningController : ControllerBase
                 StatusCodes.Status403Forbidden,
                 "当前用户没有参加课程的权限。");
         }
+        if (item.TeacherUserId == user.UserId)
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "授课人不能加入本人负责的课程。");
+        }
         if (!LearningWorkflow.IsSupportedCourseType(item.ItemType))
         {
             return new EnrollmentDecision(StatusCodes.Status400BadRequest, "该资源无需报名，请直接开始学习。");
@@ -1482,7 +1488,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 判断用户是否可按管理权、历史加入记录或开放范围查看课程。
+    /// 判断用户是否可按管理权、授课人身份、历史加入记录或开放范围查看课程。
     /// </summary>
     private static bool CanViewLearningItem(
         User viewer,
@@ -1630,12 +1636,15 @@ public class LearningController : ControllerBase
         int clubId) => HasPermission(permissionRoles, ResourceUploadPermission, clubId);
 
     /// <summary>
-    /// 判断用户是否可维护课程及查看课程成员名单。
+    /// 判断用户是否可按社团负责人权限维护课程；课程授课人具有同等维护权限。
     /// </summary>
     private static bool CanManageLearningItem(
         IReadOnlyList<AuthRole> permissionRoles,
-        DbLearningItem item) =>
-        HasPermission(permissionRoles, ResourceUploadPermission, item.ClubId);
+        DbLearningItem item,
+        int currentUserId) =>
+        HasPermission(permissionRoles, ResourceUploadPermission, item.ClubId) ||
+        (LearningWorkflow.IsSupportedCourseType(item.ItemType) &&
+         item.TeacherUserId == currentUserId);
 
     /// <summary>
     /// 判断当前权限是否允许查看指定社团资源的实名学习记录。
