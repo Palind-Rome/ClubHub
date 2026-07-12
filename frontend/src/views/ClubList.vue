@@ -1496,6 +1496,11 @@ function openMemberEditDialog(row: ClubMemberRecord) {
     return;
   }
 
+  if (canManageSelectedClub.value && row.userId === currentUserId.value) {
+    ElMessage.warning(memberTermEditDeniedMessage(row));
+    return;
+  }
+
   if (canUpdateMemberDepartment(row)) {
     openMemberGroupingDialog(row, "departmentName");
     return;
