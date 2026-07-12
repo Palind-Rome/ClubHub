@@ -133,7 +133,9 @@ async function handleHistoryChange() {
 
 async function openAddDialog() {
   if (!editable.value) {
-    ElMessage.warning(projectClosed.value ? "项目已关闭，不能再调整项目成员。" : "当前账号没有项目成员维护权限。");
+    ElMessage.warning(
+      projectClosed.value ? "项目已关闭，不能再调整项目成员。" : "当前账号没有项目成员维护权限。",
+    );
     return;
   }
 
@@ -312,7 +314,9 @@ onUnmounted(() => {
           @change="handleHistoryChange"
         />
         <el-button :loading="loading" @click="loadMembers">刷新</el-button>
-        <el-button v-if="canManage" type="primary" :disabled="projectClosed" @click="openAddDialog">添加成员</el-button>
+        <el-button v-if="canManage" type="primary" :disabled="projectClosed" @click="openAddDialog"
+          >添加成员</el-button
+        >
       </div>
     </div>
 

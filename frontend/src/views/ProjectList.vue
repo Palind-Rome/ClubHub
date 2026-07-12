@@ -403,7 +403,8 @@ function canCreateProjectForClub(clubId: number) {
 
 function canAssignProjectLeader(project: Project) {
   if (hasSystemAdminRole() || hasPlatformAdminRole()) return false;
-  if (normalizeProjectStatus(project.projectStatus) === ProjectProjectStatusEnum.Closed) return false;
+  if (normalizeProjectStatus(project.projectStatus) === ProjectProjectStatusEnum.Closed)
+    return false;
 
   return (
     hasClubPermission(projectTaskManagePermission, project.clubId) ||
