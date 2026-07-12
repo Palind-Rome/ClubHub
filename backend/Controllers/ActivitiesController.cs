@@ -139,11 +139,9 @@ public class ActivitiesController : ControllerBase
             return permissionError;
         }
 
-        var maxId = await _db.Activities.MaxAsync(a => (int?)a.ActivityId) ?? 0;
         var now = DateTime.Now;
         var activity = new Activity
         {
-            ActivityId = maxId + 1,
             ClubId = req.ClubId,
             CreatorUserId = currentUserId.Value,
             Title = req.Title.Trim(),
@@ -283,7 +281,6 @@ public class ActivitiesController : ControllerBase
 
             var participation = new ActivityParticipation
             {
-                ParticipationId = await NextParticipationId(),
                 ActivityId = activityId,
                 UserId = currentUserId.Value,
                 RegisterStatus = RegisterStatusAccepted,
@@ -695,10 +692,8 @@ public class ActivitiesController : ControllerBase
         var participation = activity.Participations.FirstOrDefault(p => p.UserId == currentUserId.Value);
         if (participation is null)
         {
-            var maxId = await _db.ActivityParticipations.MaxAsync(p => (int?)p.ParticipationId) ?? 0;
             participation = new ActivityParticipation
             {
-                ParticipationId = maxId + 1,
                 ActivityId = activity.ActivityId,
                 UserId = currentUserId.Value,
                 RegisterStatus = RegisterStatusOnsite,
@@ -808,15 +803,6 @@ public class ActivitiesController : ControllerBase
             (p.RegisterStatus == RegisterStatusPending ||
              p.RegisterStatus == RegisterStatusAccepted ||
              p.RegisterStatus == RegisterStatusOnsite));
-    }
-
-    private async Task<int> NextParticipationId()
-    {
-        // The course schema has no participation sequence, so callers run this inside a transaction and retry conflicts.
-        var maxId = await _db.ActivityParticipations
-            .Select(p => (int?)p.ParticipationId)
-            .MaxAsync();
-        return (maxId ?? 0) + 1;
     }
 
     private static ActivityDto ToDto(Activity activity, int currentParticipants, bool isRegistered = false)

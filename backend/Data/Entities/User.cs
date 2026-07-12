@@ -53,4 +53,6 @@ public class User
 
     public ICollection<ActivityParticipation> ActivityParticipations { get; set; } =
         new List<ActivityParticipation>();
+
+    public ICollection<ProjectMember> ProjectMemberships { get; set; } = new List<ProjectMember>();
 }

@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiProject = Org.OpenAPITools.Models.Project;
@@ -58,8 +59,15 @@ public class ProjectsController : ControllerBase
     };
 
     private readonly ClubHubDbContext _db;
+    private readonly ProjectMembershipService _membershipService;
 
-    public ProjectsController(ClubHubDbContext db) => _db = db;
+    public ProjectsController(
+        ClubHubDbContext db,
+        ProjectMembershipService membershipService)
+    {
+        _db = db;
+        _membershipService = membershipService;
+    }
 
     /// <summary>
     /// Gets project applications, optionally filtered by club, with bounded pagination.
@@ -128,32 +136,43 @@ public class ProjectsController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-            var project = new DbProject
-            {
-                ProjectId = await GetNextProjectId(),
-                ClubId = req.ClubId,
-                ProjectName = req.ProjectName.Trim(),
-                Description = NormalizeOptionalText(req.Description),
-                LeaderUserId = req.LeaderUserId,
-                StartDate = req.StartDate,
-                EndDate = req.EndDate,
-                ProjectStatus = PendingStatus,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Projects.Add(project);
-
             try
             {
+                var now = DateTime.UtcNow;
+                var project = new DbProject
+                {
+                    ProjectId = await GetNextProjectId(),
+                    ClubId = req.ClubId,
+                    ProjectName = req.ProjectName.Trim(),
+                    Description = NormalizeOptionalText(req.Description),
+                    LeaderUserId = req.LeaderUserId,
+                    StartDate = req.StartDate,
+                    EndDate = req.EndDate,
+                    ProjectStatus = PendingStatus,
+                    CreatedAt = now
+                };
+
+                _db.Projects.Add(project);
+                if (req.LeaderUserId is not null)
+                {
+                    await _membershipService.SynchronizeLeaderAsync(
+                        project,
+                        previousLeaderUserId: null,
+                        req.LeaderUserId.Value,
+                        now);
+                }
+
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 return CreatedAtAction(nameof(GetById), new { projectId = project.ProjectId }, ToProjectDto(project));
             }
-            catch (DbUpdateException) when (attempt < MaxCreateRetries)
+            catch (Exception ex) when (ex is not OperationCanceledException &&
+                                       ProjectMembershipService.IsRetryableWriteConflict(ex))
             {
                 await transaction.RollbackAsync();
-                _db.Entry(project).State = EntityState.Detached;
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxCreateRetries) break;
             }
         }
 
@@ -168,23 +187,65 @@ public class ProjectsController : ControllerBase
     {
         if (req is null) return BadRequest("Request body is required.");
 
-        var project = await _db.Projects.FindAsync(projectId);
-        if (project is null) return NotFound("Project does not exist.");
+        var projectSnapshot = await _db.Projects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(project => project.ProjectId == projectId);
+        if (projectSnapshot is null) return NotFound("Project does not exist.");
+        if (string.Equals(projectSnapshot.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict("项目已关闭，不能再更换项目负责人。");
+        }
 
         var operatorAccess = await EnsureActiveUserAsync(req.CurrentUserId, "assign project leader");
         if (operatorAccess.Result is not null) return operatorAccess.Result;
-        if (!CanAssignProjectLeader(operatorAccess.User!, project.ClubId))
+        if (!CanAssignProjectLeader(operatorAccess.User!, projectSnapshot.ClubId))
         {
             return StatusCode(StatusCodes.Status403Forbidden, "Only club leaders or club officers can assign project leaders.");
         }
 
-        var validation = await ValidateProjectLeader(project.ClubId, req.LeaderUserId);
+        var validation = await ValidateProjectLeader(projectSnapshot.ClubId, req.LeaderUserId);
         if (validation is not null) return validation;
 
-        project.LeaderUserId = req.LeaderUserId;
-        await _db.SaveChangesAsync();
+        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var project = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == projectId);
+                if (project is null)
+                {
+                    await transaction.RollbackAsync();
+                    return NotFound("Project does not exist.");
+                }
+                if (string.Equals(project.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    await transaction.RollbackAsync();
+                    return Conflict("项目已关闭，不能再更换项目负责人。");
+                }
 
-        return Ok(ToProjectDto(project));
+                var previousLeaderUserId = project.LeaderUserId;
+                var now = DateTime.UtcNow;
+                project.LeaderUserId = req.LeaderUserId;
+                await _membershipService.SynchronizeLeaderAsync(
+                    project,
+                    previousLeaderUserId,
+                    req.LeaderUserId,
+                    now);
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(ToProjectDto(project));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException &&
+                                       ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxCreateRetries) break;
+            }
+        }
+
+        return Conflict("项目负责人关系发生并发冲突，请稍后重试。");
     }
 
     /// <summary>
@@ -298,7 +359,7 @@ public class ProjectsController : ControllerBase
         var userExists = await ActiveUserExists(leaderUserId);
         if (!userExists) return BadRequest("Leader user does not exist or is disabled.");
 
-        var isClubMember = await IsActiveClubMember(clubId, leaderUserId);
+        var isClubMember = await _membershipService.IsActiveClubMemberAsync(clubId, leaderUserId);
 
         if (!isClubMember) return BadRequest("Project leader must be an active member of the club.");
 
@@ -463,20 +524,6 @@ public class ProjectsController : ControllerBase
         var normalizedAdvisor = advisorName.Trim();
         return !string.IsNullOrWhiteSpace(user.RealName) &&
             normalizedAdvisor.Contains(user.RealName.Trim(), StringComparison.Ordinal);
-    }
-
-    private Task<bool> IsActiveClubMember(int clubId, int userId)
-    {
-        return _db.ClubMembers.AnyAsync(m =>
-            m.ClubId == clubId &&
-            m.UserId == userId &&
-            (m.MemberStatus == null ||
-             m.MemberStatus == string.Empty ||
-             m.MemberStatus.ToLower() == ActiveMemberStatus ||
-             m.MemberStatus.ToLower() == NormalAccountStatus ||
-             m.MemberStatus.ToLower() == EnabledStatus ||
-             m.MemberStatus == "在任" ||
-             m.MemberStatus == "正常"));
     }
 
     /// <summary>
