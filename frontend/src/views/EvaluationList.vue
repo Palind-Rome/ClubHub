@@ -61,6 +61,15 @@ interface ClubEvaluationRecord {
   createdAt: string | null;
 }
 
+interface ClubEvaluationScorePreview {
+  activityScore: number;
+  taskScore: number;
+  learningScore: number;
+  awardScore: number;
+  totalScore: number;
+  grade: string;
+}
+
 const evaluationDraftPermission = "evaluation:draft";
 const evaluationReviewPermission = "evaluation:review";
 
@@ -72,6 +81,7 @@ const selectedClubId = ref<number>();
 const loading = ref(false);
 const memberLoading = ref(false);
 const saving = ref(false);
+const scorePreviewLoading = ref(false);
 const detailVisible = ref(false);
 const evaluationDialogVisible = ref(false);
 const detailTarget = ref<ClubEvaluationRecord | null>(null);
@@ -81,6 +91,7 @@ const evaluationFormMode = ref<EvaluationFormMode>("create");
 let stopSessionListener: (() => void) | null = null;
 let evaluationRequestId = 0;
 let memberRequestId = 0;
+let scorePreviewRequestId = 0;
 
 const filters = reactive({
   keyword: "",
@@ -102,10 +113,6 @@ const evaluationForm = reactive({
 const evaluationRules: FormRules = {
   userId: [{ required: true, message: "请选择被考核成员", trigger: "change" }],
   termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
-  activityScore: [{ required: true, message: "请填写参与分", trigger: "blur" }],
-  taskScore: [{ required: true, message: "请填写任务分", trigger: "blur" }],
-  learningScore: [{ required: true, message: "请填写学习分", trigger: "blur" }],
-  awardScore: [{ required: true, message: "请填写奖项分", trigger: "blur" }],
 };
 
 const currentUserId = computed(() => auth.value?.user.id);
@@ -301,6 +308,39 @@ async function loadMembers() {
   }
 }
 
+function applyScorePreview(preview: ClubEvaluationScorePreview) {
+  evaluationForm.activityScore = preview.activityScore;
+  evaluationForm.taskScore = preview.taskScore;
+  evaluationForm.learningScore = preview.learningScore;
+  evaluationForm.awardScore = preview.awardScore;
+}
+
+async function loadScorePreview(options: { silent?: boolean } = {}) {
+  const requestId = ++scorePreviewRequestId;
+  const clubId = selectedClubId.value;
+  const userId = evaluationForm.userId;
+  const termName = evaluationForm.termName.trim();
+  if (!evaluationDialogVisible.value || !clubId || !userId || !termName) return;
+
+  scorePreviewLoading.value = true;
+  try {
+    const query = new URLSearchParams({
+      userId: String(userId),
+      termName,
+    });
+    const preview = await requestJson<ClubEvaluationScorePreview>(
+      `/api/clubs/${clubId}/evaluations/score-preview?${query.toString()}`,
+    );
+    if (requestId === scorePreviewRequestId) applyScorePreview(preview);
+  } catch (error) {
+    if (requestId === scorePreviewRequestId && !options.silent) {
+      ElMessage.error(error instanceof Error ? error.message : "考核分生成失败");
+    }
+  } finally {
+    if (requestId === scorePreviewRequestId) scorePreviewLoading.value = false;
+  }
+}
+
 async function reloadAll() {
   await loadClubs();
   await Promise.all([loadEvaluations(), loadMembers()]);
@@ -332,6 +372,7 @@ function openCreateDialog() {
   evaluationTarget.value = null;
   resetEvaluationForm();
   evaluationDialogVisible.value = true;
+  void loadScorePreview({ silent: true });
 }
 
 function openEditDialog(row: ClubEvaluationRecord) {
@@ -352,6 +393,7 @@ function openEditDialog(row: ClubEvaluationRecord) {
   evaluationForm.commentText = row.commentText ?? "";
   evaluationFormRef.value?.clearValidate();
   evaluationDialogVisible.value = true;
+  void loadScorePreview({ silent: true });
 }
 
 function openDetail(row: ClubEvaluationRecord) {
@@ -377,10 +419,6 @@ async function submitEvaluation() {
       awardTitle: null,
       awardLevel: null,
       awardReason: null,
-      activityScore: evaluationForm.activityScore,
-      taskScore: evaluationForm.taskScore,
-      learningScore: evaluationForm.learningScore,
-      awardScore: evaluationForm.awardScore,
       publicStatus: evaluationForm.publicStatus,
       commentText: emptyToNull(evaluationForm.commentText),
     };
@@ -479,6 +517,18 @@ watch(
   () => filters.termName,
   () => {
     void loadEvaluations();
+  },
+);
+
+watch(
+  [
+    evaluationDialogVisible,
+    selectedClubId,
+    () => evaluationForm.userId,
+    () => evaluationForm.termName,
+  ],
+  () => {
+    void loadScorePreview({ silent: true });
   },
 );
 
@@ -697,37 +747,41 @@ onUnmounted(() => {
           <el-input v-model="evaluationForm.termName" maxlength="80" show-word-limit />
         </el-form-item>
 
-        <div class="score-grid">
-          <el-form-item label="参与分" prop="activityScore">
+        <div v-loading="scorePreviewLoading" class="score-grid">
+          <el-form-item label="参与分">
             <el-input-number
               v-model="evaluationForm.activityScore"
               :min="0"
               :max="100"
               :precision="1"
+              disabled
             />
           </el-form-item>
-          <el-form-item label="任务分" prop="taskScore">
+          <el-form-item label="任务分">
             <el-input-number
               v-model="evaluationForm.taskScore"
               :min="0"
               :max="100"
               :precision="1"
+              disabled
             />
           </el-form-item>
-          <el-form-item label="学习分" prop="learningScore">
+          <el-form-item label="学习分">
             <el-input-number
               v-model="evaluationForm.learningScore"
               :min="0"
               :max="100"
               :precision="1"
+              disabled
             />
           </el-form-item>
-          <el-form-item label="奖项分" prop="awardScore">
+          <el-form-item label="奖项分">
             <el-input-number
               v-model="evaluationForm.awardScore"
               :min="0"
               :max="100"
               :precision="1"
+              disabled
             />
           </el-form-item>
         </div>
@@ -737,6 +791,14 @@ onUnmounted(() => {
           <el-tag :type="gradeTagType(evaluationFormGrade)" effect="plain">
             {{ evaluationFormGrade }}
           </el-tag>
+          <el-button
+            text
+            :icon="Refresh"
+            :loading="scorePreviewLoading"
+            @click="loadScorePreview()"
+          >
+            重新生成
+          </el-button>
         </div>
 
         <el-form-item label="公示状态">
