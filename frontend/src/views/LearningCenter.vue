@@ -20,7 +20,7 @@ import {
   type LearningTeacherCandidate,
 } from "../api";
 import { apiClient } from "../apiClient";
-import { onSessionChange, readAuth, type AuthRole } from "../authSession";
+import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
 
 const api = apiClient;
 
@@ -50,13 +50,21 @@ const downloadPermissionOptions = [
 ];
 const courseTypes = new Set(["course", "lecture", "training"]);
 
-const principalRoleCodes = new Set(["club_president", "club_leader", "club_manager", "president"]);
-const officerRoleCodes = new Set(["club_officer", "officer", "club_manager"]);
-const advisorRoleCodes = new Set(["advisor", "club_advisor", "teacher_advisor"]);
-const manageableRoleCodes = new Set([
-  ...principalRoleCodes,
-  ...officerRoleCodes,
-  ...advisorRoleCodes,
+const permissionCodes = {
+  ownRecordsView: "own:records:view",
+  clubResourceView: "club:resource:view",
+  clubOperationView: "club:operation:view",
+  resourceUpload: "resource:upload",
+  clubStatsView: "club:stats:view",
+  globalStatsView: "stats:view",
+  resourceReview: "resource:review",
+  resourceDelete: "resource:delete",
+} as const;
+const clubScopedPermissions = new Set<string>([
+  permissionCodes.clubResourceView,
+  permissionCodes.clubOperationView,
+  permissionCodes.resourceUpload,
+  permissionCodes.clubStatsView,
 ]);
 const recordStatus = {
   enrolled: "enrolled",
@@ -190,6 +198,7 @@ const currentRoles = computed(() => auth.value?.roles ?? []);
 const clubNameMap = computed(() => new Map(clubs.value.map((club) => [club.id, club.name])));
 const itemMap = computed(() => new Map(learningItems.value.map((item) => [item.id, item])));
 const manageableClubs = computed(() => clubs.value.filter((club) => canCreateForClub(club.id)));
+const canViewOwnRecords = computed(() => hasPermission(permissionCodes.ownRecordsView));
 const isCourseForm = computed(() => courseTypes.has(courseForm.itemType));
 const courseCategoryOptions = computed(() =>
   [
@@ -270,7 +279,7 @@ const recordDialogTitle = computed(() => {
     ? itemMap.value.get(selectedRecordItemId.value)
     : undefined;
   if (!item) return learningSection.value === "course" ? "我的课程记录" : "我的资源学习";
-  return item.canManage ? `${item.title} - 学习用户` : `${item.title} - 学习记录`;
+  return canViewRecords(item) ? `${item.title} - 学习用户` : `${item.title} - 学习记录`;
 });
 const visibleLearningRecords = computed(() => {
   if (selectedRecordItemId.value) return learningRecords.value;
@@ -284,6 +293,10 @@ const visibleLearningRecords = computed(() => {
 /** 将课程状态转换为用户可读文本。 */
 function statusLabel(status?: string | null, item?: LearningItem) {
   switch (status) {
+    case "pending_review":
+      return "待审核";
+    case "rejected":
+      return "审核驳回";
     case LearningItemItemStatusEnum.Published:
       return item && !isCourseItem(item) ? "已发布" : "开放加入";
     case LearningItemItemStatusEnum.Closed:
@@ -378,9 +391,37 @@ function downloadPermissionLabel(value?: string | null) {
 
 /** 判断当前用户是否能为指定社团发布课程。 */
 function canCreateForClub(clubId: number) {
-  return currentRoles.value.some(
-    (role) => manageableRoleCodes.has(normalize(role.code)) && roleCoversClub(role, clubId),
+  return hasPermission(permissionCodes.resourceUpload, clubId);
+}
+
+/** 判断当前用户是否可以查看指定资源的匿名统计。 */
+function canViewStatistics(item: LearningItem) {
+  return (
+    hasPermission(permissionCodes.resourceUpload, item.clubId) ||
+    hasPermission(permissionCodes.clubStatsView, item.clubId) ||
+    hasPermission(permissionCodes.clubOperationView, item.clubId) ||
+    hasPermission(permissionCodes.globalStatsView)
   );
+}
+
+/** 判断当前用户是否可以查看指定资源的实名学习名单。 */
+function canViewRecords(item: LearningItem) {
+  return (
+    hasPermission(permissionCodes.resourceUpload, item.clubId) ||
+    hasPermission(permissionCodes.clubStatsView, item.clubId) ||
+    hasPermission(permissionCodes.clubOperationView, item.clubId)
+  );
+}
+
+function canReviewItem(item: LearningItem) {
+  return (
+    String(item.itemStatus) === "pending_review" &&
+    hasPermission(permissionCodes.resourceReview, item.clubId)
+  );
+}
+
+function canDeleteItem(item: LearningItem) {
+  return item.canManage || hasPermission(permissionCodes.resourceDelete, item.clubId);
 }
 
 /** 打开资源上传窗口，并默认选中首个可管理社团。 */
@@ -455,7 +496,7 @@ async function uploadPendingResources() {
 
     if (succeeded > 0) await loadLearningItems();
     if (failed.length === 0) {
-      ElMessage.success(`已成功上传 ${succeeded} 个文件`);
+      ElMessage.success(`已上传并提交审核 ${succeeded} 个文件`);
       uploadDialogVisible.value = false;
       uploadFiles.value = [];
     } else {
@@ -472,13 +513,13 @@ function openItemDetail(item: LearningItem) {
   detailDrawerVisible.value = true;
 }
 
-/** 确认后删除可管理的非课程资源，并刷新当前列表。 */
+/** 确认后删除有权管理的课程或资源，并刷新当前列表。 */
 async function deleteResource(item: LearningItem) {
-  if (isCourseItem(item) || !item.canManage) return;
+  if (!canDeleteItem(item)) return;
   try {
     await ElMessageBox.confirm(
-      `确认删除资源“${item.title}”吗？相关学习记录和已上传文件也会被删除，此操作不可撤销。`,
-      "删除资源",
+      `确认删除${isCourseItem(item) ? "课程" : "资源"}“${item.title}”吗？相关学习记录和已上传文件也会被删除，此操作不可撤销。`,
+      `删除${isCourseItem(item) ? "课程" : "资源"}`,
       {
         confirmButtonText: "确认删除",
         cancelButtonText: "取消",
@@ -499,7 +540,7 @@ async function deleteResource(item: LearningItem) {
       const message = await response.text();
       throw new Error(message || `HTTP ${response.status}`);
     }
-    ElMessage.success("资源已删除");
+    ElMessage.success(`${isCourseItem(item) ? "课程" : "资源"}已删除`);
     if (detailItem.value?.id === item.id) detailDrawerVisible.value = false;
     await loadLearningItems();
   } catch (error) {
@@ -514,9 +555,48 @@ function roleCoversClub(role: AuthRole, clubId: number) {
   return role.clubId === clubId || role.clubIds.includes(clubId);
 }
 
-/** 统一清理用于比较的角色和状态代码。 */
-function normalize(value?: string | null) {
-  return (value ?? "").trim().toLowerCase();
+async function reviewItem(item: LearningItem, approved: boolean) {
+  if (!canReviewItem(item)) return;
+  try {
+    await ElMessageBox.confirm(
+      approved ? `确认通过并发布“${item.title}”？` : `确认驳回“${item.title}”？`,
+      approved ? "审核通过" : "审核驳回",
+      {
+        confirmButtonText: "确认",
+        cancelButtonText: "取消",
+        type: approved ? "success" : "warning",
+      },
+    );
+  } catch {
+    return;
+  }
+
+  try {
+    await api.reviewLearningItem({
+      itemId: item.id,
+      reviewLearningItemRequest: { result: approved ? "approved" : "rejected" },
+    });
+    ElMessage.success(approved ? "审核通过，内容已发布" : "已驳回该内容");
+    await loadLearningItems();
+  } catch (error) {
+    ElMessage.error(toErrorMessage(error, "审核失败"));
+  }
+}
+
+/** 按权限编码和社团作用域判断单个角色是否授权。 */
+function roleAllowsPermission(role: AuthRole, permission: string, clubId?: number) {
+  if (role.permissions.includes("*")) return true;
+  if (!role.permissions.includes(permission)) return false;
+  if (clubScopedPermissions.has(permission)) {
+    return clubId !== undefined && roleCoversClub(role, clubId);
+  }
+  if (role.scope === "system") return true;
+  return clubId !== undefined && roleCoversClub(role, clubId);
+}
+
+/** 按多角色权限并集判断当前会话是否授权。 */
+function hasPermission(permission: string, clubId?: number) {
+  return currentRoles.value.some((role) => roleAllowsPermission(role, permission, clubId));
 }
 
 /** 将 UTC 时间固定转换为北京时间展示。 */
@@ -728,8 +808,9 @@ async function openEditDialog(item: LearningItem) {
   courseForm.capacity = item.capacity ?? null;
   courseForm.visibility = item.visibility;
   courseForm.downloadPermission = item.downloadPermission;
-  courseForm.itemStatus =
-    item.itemStatus === LearningItemItemStatusEnum.Finished ? "closed" : item.itemStatus;
+  courseForm.itemStatus = ["published", "closed"].includes(String(item.itemStatus))
+    ? String(item.itemStatus)
+    : "draft";
   courseFormRef.value?.clearValidate();
   courseDialogVisible.value = true;
 }
@@ -908,7 +989,7 @@ async function downloadItem(item: LearningItem) {
 
 /** 加载管理者可查看的资源学习统计。 */
 async function openStatistics(item: LearningItem) {
-  if (!item.canManage) return;
+  if (!canViewStatistics(item)) return;
   statistics.value = null;
   statisticsDialogVisible.value = true;
   statisticsLoading.value = true;
@@ -926,6 +1007,14 @@ async function openStatistics(item: LearningItem) {
 async function openRecords(item?: LearningItem) {
   if (!currentUserId.value) {
     ElMessage.warning("请先登录后查看学习记录");
+    return;
+  }
+  if (!item && !canViewOwnRecords.value) {
+    ElMessage.warning("当前账号没有查看个人学习记录的权限");
+    return;
+  }
+  if (item && !canViewRecords(item) && item.currentUserRecordStatus === "none") {
+    ElMessage.warning("当前账号没有查看该资源学习名单的权限");
     return;
   }
 
@@ -1002,6 +1091,15 @@ function toErrorMessage(error: unknown, fallback: string) {
 }
 
 onMounted(async () => {
+  if (auth.value) {
+    try {
+      const refreshedAuth = await api.refreshAuthSession();
+      saveAuth(refreshedAuth);
+      auth.value = refreshedAuth;
+    } catch {
+      /* 会话刷新失败时继续使用本地登录态，后端仍会执行最终权限校验。 */
+    }
+  }
   stopSessionChange = onSessionChange(() => {
     void refreshAll();
   });
@@ -1053,13 +1151,15 @@ onUnmounted(() => {
       />
       <el-select v-model="courseStatusFilter" class="status-filter">
         <el-option label="全部状态" value="all" />
+        <el-option label="待审核" value="pending_review" />
         <el-option label="开放加入" value="published" />
+        <el-option label="审核驳回" value="rejected" />
         <el-option label="停止加入" value="closed" />
         <el-option label="已结束" value="finished" />
         <el-option label="草稿" value="draft" />
       </el-select>
       <span class="toolbar-spacer" />
-      <el-button @click="openRecords()">我的课程记录</el-button>
+      <el-button v-if="canViewOwnRecords" @click="openRecords()">我的课程记录</el-button>
       <el-button type="primary" :disabled="manageableClubs.length === 0" @click="openCreateDialog">
         发布课程
       </el-button>
@@ -1108,12 +1208,14 @@ onUnmounted(() => {
       </el-select>
       <el-select v-model="resourceStatusFilter" class="status-filter">
         <el-option label="全部状态" value="all" />
+        <el-option label="待审核" value="pending_review" />
         <el-option label="已发布" value="published" />
+        <el-option label="审核驳回" value="rejected" />
         <el-option label="已下架" value="closed" />
         <el-option label="草稿" value="draft" />
       </el-select>
       <span class="toolbar-spacer" />
-      <el-button @click="openRecords()">我的资源学习</el-button>
+      <el-button v-if="canViewOwnRecords" @click="openRecords()">我的资源学习</el-button>
       <el-button type="success" :disabled="manageableClubs.length === 0" @click="openUploadDialog">
         资源上传
       </el-button>
@@ -1186,7 +1288,7 @@ onUnmounted(() => {
           {{ itemRecordStatusLabel(row) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="430" fixed="right">
+      <el-table-column label="操作" width="560" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="isCourseItem(row)"
@@ -1233,11 +1335,27 @@ onUnmounted(() => {
           <el-button v-if="row.canManage" size="small" @click="openEditDialog(row)">
             编辑
           </el-button>
-          <el-button v-if="row.canManage" size="small" @click="openStatistics(row)">
+          <el-button v-if="canViewStatistics(row)" size="small" @click="openStatistics(row)">
             统计
           </el-button>
           <el-button
-            v-if="!isCourseItem(row) && row.canManage"
+            v-if="canReviewItem(row)"
+            size="small"
+            type="success"
+            @click="reviewItem(row, true)"
+          >
+            通过
+          </el-button>
+          <el-button
+            v-if="canReviewItem(row)"
+            size="small"
+            type="warning"
+            @click="reviewItem(row, false)"
+          >
+            驳回
+          </el-button>
+          <el-button
+            v-if="canDeleteItem(row)"
             size="small"
             type="danger"
             :loading="deletingId === row.id"
@@ -1246,11 +1364,11 @@ onUnmounted(() => {
             删除
           </el-button>
           <el-button
-            v-if="row.canManage || row.currentUserRecordStatus !== 'none'"
+            v-if="canViewRecords(row) || row.currentUserRecordStatus !== 'none'"
             size="small"
             @click="openRecords(row)"
           >
-            {{ row.canManage ? "学习用户" : "学习记录" }}
+            {{ canViewRecords(row) ? "学习用户" : "学习记录" }}
           </el-button>
         </template>
       </el-table-column>
@@ -1524,9 +1642,7 @@ onUnmounted(() => {
         <el-form-item label="发布状态" prop="itemStatus" required>
           <el-radio-group v-model="courseForm.itemStatus">
             <el-radio-button value="draft">草稿</el-radio-button>
-            <el-radio-button value="published">{{
-              isCourseForm ? "开放加入" : "发布"
-            }}</el-radio-button>
+            <el-radio-button value="published">提交审核</el-radio-button>
             <el-radio-button v-if="courseDialogMode === 'edit'" value="closed">
               {{ isCourseForm ? "停止加入" : "下架" }}
             </el-radio-button>

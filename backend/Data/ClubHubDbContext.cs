@@ -25,6 +25,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
+    public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -237,6 +238,11 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(record => record.UserId)
              .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<OperationLog>(e =>
+        {
+            e.HasKey(log => log.LogId);
         });
 
         modelBuilder.Entity<Notice>(e =>

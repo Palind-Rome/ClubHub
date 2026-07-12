@@ -17,6 +17,7 @@ using DbLearningItem = ClubHub.Api.Data.Entities.LearningItem;
 using DbLearningRecord = ClubHub.Api.Data.Entities.LearningRecord;
 using UpdateLearningItemRequest = Org.OpenAPITools.Models.UpdateLearningItemRequest;
 using UpdateLearningProgressRequest = Org.OpenAPITools.Models.UpdateLearningProgressRequest;
+using ReviewLearningItemRequest = Org.OpenAPITools.Models.ReviewLearningItemRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -31,26 +32,31 @@ public class LearningController : ControllerBase
     private const int MaxCreateRetries = 3;
     private const long MaxUploadBytes = 50L * 1024 * 1024;
     private const string LocalFileUrlPrefix = "/api/learning/items/";
-
-    private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "advisor",
-        "club_advisor",
-        "teacher_advisor"
-    };
+    private const string PublicViewPermission = "public:view";
+    private const string OwnRecordsViewPermission = "own:records:view";
+    private const string ClubResourceViewPermission = "club:resource:view";
+    private const string ClubOperationViewPermission = "club:operation:view";
+    private const string ResourceUploadPermission = "resource:upload";
+    private const string ClubStatsViewPermission = "club:stats:view";
+    private const string GlobalStatsViewPermission = "stats:view";
+    private const string ResourceReviewPermission = "resource:review";
+    private const string ResourceDeletePermission = "resource:delete";
 
     private readonly ClubHubDbContext _db;
+    private readonly AuthService _authService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILearningObjectStorage _objectStorage;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
         ClubHubDbContext db,
+        AuthService authService,
         IWebHostEnvironment environment,
         ILearningObjectStorage objectStorage,
         ILogger<LearningController> logger)
     {
         _db = db;
+        _authService = authService;
         _environment = environment;
         _objectStorage = objectStorage;
         _logger = logger;
@@ -87,14 +93,12 @@ public class LearningController : ControllerBase
             return BadRequest("只有正常运营的社团可以维护课程。");
         }
 
-        var ownsClubCourse = await _db.LearningItems
-            .AsNoTracking()
-            .AnyAsync(item => item.ClubId == clubId && item.UploaderUserId == currentUserId.Value);
-        if (!CanCreateLearningItem(operatorUser, club) && !ownsClubCourse)
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanCreateLearningItem(permissionRoles, club.ClubId))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有本社团课程发布者、负责人、干部或指导老师可以查询授课人。");
+                "只有拥有本社团资源发布权限的用户可以查询授课人。");
         }
 
         var instructor = await _db.Users
@@ -131,6 +135,7 @@ public class LearningController : ControllerBase
         var viewer = await LoadUserAsync(currentUserId.Value);
         if (viewer is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(viewer.AccountStatus)) return BadRequest("当前用户账号已停用。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
 
         var query = _db.LearningItems
             .AsNoTracking()
@@ -172,12 +177,13 @@ public class LearningController : ControllerBase
         foreach (var item in items)
         {
             currentRecordByItemId.TryGetValue(item.ItemId, out var currentRecord);
-            var canManage = CanManageLearningItem(viewer, item);
-            if (!CanViewLearningItem(viewer, item, currentRecord, canManage)) continue;
+            var canManage = CanManageLearningItem(permissionRoles, item);
+            if (!CanViewLearningItem(viewer, permissionRoles, item, currentRecord, canManage)) continue;
 
             var activeEnrollmentCount = activeEnrollmentCounts.GetValueOrDefault(item.ItemId);
             var enrollmentDecision = GetEnrollmentDecision(
                 viewer,
+                permissionRoles,
                 item,
                 currentRecord,
                 activeEnrollmentCount,
@@ -189,6 +195,7 @@ public class LearningController : ControllerBase
                 activeEnrollmentCount,
                 currentRecord,
                 canManage,
+                HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
                 enrollmentDecision,
                 now);
             if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
@@ -221,11 +228,12 @@ public class LearningController : ControllerBase
         var club = await _db.Clubs.FirstOrDefaultAsync(candidate => candidate.ClubId == request.ClubId);
         if (club is null) return NotFound("发布资源的社团不存在。");
         if (!UsersController.IsActive(club.ClubStatus)) return BadRequest("只有正常运营的社团可以发布资源。");
-        if (!CanCreateLearningItem(operatorUser, club))
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanCreateLearningItem(permissionRoles, club.ClubId))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有本社团负责人、干部或指导老师可以发布资源。");
+                "当前用户没有在该社团发布资源的权限。");
         }
 
         var validation = await ValidateLearningItemInputAsync(
@@ -282,12 +290,20 @@ public class LearningController : ControllerBase
                 var now = LearningWorkflow.BusinessNow();
                 var decision = GetEnrollmentDecision(
                     operatorUser,
+                    permissionRoles,
                     item,
                     null,
                     0,
                     canManage: true,
                     now);
-                var itemDto = TryMapItemDto(item, 0, null, true, decision, now);
+                var itemDto = TryMapItemDto(
+                    item,
+                    0,
+                    null,
+                    true,
+                    HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
+                    decision,
+                    now);
                 if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
 
                 return CreatedAtAction(
@@ -362,11 +378,12 @@ public class LearningController : ControllerBase
         var club = await _db.Clubs.FirstOrDefaultAsync(candidate => candidate.ClubId == clubId);
         if (club is null) return NotFound("文件所属社团不存在。");
         if (!UsersController.IsActive(club.ClubStatus)) return BadRequest("只有正常运营的社团可以上传资源。");
-        if (!CanCreateLearningItem(operatorUser, club))
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanCreateLearningItem(permissionRoles, club.ClubId))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有本社团负责人、干部或指导老师可以上传资源。");
+                "当前用户没有在该社团上传资源的权限。");
         }
 
         await using var transaction =
@@ -399,7 +416,7 @@ public class LearningController : ControllerBase
                 FileUrl = storageReference,
                 Visibility = normalizedVisibility,
                 DownloadPermission = normalizedDownloadPermission,
-                ItemStatus = LearningWorkflow.ItemStatusPublished,
+                ItemStatus = LearningWorkflow.ItemStatusPendingReview,
                 CreatedAt = LearningWorkflow.BusinessNow()
             };
             _db.LearningItems.Add(item);
@@ -407,7 +424,14 @@ public class LearningController : ControllerBase
             await transaction.CommitAsync();
 
             var now = LearningWorkflow.BusinessNow();
-            var itemDto = TryMapItemDto(item, 0, null, true, null, now);
+            var itemDto = TryMapItemDto(
+                item,
+                0,
+                null,
+                true,
+                HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
+                null,
+                now);
             return itemDto is null
                 ? CourseDataIntegrityProblem(itemId)
                 : CreatedAtAction(nameof(GetItems), null, itemDto);
@@ -450,9 +474,10 @@ public class LearningController : ControllerBase
 
         var user = await LoadUserAsync(currentUserId.Value);
         if (user is null) return NotFound("当前用户不存在。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
         var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-        var canManage = CanManageLearningItem(user, item);
-        var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+        var canManage = CanManageLearningItem(permissionRoles, item);
+        var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
         if (accessDecision is not null)
         {
             return StatusCode(accessDecision.StatusCode, accessDecision.Message);
@@ -534,18 +559,15 @@ public class LearningController : ControllerBase
                 .ThenInclude(uploader => uploader!.ClubMemberships)
             .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("学习资源不存在。");
-        if (!LearningWorkflow.IsSupportedResourceType(item.ItemType))
-        {
-            return BadRequest("课程不能通过资源删除功能删除。");
-        }
-
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
-        if (!CanManageLearningItem(operatorUser, item))
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanManageLearningItem(permissionRoles, item) &&
+            !HasPermission(permissionRoles, ResourceDeletePermission, item.ClubId))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有资源上传者或本社团负责人、干部、指导老师可以删除资源。");
+                "当前用户没有删除该社团资源的权限。");
         }
 
         var isLocalUpload = item.FileUrl == $"{LocalFileUrlPrefix}{itemId}/file";
@@ -610,6 +632,83 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
+    /// 社团管理员或系统管理员审核待发布的课程、资源。
+    /// </summary>
+    [HttpPost("items/{itemId:int}/review")]
+    public async Task<IActionResult> ReviewItem(
+        int itemId,
+        [FromBody] ReviewLearningItemRequest? request)
+    {
+        if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
+        if (request is null) return BadRequest("审核结果不能为空。");
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        var item = await LoadLearningItemForAccessAsync(itemId);
+        if (item is null) return NotFound("课程或资源不存在。");
+        var reviewer = await LoadUserAsync(currentUserId.Value);
+        if (reviewer is null) return NotFound("审核用户不存在。");
+        if (!UsersController.IsActive(reviewer.AccountStatus)) return BadRequest("当前用户账号已停用。");
+
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!HasPermission(permissionRoles, ResourceReviewPermission, item.ClubId))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有审核课程或资源的权限。");
+        }
+        if (item.UploaderUserId == currentUserId.Value)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "不能审核自己提交的课程或资源。");
+        }
+        if (LearningWorkflow.NormalizeItemStatus(item.ItemStatus) !=
+            LearningWorkflow.ItemStatusPendingReview)
+        {
+            return Conflict("只有待审核的课程或资源可以处理审核结果。");
+        }
+
+        var approved = request.Result == ReviewLearningItemRequest.ResultEnum.ApprovedEnum;
+        var rejected = request.Result == ReviewLearningItemRequest.ResultEnum.RejectedEnum;
+        if (!approved && !rejected) return BadRequest("审核结果只能是 approved 或 rejected。");
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        item.ItemStatus = approved
+            ? LearningWorkflow.ItemStatusPublished
+            : LearningWorkflow.ItemStatusRejected;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            LogId = await GetNextOperationLogIdAsync(),
+            UserId = currentUserId.Value,
+            ModuleName = "learning",
+            OperationType = approved ? "review_approved" : "review_rejected",
+            TargetTable = "LEARNING_ITEMS",
+            TargetId = item.ItemId,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            CreatedAt = LearningWorkflow.BusinessNow()
+        });
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
+        var currentRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+        var canManage = CanManageLearningItem(permissionRoles, item);
+        var dto = TryMapItemDto(
+            item,
+            activeEnrollmentCount,
+            currentRecord,
+            canManage,
+            HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
+            GetEnrollmentDecision(
+                reviewer,
+                permissionRoles,
+                item,
+                currentRecord,
+                activeEnrollmentCount,
+                canManage,
+                LearningWorkflow.BusinessNow()),
+            LearningWorkflow.BusinessNow());
+        return dto is null ? CourseDataIntegrityProblem(itemId) : Ok(dto);
+    }
+
+    /// <summary>
     /// 修改课程信息、开放范围和加入状态。
     /// </summary>
     [HttpPut("items/{itemId:int}")]
@@ -637,11 +736,12 @@ public class LearningController : ControllerBase
         var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(operatorUser.AccountStatus)) return BadRequest("当前用户账号已停用。");
-        if (!CanManageLearningItem(operatorUser, item))
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanManageLearningItem(permissionRoles, item))
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                "只有资源发布者或本社团负责人、干部、指导老师可以修改资源。");
+                "当前用户没有修改该社团资源的权限。");
         }
 
         var validation = await ValidateLearningItemInputAsync(
@@ -689,6 +789,7 @@ public class LearningController : ControllerBase
         var now = LearningWorkflow.BusinessNow();
         var decision = GetEnrollmentDecision(
             operatorUser,
+            permissionRoles,
             item,
             currentRecord,
             activeEnrollmentCount,
@@ -699,6 +800,7 @@ public class LearningController : ControllerBase
             activeEnrollmentCount,
             currentRecord,
             true,
+            HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
             decision,
             now);
         return itemDto is null
@@ -729,12 +831,18 @@ public class LearningController : ControllerBase
             var user = await LoadUserAsync(currentUserId.Value);
             if (user is null) return NotFound("当前用户不存在。");
             if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+            var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有参加课程的权限。");
+            }
 
             var existingRecord = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
             var activeEnrollmentCount = await CountActiveEnrollmentsAsync(itemId);
-            var canManage = CanManageLearningItem(user, item);
+            var canManage = CanManageLearningItem(permissionRoles, item);
             var decision = GetEnrollmentDecision(
                 user,
+                permissionRoles,
                 item,
                 existingRecord,
                 activeEnrollmentCount,
@@ -794,6 +902,11 @@ public class LearningController : ControllerBase
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, null))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有退出课程的权限。");
+        }
 
         var item = await _db.LearningItems.FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("课程不存在。");
@@ -857,10 +970,15 @@ public class LearningController : ControllerBase
             var user = await LoadUserAsync(currentUserId.Value);
             if (user is null) return NotFound("当前用户不存在。");
             if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+            var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有学习资源的权限。");
+            }
 
             var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(user, item);
-            var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+            var canManage = CanManageLearningItem(permissionRoles, item);
+            var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
             if (accessDecision is not null)
             {
                 return StatusCode(accessDecision.StatusCode, accessDecision.Message);
@@ -938,10 +1056,15 @@ public class LearningController : ControllerBase
             var user = await LoadUserAsync(currentUserId.Value);
             if (user is null) return NotFound("当前用户不存在。");
             if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+            var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有下载学习资源的权限。");
+            }
 
             var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(user, item);
-            var accessDecision = GetLearningAccessDecision(user, item, record, canManage);
+            var canManage = CanManageLearningItem(permissionRoles, item);
+            var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
             if (accessDecision is not null)
             {
                 return StatusCode(accessDecision.StatusCode, accessDecision.Message);
@@ -1023,7 +1146,8 @@ public class LearningController : ControllerBase
             .Include(candidate => candidate.Club)
             .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId);
         if (item is null) return NotFound("学习资源不存在。");
-        if (!CanManageLearningItem(user, item))
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!CanViewLearningStatistics(permissionRoles, item.ClubId))
         {
             return StatusCode(StatusCodes.Status403Forbidden, "当前用户无权查看该资源统计。");
         }
@@ -1072,6 +1196,7 @@ public class LearningController : ControllerBase
         var user = await LoadUserAsync(currentUserId.Value);
         if (user is null) return NotFound("当前用户不存在。");
         if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
 
         var query = _db.LearningRecords
             .AsNoTracking()
@@ -1080,6 +1205,10 @@ public class LearningController : ControllerBase
 
         if (itemId is null)
         {
+            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, null))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "当前用户无权查看个人学习记录。");
+            }
             query = query.Where(record => record.UserId == currentUserId.Value);
         }
         else
@@ -1090,11 +1219,20 @@ public class LearningController : ControllerBase
                 .FirstOrDefaultAsync(candidate => candidate.ItemId == itemId.Value);
             if (item is null) return NotFound("课程或资源不存在。");
 
-            query = CanManageLearningItem(user, item)
-                ? query.Where(record => record.ItemId == itemId.Value)
-                : query.Where(record =>
+            if (CanViewLearningRecords(permissionRoles, item.ClubId))
+            {
+                query = query.Where(record => record.ItemId == itemId.Value);
+            }
+            else if (HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+            {
+                query = query.Where(record =>
                     record.ItemId == itemId.Value &&
                     record.UserId == currentUserId.Value);
+            }
+            else
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "当前用户无权查看该资源的学习记录。");
+            }
         }
 
         var records = await query
@@ -1117,6 +1255,11 @@ public class LearningController : ControllerBase
         if (recordId <= 0) return BadRequest("学习记录 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, null))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有维护个人学习记录的权限。");
+        }
         if (!LearningWorkflow.IsProgressValid((decimal)request.Progress))
         {
             return BadRequest("学习进度必须在 0 到 100 之间。");
@@ -1152,8 +1295,13 @@ public class LearningController : ControllerBase
 
         var currentUser = await LoadUserAsync(currentUserId.Value);
         if (currentUser is null) return NotFound("当前用户不存在。");
-        var canManage = CanManageLearningItem(currentUser, record.Item);
-        var accessDecision = GetLearningAccessDecision(currentUser, record.Item, record, canManage);
+        var canManage = CanManageLearningItem(permissionRoles, record.Item);
+        var accessDecision = GetLearningAccessDecision(
+            currentUser,
+            permissionRoles,
+            record.Item,
+            record,
+            canManage);
         if (accessDecision is not null)
         {
             return StatusCode(accessDecision.StatusCode, accessDecision.Message);
@@ -1267,12 +1415,19 @@ public class LearningController : ControllerBase
     /// </summary>
     private static EnrollmentDecision? GetEnrollmentDecision(
         User user,
+        IReadOnlyList<AuthRole> permissionRoles,
         DbLearningItem item,
         DbLearningRecord? currentRecord,
         int activeEnrollmentCount,
         bool canManage,
         DateTime now)
     {
+        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
+        {
+            return new EnrollmentDecision(
+                StatusCodes.Status403Forbidden,
+                "当前用户没有参加课程的权限。");
+        }
         if (!LearningWorkflow.IsSupportedCourseType(item.ItemType))
         {
             return new EnrollmentDecision(StatusCodes.Status400BadRequest, "该资源无需报名，请直接开始学习。");
@@ -1330,11 +1485,14 @@ public class LearningController : ControllerBase
     /// </summary>
     private static bool CanViewLearningItem(
         User viewer,
+        IReadOnlyList<AuthRole> permissionRoles,
         DbLearningItem item,
         DbLearningRecord? currentRecord,
         bool canManage)
     {
-        if (canManage) return true;
+        if (canManage ||
+            HasPermission(permissionRoles, ResourceReviewPermission, item.ClubId) ||
+            HasPermission(permissionRoles, ResourceDeletePermission, item.ClubId)) return true;
 
         var itemStatus = LearningWorkflow.NormalizeItemStatus(item.ItemStatus);
         if (itemStatus == LearningWorkflow.ItemStatusDraft) return false;
@@ -1342,16 +1500,23 @@ public class LearningController : ControllerBase
         var recordStatus = currentRecord is null
             ? null
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
-        if (recordStatus is not null && recordStatus != LearningWorkflow.RecordStatusCancelled)
+        if (recordStatus is not null &&
+            recordStatus != LearningWorkflow.RecordStatusCancelled &&
+            HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
         {
             return true;
         }
 
         return LearningWorkflow.NormalizeVisibility(item.Visibility) switch
         {
-            LearningWorkflow.VisibilityPublic => true,
-            LearningWorkflow.VisibilityClub => IsActiveClubMember(viewer, item.ClubId),
-            LearningWorkflow.VisibilityDepartment => IsSameActiveDepartment(viewer, item),
+            LearningWorkflow.VisibilityPublic =>
+                HasPermission(permissionRoles, PublicViewPermission, null),
+            LearningWorkflow.VisibilityClub =>
+                HasPermission(permissionRoles, ClubResourceViewPermission, item.ClubId) &&
+                IsActiveClubMember(viewer, item.ClubId),
+            LearningWorkflow.VisibilityDepartment =>
+                HasPermission(permissionRoles, ClubResourceViewPermission, item.ClubId) &&
+                IsSameActiveDepartment(viewer, item),
             _ => false
         };
     }
@@ -1361,11 +1526,12 @@ public class LearningController : ControllerBase
     /// </summary>
     private static EnrollmentDecision? GetLearningAccessDecision(
         User user,
+        IReadOnlyList<AuthRole> permissionRoles,
         DbLearningItem item,
         DbLearningRecord? currentRecord,
         bool canManage)
     {
-        if (!CanViewLearningItem(user, item, currentRecord, canManage))
+        if (!CanViewLearningItem(user, permissionRoles, item, currentRecord, canManage))
         {
             return new EnrollmentDecision(
                 StatusCodes.Status403Forbidden,
@@ -1458,35 +1624,41 @@ public class LearningController : ControllerBase
     /// <summary>
     /// 判断用户是否可为指定社团发布课程。
     /// </summary>
-    private static bool CanCreateLearningItem(User user, Club club)
-    {
-        return UsersController.IsClubPrincipal(user, club.ClubId) ||
-               UsersController.IsClubOfficer(user, club.ClubId) ||
-               HasClubRole(user, club.ClubId, AdvisorRoleCodes) ||
-               IsNamedClubAdvisor(user, club);
-    }
+    private static bool CanCreateLearningItem(
+        IReadOnlyList<AuthRole> permissionRoles,
+        int clubId) => HasPermission(permissionRoles, ResourceUploadPermission, clubId);
 
     /// <summary>
     /// 判断用户是否可维护课程及查看课程成员名单。
     /// </summary>
-    private static bool CanManageLearningItem(User user, DbLearningItem item)
-    {
-        if (item.UploaderUserId == user.UserId) return true;
-
-        return UsersController.IsClubPrincipal(user, item.ClubId) ||
-               UsersController.IsClubOfficer(user, item.ClubId) ||
-               HasClubRole(user, item.ClubId, AdvisorRoleCodes) ||
-               (item.Club is not null && IsNamedClubAdvisor(user, item.Club));
-    }
+    private static bool CanManageLearningItem(
+        IReadOnlyList<AuthRole> permissionRoles,
+        DbLearningItem item) =>
+        HasPermission(permissionRoles, ResourceUploadPermission, item.ClubId);
 
     /// <summary>
-    /// 判断教师账号是否与社团登记的指导老师姓名匹配。
+    /// 判断当前权限是否允许查看指定社团资源的实名学习记录。
     /// </summary>
-    private static bool IsNamedClubAdvisor(User user, Club club)
-    {
-        return IsTeacherAccount(user) &&
-               AdvisorNameMatchesUser(club.AdvisorName, user);
-    }
+    private static bool CanViewLearningRecords(
+        IReadOnlyList<AuthRole> permissionRoles,
+        int clubId) =>
+        HasPermission(permissionRoles, ResourceUploadPermission, clubId) ||
+        HasPermission(permissionRoles, ClubStatsViewPermission, clubId) ||
+        HasPermission(permissionRoles, ClubOperationViewPermission, clubId);
+
+    /// <summary>
+    /// 判断当前权限是否允许查看指定社团资源的匿名聚合统计。
+    /// </summary>
+    private static bool CanViewLearningStatistics(
+        IReadOnlyList<AuthRole> permissionRoles,
+        int clubId) =>
+        CanViewLearningRecords(permissionRoles, clubId) ||
+        HasPermission(permissionRoles, GlobalStatsViewPermission, null);
+
+    private static bool HasPermission(
+        IReadOnlyList<AuthRole> permissionRoles,
+        string permission,
+        int? clubId) => AuthService.RolesAllow(permissionRoles, permission, clubId);
 
     /// <summary>
     /// 判断用户是否为指定社团的有效成员。
@@ -1566,18 +1738,10 @@ public class LearningController : ControllerBase
         return maxId + 1;
     }
 
-    /// <summary>
-    /// 判断用户是否在指定社团拥有目标角色之一。
-    /// </summary>
-    private static bool HasClubRole(
-        User user,
-        int clubId,
-        IReadOnlySet<string> roleCodes)
+    private async Task<int> GetNextOperationLogIdAsync()
     {
-        return user.UserRoles.Any(userRole =>
-            userRole.ClubId == clubId &&
-            userRole.Role is not null &&
-            roleCodes.Contains(Normalize(userRole.Role.RoleCode)));
+        var maxId = await _db.OperationLogs.MaxAsync(log => (int?)log.LogId) ?? 0;
+        return maxId + 1;
     }
 
     /// <summary>
@@ -1612,16 +1776,6 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 判断社团登记的指导老师文本是否包含用户真实姓名。
-    /// </summary>
-    private static bool AdvisorNameMatchesUser(string? advisorName, User user)
-    {
-        return !string.IsNullOrWhiteSpace(advisorName) &&
-               !string.IsNullOrWhiteSpace(user.RealName) &&
-               advisorName.Trim().Contains(user.RealName.Trim(), StringComparison.Ordinal);
-    }
-
-    /// <summary>
     /// 将创建请求枚举映射为数据库课程状态。
     /// </summary>
     private static string? ToCreateStatusValue(CreateLearningItemRequest.ItemStatusEnum status)
@@ -1631,7 +1785,7 @@ public class LearningController : ControllerBase
             CreateLearningItemRequest.ItemStatusEnum.DraftEnum =>
                 LearningWorkflow.ItemStatusDraft,
             CreateLearningItemRequest.ItemStatusEnum.PublishedEnum =>
-                LearningWorkflow.ItemStatusPublished,
+                LearningWorkflow.ItemStatusPendingReview,
             _ => null
         };
     }
@@ -1646,7 +1800,7 @@ public class LearningController : ControllerBase
             UpdateLearningItemRequest.ItemStatusEnum.DraftEnum =>
                 LearningWorkflow.ItemStatusDraft,
             UpdateLearningItemRequest.ItemStatusEnum.PublishedEnum =>
-                LearningWorkflow.ItemStatusPublished,
+                LearningWorkflow.ItemStatusPendingReview,
             UpdateLearningItemRequest.ItemStatusEnum.ClosedEnum =>
                 LearningWorkflow.ItemStatusClosed,
             _ => null
@@ -1661,6 +1815,7 @@ public class LearningController : ControllerBase
         int activeEnrollmentCount,
         DbLearningRecord? currentRecord,
         bool canManage,
+        bool canUseOwnRecords,
         EnrollmentDecision? enrollmentDecision,
         DateTime now)
     {
@@ -1689,6 +1844,7 @@ public class LearningController : ControllerBase
             ? LearningWorkflow.RecordStatusNone
             : LearningWorkflow.NormalizeRecordStatus(currentRecord.EnrollStatus);
         var canCancelEnrollment =
+            canUseOwnRecords &&
             isCourse &&
             (currentRecordStatus is LearningWorkflow.RecordStatusEnrolled or
                 LearningWorkflow.RecordStatusLearning) &&
@@ -1735,10 +1891,14 @@ public class LearningController : ControllerBase
             EnrollmentUnavailableReason = isCourse
                 ? enrollmentDecision?.Message
                 : "该资源无需报名，请直接开始学习。",
-            CanStartLearning = isResource && learningDecision is null,
-            LearningUnavailableReason = learningDecision?.Message,
-            CanDownload = downloadDecision is null,
-            DownloadUnavailableReason = downloadDecision?.Message
+            CanStartLearning = canUseOwnRecords && isResource && learningDecision is null,
+            LearningUnavailableReason = canUseOwnRecords
+                ? learningDecision?.Message
+                : "当前账号没有学习资源的权限。",
+            CanDownload = canUseOwnRecords && downloadDecision is null,
+            DownloadUnavailableReason = canUseOwnRecords
+                ? downloadDecision?.Message
+                : "当前账号没有下载学习资源的权限。"
         };
     }
 
@@ -1917,6 +2077,10 @@ public class LearningController : ControllerBase
         {
             LearningWorkflow.ItemStatusPublished =>
                 ApiLearningItem.ItemStatusEnum.PublishedEnum,
+            LearningWorkflow.ItemStatusPendingReview =>
+                ApiLearningItem.ItemStatusEnum.PendingReviewEnum,
+            LearningWorkflow.ItemStatusRejected =>
+                ApiLearningItem.ItemStatusEnum.RejectedEnum,
             LearningWorkflow.ItemStatusClosed =>
                 ApiLearningItem.ItemStatusEnum.ClosedEnum,
             LearningWorkflow.ItemStatusFinished =>

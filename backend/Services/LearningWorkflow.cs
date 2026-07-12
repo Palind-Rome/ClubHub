@@ -16,7 +16,9 @@ public static class LearningWorkflow
     public const string DownloadPermissionApproval = "approval";
 
     public const string ItemStatusDraft = "draft";
+    public const string ItemStatusPendingReview = "pending_review";
     public const string ItemStatusPublished = "published";
+    public const string ItemStatusRejected = "rejected";
     public const string ItemStatusClosed = "closed";
     public const string ItemStatusFinished = "finished";
 
@@ -192,6 +194,8 @@ public static class LearningWorkflow
         {
             "" => ItemStatusDraft,
             "published" or "open" => ItemStatusPublished,
+            "pending_review" or "pending" or "reviewing" => ItemStatusPendingReview,
+            "rejected" => ItemStatusRejected,
             "closed" => ItemStatusClosed,
             "finished" => ItemStatusFinished,
             var value => value
