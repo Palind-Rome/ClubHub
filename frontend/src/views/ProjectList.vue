@@ -277,12 +277,7 @@ async function handleCreateClubChange(clubId?: number) {
 }
 
 async function createProject() {
-  if (
-    !(await validateForm(createFormRef.value)) ||
-    !createForm.clubId ||
-    !createForm.startDate ||
-    !currentUserId.value
-  ) {
+  if (!(await validateForm(createFormRef.value)) || !createForm.clubId || !createForm.startDate) {
     return;
   }
 
@@ -290,7 +285,6 @@ async function createProject() {
   try {
     await api.createProject({
       createProjectRequest: {
-        currentUserId: currentUserId.value,
         clubId: createForm.clubId,
         projectName: createForm.projectName.trim(),
         description: normalizeOptionalText(createForm.description),
@@ -322,11 +316,7 @@ function openLeaderDialog(project: Project) {
 }
 
 async function assignLeader() {
-  if (
-    !(await validateForm(leaderFormRef.value)) ||
-    !leaderForm.leaderUserId ||
-    !currentUserId.value
-  ) {
+  if (!(await validateForm(leaderFormRef.value)) || !leaderForm.leaderUserId) {
     return;
   }
 
@@ -335,7 +325,6 @@ async function assignLeader() {
     await api.assignProjectLeader({
       projectId: leaderForm.projectId,
       assignProjectLeaderRequest: {
-        currentUserId: currentUserId.value,
         leaderUserId: leaderForm.leaderUserId,
       },
     });
@@ -362,7 +351,7 @@ function openReviewDialog(project: Project) {
 }
 
 async function reviewProject() {
-  if (!(await validateForm(reviewFormRef.value)) || !currentUserId.value) {
+  if (!(await validateForm(reviewFormRef.value))) {
     return;
   }
 
@@ -371,7 +360,6 @@ async function reviewProject() {
     await api.reviewProject({
       projectId: reviewForm.projectId,
       reviewProjectRequest: {
-        currentUserId: currentUserId.value,
         projectStatus: reviewForm.projectStatus,
         reviewComment: normalizeOptionalText(reviewForm.reviewComment),
       },
@@ -430,7 +418,7 @@ function canCancelProject(project: Project) {
 }
 
 async function cancelProject(project: Project) {
-  if (!canCancelProject(project) || !currentUserId.value) {
+  if (!canCancelProject(project)) {
     ElMessage.warning("仅系统管理员、本社团负责人或校级社团管理员可撤销符合条件的项目。");
     return;
   }
@@ -455,7 +443,6 @@ async function cancelProject(project: Project) {
   }
 
   const cancelProjectRequest: CancelProjectRequest = {
-    currentUserId: currentUserId.value,
     cancelReason: normalizeOptionalText(cancelReason),
   };
 

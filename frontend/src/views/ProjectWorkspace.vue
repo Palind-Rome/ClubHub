@@ -5,6 +5,7 @@ import { ElMessage } from "element-plus";
 import { ProjectProjectStatusEnum, ResponseError, type Club, type Project } from "../api";
 import { apiClient as api } from "../apiClient";
 import ProjectMembersPanel from "../components/ProjectMembersPanel.vue";
+import ProjectTasksPanel from "../components/ProjectTasksPanel.vue";
 
 const route = useRoute();
 const project = ref<Project | null>(null);
@@ -173,6 +174,13 @@ watch(projectId, loadWorkspace, { immediate: true });
           <ProjectMembersPanel
             :project-id="project.id"
             :club-id="project.clubId"
+            :leader-user-id="project.leaderUserId"
+            :project-status="normalizedStatus"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="项目任务" name="tasks">
+          <ProjectTasksPanel
+            :project-id="project.id"
             :leader-user-id="project.leaderUserId"
             :project-status="normalizedStatus"
           />
