@@ -1532,6 +1532,8 @@ paths:
     get:
       summary: 获取当前账号可查看或可分配的用户列表
       operationId: getUsers
+      security:
+        - bearerAuth: []
       parameters:
         - name: clubId
           in: query

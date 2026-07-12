@@ -1,8 +1,27 @@
 import { Configuration, DefaultApi } from "./api";
 import { clearSession, readAuth } from "./authSession";
 
-function handleUnauthorizedResponse() {
-  if (!readAuth()) return;
+function attachCurrentAuthorization(init: RequestInit) {
+  const token = readAuth()?.token;
+  if (!token) return init;
+
+  const headers = new Headers(init.headers);
+  if (!headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return { ...init, headers };
+}
+
+function responseMatchesCurrentSession(init: RequestInit) {
+  const token = readAuth()?.token;
+  if (!token) return false;
+
+  return new Headers(init.headers).get("Authorization") === `Bearer ${token}`;
+}
+
+function handleUnauthorizedResponse(init: RequestInit) {
+  if (!responseMatchesCurrentSession(init)) return;
 
   clearSession();
   if (typeof window === "undefined" || window.location.pathname === "/auth") return;
@@ -17,8 +36,9 @@ export const apiClient = new DefaultApi(
     accessToken: () => readAuth()?.token ?? "",
     middleware: [
       {
-        post: async ({ response }) => {
-          if (response.status === 401) handleUnauthorizedResponse();
+        pre: async ({ url, init }) => ({ url, init: attachCurrentAuthorization(init) }),
+        post: async ({ init, response }) => {
+          if (response.status === 401) handleUnauthorizedResponse(init);
           return response;
         },
       },
