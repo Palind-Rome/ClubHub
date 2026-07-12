@@ -296,6 +296,7 @@ const memberFilters = reactive({
   termName: "",
   departmentName: "",
   groupName: "",
+  unassignedOnly: false,
 });
 const newDepartmentName = ref("");
 const newGroupDepartmentName = ref("");
@@ -712,9 +713,10 @@ const currentClubMembers = computed(() => clubMembers.value.filter((member) => m
 const memberTableRows = computed(() =>
   (memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value).filter(
     (member) =>
-      memberWorkspaceMode.value !== "history" ||
-      !memberFilters.termName ||
-      member.termName === memberFilters.termName,
+      (memberWorkspaceMode.value !== "history" ||
+        !memberFilters.termName ||
+        member.termName === memberFilters.termName) &&
+      (!memberFilters.unassignedOnly || isMemberUnassigned(member)),
   ),
 );
 const transitionSourceRows = computed(() => {
@@ -741,6 +743,7 @@ const memberGroupSummary = computed(() => {
     current: currentRows.length,
     departments: uniqueTextOptions(rows.map((member) => member.departmentName)).length,
     groups: uniqueTextOptions(rows.map((member) => member.groupName)).length,
+    unassigned: rows.filter(isMemberUnassigned).length,
   };
 });
 const evaluationTermOptions = computed(() =>
@@ -1849,6 +1852,15 @@ function clearMemberFilters() {
   memberFilters.termName = "";
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
+  memberFilters.unassignedOnly = false;
+  void loadMembers();
+}
+
+function toggleUnassignedMemberFilter(value: string | number | boolean) {
+  if (!value) return;
+
+  memberFilters.departmentName = "";
+  memberFilters.groupName = "";
   void loadMembers();
 }
 
@@ -2314,6 +2326,10 @@ function groupOptionsForDepartment(departmentName: string | null | undefined) {
   );
 }
 
+function isMemberUnassigned(member: ClubMemberRecord) {
+  return !member.departmentName?.trim() || !member.groupName?.trim();
+}
+
 watch(currentUserId, () => {
   void loadData();
 });
@@ -2322,6 +2338,7 @@ watch(selectedClubId, () => {
   memberFilters.departmentName = "";
   memberFilters.groupName = "";
   memberFilters.termName = "";
+  memberFilters.unassignedOnly = false;
   newDepartmentName.value = "";
   newGroupDepartmentName.value = "";
   newGroupName.value = "";
@@ -2870,6 +2887,7 @@ onUnmounted(() => {
               v-model="memberFilters.departmentName"
               class="filter-item"
               clearable
+              :disabled="memberFilters.unassignedOnly"
               placeholder="按部门筛选"
             >
               <el-option
@@ -2883,6 +2901,7 @@ onUnmounted(() => {
               v-model="memberFilters.groupName"
               class="filter-item"
               clearable
+              :disabled="memberFilters.unassignedOnly"
               placeholder="按小组筛选"
             >
               <el-option
@@ -2892,6 +2911,12 @@ onUnmounted(() => {
                 :value="group"
               />
             </el-select>
+            <el-checkbox
+              v-model="memberFilters.unassignedOnly"
+              @change="toggleUnassignedMemberFilter"
+            >
+              待分组
+            </el-checkbox>
             <el-button :icon="Refresh" @click="clearMemberFilters">清除筛选</el-button>
           </div>
 
@@ -2900,6 +2925,7 @@ onUnmounted(() => {
             <span>有效任期 {{ memberGroupSummary.current }} 条</span>
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
+            <span>待分组 {{ memberGroupSummary.unassigned }} 条</span>
             <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
               <el-input-number
                 v-model="newAcademicTermStartYear"
@@ -2991,12 +3017,14 @@ onUnmounted(() => {
           <el-table-column prop="studentNo" label="学号/工号" width="130" />
           <el-table-column label="部门" width="150">
             <template #default="{ row }">
-              <span>{{ row.departmentName || "-" }}</span>
+              <span v-if="row.departmentName">{{ row.departmentName }}</span>
+              <el-tag v-else type="warning" effect="plain">待分配</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="小组" width="140">
             <template #default="{ row }">
-              <span>{{ row.groupName || "-" }}</span>
+              <span v-if="row.groupName">{{ row.groupName }}</span>
+              <el-tag v-else type="warning" effect="plain">待分配</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="职位" width="150">
