@@ -2,8 +2,11 @@ using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApiProject = Org.OpenAPITools.Models.Project;
 using AssignProjectLeaderRequest = Org.OpenAPITools.Models.AssignProjectLeaderRequest;
 using CancelProjectRequest = Org.OpenAPITools.Models.CancelProjectRequest;
@@ -118,9 +121,13 @@ public class ProjectsController : ControllerBase
     /// Creates a project initiation application in pending status.
     /// </summary>
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest? req)
     {
         if (req is null) return BadRequest("Request body is required.");
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return AuthenticationRequired();
 
         var validation = await ValidateProjectInput(
             req.ClubId,
@@ -130,7 +137,7 @@ public class ProjectsController : ControllerBase
             req.EndDate);
         if (validation is not null) return validation;
 
-        var access = await EnsureProjectApplicantAsync(req.CurrentUserId, req.ClubId);
+        var access = await EnsureProjectApplicantAsync(currentUserId.Value, req.ClubId);
         if (access.Result is not null) return access.Result;
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
@@ -183,9 +190,13 @@ public class ProjectsController : ControllerBase
     /// Assigns or updates the project leader. The operator must be a club maintainer.
     /// </summary>
     [HttpPut("{projectId:int}/leader")]
+    [Authorize]
     public async Task<IActionResult> AssignLeader(int projectId, [FromBody] AssignProjectLeaderRequest? req)
     {
         if (req is null) return BadRequest("Request body is required.");
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return AuthenticationRequired();
 
         var projectSnapshot = await _db.Projects
             .AsNoTracking()
@@ -193,10 +204,10 @@ public class ProjectsController : ControllerBase
         if (projectSnapshot is null) return NotFound("Project does not exist.");
         if (string.Equals(projectSnapshot.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
         {
-            return Conflict("项目已关闭，不能再更换项目负责人。");
+            return ProjectClosedLeaderConflict();
         }
 
-        var operatorAccess = await EnsureActiveUserAsync(req.CurrentUserId, "assign project leader");
+        var operatorAccess = await EnsureActiveUserAsync(currentUserId.Value, "assign project leader");
         if (operatorAccess.Result is not null) return operatorAccess.Result;
         if (!CanAssignProjectLeader(operatorAccess.User!, projectSnapshot.ClubId))
         {
@@ -220,7 +231,7 @@ public class ProjectsController : ControllerBase
                 if (string.Equals(project.ProjectStatus, ClosedStatus, StringComparison.OrdinalIgnoreCase))
                 {
                     await transaction.RollbackAsync();
-                    return Conflict("项目已关闭，不能再更换项目负责人。");
+                    return ProjectClosedLeaderConflict();
                 }
 
                 var previousLeaderUserId = project.LeaderUserId;
@@ -252,9 +263,13 @@ public class ProjectsController : ControllerBase
     /// Reviews a project initiation application. Requirement 1.10 uses one advisor review round.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
+    [Authorize]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
     {
         if (req is null) return BadRequest("Request body is required.");
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return AuthenticationRequired();
 
         var normalizedStatus = ToReviewStatusValue(req.ProjectStatus);
         if (!ReviewStatuses.Contains(normalizedStatus))
@@ -265,7 +280,7 @@ public class ProjectsController : ControllerBase
         var project = await _db.Projects.FindAsync(projectId);
         if (project is null) return NotFound("Project does not exist.");
 
-        var reviewerAccess = await EnsureActiveUserAsync(req.CurrentUserId, "review project application");
+        var reviewerAccess = await EnsureActiveUserAsync(currentUserId.Value, "review project application");
         if (reviewerAccess.Result is not null) return reviewerAccess.Result;
         if (!await CanReviewProjectAsync(reviewerAccess.User!, project.ClubId))
         {
@@ -281,7 +296,7 @@ public class ProjectsController : ControllerBase
         }
 
         project.ProjectStatus = normalizedStatus;
-        project.ReviewerUserId = req.CurrentUserId;
+        project.ReviewerUserId = currentUserId.Value;
         project.ReviewComment = NormalizeOptionalText(req.ReviewComment);
 
         await _db.SaveChangesAsync();
@@ -292,9 +307,13 @@ public class ProjectsController : ControllerBase
     /// Allows system admins, club leaders, or platform club admins to cancel eligible projects.
     /// </summary>
     [HttpPost("{projectId:int}/cancel")]
+    [Authorize]
     public async Task<IActionResult> Cancel(int projectId, [FromBody] CancelProjectRequest? req)
     {
         if (req is null) return BadRequest("Request body is required.");
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return AuthenticationRequired();
 
         var project = await _db.Projects.FindAsync(projectId);
         if (project is null) return NotFound("Project does not exist.");
@@ -305,7 +324,7 @@ public class ProjectsController : ControllerBase
             return BadRequest("Only pending or running projects can be canceled.");
         }
 
-        var applicantAccess = await EnsureActiveUserAsync(req.CurrentUserId, "cancel project application");
+        var applicantAccess = await EnsureActiveUserAsync(currentUserId.Value, "cancel project application");
         if (applicantAccess.Result is not null) return applicantAccess.Result;
         if (!CanCancelProject(applicantAccess.User!, project.ClubId, projectStatus))
         {
@@ -322,6 +341,20 @@ public class ProjectsController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(ToProjectDto(project));
     }
+
+    private IActionResult AuthenticationRequired() =>
+        Unauthorized(new ApiError
+        {
+            Code = "authentication_required",
+            Message = "登录状态已失效，请重新登录。"
+        });
+
+    private ObjectResult ProjectClosedLeaderConflict() =>
+        StatusCode(StatusCodes.Status409Conflict, new ApiError
+        {
+            Code = "project_closed",
+            Message = "项目已关闭，不能再更换项目负责人。"
+        });
 
     private async Task<IActionResult?> ValidateProjectInput(
         int clubId,

@@ -181,7 +181,7 @@ public class ProjectMembershipService
                 {
                     await transaction.RollbackAsync();
                     _db.ChangeTracker.Clear();
-                    return ServiceResult<ProjectMember>.Fail(409, "该用户已经是项目 active 成员，请勿重复添加。", "project_member_already_active");
+                    return ServiceResult<ProjectMember>.Fail(409, "该用户当前已参与该项目，请勿重复添加。", "project_member_already_active");
                 }
 
                 var now = DateTime.UtcNow;
@@ -237,7 +237,7 @@ public class ProjectMembershipService
                             member.UserId == userId &&
                             member.MemberStatus == ActiveStatus);
                     return becameActive
-                        ? ServiceResult<ProjectMember>.Fail(409, "该用户已经是项目 active 成员，请勿重复添加。", "project_member_already_active")
+                        ? ServiceResult<ProjectMember>.Fail(409, "该用户当前已参与该项目，请勿重复添加。", "project_member_already_active")
                         : ServiceResult<ProjectMember>.Fail(409, "项目成员关系发生并发冲突，请稍后重试。");
                 }
             }

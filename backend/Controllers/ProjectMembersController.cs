@@ -22,6 +22,8 @@ namespace ClubHub.Api.Controllers;
 [Authorize]
 public class ProjectMembersController : ControllerBase
 {
+    private const string CompletedTaskStatus = "completed";
+
     private readonly ClubHubDbContext _db;
     private readonly ProjectMembershipService _membershipService;
 
@@ -151,7 +153,7 @@ public class ProjectMembersController : ControllerBase
                 member.MemberStatus == ProjectMembershipService.ActiveStatus);
         if (alreadyActive)
         {
-            return Error(409, "project_member_already_active", "该用户已经是项目 active 成员，请勿重复添加。");
+            return Error(409, "project_member_already_active", "该用户当前已参与该项目，请勿重复添加。");
         }
 
         if (!await _membershipService.IsActiveUserAsync(request.UserId))
@@ -161,7 +163,7 @@ public class ProjectMembersController : ControllerBase
 
         if (!await _membershipService.IsActiveClubMemberAsync(project.ClubId, request.UserId))
         {
-            return Error(400, "project_member_candidate_ineligible", "候选用户不是项目所属社团的 active 成员。");
+            return Error(400, "project_member_candidate_ineligible", "候选用户不是项目所属社团的当前有效成员。");
         }
 
         var result = await _membershipService.AddOrRestoreMemberAsync(
@@ -198,18 +200,44 @@ public class ProjectMembersController : ControllerBase
             try
             {
                 var currentProject = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == projectId);
-                if (currentProject is null) return Error(404, "project_not_found", "项目不存在。");
-                if (ProjectMembershipService.IsClosed(currentProject)) return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
+                if (currentProject is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_not_found", "项目不存在。");
+                }
+                if (ProjectMembershipService.IsClosed(currentProject))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_closed", "项目已关闭，不能再调整项目成员。");
+                }
 
                 var member = await _db.ProjectMembers.FirstOrDefaultAsync(candidate => candidate.ProjectMemberId == projectMemberId && candidate.ProjectId == projectId);
-                if (member is null) return Error(404, "project_member_not_found", "项目成员不存在。");
+                if (member is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_member_not_found", "项目成员不存在。");
+                }
                 if (currentProject.LeaderUserId == member.UserId)
                 {
+                    await transaction.RollbackAsync();
                     return Error(409, "project_leader_cannot_be_removed", "当前项目负责人不能被移除，请先调整项目负责人。");
                 }
 
                 if (member.MemberStatus != ProjectMembershipService.RemovedStatus || member.LeftAt is null)
                 {
+                    var hasIncompleteTasks = await _db.ProjectTasks.AnyAsync(task =>
+                        task.ProjectId == projectId &&
+                        task.AssigneeUserId == member.UserId &&
+                        (task.TaskStatus == null || task.TaskStatus.ToLower() != CompletedTaskStatus));
+                    if (hasIncompleteTasks)
+                    {
+                        await transaction.RollbackAsync();
+                        return Error(
+                            409,
+                            "project_member_has_incomplete_tasks",
+                            "该成员仍有未完成的项目任务，请先完成或调整任务后再移除。");
+                    }
+
                     var now = DateTime.UtcNow;
                     member.MemberStatus = ProjectMembershipService.RemovedStatus;
                     member.LeftAt ??= now;

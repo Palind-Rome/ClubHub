@@ -18,6 +18,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+    public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
@@ -211,6 +212,35 @@ public class ClubHubDbContext : DbContext
             e.HasOne(pm => pm.User)
              .WithMany(u => u.ProjectMemberships)
              .HasForeignKey(pm => pm.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ProjectTask>(e =>
+        {
+            e.HasKey(t => t.TaskId);
+            e.Property(t => t.Title).HasMaxLength(255);
+            e.Property(t => t.Priority).HasMaxLength(255);
+            e.Property(t => t.TaskStatus).HasMaxLength(255);
+            e.Property(t => t.DelayReason).HasMaxLength(255);
+            e.Property(t => t.DeliverableTitle).HasMaxLength(255);
+            e.Property(t => t.DeliverableUrl).HasMaxLength(255);
+            e.Property(t => t.DeliverableStatus).HasMaxLength(255);
+            e.Property(t => t.ReviewComment).HasMaxLength(255);
+            e.HasOne(t => t.Project)
+             .WithMany()
+             .HasForeignKey(t => t.ProjectId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(t => t.AssigneeUser)
+             .WithMany()
+             .HasForeignKey(t => t.AssigneeUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(t => t.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(t => t.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(t => t.DeliverableSubmitter)
+             .WithMany()
+             .HasForeignKey(t => t.DeliverableSubmitterId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
