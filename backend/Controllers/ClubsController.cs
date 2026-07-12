@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
+using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -77,6 +78,50 @@ public class ClubsController : ControllerBase
     };
 
     public ClubsController(ClubHubDbContext db) => _db = db;
+
+    [HttpGet("advisor-candidates")]
+    public async Task<IActionResult> GetAdvisorCandidates()
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var viewer = await LoadUserAsync(currentUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能选择指导老师。" });
+        }
+
+        var candidates = await _db.Users
+            .AsNoTracking()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(u =>
+                u.AccountStatus == null ||
+                u.AccountStatus == string.Empty ||
+                u.AccountStatus.ToLower() == "active" ||
+                u.AccountStatus.ToLower() == "normal" ||
+                u.AccountStatus.ToLower() == "enabled")
+            .OrderBy(u => u.RealName)
+            .ThenBy(u => u.StudentNo)
+            .ThenBy(u => u.UserId)
+            .ToListAsync();
+
+        return Ok(candidates
+            .Where(IsTeacherCandidate)
+            .Select(user => new ApiLearningTeacherCandidate
+            {
+                Id = user.UserId,
+                RealName = user.RealName,
+                StudentNo = user.StudentNo,
+                DisplayName = AdvisorCandidateDisplayName(user)
+            }));
+    }
 
     [HttpGet]
     [AllowAnonymous]
@@ -2292,6 +2337,13 @@ public class ClubsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(user.RealName)) return user.RealName;
         if (!string.IsNullOrWhiteSpace(user.Username)) return user.Username;
         return $"用户 {user.UserId}";
+    }
+
+    private static string AdvisorCandidateDisplayName(User user)
+    {
+        var name = DisplayUser(user) ?? $"用户 {user.UserId}";
+        var staffNumber = user.StudentNo?.Trim();
+        return string.IsNullOrWhiteSpace(staffNumber) ? name : $"{name}（{staffNumber}）";
     }
 
     private static string? EmptyToNull(string? value) =>

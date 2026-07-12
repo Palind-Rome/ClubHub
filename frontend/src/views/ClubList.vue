@@ -12,6 +12,7 @@ import {
   Search,
   User,
 } from "@element-plus/icons-vue";
+import { type LearningTeacherCandidate } from "../api";
 import {
   type AuthResponse,
   type AuthRole,
@@ -248,6 +249,7 @@ const router = useRouter();
 const auth = ref<AuthResponse | null>(readAuth());
 const users = ref<UserSummary[]>([]);
 const dialogUsers = ref<UserSummary[]>([]);
+const applicationAdvisorCandidates = ref<LearningTeacherCandidate[]>([]);
 const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
@@ -260,6 +262,7 @@ const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
+const applicationAdvisorLoading = ref(false);
 const memberLoading = ref(false);
 const evaluationLoading = ref(false);
 const saving = ref(false);
@@ -310,6 +313,7 @@ const applicationForm = reactive({
   applyReason: "",
   materialUrl: "",
   contactPhone: "",
+  advisorUserId: null as number | null,
 });
 
 const reviewDialogVisible = ref(false);
@@ -885,6 +889,25 @@ async function loadDialogUsers(clubId?: number) {
   }
 }
 
+async function loadApplicationAdvisorCandidates() {
+  if (!currentUserId.value) {
+    applicationAdvisorCandidates.value = [];
+    return;
+  }
+
+  applicationAdvisorLoading.value = true;
+  try {
+    applicationAdvisorCandidates.value = await requestJson<LearningTeacherCandidate[]>(
+      "/api/clubs/advisor-candidates",
+    );
+  } catch (e) {
+    applicationAdvisorCandidates.value = [];
+    ElMessage.error(e instanceof Error ? e.message : "指导老师候选加载失败");
+  } finally {
+    applicationAdvisorLoading.value = false;
+  }
+}
+
 async function loadData() {
   const requestId = ++dataRequestId;
   if (!currentUserId.value) {
@@ -1148,6 +1171,7 @@ function resetApplicationForm() {
   applicationForm.applyReason = "";
   applicationForm.materialUrl = "";
   applicationForm.contactPhone = "";
+  applicationForm.advisorUserId = null;
   applicationFormRef.value?.clearValidate();
 }
 
@@ -1159,6 +1183,7 @@ function openApplicationDialog() {
 
   resetApplicationForm();
   applicationDialogVisible.value = true;
+  void loadApplicationAdvisorCandidates();
 }
 
 async function submitApplication() {
@@ -2141,6 +2166,10 @@ function isAdvisorCandidate(user: UserSummary) {
 
 function advisorOptionLabel(user: UserSummary) {
   return `${user.displayName} - ${roleLabel(user)}`;
+}
+
+function applicationAdvisorLabel(candidate: LearningTeacherCandidate) {
+  return candidate.displayName.trim() || candidate.realName?.trim() || `用户 ${candidate.id}`;
 }
 
 function hasPermission(permission: string) {
@@ -3291,6 +3320,23 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="社团类别" prop="category">
           <el-input v-model="applicationForm.category" maxlength="40" show-word-limit />
+        </el-form-item>
+        <el-form-item label="指导老师">
+          <el-select
+            v-model="applicationForm.advisorUserId"
+            :loading="applicationAdvisorLoading"
+            clearable
+            filterable
+            placeholder="选择拟邀请指导老师"
+            no-data-text="暂无可选指导老师"
+          >
+            <el-option
+              v-for="candidate in applicationAdvisorCandidates"
+              :key="candidate.id"
+              :label="applicationAdvisorLabel(candidate)"
+              :value="candidate.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="社团简介">
           <el-input

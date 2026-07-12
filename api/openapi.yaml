@@ -408,6 +408,27 @@ paths:
         "409":
           description: 社团名称已存在或已有有效注册申请
 
+  /api/clubs/advisor-candidates:
+    get:
+      summary: 查询社团注册可选指导老师
+      description: 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+      operationId: getClubAdvisorCandidates
+      responses:
+        "200":
+          description: 可选指导老师列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: 当前用户账号不可用
+        "401":
+          description: 登录状态已失效
+        "404":
+          description: 当前用户不存在
+
   /api/clubs/applications:
     get:
       summary: 按当前用户权限查询社团注册申请
