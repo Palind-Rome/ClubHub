@@ -2032,7 +2032,7 @@ paths:
   /api/projects/{projectId}/tasks:
     get:
       summary: 获取项目任务列表
-      description: 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。
+      description: 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。默认不返回已完成任务，可显式查看已完成任务。
       operationId: getProjectTasks
       security:
         - bearerAuth: []
@@ -2043,6 +2043,13 @@ paths:
           schema:
             type: integer
             minimum: 1
+        - name: completedOnly
+          in: query
+          required: false
+          description: 是否仅返回已完成任务，默认 false。
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: 当前用户有权查看的项目任务列表
@@ -2127,6 +2134,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/projects/{projectId}/tasks/{taskId}:
+    delete:
+      summary: 删除项目任务
+      description: 仅项目负责人可删除任务；关联的执行人关系与进度提交记录会一并删除。
+      operationId: deleteProjectTask
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 项目任务已删除
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/projects/{projectId}/tasks/{taskId}/progress:
     patch:
       summary: 更新项目任务进度
@@ -2186,6 +2235,54 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "409":
           description: 已完成任务不能重新打开，或成员关系发生并发变化
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/progress-reports:
+    get:
+      summary: 获取项目任务进度提交记录
+      description: 项目负责人可查看项目全部任务的记录；任务执行人仅可查看分配给自己的任务记录。
+      operationId: getProjectTaskProgressReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 按提交时间倒序排列的进度记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectTaskProgressReport"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权查看该任务记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目任务不存在
           content:
             application/json:
               schema:
@@ -5902,15 +5999,15 @@ components:
           enum: [pending, in_progress, completed, delayed]
           description: 更新后的任务状态。
           example: completed
-        finishDate:
-          type: string
-          format: date-time
-          description: 完成时间；completed 时必填，其他状态会被清空。
-          nullable: true
         delayReason:
           type: string
           maxLength: 255
           description: 延期原因；仅 delayed 状态必填，completed 时会被清空。
+          nullable: true
+        reportContent:
+          type: string
+          maxLength: 1000
+          description: 本次进度汇报内容；进行中任务必须填写。
           nullable: true
       required:
         - progress
@@ -5931,6 +6028,59 @@ components:
       required:
         - userId
         - displayName
+
+    ProjectTaskProgressReport:
+      type: object
+      description: 一次任务进度提交的可追溯记录。
+      properties:
+        id:
+          type: integer
+          description: 进度记录 ID。
+          example: 8001
+        taskId:
+          type: integer
+          description: 所属任务 ID。
+          example: 5001
+        reporterUserId:
+          type: integer
+          description: 提交人用户 ID。
+          example: 12
+        reporterName:
+          type: string
+          description: 提交人姓名或账号展示名。
+          example: 王同学
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 本次提交后的任务进度。
+          example: 60
+        taskStatus:
+          type: string
+          enum: [pending, in_progress, completed, delayed]
+          description: 本次提交后的任务状态。
+          example: in_progress
+        reportContent:
+          type: string
+          description: 本次进度汇报内容。
+          nullable: true
+          example: 已完成物资清单初稿，正在核对预算。
+        delayReason:
+          type: string
+          description: 本次提交的延期原因；仅延期时有值。
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+          description: 服务端记录的提交时间；任务完成时也以此时间写入完成时间。
+      required:
+        - id
+        - taskId
+        - reporterUserId
+        - reporterName
+        - progress
+        - taskStatus
+        - submittedAt
 
     LearningTeacherCandidate:
       type: object

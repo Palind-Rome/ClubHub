@@ -84,4 +84,6 @@ public class ProjectTask
     public User? DeliverableSubmitter { get; set; }
 
     public ICollection<ProjectTaskAssignee> Assignees { get; set; } = new List<ProjectTaskAssignee>();
+
+    public ICollection<ProjectTaskProgressReport> ProgressReports { get; set; } = new List<ProjectTaskProgressReport>();
 }

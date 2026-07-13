@@ -18,8 +18,9 @@ public class ClubHubDbContext : DbContext
     public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
-    public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
-    public DbSet<ProjectTaskAssignee> ProjectTaskAssignees => Set<ProjectTaskAssignee>();
+      public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
+      public DbSet<ProjectTaskAssignee> ProjectTaskAssignees => Set<ProjectTaskAssignee>();
+      public DbSet<ProjectTaskProgressReport> ProjectTaskProgressReports => Set<ProjectTaskProgressReport>();
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
@@ -261,6 +262,24 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(item => item.UserId)
              .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ProjectTaskProgressReport>(e =>
+        {
+            e.HasKey(item => item.TaskProgressReportId);
+            e.Property(item => item.TaskStatus).HasMaxLength(30);
+            e.Property(item => item.ReportContent).HasMaxLength(1000);
+            e.Property(item => item.DelayReason).HasMaxLength(255);
+            e.HasIndex(item => new { item.TaskId, item.SubmittedAt })
+                .HasDatabaseName("IX_PT_PROGRESS_REPORTS_TASK");
+            e.HasOne(item => item.Task)
+                .WithMany(item => item.ProgressReports)
+                .HasForeignKey(item => item.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(item => item.Reporter)
+                .WithMany()
+                .HasForeignKey(item => item.ReporterUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<LearningItem>(e =>

@@ -8,8 +8,10 @@ using Microsoft.EntityFrameworkCore;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApiProjectTask = Org.OpenAPITools.Models.ProjectTask;
 using ApiProjectTaskAssignee = Org.OpenAPITools.Models.ProjectTaskAssignee;
+using ApiProjectTaskProgressReport = Org.OpenAPITools.Models.ProjectTaskProgressReport;
 using CreateProjectTaskRequest = Org.OpenAPITools.Models.CreateProjectTaskRequest;
 using DbProjectTask = ClubHub.Api.Data.Entities.ProjectTask;
+using DbProjectTaskProgressReport = ClubHub.Api.Data.Entities.ProjectTaskProgressReport;
 using UpdateProjectTaskProgressRequest = Org.OpenAPITools.Models.UpdateProjectTaskProgressRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -37,7 +39,7 @@ public class ProjectTasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTasks(int projectId)
+    public async Task<IActionResult> GetTasks(int projectId, [FromQuery] bool completedOnly = false)
     {
         var userId = User.GetUserId();
         if (userId is null) return AuthenticationRequired();
@@ -55,7 +57,9 @@ public class ProjectTasksController : ControllerBase
             .AsNoTracking()
             .Include(item => item.Assignees)
                 .ThenInclude(assignee => assignee.User)
-            .Where(item => item.ProjectId == projectId);
+            .Where(item => item.ProjectId == projectId && (completedOnly
+                ? item.TaskStatus == CompletedStatus
+                : item.TaskStatus != CompletedStatus));
         if (!isLeader) query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == userId.Value));
 
         var tasks = await query
@@ -64,6 +68,36 @@ public class ProjectTasksController : ControllerBase
             .ThenBy(item => item.TaskId)
             .ToListAsync();
         return Ok(tasks.Select(ToDto).ToList());
+    }
+
+    [HttpDelete("{taskId:int}")]
+    public async Task<IActionResult> DeleteTask(int projectId, int taskId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return AuthenticationRequired();
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var project = await _db.Projects.FirstOrDefaultAsync(item => item.ProjectId == projectId);
+        if (project is null) return Error(404, "project_not_found", "项目不存在。");
+        if (project.LeaderUserId != userId.Value)
+        {
+            await transaction.RollbackAsync();
+            return Error(403, "project_task_delete_forbidden", "只有项目负责人可以删除任务。");
+        }
+
+        var task = await _db.ProjectTasks.FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
+        if (task is null)
+        {
+            await transaction.RollbackAsync();
+            return Error(404, "project_task_not_found", "项目任务不存在。");
+        }
+
+        _db.ProjectTaskProgressReports.RemoveRange(_db.ProjectTaskProgressReports.Where(item => item.TaskId == taskId));
+        _db.ProjectTaskAssignees.RemoveRange(_db.ProjectTaskAssignees.Where(item => item.TaskId == taskId));
+        _db.ProjectTasks.Remove(task);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return NoContent();
     }
 
     [HttpPost]
@@ -182,56 +216,119 @@ public class ProjectTasksController : ControllerBase
         if (userId is null) return AuthenticationRequired();
         if (request is null) return Error(400, "project_task_request_required", "请填写任务进度信息。");
 
-        var task = await _db.ProjectTasks
-            .Include(item => item.Assignees)
-                .ThenInclude(assignee => assignee.User)
-            .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
-        if (task is null) return Error(404, "project_task_not_found", "项目任务不存在。");
-        if (!task.Assignees.Any(assignee => assignee.UserId == userId.Value) || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
-        {
-            return Error(403, "project_task_update_forbidden", "只有仍在参与项目的任务执行人可以更新该任务。");
-        }
-
         var status = ToStatusValue(request.TaskStatus);
         if (status is null) return Error(400, "project_task_status_invalid", "请选择有效的任务状态。");
-        if (string.Equals(task.TaskStatus, CompletedStatus, StringComparison.OrdinalIgnoreCase) && status != CompletedStatus)
+
+        for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            return Error(409, "project_task_completed", "已完成任务不能重新打开。");
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var task = await _db.ProjectTasks
+                    .Include(item => item.Assignees)
+                        .ThenInclude(assignee => assignee.User)
+                    .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
+                if (task is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_task_not_found", "项目任务不存在。");
+                }
+                if (!task.Assignees.Any(assignee => assignee.UserId == userId.Value) || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(403, "project_task_update_forbidden", "只有仍在参与项目的任务执行人可以更新该任务。");
+                }
+                if (string.Equals(task.TaskStatus, CompletedStatus, StringComparison.OrdinalIgnoreCase) && status != CompletedStatus)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_task_completed", "已完成任务不能重新打开。");
+                }
+
+                var now = DateTime.UtcNow;
+                var validation = ValidateProgressUpdate(task, request, status, now);
+                if (validation is not null)
+                {
+                    await transaction.RollbackAsync();
+                    return validation;
+                }
+
+                task.Progress = request.Progress;
+                task.TaskStatus = status;
+                task.FinishDate = status == CompletedStatus ? now : null;
+                task.DelayReason = status == CompletedStatus ? null : NormalizeOptionalText(request.DelayReason);
+                _db.ProjectTaskProgressReports.Add(new()
+                {
+                    TaskProgressReportId = (await _db.ProjectTaskProgressReports.MaxAsync(item => (int?)item.TaskProgressReportId) ?? 0) + 1,
+                    TaskId = task.TaskId,
+                    ReporterUserId = userId.Value,
+                    Progress = request.Progress,
+                    TaskStatus = status,
+                    ReportContent = NormalizeOptionalText(request.ReportContent),
+                    DelayReason = status == DelayedStatus ? NormalizeOptionalText(request.DelayReason) : null,
+                    SubmittedAt = now
+                });
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(ToDto(task));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxWriteRetries) break;
+            }
         }
 
-        var validation = ValidateProgressUpdate(task, request, status);
-        if (validation is not null) return validation;
+        return Error(409, "project_task_write_conflict", "任务进度提交发生并发冲突，请稍后重试。");
+    }
 
-        task.Progress = request.Progress;
-        task.TaskStatus = status;
-        task.FinishDate = status == CompletedStatus && request.FinishDate is not null
-            ? NormalizeUtc(request.FinishDate.Value)
-            : null;
-        task.DelayReason = status == CompletedStatus ? null : NormalizeOptionalText(request.DelayReason);
-        await _db.SaveChangesAsync();
-        return Ok(ToDto(task));
+    [HttpGet("{taskId:int}/progress-reports")]
+    public async Task<IActionResult> GetProgressReports(int projectId, int taskId)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return AuthenticationRequired();
+
+        var task = await _db.ProjectTasks
+            .AsNoTracking()
+            .Include(item => item.Assignees)
+            .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
+        if (task is null) return Error(404, "project_task_not_found", "项目任务不存在。");
+
+        var project = await _db.Projects.AsNoTracking().FirstOrDefaultAsync(item => item.ProjectId == projectId);
+        if (project is null) return Error(404, "project_not_found", "项目不存在。");
+        var canViewAll = project.LeaderUserId == userId.Value;
+        if (!canViewAll && (!task.Assignees.Any(assignee => assignee.UserId == userId.Value)
+            || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value)))
+        {
+            return Error(403, "project_task_report_view_forbidden", "只有项目负责人或仍在参与项目的任务执行人可以查看任务进度记录。");
+        }
+
+        var reports = await _db.ProjectTaskProgressReports
+            .AsNoTracking()
+            .Include(item => item.Reporter)
+            .Where(item => item.TaskId == taskId)
+            .OrderByDescending(item => item.SubmittedAt)
+            .ThenByDescending(item => item.TaskProgressReportId)
+            .ToListAsync();
+        return Ok(reports.Select(ToReportDto).ToList());
     }
 
     private IActionResult? ValidateProgressUpdate(
         DbProjectTask task,
         UpdateProjectTaskProgressRequest request,
-        string status)
+        string status,
+        DateTime now)
     {
         var startDate = task.StartDate is null ? (DateTime?)null : NormalizeUtc(task.StartDate.Value);
-        var dueDate = task.DueDate is null ? (DateTime?)null : NormalizeUtc(task.DueDate.Value);
-        var finishDate = request.FinishDate is null ? (DateTime?)null : NormalizeUtc(request.FinishDate.Value);
         var delayReason = NormalizeOptionalText(request.DelayReason);
-        var now = DateTime.UtcNow;
+        var reportContent = NormalizeOptionalText(request.ReportContent);
 
         if (request.Progress is < 0 or > 100) return Error(400, "project_task_progress_invalid", "任务进度必须在 0% 到 100% 之间。");
         if (status == PendingStatus && request.Progress != 0) return Error(400, "project_task_pending_progress_invalid", "待开始任务的进度必须为 0%。");
         if (status == InProgressStatus && (request.Progress <= 0 || request.Progress >= 100)) return Error(400, "project_task_in_progress_invalid", "进行中任务的进度必须在 1% 到 99% 之间。");
         if (status == DelayedStatus && request.Progress >= 100) return Error(400, "project_task_delayed_progress_invalid", "延期任务的进度必须低于 100%。");
         if (status == CompletedStatus && request.Progress != 100) return Error(400, "project_task_completed_progress_invalid", "已完成任务的进度必须为 100%。");
-        if (status == CompletedStatus && finishDate is null) return Error(400, "project_task_finish_date_required", "任务完成时必须填写完成日期。");
-        if (status != CompletedStatus && finishDate is not null) return Error(400, "project_task_finish_date_not_allowed", "未完成任务不能填写完成日期。");
-        if (finishDate is not null && finishDate > now) return Error(400, "project_task_finish_date_future", "完成日期不能晚于当前时间。");
-        if (finishDate is not null && startDate is not null && finishDate < startDate) return Error(400, "project_task_finish_date_before_start", "完成日期不能早于任务开始日期。");
+        if (status == CompletedStatus && startDate is not null && now < startDate) return Error(400, "project_task_finish_date_before_start", "任务尚未开始，不能完成。");
 
         if (status == DelayedStatus && delayReason is null)
         {
@@ -241,6 +338,10 @@ public class ProjectTasksController : ControllerBase
         if (status == CompletedStatus && delayReason is not null)
         {
             return Error(400, "project_task_delay_reason_not_allowed", "已完成任务不能保留延期原因。");
+        }
+        if (status == InProgressStatus && reportContent is null)
+        {
+            return Error(400, "project_task_report_required", "进行中任务必须填写本次进度汇报。");
         }
         return null;
     }
@@ -267,6 +368,19 @@ public class ProjectTasksController : ControllerBase
         Progress = task.Progress ?? 0,
         TaskStatus = ToApiStatus(task.TaskStatus),
         DelayReason = task.DelayReason
+    };
+
+    private static ApiProjectTaskProgressReport ToReportDto(DbProjectTaskProgressReport report) => new()
+    {
+        Id = report.TaskProgressReportId,
+        TaskId = report.TaskId,
+        ReporterUserId = report.ReporterUserId,
+        ReporterName = report.Reporter?.RealName?.Trim() is { Length: > 0 } name ? name : report.Reporter?.Username?.Trim() ?? "未知成员",
+        Progress = report.Progress,
+        TaskStatus = ToApiReportStatus(report.TaskStatus),
+        ReportContent = report.ReportContent,
+        DelayReason = report.DelayReason,
+        SubmittedAt = NormalizeUtc(report.SubmittedAt)
     };
 
     private static string? ToPriorityValue(CreateProjectTaskRequest.PriorityEnum value) => value switch
@@ -301,6 +415,14 @@ public class ProjectTasksController : ControllerBase
         CompletedStatus => ApiProjectTask.TaskStatusEnum.CompletedEnum,
         DelayedStatus => ApiProjectTask.TaskStatusEnum.DelayedEnum,
         _ => ApiProjectTask.TaskStatusEnum.PendingEnum
+    };
+
+    private static ApiProjectTaskProgressReport.TaskStatusEnum ToApiReportStatus(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        InProgressStatus => ApiProjectTaskProgressReport.TaskStatusEnum.InProgressEnum,
+        CompletedStatus => ApiProjectTaskProgressReport.TaskStatusEnum.CompletedEnum,
+        DelayedStatus => ApiProjectTaskProgressReport.TaskStatusEnum.DelayedEnum,
+        _ => ApiProjectTaskProgressReport.TaskStatusEnum.PendingEnum
     };
 
     private static DateTime NormalizeUtc(DateTime value) => value.Kind switch

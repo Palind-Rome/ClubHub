@@ -79,19 +79,20 @@ namespace Org.OpenAPITools.Models
         public TaskStatusEnum TaskStatus { get; set; }
 
         /// <summary>
-        /// 完成时间；completed 时必填，其他状态会被清空。
-        /// </summary>
-        /// <value>完成时间；completed 时必填，其他状态会被清空。</value>
-        [DataMember(Name="finishDate", EmitDefaultValue=true)]
-        public DateTime? FinishDate { get; set; }
-
-        /// <summary>
         /// 延期原因；仅 delayed 状态必填，completed 时会被清空。
         /// </summary>
         /// <value>延期原因；仅 delayed 状态必填，completed 时会被清空。</value>
         [MaxLength(255)]
         [DataMember(Name="delayReason", EmitDefaultValue=true)]
         public string? DelayReason { get; set; }
+
+        /// <summary>
+        /// 本次进度汇报内容；进行中任务必须填写。
+        /// </summary>
+        /// <value>本次进度汇报内容；进行中任务必须填写。</value>
+        [MaxLength(1000)]
+        [DataMember(Name="reportContent", EmitDefaultValue=true)]
+        public string? ReportContent { get; set; }
 
     }
 }
