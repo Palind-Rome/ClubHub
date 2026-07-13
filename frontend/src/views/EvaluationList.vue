@@ -498,7 +498,6 @@ function openCreateDialog() {
   evaluationTarget.value = null;
   resetEvaluationForm();
   evaluationDialogVisible.value = true;
-  void loadScorePreview({ silent: true });
 }
 
 async function submitGenerateEvaluations() {

@@ -1601,7 +1601,7 @@ async function submitMemberBatchGrouping() {
   const rows = [...selectedBatchGroupableRows.value];
   groupingSaving.value = true;
   try {
-    await Promise.all(
+    const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
           `/api/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
@@ -1616,7 +1616,19 @@ async function submitMemberBatchGrouping() {
         ),
       ),
     );
-    ElMessage.success(`已批量更新 ${rows.length} 名成员的分组`);
+    const failed = results.filter((result) => result.status === "rejected").length;
+    const succeeded = rows.length - failed;
+
+    if (succeeded === 0) {
+      throw new Error("批量分组保存失败");
+    }
+
+    if (failed > 0) {
+      ElMessage.warning(`成功 ${succeeded} 名，失败 ${failed} 名`);
+    } else {
+      ElMessage.success(`已批量更新 ${rows.length} 名成员的分组`);
+    }
+
     selectedMemberRows.value = [];
     memberBatchGroupingDialogVisible.value = false;
     await Promise.all([loadUsers(), loadMembers()]);
@@ -1644,7 +1656,7 @@ async function submitMemberBatchPosition() {
   const rows = [...selectedBatchPositionRows.value];
   termSaving.value = true;
   try {
-    await Promise.all(
+    const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
           `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
@@ -1656,10 +1668,22 @@ async function submitMemberBatchPosition() {
         ),
       ),
     );
-    ElMessage.success(`已批量更新 ${rows.length} 名成员的职务`);
+    const failed = results.filter((result) => result.status === "rejected").length;
+    const succeededRows = rows.filter((_, index) => results[index]?.status === "fulfilled");
+
+    if (succeededRows.length === 0) {
+      throw new Error("批量职务保存失败");
+    }
+
+    if (failed > 0) {
+      ElMessage.warning(`成功 ${succeededRows.length} 名，失败 ${failed} 名`);
+    } else {
+      ElMessage.success(`已批量更新 ${rows.length} 名成员的职务`);
+    }
+
     selectedMemberRows.value = [];
     memberBatchPositionDialogVisible.value = false;
-    if (rows.some((row) => row.userId === currentUserId.value)) {
+    if (succeededRows.some((row) => row.userId === currentUserId.value)) {
       await refreshAuthSessionQuietly();
     }
     await Promise.all([loadUsers(), loadData()]);

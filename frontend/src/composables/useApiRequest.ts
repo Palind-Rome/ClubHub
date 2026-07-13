@@ -1,5 +1,7 @@
 import { clearExpiredSession, readAuth } from "../authSession";
 
+let sessionExpiredHandled = false;
+
 interface ApiError {
   message?: string;
   title?: string;
@@ -34,8 +36,12 @@ export async function requestJson<T>(
   }
 
   if (!res.ok) {
-    if (res.status === 401 && readAuth()) {
-      clearExpiredSession();
+    const auth = readAuth();
+    if (res.status === 401 && auth) {
+      if (!sessionExpiredHandled) {
+        sessionExpiredHandled = true;
+        clearExpiredSession();
+      }
       throw new Error("登录状态已失效，请重新登录。");
     }
 
@@ -59,6 +65,10 @@ export async function requestJson<T>(
 function withAuthHeader(init?: RequestInit): RequestInit {
   const headers = new Headers(init?.headers);
   const token = readAuth()?.token;
+
+  if (token) {
+    sessionExpiredHandled = false;
+  }
 
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);

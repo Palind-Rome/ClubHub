@@ -617,7 +617,8 @@ onUnmounted(() => {
           type="info"
           show-icon
           :closable="false"
-          title="未公示记录仅维护人员可见；切换为已公示后，普通成员可查看，并会作为同学期成员考核的奖项分来源。"
+          title="公示状态说明"
+          description="未公示记录仅维护人员可见；切换为已公示后，普通成员可查看，并会作为同学期成员考核的奖项分来源。"
         />
         <el-form-item label="社团">
           <el-input :model-value="selectedClub?.name" disabled />
