@@ -902,7 +902,7 @@ public class AuthService
     private static bool IsNormalAccount(User user)
     {
         var normalized = NormalizeText(user.AccountStatus).ToLowerInvariant();
-        return normalized is "" or "active" or NormalStatus or "enabled" or "在任" or "正常";
+        return normalized is "active" or NormalStatus or "enabled" or "在任" or "正常";
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
