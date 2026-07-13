@@ -82,4 +82,6 @@ public class ProjectTask
 
     [ForeignKey(nameof(DeliverableSubmitterId))]
     public User? DeliverableSubmitter { get; set; }
+
+    public ICollection<ProjectTaskAssignee> Assignees { get; set; } = new List<ProjectTaskAssignee>();
 }

@@ -19,6 +19,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
     public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
+    public DbSet<ProjectTaskAssignee> ProjectTaskAssignees => Set<ProjectTaskAssignee>();
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
@@ -241,6 +242,24 @@ public class ClubHubDbContext : DbContext
             e.HasOne(t => t.DeliverableSubmitter)
              .WithMany()
              .HasForeignKey(t => t.DeliverableSubmitterId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ProjectTaskAssignee>(e =>
+        {
+            e.HasKey(item => item.TaskAssigneeId);
+            e.HasIndex(item => new { item.TaskId, item.UserId })
+             .IsUnique()
+             .HasDatabaseName("UQ_PROJECT_TASK_ASSIGNEES");
+            e.HasIndex(item => new { item.UserId, item.TaskId })
+             .HasDatabaseName("IX_PROJECT_TASK_ASSIGNEES_USER");
+            e.HasOne(item => item.Task)
+             .WithMany(task => task.Assignees)
+             .HasForeignKey(item => item.TaskId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(item => item.User)
+             .WithMany()
+             .HasForeignKey(item => item.UserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 

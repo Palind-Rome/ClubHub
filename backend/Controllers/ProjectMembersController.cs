@@ -227,7 +227,7 @@ public class ProjectMembersController : ControllerBase
                 {
                     var hasIncompleteTasks = await _db.ProjectTasks.AnyAsync(task =>
                         task.ProjectId == projectId &&
-                        task.AssigneeUserId == member.UserId &&
+                        task.Assignees.Any(assignee => assignee.UserId == member.UserId) &&
                         (task.TaskStatus == null || task.TaskStatus.ToLower() != CompletedTaskStatus));
                     if (hasIncompleteTasks)
                     {

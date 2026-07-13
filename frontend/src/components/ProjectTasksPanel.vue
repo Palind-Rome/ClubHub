@@ -46,7 +46,7 @@ const activeMembers = computed(() =>
 );
 
 const createForm = reactive({
-  assigneeUserId: undefined as number | undefined,
+  assigneeUserIds: [] as number[],
   title: "",
   content: "",
   priority: CreateProjectTaskRequestPriorityEnum.Medium,
@@ -64,7 +64,7 @@ const updateForm = reactive<{
   delayReason: "",
 });
 const createRules: FormRules = {
-  assigneeUserId: [{ required: true, message: "请选择任务执行人", trigger: "change" }],
+  assigneeUserIds: [{ required: true, message: "请至少选择一名任务执行人", trigger: "change" }],
   title: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
   dueDate: [
     { required: true, message: "请选择截止时间", trigger: "change" },
@@ -132,7 +132,7 @@ async function openCreate() {
     );
     return;
   }
-  createForm.assigneeUserId = undefined;
+  createForm.assigneeUserIds = [];
   createForm.title = "";
   createForm.content = "";
   createForm.priority = CreateProjectTaskRequestPriorityEnum.Medium;
@@ -143,13 +143,13 @@ async function openCreate() {
 
 async function createTask() {
   const valid = await createFormRef.value?.validate().catch(() => false);
-  if (!valid || !createForm.assigneeUserId || !createForm.dueDate) return;
+  if (!valid || createForm.assigneeUserIds.length === 0 || !createForm.dueDate) return;
   saving.value = true;
   try {
     await api.createProjectTask({
       projectId: props.projectId,
       createProjectTaskRequest: {
-        assigneeUserId: createForm.assigneeUserId,
+        assigneeUserIds: new Set(createForm.assigneeUserIds),
         title: createForm.title.trim(),
         content: optional(createForm.content),
         priority: createForm.priority,
@@ -182,15 +182,13 @@ async function updateTask() {
   if (!valid) return;
   const completed =
     updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Completed;
-  const delayedOrOverdue =
-    updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed ||
-    (!completed && task.dueDate < new Date());
+  const delayed = updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed;
   if (completed && !updateForm.finishDate) {
     ElMessage.warning("完成任务时请填写完成日期。");
     return;
   }
-  if (delayedOrOverdue && !optional(updateForm.delayReason)) {
-    ElMessage.warning("延期或逾期未完成的任务必须填写延期原因。");
+  if (delayed && !optional(updateForm.delayReason)) {
+    ElMessage.warning("已延期任务必须填写延期原因。");
     return;
   }
   saving.value = true;
@@ -217,7 +215,10 @@ async function updateTask() {
 }
 
 function canUpdate(task: ProjectTask) {
-  return task.assigneeUserId === currentUserId.value;
+  return task.assignees.some((assignee) => assignee.userId === currentUserId.value);
+}
+function assigneeNames(task: ProjectTask) {
+  return task.assignees.map((assignee) => assignee.displayName).join("、");
 }
 function memberText(member: ProjectMember) {
   return member.studentNo
@@ -284,9 +285,9 @@ onMounted(() => void loadTasks());
             ><strong>{{ row.title }}</strong
             ><span v-if="row.content" class="task-content">{{ row.content }}</span></template
           ></el-table-column
-        ><el-table-column prop="assigneeName" label="执行人" min-width="110" /><el-table-column
-          label="优先级"
-          width="90"
+        ><el-table-column label="执行人" min-width="150"
+          ><template #default="{ row }">{{ assigneeNames(row) }}</template></el-table-column
+        ><el-table-column label="优先级" width="90"
           ><template #default="{ row }"
             ><el-tag effect="plain">{{
               priorityLabel[row.priority] || row.priority
@@ -319,11 +320,12 @@ onMounted(() => void loadTasks());
 
     <el-dialog v-model="createVisible" title="创建项目任务" width="min(620px, 92vw)"
       ><el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="92px"
-        ><el-form-item label="执行人" prop="assigneeUserId"
+        ><el-form-item label="执行人" prop="assigneeUserIds"
           ><el-select
-            v-model="createForm.assigneeUserId"
-            placeholder="选择正在参与项目的成员"
+            v-model="createForm.assigneeUserIds"
+            placeholder="选择正在参与项目的成员（可多选）"
             filterable
+            multiple
             ><el-option
               v-for="member in activeMembers"
               :key="member.userId"
@@ -384,12 +386,7 @@ onMounted(() => void loadTasks());
             type="datetime"
             value-format="YYYY-MM-DDTHH:mm" /></el-form-item
         ><el-form-item
-          v-if="
-            updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed ||
-            (selectedTask &&
-              updateForm.taskStatus !== UpdateProjectTaskProgressRequestTaskStatusEnum.Completed &&
-              selectedTask.dueDate < new Date())
-          "
+          v-if="updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed"
           label="延期原因"
           ><el-input
             v-model="updateForm.delayReason"

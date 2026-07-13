@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApiProjectTask = Org.OpenAPITools.Models.ProjectTask;
+using ApiProjectTaskAssignee = Org.OpenAPITools.Models.ProjectTaskAssignee;
 using CreateProjectTaskRequest = Org.OpenAPITools.Models.CreateProjectTaskRequest;
 using DbProjectTask = ClubHub.Api.Data.Entities.ProjectTask;
 using UpdateProjectTaskProgressRequest = Org.OpenAPITools.Models.UpdateProjectTaskProgressRequest;
@@ -52,9 +53,10 @@ public class ProjectTasksController : ControllerBase
 
         var query = _db.ProjectTasks
             .AsNoTracking()
-            .Include(item => item.AssigneeUser)
+            .Include(item => item.Assignees)
+                .ThenInclude(assignee => assignee.User)
             .Where(item => item.ProjectId == projectId);
-        if (!isLeader) query = query.Where(item => item.AssigneeUserId == userId.Value);
+        if (!isLeader) query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == userId.Value));
 
         var tasks = await query
             .OrderBy(item => item.TaskStatus == CompletedStatus ? 1 : 0)
@@ -82,6 +84,11 @@ public class ProjectTasksController : ControllerBase
         }
         var priority = ToPriorityValue(request.Priority);
         if (priority is null) return Error(400, "project_task_priority_invalid", "请选择有效的任务优先级。");
+        var assigneeUserIds = request.AssigneeUserIds?.Distinct().ToList() ?? [];
+        if (assigneeUserIds.Count == 0 || assigneeUserIds.Any(candidate => candidate <= 0))
+        {
+            return Error(400, "project_task_assignees_invalid", "请至少选择一名有效的任务执行人。");
+        }
 
         var now = DateTime.UtcNow;
         var dueDate = NormalizeUtc(request.DueDate);
@@ -108,10 +115,13 @@ public class ProjectTasksController : ControllerBase
                     await transaction.RollbackAsync();
                     return Error(403, "project_task_create_forbidden", "只有项目负责人可以创建任务。");
                 }
-                if (!await _membershipService.IsActiveMemberAsync(projectId, request.AssigneeUserId))
+                foreach (var assigneeUserId in assigneeUserIds)
                 {
-                    await transaction.RollbackAsync();
-                    return Error(403, "project_task_assignee_not_member", "任务执行人必须是正在参与该项目的成员。");
+                    if (!await _membershipService.IsActiveMemberAsync(projectId, assigneeUserId))
+                    {
+                        await transaction.RollbackAsync();
+                        return Error(403, "project_task_assignee_not_member", "每位任务执行人都必须是正在参与该项目的成员。");
+                    }
                 }
                 if (project.EndDate is not null && dueDate > NormalizeUtc(project.EndDate.Value))
                 {
@@ -123,7 +133,7 @@ public class ProjectTasksController : ControllerBase
                 {
                     TaskId = (await _db.ProjectTasks.MaxAsync(item => (int?)item.TaskId) ?? 0) + 1,
                     ProjectId = projectId,
-                    AssigneeUserId = request.AssigneeUserId,
+                    AssigneeUserId = assigneeUserIds[0],
                     Title = title,
                     Content = NormalizeOptionalText(request.Content),
                     Priority = priority,
@@ -135,10 +145,20 @@ public class ProjectTasksController : ControllerBase
                     DelayReason = null
                 };
                 _db.ProjectTasks.Add(task);
+                var nextTaskAssigneeId = (await _db.ProjectTaskAssignees.MaxAsync(item => (int?)item.TaskAssigneeId) ?? 0) + 1;
+                foreach (var assigneeUserId in assigneeUserIds)
+                {
+                    task.Assignees.Add(new()
+                    {
+                        TaskAssigneeId = nextTaskAssigneeId++,
+                        UserId = assigneeUserId,
+                        AssignedAt = now
+                    });
+                }
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await _db.Entry(task).Reference(item => item.AssigneeUser).LoadAsync();
+                await _db.Entry(task).Collection(item => item.Assignees).Query().Include(item => item.User).LoadAsync();
                 return StatusCode(StatusCodes.Status201Created, ToDto(task));
             }
             catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex))
@@ -163,12 +183,13 @@ public class ProjectTasksController : ControllerBase
         if (request is null) return Error(400, "project_task_request_required", "请填写任务进度信息。");
 
         var task = await _db.ProjectTasks
-            .Include(item => item.AssigneeUser)
+            .Include(item => item.Assignees)
+                .ThenInclude(assignee => assignee.User)
             .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
         if (task is null) return Error(404, "project_task_not_found", "项目任务不存在。");
-        if (task.AssigneeUserId != userId.Value || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
+        if (!task.Assignees.Any(assignee => assignee.UserId == userId.Value) || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
         {
-            return Error(403, "project_task_update_forbidden", "只有仍在参与项目的任务执行人可以更新自己的任务。");
+            return Error(403, "project_task_update_forbidden", "只有仍在参与项目的任务执行人可以更新该任务。");
         }
 
         var status = ToStatusValue(request.TaskStatus);
@@ -212,11 +233,11 @@ public class ProjectTasksController : ControllerBase
         if (finishDate is not null && finishDate > now) return Error(400, "project_task_finish_date_future", "完成日期不能晚于当前时间。");
         if (finishDate is not null && startDate is not null && finishDate < startDate) return Error(400, "project_task_finish_date_before_start", "完成日期不能早于任务开始日期。");
 
-        var overdueUnfinished = dueDate is not null && dueDate < now && status != CompletedStatus;
-        if ((status == DelayedStatus || overdueUnfinished) && delayReason is null)
+        if (status == DelayedStatus && delayReason is null)
         {
-            return Error(400, "project_task_delay_reason_required", "延期或逾期未完成的任务必须填写延期原因。");
+            return Error(400, "project_task_delay_reason_required", "已延期任务必须填写延期原因。");
         }
+        if (status != DelayedStatus && status != CompletedStatus && delayReason is not null) return Error(400, "project_task_delay_reason_not_allowed", "待开始或进行中任务无需填写延期原因。");
         if (status == CompletedStatus && delayReason is not null)
         {
             return Error(400, "project_task_delay_reason_not_allowed", "已完成任务不能保留延期原因。");
@@ -232,8 +253,11 @@ public class ProjectTasksController : ControllerBase
     {
         Id = task.TaskId,
         ProjectId = task.ProjectId ?? 0,
-        AssigneeUserId = task.AssigneeUserId ?? 0,
-        AssigneeName = task.AssigneeUser?.RealName?.Trim() is { Length: > 0 } name ? name : task.AssigneeUser?.Username?.Trim() ?? "未知成员",
+        Assignees = task.Assignees.OrderBy(assignee => assignee.TaskAssigneeId).Select(assignee => new ApiProjectTaskAssignee
+        {
+            UserId = assignee.UserId,
+            DisplayName = assignee.User?.RealName?.Trim() is { Length: > 0 } name ? name : assignee.User?.Username?.Trim() ?? "未知成员"
+        }).ToList(),
         Title = task.Title ?? "未命名任务",
         Content = task.Content,
         Priority = ToApiPriority(task.Priority),
