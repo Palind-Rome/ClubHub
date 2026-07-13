@@ -1,0 +1,82 @@
+name: Pull Request
+description: 提交代码变更
+body:
+  - type: textarea
+    id: changes
+    attributes:
+      label: 改动内容
+      description: 简洁说明本次 PR 做了什么
+      placeholder: |
+        例如：新增活动签到功能，包括……
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: 改动原因
+      description: 为什么需要这个改动
+      placeholder: |
+        例如：解决 #123 反馈的签到失败问题……
+    validations:
+      required: true
+  - type: input
+    id: related_issue
+    attributes:
+      label: 关联 Issue
+      description: |
+        格式：Closes #123（关闭 Issue）或 Part of #456（部分解决）
+        注意：Closes 必须放在行首，不能缩进或用列表符号
+      placeholder: "Closes #"
+    validations:
+      required: false
+  - type: textarea
+    id: review_focus
+    attributes:
+      label: 审查关注点
+      description: 希望 reviewer 重点审查哪些方面（可选）
+      placeholder: |
+        例如：权限判断是否正确、边界条件是否覆盖、与现有逻辑的兼容性……
+    validations:
+      required: false
+  - type: textarea
+    id: ui_changes
+    attributes:
+      label: UI 改动
+      description: 涉及前端改动时，请附上截图或录屏对比（可选）
+      placeholder: |
+        | 改动前 | 改动后 |
+        |--------|--------|
+        |        |        |
+    validations:
+      required: false
+  - type: textarea
+    id: test_notes
+    attributes:
+      label: 测试说明
+      description: 如何验证本次改动、测试场景、回归范围（可选）
+    validations:
+      required: false
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 检查清单
+      description: 请逐项确认
+      options:
+        - label: 后端代码已构建通过（`dotnet build`）
+          required: true
+        - label: 前端代码已构建通过（`pnpm build`）
+          required: true
+        - label: 已本地手工测试主要场景
+          required: true
+        - label: 数据库：无表结构变化
+          required: false
+        - label: 数据库：表结构变更已写入 `database/`
+          required: false
+        - label: 数据库：种子数据、视图、索引、触发器、存储过程已同步
+          required: false
+        - label: 文档：课程文档已同步更新
+          required: false
+        - label: 部署：需要新增或修改 GitHub Secrets（请在 PR 描述中注明）
+          required: false
+        - label: 部署：需要修改服务器配置或手动迁移
+          required: false
