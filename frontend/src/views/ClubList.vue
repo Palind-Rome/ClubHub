@@ -246,6 +246,7 @@ const clubInfoManagePermission = "club:info:manage";
 const clubMemberManagePermission = "club:member:manage";
 const clubInternalViewPermission = "club:internal:view";
 const clubOperationViewPermission = "club:operation:view";
+const defaultMemberPositionOptions = ["社员", "干事", "组长", "副组长", "部长", "副部长"];
 
 const route = useRoute();
 const router = useRouter();
@@ -381,6 +382,10 @@ const memberBatchGroupingDialogVisible = ref(false);
 const memberBatchGroupingForm = reactive({
   departmentName: "",
   groupName: "",
+});
+const memberBatchPositionDialogVisible = ref(false);
+const memberBatchPositionForm = reactive({
+  positionName: "",
 });
 
 const evaluationDialogVisible = ref(false);
@@ -692,6 +697,12 @@ const memberGroupingGroupOptions = computed(() =>
 const memberBatchGroupingGroupOptions = computed(() =>
   groupOptionsForDepartment(memberBatchGroupingForm.departmentName),
 );
+const memberPositionOptions = computed(() =>
+  uniqueTextOptions([
+    ...defaultMemberPositionOptions,
+    ...clubMembers.value.map((member) => member.positionName),
+  ]),
+);
 const canShowMemberBatchSelection = computed(
   () =>
     memberWorkspaceMode.value === "current" &&
@@ -699,6 +710,9 @@ const canShowMemberBatchSelection = computed(
 );
 const selectedBatchGroupableRows = computed(() =>
   selectedMemberRows.value.filter((row) => canBatchUpdateMemberGrouping(row)),
+);
+const selectedBatchPositionRows = computed(() =>
+  selectedMemberRows.value.filter((row) => canBatchUpdateMemberTerm(row)),
 );
 const academicTermOptions = computed<AcademicTermOption[]>(() => {
   const currentYear = academicYearStart(new Date());
@@ -1638,6 +1652,10 @@ function canBatchUpdateMemberGrouping(row: ClubMemberRecord) {
   );
 }
 
+function canBatchUpdateMemberTerm(row: ClubMemberRecord) {
+  return row.isCurrent && canEditMemberTerm(row);
+}
+
 function canUpdateMemberDepartment(row: ClubMemberRecord) {
   return canFreelyUpdateMemberGrouping(row);
 }
@@ -1686,7 +1704,7 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
 }
 
 function canSelectMemberForBatch(row: ClubMemberRecord) {
-  return canBatchUpdateMemberGrouping(row);
+  return canBatchUpdateMemberGrouping(row) || canBatchUpdateMemberTerm(row);
 }
 
 function handleMemberSelectionChange(rows: ClubMemberRecord[]) {
@@ -1722,6 +1740,24 @@ function openMemberBatchGroupingDialog() {
   memberBatchGroupingForm.departmentName = sameDepartment ? (first.departmentName ?? "") : "";
   memberBatchGroupingForm.groupName = sameGroup ? (first.groupName ?? "") : "";
   memberBatchGroupingDialogVisible.value = true;
+}
+
+function openMemberBatchPositionDialog() {
+  if (selectedMemberRows.value.length === 0) {
+    ElMessage.warning("请先勾选需要批量设置职务的成员。");
+    return;
+  }
+
+  const rows = selectedBatchPositionRows.value;
+  if (rows.length !== selectedMemberRows.value.length) {
+    ElMessage.warning("已勾选成员中包含当前身份不可批量维护职务的成员。");
+    return;
+  }
+
+  const first = rows[0];
+  const samePosition = rows.every((row) => (row.positionName ?? "") === (first.positionName ?? ""));
+  memberBatchPositionForm.positionName = samePosition ? (first.positionName ?? "") : "";
+  memberBatchPositionDialogVisible.value = true;
 }
 
 async function submitMemberGrouping() {
@@ -1809,6 +1845,49 @@ async function submitMemberBatchGrouping() {
     ElMessage.error(e instanceof Error ? e.message : "批量分组保存失败");
   } finally {
     groupingSaving.value = false;
+  }
+}
+
+async function submitMemberBatchPosition() {
+  if (!selectedClubId.value || selectedBatchPositionRows.value.length === 0) return;
+
+  const positionName = memberBatchPositionForm.positionName.trim();
+  if (!positionName) {
+    ElMessage.warning("请选择或填写批量设置的职务。");
+    return;
+  }
+
+  if (isPrincipalPosition(positionName)) {
+    ElMessage.warning("负责人职务需要逐人编辑确认，不能批量设置。");
+    return;
+  }
+
+  const rows = [...selectedBatchPositionRows.value];
+  termSaving.value = true;
+  try {
+    await Promise.all(
+      rows.map((row) =>
+        requestJson<ClubMemberRecord>(
+          `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ positionName }),
+          },
+        ),
+      ),
+    );
+    ElMessage.success(`已批量更新 ${rows.length} 名成员的职务`);
+    selectedMemberRows.value = [];
+    memberBatchPositionDialogVisible.value = false;
+    if (rows.some((row) => row.userId === currentUserId.value)) {
+      await refreshAuthSessionQuietly();
+    }
+    await Promise.all([loadUsers(), loadData()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "批量职务保存失败");
+  } finally {
+    termSaving.value = false;
   }
 }
 
@@ -2494,7 +2573,9 @@ function groupOptionsForDepartment(departmentName: string | null | undefined) {
 }
 
 function isMemberUnassigned(member: ClubMemberRecord) {
-  return !member.departmentName?.trim() || !member.groupName?.trim();
+  return (
+    !member.departmentName?.trim() || !member.groupName?.trim() || !member.positionName?.trim()
+  );
 }
 
 watch(currentUserId, () => {
@@ -3143,7 +3224,7 @@ onUnmounted(() => {
               v-model="memberFilters.unassignedOnly"
               @change="toggleUnassignedMemberFilter"
             >
-              待分组
+              待补资料
             </el-checkbox>
             <el-button :icon="Refresh" @click="clearMemberFilters">清除筛选</el-button>
             <el-button
@@ -3156,6 +3237,16 @@ onUnmounted(() => {
             >
               批量分组
             </el-button>
+            <el-button
+              v-if="canShowMemberBatchSelection"
+              type="primary"
+              plain
+              :icon="Edit"
+              :disabled="selectedMemberRows.length === 0"
+              @click="openMemberBatchPositionDialog"
+            >
+              批量职务
+            </el-button>
           </div>
 
           <div class="member-summary">
@@ -3163,7 +3254,7 @@ onUnmounted(() => {
             <span>有效任期 {{ memberGroupSummary.current }} 条</span>
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
-            <span>待分组 {{ memberGroupSummary.unassigned }} 条</span>
+            <span>待补资料 {{ memberGroupSummary.unassigned }} 条</span>
             <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
               <el-input-number
                 v-model="newAcademicTermStartYear"
@@ -3274,7 +3365,8 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="职位" width="150">
             <template #default="{ row }">
-              <span>{{ row.positionName || "-" }}</span>
+              <span v-if="row.positionName">{{ row.positionName }}</span>
+              <el-tag v-else type="warning" effect="plain">待补职务</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="任期" min-width="170">
@@ -3867,6 +3959,41 @@ onUnmounted(() => {
       <template #footer>
         <el-button @click="memberBatchGroupingDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="groupingSaving" @click="submitMemberBatchGrouping">
+          批量保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="memberBatchPositionDialogVisible" title="批量设置职务" width="520px">
+      <el-alert
+        class="dialog-alert"
+        type="info"
+        show-icon
+        :closable="false"
+        :title="`已选择 ${selectedBatchPositionRows.length} 名成员，保存后会统一更新职务，部门、小组和任期不变。`"
+      />
+      <el-form label-width="90px">
+        <el-form-item label="职务" required>
+          <el-select
+            v-model="memberBatchPositionForm.positionName"
+            class="full-width"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或输入职务"
+          >
+            <el-option
+              v-for="position in memberPositionOptions"
+              :key="position"
+              :label="position"
+              :value="position"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="memberBatchPositionDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="termSaving" @click="submitMemberBatchPosition">
           批量保存
         </el-button>
       </template>
