@@ -376,6 +376,12 @@ const memberGroupingForm = reactive({
   departmentName: "",
   groupName: "",
 });
+const selectedMemberRows = ref<ClubMemberRecord[]>([]);
+const memberBatchGroupingDialogVisible = ref(false);
+const memberBatchGroupingForm = reactive({
+  departmentName: "",
+  groupName: "",
+});
 
 const evaluationDialogVisible = ref(false);
 const evaluationFormRef = ref<FormInstance>();
@@ -682,6 +688,17 @@ const groupCreateDepartmentOptions = computed(() =>
 );
 const memberGroupingGroupOptions = computed(() =>
   groupOptionsForDepartment(memberGroupingForm.departmentName),
+);
+const memberBatchGroupingGroupOptions = computed(() =>
+  groupOptionsForDepartment(memberBatchGroupingForm.departmentName),
+);
+const canShowMemberBatchSelection = computed(
+  () =>
+    memberWorkspaceMode.value === "current" &&
+    (canAdministerMemberTerms.value || canManageSelectedClub.value),
+);
+const selectedBatchGroupableRows = computed(() =>
+  selectedMemberRows.value.filter((row) => canBatchUpdateMemberGrouping(row)),
 );
 const academicTermOptions = computed<AcademicTermOption[]>(() => {
   const currentYear = academicYearStart(new Date());
@@ -1612,6 +1629,15 @@ function canFreelyUpdateMemberGrouping(row: ClubMemberRecord) {
   return canAdministerMemberTerms.value || canManageSelectedClub.value;
 }
 
+function canBatchUpdateMemberGrouping(row: ClubMemberRecord) {
+  if (!canFreelyUpdateMemberGrouping(row)) return false;
+  return !(
+    canManageSelectedClub.value &&
+    !canAdministerMemberTerms.value &&
+    row.userId === currentUserId.value
+  );
+}
+
 function canUpdateMemberDepartment(row: ClubMemberRecord) {
   return canFreelyUpdateMemberGrouping(row);
 }
@@ -1657,6 +1683,45 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
   }
   handleMemberGroupingDepartmentChange();
   memberGroupingDialogVisible.value = true;
+}
+
+function canSelectMemberForBatch(row: ClubMemberRecord) {
+  return canBatchUpdateMemberGrouping(row);
+}
+
+function handleMemberSelectionChange(rows: ClubMemberRecord[]) {
+  selectedMemberRows.value = rows;
+}
+
+function handleMemberBatchDepartmentChange() {
+  if (
+    memberBatchGroupingForm.groupName &&
+    !memberBatchGroupingGroupOptions.value.includes(memberBatchGroupingForm.groupName)
+  ) {
+    memberBatchGroupingForm.groupName = "";
+  }
+}
+
+function openMemberBatchGroupingDialog() {
+  if (selectedMemberRows.value.length === 0) {
+    ElMessage.warning("请先勾选需要批量分组的成员。");
+    return;
+  }
+
+  const rows = selectedBatchGroupableRows.value;
+  if (rows.length !== selectedMemberRows.value.length) {
+    ElMessage.warning("已勾选成员中包含当前身份不可批量维护的成员。");
+    return;
+  }
+
+  const first = rows[0];
+  const sameDepartment = rows.every(
+    (row) => (row.departmentName ?? "") === (first.departmentName ?? ""),
+  );
+  const sameGroup = rows.every((row) => (row.groupName ?? "") === (first.groupName ?? ""));
+  memberBatchGroupingForm.departmentName = sameDepartment ? (first.departmentName ?? "") : "";
+  memberBatchGroupingForm.groupName = sameGroup ? (first.groupName ?? "") : "";
+  memberBatchGroupingDialogVisible.value = true;
 }
 
 async function submitMemberGrouping() {
@@ -1705,6 +1770,43 @@ async function submitMemberGrouping() {
     await Promise.all([loadUsers(), loadMembers()]);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "分组保存失败");
+  } finally {
+    groupingSaving.value = false;
+  }
+}
+
+async function submitMemberBatchGrouping() {
+  if (!selectedClubId.value || selectedBatchGroupableRows.value.length === 0) return;
+
+  if (!memberBatchGroupingForm.departmentName.trim()) {
+    ElMessage.warning("请选择批量设置的部门。");
+    return;
+  }
+
+  const rows = [...selectedBatchGroupableRows.value];
+  groupingSaving.value = true;
+  try {
+    await Promise.all(
+      rows.map((row) =>
+        requestJson<ClubMemberRecord>(
+          `/api/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              departmentName: emptyToNull(memberBatchGroupingForm.departmentName),
+              groupName: emptyToNull(memberBatchGroupingForm.groupName),
+            }),
+          },
+        ),
+      ),
+    );
+    ElMessage.success(`已批量更新 ${rows.length} 名成员的分组`);
+    selectedMemberRows.value = [];
+    memberBatchGroupingDialogVisible.value = false;
+    await Promise.all([loadUsers(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "批量分组保存失败");
   } finally {
     groupingSaving.value = false;
   }
@@ -3044,6 +3146,16 @@ onUnmounted(() => {
               待分组
             </el-checkbox>
             <el-button :icon="Refresh" @click="clearMemberFilters">清除筛选</el-button>
+            <el-button
+              v-if="canShowMemberBatchSelection"
+              type="primary"
+              plain
+              :icon="Edit"
+              :disabled="selectedMemberRows.length === 0"
+              @click="openMemberBatchGroupingDialog"
+            >
+              批量分组
+            </el-button>
           </div>
 
           <div class="member-summary">
@@ -3138,7 +3250,14 @@ onUnmounted(() => {
               : '暂无历史任期记录'
           "
           row-key="memberId"
+          @selection-change="handleMemberSelectionChange"
         >
+          <el-table-column
+            v-if="canShowMemberBatchSelection"
+            type="selection"
+            width="48"
+            :selectable="canSelectMemberForBatch"
+          />
           <el-table-column prop="userName" label="成员" min-width="150" />
           <el-table-column prop="studentNo" label="学号/工号" width="130" />
           <el-table-column label="部门" width="150">
@@ -3701,6 +3820,54 @@ onUnmounted(() => {
         <el-button @click="memberGroupingDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="groupingSaving" @click="submitMemberGrouping">
           保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="memberBatchGroupingDialogVisible" title="批量设置部门/小组" width="520px">
+      <el-alert
+        class="dialog-alert"
+        type="info"
+        show-icon
+        :closable="false"
+        :title="`已选择 ${selectedBatchGroupableRows.length} 名成员，保存后会统一更新部门和小组。`"
+      />
+      <el-form label-width="90px">
+        <el-form-item label="部门" required>
+          <el-select
+            v-model="memberBatchGroupingForm.departmentName"
+            class="full-width"
+            placeholder="选择部门"
+            @change="handleMemberBatchDepartmentChange"
+          >
+            <el-option
+              v-for="department in memberDepartmentOptions"
+              :key="department"
+              :label="department"
+              :value="department"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="小组">
+          <el-select
+            v-model="memberBatchGroupingForm.groupName"
+            class="full-width"
+            clearable
+            placeholder="选择小组（可选）"
+          >
+            <el-option
+              v-for="group in memberBatchGroupingGroupOptions"
+              :key="group"
+              :label="group"
+              :value="group"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="memberBatchGroupingDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="groupingSaving" @click="submitMemberBatchGrouping">
+          批量保存
         </el-button>
       </template>
     </el-dialog>
