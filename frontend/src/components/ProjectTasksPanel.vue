@@ -38,6 +38,7 @@ const createFormRef = ref<FormInstance>();
 const updateFormRef = ref<FormInstance>();
 const selectedTask = ref<ProjectTask | null>(null);
 let requestVersion = 0;
+let reportsRequestVersion = 0;
 
 const auth = computed(() => readAuth());
 const currentUserId = computed(() => auth.value?.user.id ?? null);
@@ -187,20 +188,24 @@ function openUpdate(task: ProjectTask) {
 }
 
 async function openReports(task: ProjectTask) {
+  const version = ++reportsRequestVersion;
   selectedTask.value = task;
   reportsVisible.value = true;
   reportsLoading.value = true;
   reportsError.value = "";
   progressReports.value = [];
   try {
-    progressReports.value = await api.getProjectTaskProgressReports({
+    const reports = await api.getProjectTaskProgressReports({
       projectId: props.projectId,
       taskId: task.id,
     });
+    if (version !== reportsRequestVersion) return;
+    progressReports.value = reports;
   } catch (error) {
+    if (version !== reportsRequestVersion) return;
     reportsError.value = await toErrorMessage(error, "进度记录加载失败");
   } finally {
-    reportsLoading.value = false;
+    if (version === reportsRequestVersion) reportsLoading.value = false;
   }
 }
 
