@@ -18,9 +18,9 @@ public class ClubHubDbContext : DbContext
     public DbSet<RecruitmentApplication> RecruitmentApplications => Set<RecruitmentApplication>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
-      public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
-      public DbSet<ProjectTaskAssignee> ProjectTaskAssignees => Set<ProjectTaskAssignee>();
-      public DbSet<ProjectTaskProgressReport> ProjectTaskProgressReports => Set<ProjectTaskProgressReport>();
+    public DbSet<ProjectTask> ProjectTasks => Set<ProjectTask>();
+    public DbSet<ProjectTaskAssignee> ProjectTaskAssignees => Set<ProjectTaskAssignee>();
+    public DbSet<ProjectTaskProgressReport> ProjectTaskProgressReports => Set<ProjectTaskProgressReport>();
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
     public DbSet<LearningRecord> LearningRecords => Set<LearningRecord>();
     public DbSet<Notice> Notices => Set<Notice>();
