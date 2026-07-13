@@ -1141,10 +1141,14 @@ public class ClubsController : ControllerBase
         var createdCount = 0;
         var refreshedCount = 0;
         var skippedPublishedCount = 0;
+        var scoreByUser = await CalculateSemesterEvaluationScoresForUsersAsync(
+            clubId,
+            members.Select(member => member.UserId).ToList(),
+            termName);
 
         foreach (var member in members)
         {
-            var scores = await CalculateSemesterEvaluationScoresAsync(clubId, member.UserId, termName);
+            var scores = scoreByUser[member.UserId];
             var totalScore = CalculateEvaluationTotal(
                 scores.ActivityScore,
                 scores.TaskScore,
@@ -2616,6 +2620,32 @@ public class ClubsController : ControllerBase
         return new EvaluationScoreSnapshot(activityScore, taskScore, learningScore, awardScore);
     }
 
+    private async Task<Dictionary<int, EvaluationScoreSnapshot>> CalculateSemesterEvaluationScoresForUsersAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, EvaluationScoreSnapshot>();
+        }
+
+        var termWindow = ResolveEvaluationTermWindow(termName);
+        var activityScores = await CalculateSemesterActivityScoresAsync(clubId, ids, termWindow);
+        var taskScores = await CalculateSemesterTaskScoresAsync(clubId, ids, termWindow);
+        var learningScores = await CalculateSemesterLearningScoresAsync(clubId, ids, termWindow);
+        var awardScores = await CalculateSemesterAwardScoresAsync(clubId, ids, termName);
+
+        return ids.ToDictionary(
+            userId => userId,
+            userId => new EvaluationScoreSnapshot(
+                activityScores.GetValueOrDefault(userId),
+                taskScores.GetValueOrDefault(userId),
+                learningScores.GetValueOrDefault(userId),
+                awardScores.GetValueOrDefault(userId)));
+    }
+
     private async Task<decimal> CalculateSemesterActivityScoreAsync(
         int clubId,
         int userId,
@@ -2650,6 +2680,47 @@ public class ClubsController : ControllerBase
             row.SignStatus,
             row.CheckinAt,
             row.CheckoutAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterActivityScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from participation in _db.ActivityParticipations.AsNoTracking()
+            join activity in _db.Activities.AsNoTracking()
+                on participation.ActivityId equals activity.ActivityId
+            where activity.ClubId == clubId && userIds.Contains(participation.UserId)
+            select new
+            {
+                participation.UserId,
+                activity.StartAt,
+                activity.EndAt,
+                activity.CreatedAt,
+                participation.RegisterStatus,
+                participation.SignStatus,
+                participation.CheckinAt,
+                participation.CheckoutAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row =>
+                (row.StartAt ?? row.CreatedAt) <= termWindow.End &&
+                (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
+        }
+
+        var participations = await query.ToListAsync();
+        return participations
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => ClampEvaluationScore(group.Sum(row => ActivityParticipationScore(
+                    row.RegisterStatus,
+                    row.SignStatus,
+                    row.CheckinAt,
+                    row.CheckoutAt))));
     }
 
     private async Task<decimal> CalculateSemesterTaskScoreAsync(
@@ -2706,6 +2777,111 @@ public class ClubsController : ControllerBase
             row.DeliverableSubmittedAt)));
     }
 
+    private async Task<Dictionary<int, decimal>> CalculateSemesterTaskScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var assigneeTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.AssigneeUserId != null &&
+                  userIds.Contains(task.AssigneeUserId.Value)
+            select new
+            {
+                UserId = task.AssigneeUserId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var deliverableTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.DeliverableSubmitterId != null &&
+                  userIds.Contains(task.DeliverableSubmitterId.Value)
+            select new
+            {
+                UserId = task.DeliverableSubmitterId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var extraAssigneeTaskQuery =
+            from assignee in _db.ProjectTaskAssignees.AsNoTracking()
+            join task in _db.ProjectTasks.AsNoTracking()
+                on assignee.TaskId equals task.TaskId
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId && userIds.Contains(assignee.UserId)
+            select new
+            {
+                assignee.UserId,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var query = assigneeTaskQuery
+            .Concat(deliverableTaskQuery)
+            .Concat(extraAssigneeTaskQuery);
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var taskScores = await query.ToListAsync();
+        return taskScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group
+                    .GroupBy(row => row.TaskId)
+                    .Select(taskGroup =>
+                    {
+                        var row = taskGroup.First();
+                        return ProjectTaskScore(
+                            row.TaskStatus,
+                            row.DeliverableStatus,
+                            row.Progress,
+                            row.FinishDate,
+                            row.DeliverableSubmittedAt);
+                    })));
+    }
+
     private async Task<decimal> CalculateSemesterLearningScoreAsync(
         int clubId,
         int userId,
@@ -2753,6 +2929,49 @@ public class ClubsController : ControllerBase
             row.DownloadedAt)));
     }
 
+    private async Task<Dictionary<int, decimal>> CalculateSemesterLearningScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from record in _db.LearningRecords.AsNoTracking()
+            join item in _db.LearningItems.AsNoTracking()
+                on record.ItemId equals item.ItemId
+            where item.ClubId == clubId && userIds.Contains(record.UserId)
+            select new
+            {
+                record.UserId,
+                StartAt = item.StartAt ?? record.EnrolledAt ?? item.CreatedAt,
+                EndAt = item.EndAt ??
+                    record.CompletedAt ??
+                    record.LastLearnAt ??
+                    record.EnrolledAt ??
+                    item.StartAt ??
+                    item.CreatedAt,
+                record.EnrollStatus,
+                record.Progress,
+                record.CompletedAt,
+                record.DownloadedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var recordScores = await query.ToListAsync();
+        return recordScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group.Select(row => LearningRecordScore(
+                    row.EnrollStatus,
+                    row.Progress,
+                    row.CompletedAt,
+                    row.DownloadedAt))));
+    }
+
     private async Task<decimal> CalculateSemesterAwardScoreAsync(
         int clubId,
         int userId,
@@ -2776,6 +2995,33 @@ public class ClubsController : ControllerBase
 
         var total = await query.SumAsync(ev => ev.AwardScore ?? 0);
         return ClampEvaluationScore(total);
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterAwardScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName)
+    {
+        var normalizedTerm = termName.Trim();
+        var awardScores = await _db.Evaluations
+            .AsNoTracking()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                userIds.Contains(ev.UserId) &&
+                ev.EvaluationType == EvaluationAward &&
+                ev.TermName == normalizedTerm &&
+                ev.PublicStatus == EvaluationPublished)
+            .GroupBy(ev => ev.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Score = group.Sum(ev => ev.AwardScore ?? 0)
+            })
+            .ToListAsync();
+
+        return awardScores.ToDictionary(
+            row => row.UserId,
+            row => ClampEvaluationScore(row.Score));
     }
 
     private static decimal ActivityParticipationScore(
