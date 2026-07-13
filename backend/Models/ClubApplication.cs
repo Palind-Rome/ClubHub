@@ -151,6 +151,12 @@ namespace Org.OpenAPITools.Models
         public string? ReviewComment { get; set; }
 
         /// <summary>
+        /// Gets or Sets ContactPhone
+        /// </summary>
+        [DataMember(Name="contactPhone", EmitDefaultValue=true)]
+        public string? ContactPhone { get; set; }
+
+        /// <summary>
         /// Gets or Sets ClubStatus
         /// </summary>
         [DataMember(Name="clubStatus", EmitDefaultValue=true)]

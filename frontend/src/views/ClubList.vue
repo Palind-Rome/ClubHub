@@ -113,6 +113,7 @@ interface ClubApplication {
   reviewerUserId: number | null;
   reviewerName: string | null;
   reviewComment: string | null;
+  contactPhone: string | null;
   clubStatus: string | null;
   clubStatusText: string;
   foundedAt: string | null;
@@ -309,6 +310,8 @@ const evaluationFilters = reactive({
 
 const applicationDialogVisible = ref(false);
 const applicationFormRef = ref<FormInstance>();
+const applicationMode = ref<"create" | "resubmit">("create");
+const applicationTarget = ref<ClubApplication | null>(null);
 const applicationForm = reactive({
   name: "",
   category: "",
@@ -318,6 +321,12 @@ const applicationForm = reactive({
   contactPhone: "",
   advisorUserId: null as number | null,
 });
+const applicationDialogTitle = computed(() =>
+  applicationMode.value === "resubmit" ? "修改后重交社团注册申请" : "提交社团注册申请",
+);
+const applicationSubmitLabel = computed(() =>
+  applicationMode.value === "resubmit" ? "重新提交" : "提交申请",
+);
 
 const reviewDialogVisible = ref(false);
 const reviewFormRef = ref<FormInstance>();
@@ -1170,6 +1179,8 @@ function canViewSelectedClub() {
 }
 
 function resetApplicationForm() {
+  applicationMode.value = "create";
+  applicationTarget.value = null;
   applicationForm.name = "";
   applicationForm.category = "";
   applicationForm.description = "";
@@ -1177,6 +1188,17 @@ function resetApplicationForm() {
   applicationForm.materialUrl = "";
   applicationForm.contactPhone = "";
   applicationForm.advisorUserId = null;
+  applicationFormRef.value?.clearValidate();
+}
+
+function fillApplicationForm(row: ClubApplication) {
+  applicationForm.name = row.name;
+  applicationForm.category = row.category ?? "";
+  applicationForm.description = row.description ?? "";
+  applicationForm.applyReason = row.applyReason;
+  applicationForm.materialUrl = row.materialUrl;
+  applicationForm.contactPhone = row.contactPhone ?? "";
+  applicationForm.advisorUserId = row.advisorUserId;
   applicationFormRef.value?.clearValidate();
 }
 
@@ -1191,20 +1213,54 @@ function openApplicationDialog() {
   void loadApplicationAdvisorCandidates();
 }
 
+function canResubmitApplication(row: ClubApplication) {
+  return (
+    canSubmitApplication.value &&
+    row.auditStatus === "rejected" &&
+    row.applicantUserId === currentUserId.value
+  );
+}
+
+function openResubmitApplicationDialog(row: ClubApplication) {
+  if (!canResubmitApplication(row)) {
+    ElMessage.warning("只有已退回的本人申请可以修改后重交。");
+    return;
+  }
+
+  applicationMode.value = "resubmit";
+  applicationTarget.value = row;
+  fillApplicationForm(row);
+  applicationDialogVisible.value = true;
+  void loadApplicationAdvisorCandidates();
+}
+
+function applicationOperationText(row: ClubApplication) {
+  if (row.auditStatus === "pending") return "等待审核";
+  if (row.auditStatus === "approved") return "已通过";
+  return "已处理";
+}
+
 async function submitApplication() {
   if (!applicationFormRef.value || !currentUserId.value) return;
   if (!(await validateForm(applicationFormRef.value))) return;
 
+  const isResubmit = applicationMode.value === "resubmit";
+  const targetId = applicationTarget.value?.id;
+  if (isResubmit && !targetId) return;
+
   saving.value = true;
   try {
-    await requestJson<ClubApplication>("/api/clubs/applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...applicationForm,
-      }),
-    });
-    ElMessage.success("社团注册申请已提交");
+    await requestJson<ClubApplication>(
+      `/api/clubs/applications${isResubmit ? `/${targetId}` : ""}`,
+      {
+        method: isResubmit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...applicationForm,
+        }),
+      },
+    );
+    ElMessage.success(isResubmit ? "社团注册申请已重新提交" : "社团注册申请已提交");
     applicationDialogVisible.value = false;
     await loadData();
   } catch (e) {
@@ -2586,7 +2642,14 @@ onUnmounted(() => {
                   align-center
                 >
                   <el-step title="提交申请" :description="formatDate(row.createdAt)" />
-                  <el-step title="平台审核" :description="row.reviewerName || '等待处理'" />
+                  <el-step
+                    title="平台审核"
+                    :description="
+                      row.auditStatus === 'pending' && row.reviewComment
+                        ? '等待重新审核'
+                        : row.reviewerName || '等待处理'
+                    "
+                  />
                   <el-step
                     :title="row.auditStatus === 'rejected' ? '申请退回' : '社团生效'"
                     :description="row.reviewComment || row.clubStatusText"
@@ -2601,6 +2664,16 @@ onUnmounted(() => {
                   </el-descriptions-item>
                   <el-descriptions-item label="材料地址">
                     {{ row.materialUrl }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="联系电话">
+                    {{ row.contactPhone || "-" }}
+                  </el-descriptions-item>
+                  <el-descriptions-item
+                    v-if="row.reviewComment"
+                    :label="row.auditStatus === 'pending' ? '上次退回意见' : '审核意见'"
+                    :span="2"
+                  >
+                    {{ row.reviewComment }}
                   </el-descriptions-item>
                   <el-descriptions-item label="社团简介">
                     {{ row.description || "-" }}
@@ -2635,10 +2708,15 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column v-if="isReviewer" label="操作" width="150" fixed="right">
+          <el-table-column
+            v-if="isReviewer || canSubmitApplication"
+            label="操作"
+            width="180"
+            fixed="right"
+          >
             <template #default="{ row }">
               <el-button
-                v-if="row.auditStatus === 'pending'"
+                v-if="isReviewer && row.auditStatus === 'pending'"
                 type="primary"
                 plain
                 :icon="Edit"
@@ -2646,7 +2724,16 @@ onUnmounted(() => {
               >
                 审核
               </el-button>
-              <span v-else class="muted">已处理</span>
+              <el-button
+                v-else-if="canResubmitApplication(row)"
+                type="primary"
+                plain
+                :icon="Edit"
+                @click="openResubmitApplicationDialog(row)"
+              >
+                修改后重交
+              </el-button>
+              <span v-else class="muted">{{ applicationOperationText(row) }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -3342,7 +3429,7 @@ onUnmounted(() => {
     <el-dialog
       v-if="isRegistrationWorkspace"
       v-model="applicationDialogVisible"
-      title="提交社团注册申请"
+      :title="applicationDialogTitle"
       width="620px"
     >
       <el-form
@@ -3404,7 +3491,9 @@ onUnmounted(() => {
       </el-form>
       <template #footer>
         <el-button @click="applicationDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitApplication">提交申请</el-button>
+        <el-button type="primary" :loading="saving" @click="submitApplication">
+          {{ applicationSubmitLabel }}
+        </el-button>
       </template>
     </el-dialog>
 

@@ -115,6 +115,12 @@ export interface ClubApplication {
    * @type {string}
    * @memberof ClubApplication
    */
+  contactPhone?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof ClubApplication
+   */
   clubStatus?: string | null;
   /**
    *
@@ -195,6 +201,7 @@ export function ClubApplicationFromJSONTyped(
     reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
     clubStatus: json["clubStatus"] == null ? undefined : json["clubStatus"],
     clubStatusText: json["clubStatusText"],
     foundedAt: json["foundedAt"] == null ? undefined : new Date(json["foundedAt"]),
@@ -231,6 +238,7 @@ export function ClubApplicationToJSONTyped(
     reviewerUserId: value["reviewerUserId"],
     reviewerName: value["reviewerName"],
     reviewComment: value["reviewComment"],
+    contactPhone: value["contactPhone"],
     clubStatus: value["clubStatus"],
     clubStatusText: value["clubStatusText"],
     foundedAt: value["foundedAt"] == null ? value["foundedAt"] : value["foundedAt"].toISOString(),

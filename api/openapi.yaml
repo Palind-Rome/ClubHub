@@ -479,6 +479,39 @@ paths:
         "409":
           description: 社团名称已存在或已有待审核申请
 
+  /api/clubs/applications/{clubId}:
+    patch:
+      summary: 修改退回的社团注册申请并重新提交
+      description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+      operationId: resubmitClubApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubApplicationRequest"
+      responses:
+        "200":
+          description: 社团注册申请已重新提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户不是原申请人或无权提交申请
+        "404":
+          description: 当前用户或申请不存在
+        "409":
+          description: 当前申请状态不允许重新提交，或社团名称已被占用
+
   /api/clubs/applications/{clubId}/review:
     patch:
       summary: 平台管理员审核社团注册申请
@@ -4638,6 +4671,9 @@ components:
           type: string
           nullable: true
         reviewComment:
+          type: string
+          nullable: true
+        contactPhone:
           type: string
           nullable: true
         clubStatus:

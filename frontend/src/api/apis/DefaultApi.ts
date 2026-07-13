@@ -676,6 +676,11 @@ export interface RemoveProjectMemberRequest {
   projectMemberId: number;
 }
 
+export interface ResubmitClubApplicationRequest {
+  clubId: number;
+  createClubApplicationRequest: CreateClubApplicationRequest;
+}
+
 export interface ReviewActivityOperationRequest {
   activityId: number;
   reviewActivityRequest: ReviewActivityRequest;
@@ -5267,6 +5272,70 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.removeProjectMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for resubmitClubApplication without sending the request
+   */
+  async resubmitClubApplicationRequestOpts(
+    requestParameters: ResubmitClubApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    if (requestParameters["createClubApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubApplicationRequest",
+        'Required parameter "createClubApplicationRequest" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/applications/{clubId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubApplicationRequestToJSON(requestParameters["createClubApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplicationRaw(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubApplication>> {
+    const requestOptions = await this.resubmitClubApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplication(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubApplication> {
+    const response = await this.resubmitClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**

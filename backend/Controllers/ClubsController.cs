@@ -285,6 +285,109 @@ public class ClubsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { clubId = club.ClubId }, ToApplicationDto(club));
     }
 
+    [HttpPatch("applications/{clubId:int}")]
+    public async Task<IActionResult> ResubmitApplication(int clubId, [FromBody] CreateClubApplicationRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var validationError = ValidateApplicationRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var applicant = await LoadUserAsync(currentUserId.Value);
+        if (applicant is null)
+        {
+            return NotFound(new { message = "当前用户不存在，请先选择有效的学生用户。" });
+        }
+
+        if (!UsersController.IsActive(applicant.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能重新提交社团注册申请。" });
+        }
+
+        if (UsersController.IsPlatformAdmin(applicant) || !UsersController.IsStudent(applicant))
+        {
+            return StatusCode(403, new { message = "只有原学生申请人可以修改后重新提交社团注册申请。" });
+        }
+
+        var club = await _db.Clubs
+            .Include(c => c.Applicant)
+            .Include(c => c.Reviewer)
+            .FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null || club.ApplicantUserId is null || club.AuditStatus is null)
+        {
+            return NotFound(new { message = "社团注册申请不存在。" });
+        }
+
+        if (club.ApplicantUserId != applicant.UserId)
+        {
+            return StatusCode(403, new { message = "只能修改并重新提交自己的社团注册申请。" });
+        }
+
+        if (club.AuditStatus != AuditRejected)
+        {
+            return Conflict(new { message = "只有已退回的社团注册申请可以修改后重新提交。" });
+        }
+
+        var name = req.Name.Trim();
+        var category = req.Category.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.Clubs.AnyAsync(c =>
+            c.ClubId != clubId &&
+            c.ClubName.ToUpper() == normalizedName &&
+            (c.AuditStatus == null || c.AuditStatus != AuditRejected) &&
+            (c.ClubStatus == null || c.ClubStatus != ClubRejected));
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团名称已存在，或已有待审核/已通过的注册申请。" });
+        }
+
+        var advisor = await ValidateAdvisorAsync(req.AdvisorUserId);
+        if (advisor.Result is not null) return advisor.Result;
+
+        var now = DateTime.UtcNow;
+        club.ClubName = name;
+        club.Category = category;
+        club.Description = EmptyToNull(req.Description);
+        club.AdvisorName = advisor.User is null ? null : DisplayUser(advisor.User);
+        club.ContactPhone = EmptyToNull(req.ContactPhone);
+        club.ApplyReason = req.ApplyReason.Trim();
+        club.MaterialUrl = req.MaterialUrl.Trim();
+        club.AuditStatus = AuditPending;
+        club.ClubStatus = ClubPending;
+        club.PresidentUserId = null;
+        club.FoundedAt = null;
+        club.UpdatedAt = now;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            if (advisor.User is not null)
+            {
+                await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+            }
+            else
+            {
+                await RemoveClubAdvisorRolesExceptAsync(club.ClubId, null);
+            }
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        var updated = await ClubQuery().FirstAsync(c => c.ClubId == club.ClubId);
+        return Ok(ToApplicationDto(updated));
+    }
+
     [HttpPatch("applications/{clubId:int}/review")]
     public async Task<IActionResult> ReviewApplication(int clubId, [FromBody] ReviewClubApplicationRequest req)
     {
@@ -1936,6 +2039,7 @@ public class ClubsController : ControllerBase
             club.ReviewerUserId,
             DisplayUser(club.Reviewer),
             club.ReviewComment,
+            club.ContactPhone,
             club.ClubStatus,
             ClubStatusText(club.ClubStatus),
             club.FoundedAt,
@@ -2810,6 +2914,7 @@ public record ClubApplicationDto(
     int? ReviewerUserId,
     string? ReviewerName,
     string? ReviewComment,
+    string? ContactPhone,
     string? ClubStatus,
     string ClubStatusText,
     DateTime? FoundedAt,
