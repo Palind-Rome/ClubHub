@@ -4621,6 +4621,7 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4628,6 +4629,7 @@ components:
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4635,6 +4637,7 @@ components:
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4642,6 +4645,7 @@ components:
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
@@ -4700,6 +4704,7 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4707,6 +4712,7 @@ components:
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4714,6 +4720,7 @@ components:
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
@@ -4721,6 +4728,7 @@ components:
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
           description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。

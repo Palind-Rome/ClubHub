@@ -62,25 +62,25 @@ export interface UpdateClubEvaluationRequest {
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  activityScore?: number;
+  activityScore?: number | null;
   /**
    * 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  taskScore?: number;
+  taskScore?: number | null;
   /**
    * 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  learningScore?: number;
+  learningScore?: number | null;
   /**
    * 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  awardScore?: number;
+  awardScore?: number | null;
   /**
    * 公示状态；draft 为草稿，published 为已公示。
    * @type {UpdateClubEvaluationRequestPublicStatusEnum}
