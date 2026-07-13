@@ -15,6 +15,16 @@ import { collectManageableClubIds, collectScopedClubIds } from "../composables/u
 
 type PublicStatus = "draft" | "published";
 type EvaluationFormMode = "create" | "edit";
+type EvaluationSortField =
+  | "totalScore"
+  | "activityScore"
+  | "taskScore"
+  | "learningScore"
+  | "awardScore"
+  | "userName"
+  | "termName"
+  | "createdAt";
+type SortDirection = "ascending" | "descending";
 
 interface Club {
   id: number;
@@ -70,6 +80,15 @@ interface ClubEvaluationScorePreview {
   grade: string;
 }
 
+interface GenerateClubEvaluationsResult {
+  termName: string;
+  totalMembers: number;
+  createdCount: number;
+  refreshedCount: number;
+  skippedPublishedCount: number;
+  records: ClubEvaluationRecord[];
+}
+
 const evaluationDraftPermission = "evaluation:draft";
 const evaluationReviewPermission = "evaluation:review";
 
@@ -81,12 +100,15 @@ const selectedClubId = ref<number>();
 const loading = ref(false);
 const memberLoading = ref(false);
 const saving = ref(false);
+const generateSaving = ref(false);
 const scorePreviewLoading = ref(false);
 const detailVisible = ref(false);
 const evaluationDialogVisible = ref(false);
+const generateDialogVisible = ref(false);
 const detailTarget = ref<ClubEvaluationRecord | null>(null);
 const evaluationTarget = ref<ClubEvaluationRecord | null>(null);
 const evaluationFormRef = ref<FormInstance>();
+const generateFormRef = ref<FormInstance>();
 const evaluationFormMode = ref<EvaluationFormMode>("create");
 let stopSessionListener: (() => void) | null = null;
 let evaluationRequestId = 0;
@@ -97,11 +119,16 @@ const filters = reactive({
   keyword: "",
   publicStatus: "" as "" | PublicStatus,
   termName: "",
+  departmentName: "",
+  groupName: "",
+  grade: "",
+  sortBy: "totalScore" as EvaluationSortField,
+  sortDirection: "descending" as SortDirection,
 });
 
 const evaluationForm = reactive({
   userId: undefined as number | undefined,
-  termName: `${new Date().getFullYear()} 学年春季学期`,
+  termName: defaultTermName(),
   activityScore: 0,
   taskScore: 0,
   learningScore: 0,
@@ -110,10 +137,28 @@ const evaluationForm = reactive({
   commentText: "",
 });
 
+const generateForm = reactive({
+  termName: defaultTermName(),
+  overwriteDrafts: true,
+});
+
 const evaluationRules: FormRules = {
   userId: [{ required: true, message: "请选择被考核成员", trigger: "change" }],
   termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
 };
+const generateRules: FormRules = {
+  termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
+};
+const sortOptions: Array<{ label: string; value: EvaluationSortField }> = [
+  { label: "总分", value: "totalScore" },
+  { label: "参与分", value: "activityScore" },
+  { label: "任务分", value: "taskScore" },
+  { label: "学习分", value: "learningScore" },
+  { label: "奖项分", value: "awardScore" },
+  { label: "成员", value: "userName" },
+  { label: "学期", value: "termName" },
+  { label: "记录时间", value: "createdAt" },
+];
 
 const currentUserId = computed(() => auth.value?.user.id);
 const permissions = computed(() => auth.value?.permissions ?? []);
@@ -162,23 +207,30 @@ const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
 });
 const filteredEvaluations = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase();
-  return evaluations.value.filter((evaluation) => {
-    if (filters.publicStatus && evaluation.publicStatus !== filters.publicStatus) return false;
-    if (!keyword) return true;
-    return [
-      evaluation.userName,
-      evaluation.studentNo,
-      evaluation.termName,
-      evaluation.clubName,
-      evaluation.departmentName,
-      evaluation.groupName,
-      evaluation.positionName,
-      evaluation.grade,
-      evaluation.commentText,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(keyword));
-  });
+  return [...evaluations.value]
+    .filter((evaluation) => {
+      if (filters.publicStatus && evaluation.publicStatus !== filters.publicStatus) return false;
+      if (filters.termName && evaluation.termName !== filters.termName) return false;
+      if (filters.departmentName && evaluation.departmentName !== filters.departmentName)
+        return false;
+      if (filters.groupName && evaluation.groupName !== filters.groupName) return false;
+      if (filters.grade && evaluation.grade !== filters.grade) return false;
+      if (!keyword) return true;
+      return [
+        evaluation.userName,
+        evaluation.studentNo,
+        evaluation.termName,
+        evaluation.clubName,
+        evaluation.departmentName,
+        evaluation.groupName,
+        evaluation.positionName,
+        evaluation.grade,
+        evaluation.commentText,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword));
+    })
+    .sort(compareEvaluations);
 });
 const summary = computed(() => {
   const published = evaluations.value.filter(
@@ -209,6 +261,15 @@ const termOptions = computed(() =>
     ),
   ).sort((left, right) => left.localeCompare(right, "zh-CN")),
 );
+const departmentOptions = computed(() =>
+  uniqueSorted(evaluations.value.map((evaluation) => evaluation.departmentName)),
+);
+const groupOptions = computed(() =>
+  uniqueSorted(evaluations.value.map((evaluation) => evaluation.groupName)),
+);
+const gradeOptions = computed(() =>
+  uniqueSorted(evaluations.value.map((evaluation) => evaluation.grade)),
+);
 const evaluationFormTotal = computed(() =>
   Number(
     (
@@ -220,6 +281,55 @@ const evaluationFormTotal = computed(() =>
   ),
 );
 const evaluationFormGrade = computed(() => evaluationGrade(evaluationFormTotal.value));
+
+function defaultTermName() {
+  return `${new Date().getFullYear()} 学年春季学期`;
+}
+
+function uniqueSorted(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)),
+    ),
+  ).sort((left, right) => left.localeCompare(right, "zh-CN"));
+}
+
+function compareEvaluations(left: ClubEvaluationRecord, right: ClubEvaluationRecord) {
+  const factor = filters.sortDirection === "ascending" ? 1 : -1;
+  let result = 0;
+
+  if (filters.sortBy === "createdAt") {
+    result = dateSortValue(left.createdAt) - dateSortValue(right.createdAt);
+  } else if (isScoreSortField(filters.sortBy)) {
+    result = Number(left[filters.sortBy] ?? 0) - Number(right[filters.sortBy] ?? 0);
+  } else {
+    result = String(left[filters.sortBy] ?? "").localeCompare(
+      String(right[filters.sortBy] ?? ""),
+      "zh-CN",
+      { numeric: true },
+    );
+  }
+
+  if (result === 0) {
+    return left.userName.localeCompare(right.userName, "zh-CN", { numeric: true });
+  }
+
+  return result * factor;
+}
+
+function isScoreSortField(
+  field: EvaluationSortField,
+): field is "totalScore" | "activityScore" | "taskScore" | "learningScore" | "awardScore" {
+  return ["totalScore", "activityScore", "taskScore", "learningScore", "awardScore"].includes(
+    field,
+  );
+}
+
+function dateSortValue(value: string | null) {
+  if (!value) return 0;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
 
 async function validateForm(form?: FormInstance) {
   if (!form) return false;
@@ -348,7 +458,7 @@ async function reloadAll() {
 
 function resetEvaluationForm() {
   evaluationForm.userId = memberOptions.value[0]?.userId;
-  evaluationForm.termName = `${new Date().getFullYear()} 学年春季学期`;
+  evaluationForm.termName = filters.termName || termOptions.value[0] || defaultTermName();
   evaluationForm.activityScore = 0;
   evaluationForm.taskScore = 0;
   evaluationForm.learningScore = 0;
@@ -356,6 +466,22 @@ function resetEvaluationForm() {
   evaluationForm.publicStatus = "draft";
   evaluationForm.commentText = "";
   evaluationFormRef.value?.clearValidate();
+}
+
+function resetGenerateForm() {
+  generateForm.termName = filters.termName || termOptions.value[0] || defaultTermName();
+  generateForm.overwriteDrafts = true;
+  generateFormRef.value?.clearValidate();
+}
+
+function openGenerateDialog() {
+  if (!canMaintainWholeClub.value) {
+    ElMessage.warning("只有社团负责人、指导老师或系统管理员可以批量生成成员考核。");
+    return;
+  }
+
+  resetGenerateForm();
+  generateDialogVisible.value = true;
 }
 
 function openCreateDialog() {
@@ -373,6 +499,38 @@ function openCreateDialog() {
   resetEvaluationForm();
   evaluationDialogVisible.value = true;
   void loadScorePreview({ silent: true });
+}
+
+async function submitGenerateEvaluations() {
+  const clubId = selectedClubId.value;
+  if (!clubId || !(await validateForm(generateFormRef.value))) return;
+
+  const termName = generateForm.termName.trim();
+  generateSaving.value = true;
+  try {
+    const result = await requestJson<GenerateClubEvaluationsResult>(
+      `/api/clubs/${clubId}/evaluations/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          termName,
+          overwriteDrafts: generateForm.overwriteDrafts,
+        }),
+      },
+    );
+
+    filters.termName = result.termName;
+    evaluations.value = result.records;
+    generateDialogVisible.value = false;
+    ElMessage.success(
+      `已生成 ${result.createdCount} 条、刷新 ${result.refreshedCount} 条，跳过已公示 ${result.skippedPublishedCount} 条。`,
+    );
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "成员考核草稿生成失败");
+  } finally {
+    generateSaving.value = false;
+  }
 }
 
 function openEditDialog(row: ClubEvaluationRecord) {
@@ -393,7 +551,6 @@ function openEditDialog(row: ClubEvaluationRecord) {
   evaluationForm.commentText = row.commentText ?? "";
   evaluationFormRef.value?.clearValidate();
   evaluationDialogVisible.value = true;
-  void loadScorePreview({ silent: true });
 }
 
 function openDetail(row: ClubEvaluationRecord) {
@@ -419,6 +576,10 @@ async function submitEvaluation() {
       awardTitle: null,
       awardLevel: null,
       awardReason: null,
+      activityScore: evaluationForm.activityScore,
+      taskScore: evaluationForm.taskScore,
+      learningScore: evaluationForm.learningScore,
+      awardScore: evaluationForm.awardScore,
       publicStatus: evaluationForm.publicStatus,
       commentText: emptyToNull(evaluationForm.commentText),
     };
@@ -440,7 +601,9 @@ async function submitEvaluation() {
       );
     }
 
-    ElMessage.success(evaluationFormMode.value === "create" ? "成员考核已录入" : "成员考核已更新");
+    ElMessage.success(
+      evaluationForm.publicStatus === "published" ? "成员考核已确认公示" : "成员考核草稿已保存",
+    );
     evaluationDialogVisible.value = false;
     await loadEvaluations();
   } catch (error) {
@@ -454,6 +617,11 @@ function clearFilters() {
   filters.keyword = "";
   filters.publicStatus = "";
   filters.termName = "";
+  filters.departmentName = "";
+  filters.groupName = "";
+  filters.grade = "";
+  filters.sortBy = "totalScore";
+  filters.sortDirection = "descending";
 }
 
 function emptyToNull(value: string) {
@@ -510,6 +678,9 @@ function formatDate(value: string | null) {
 
 watch(selectedClubId, () => {
   filters.termName = "";
+  filters.departmentName = "";
+  filters.groupName = "";
+  filters.grade = "";
   void Promise.all([loadEvaluations(), loadMembers()]);
 });
 
@@ -528,7 +699,9 @@ watch(
     () => evaluationForm.termName,
   ],
   () => {
-    void loadScorePreview({ silent: true });
+    if (evaluationFormMode.value === "create") {
+      void loadScorePreview({ silent: true });
+    }
   },
 );
 
@@ -554,6 +727,15 @@ onUnmounted(() => {
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
+        <el-button
+          v-if="canMaintainWholeClub"
+          type="primary"
+          plain
+          :icon="Refresh"
+          @click="openGenerateDialog"
+        >
+          生成草稿
+        </el-button>
         <el-button
           v-if="canMaintainSelectedClub"
           type="primary"
@@ -590,16 +772,16 @@ onUnmounted(() => {
 
     <div class="process-strip">
       <div>
-        <span>1. 系统生成</span>
+        <span>1. 批量生成</span>
         <strong>汇总活动、项目任务、学习记录和已公示奖项</strong>
       </div>
       <div>
-        <span>2. 人工确认</span>
-        <strong>维护人员检查说明与公示状态</strong>
+        <span>2. 微调确认</span>
+        <strong>负责人或指导老师上下微调每一项分数</strong>
       </div>
       <div>
         <span>3. 公示查看</span>
-        <strong>普通成员只查看已公示考核</strong>
+        <strong>确认后的结果按范围公开查看</strong>
       </div>
     </div>
 
@@ -635,6 +817,37 @@ onUnmounted(() => {
         <el-radio-button label="published">已公示</el-radio-button>
         <el-radio-button label="draft">未公示</el-radio-button>
       </el-radio-group>
+      <el-select
+        v-model="filters.departmentName"
+        class="filter-select"
+        clearable
+        placeholder="部门"
+      >
+        <el-option
+          v-for="department in departmentOptions"
+          :key="department"
+          :label="department"
+          :value="department"
+        />
+      </el-select>
+      <el-select v-model="filters.groupName" class="filter-select" clearable placeholder="小组">
+        <el-option v-for="group in groupOptions" :key="group" :label="group" :value="group" />
+      </el-select>
+      <el-select v-model="filters.grade" class="filter-select" clearable placeholder="等级">
+        <el-option v-for="grade in gradeOptions" :key="grade" :label="grade" :value="grade" />
+      </el-select>
+      <el-select v-model="filters.sortBy" class="sort-select" placeholder="排序字段">
+        <el-option
+          v-for="option in sortOptions"
+          :key="option.value"
+          :label="option.label"
+          :value="option.value"
+        />
+      </el-select>
+      <el-select v-model="filters.sortDirection" class="direction-select" placeholder="顺序">
+        <el-option label="降序" value="descending" />
+        <el-option label="升序" value="ascending" />
+      </el-select>
       <el-button @click="clearFilters">清除</el-button>
     </div>
 
@@ -726,6 +939,50 @@ onUnmounted(() => {
       </el-descriptions>
     </el-dialog>
 
+    <el-dialog v-model="generateDialogVisible" title="生成考核草稿" width="540px">
+      <el-form
+        ref="generateFormRef"
+        :model="generateForm"
+        :rules="generateRules"
+        label-width="100px"
+      >
+        <el-alert
+          class="workflow-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          title="系统会为当前有效成员生成未公示草稿，已公示记录不会被覆盖。"
+        />
+        <el-form-item label="社团">
+          <el-input :model-value="selectedClub?.name" disabled />
+        </el-form-item>
+        <el-form-item label="考核学期" prop="termName">
+          <el-select
+            v-model="generateForm.termName"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="填写或选择考核学期"
+          >
+            <el-option v-for="term in termOptions" :key="term" :label="term" :value="term" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="刷新草稿">
+          <el-switch
+            v-model="generateForm.overwriteDrafts"
+            active-text="覆盖未公示草稿"
+            inactive-text="只补缺失记录"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="generateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="generateSaving" @click="submitGenerateEvaluations">
+          生成草稿
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog
       v-model="evaluationDialogVisible"
       :title="evaluationFormMode === 'create' ? '录入成员考核' : '编辑成员考核'"
@@ -742,7 +999,7 @@ onUnmounted(() => {
           type="info"
           show-icon
           :closable="false"
-          title="参与分、任务分、学习分和奖项分保存时会由系统重新生成；未公示记录仅维护人员可见。"
+          title="分数来自系统生成，确认前可以上下微调；重新生成会覆盖当前未保存分数。"
         />
         <el-form-item label="社团">
           <el-input :model-value="selectedClub?.name" disabled />
@@ -776,7 +1033,7 @@ onUnmounted(() => {
               :min="0"
               :max="100"
               :precision="1"
-              disabled
+              :step="1"
             />
           </el-form-item>
           <el-form-item label="任务分">
@@ -785,7 +1042,7 @@ onUnmounted(() => {
               :min="0"
               :max="100"
               :precision="1"
-              disabled
+              :step="1"
             />
           </el-form-item>
           <el-form-item label="学习分">
@@ -794,7 +1051,7 @@ onUnmounted(() => {
               :min="0"
               :max="100"
               :precision="1"
-              disabled
+              :step="1"
             />
           </el-form-item>
           <el-form-item label="奖项分">
@@ -803,7 +1060,7 @@ onUnmounted(() => {
               :min="0"
               :max="100"
               :precision="1"
-              disabled
+              :step="1"
             />
           </el-form-item>
         </div>
@@ -951,6 +1208,18 @@ onUnmounted(() => {
   width: 180px;
 }
 
+.filter-select {
+  width: 140px;
+}
+
+.sort-select {
+  width: 150px;
+}
+
+.direction-select {
+  width: 100px;
+}
+
 .keyword {
   width: 280px;
 }
@@ -993,6 +1262,9 @@ onUnmounted(() => {
 
   .club-select,
   .term-select,
+  .filter-select,
+  .sort-select,
+  .direction-select,
   .keyword {
     width: 100%;
   }
