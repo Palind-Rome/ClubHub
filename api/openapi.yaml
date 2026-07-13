@@ -440,26 +440,30 @@ paths:
           schema:
             type: string
             enum: [pending, approved, rejected]
+          example: pending
         - name: keyword
           in: query
           required: false
           description: 按社团名称、申请人姓名、用户名或学号模糊搜索。
           schema:
             type: string
+          example: 计算机协会
         - name: startDate
           in: query
           required: false
-          description: 申请提交开始日期，按 createdAt 过滤。
+          description: 申请提交开始日期，按业务时区当天 00:00 起过滤。
           schema:
             type: string
             format: date
+          example: "2026-07-01"
         - name: endDate
           in: query
           required: false
-          description: 申请提交结束日期，按 createdAt 过滤，包含当天。
+          description: 申请提交结束日期，按业务时区包含当天。
           schema:
             type: string
             format: date
+          example: "2026-07-13"
       responses:
         "200":
           description: 社团注册申请列表
@@ -4053,6 +4057,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
         auditStatus:
           type: string
           nullable: true
@@ -4160,6 +4166,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
       required:
         - name
         - category
@@ -4791,6 +4799,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
         clubStatus:
           type: string
           nullable: true
@@ -4852,6 +4862,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
       required:
         - name
         - category
