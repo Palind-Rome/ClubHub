@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">活动物资借还页面 UI 示意</title>
+  <desc id="desc">展示物资借还导航入口、库存统计、库存维护、借用记录和权限隔离后的操作按钮。</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#172033" flood-opacity="0.12" />
+    </filter>
+    <style>
+      .bg { fill: #f5f7fb; }
+      .top { fill: #ffffff; }
+      .brand { font: 700 24px Arial, "Microsoft YaHei", sans-serif; fill: #101828; }
+      .nav { font: 16px Arial, "Microsoft YaHei", sans-serif; fill: #344054; }
+      .nav-active { font: 700 16px Arial, "Microsoft YaHei", sans-serif; fill: #1677ff; }
+      .h1 { font: 700 30px Arial, "Microsoft YaHei", sans-serif; fill: #101828; }
+      .h2 { font: 700 22px Arial, "Microsoft YaHei", sans-serif; fill: #101828; }
+      .body { font: 16px Arial, "Microsoft YaHei", sans-serif; fill: #667085; }
+      .label { font: 14px Arial, "Microsoft YaHei", sans-serif; fill: #667085; }
+      .value { font: 700 24px Arial, "Microsoft YaHei", sans-serif; fill: #101828; }
+      .small { font: 13px Arial, "Microsoft YaHei", sans-serif; fill: #667085; }
+      .table-head { font: 700 15px Arial, "Microsoft YaHei", sans-serif; fill: #667085; }
+      .table-text { font: 15px Arial, "Microsoft YaHei", sans-serif; fill: #344054; }
+      .card { fill: #ffffff; stroke: #d9e1ec; stroke-width: 1; }
+      .line { stroke: #e4e9f2; stroke-width: 1; }
+      .primary { fill: #1677ff; }
+      .primary-text { font: 700 15px Arial, "Microsoft YaHei", sans-serif; fill: #ffffff; }
+      .outline { fill: #ffffff; stroke: #bfd7ff; stroke-width: 1; }
+      .outline-text { font: 700 14px Arial, "Microsoft YaHei", sans-serif; fill: #1677ff; }
+      .danger { fill: #fff1f0; stroke: #ffccc7; stroke-width: 1; }
+      .danger-text { font: 700 14px Arial, "Microsoft YaHei", sans-serif; fill: #cf1322; }
+      .success { fill: #f6ffed; stroke: #b7eb8f; stroke-width: 1; }
+      .success-text { font: 700 14px Arial, "Microsoft YaHei", sans-serif; fill: #389e0d; }
+      .warning { fill: #fff7e6; stroke: #ffd591; stroke-width: 1; }
+      .warning-text { font: 700 14px Arial, "Microsoft YaHei", sans-serif; fill: #d46b08; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="760" rx="0" />
+  <rect class="top" x="0" y="0" width="1200" height="72" filter="url(#shadow)" />
+  <text class="brand" x="34" y="45">ClubHub</text>
+  <text class="nav" x="170" y="45">社团</text>
+  <text class="nav" x="250" y="45">纳新</text>
+  <text class="nav" x="330" y="45">活动</text>
+  <text class="nav" x="410" y="45">通知</text>
+  <text class="nav" x="490" y="45">项目</text>
+  <text class="nav" x="570" y="45">场地预约</text>
+  <text class="nav-active" x="680" y="45">物资借还</text>
+  <rect class="primary" x="674" y="68" width="86" height="4" rx="2" />
+
+  <text class="h1" x="92" y="126">物资借还</text>
+  <text class="body" x="92" y="158">登记活动物资借用、归还、损坏和赔偿情况。</text>
+
+  <rect class="outline" x="735" y="104" width="170" height="42" rx="6" />
+  <text class="table-text" x="758" y="131">摄影社</text>
+  <rect class="primary" x="924" y="104" width="120" height="42" rx="6" />
+  <text class="primary-text" x="953" y="131">新增物资</text>
+  <rect class="outline" x="1062" y="104" width="88" height="42" rx="6" />
+  <text class="outline-text" x="1091" y="131">刷新</text>
+
+  <rect class="card" x="92" y="190" width="612" height="96" rx="8" />
+  <text class="label" x="116" y="222">库存</text>
+  <text class="value" x="116" y="256">共 3 类物资，可用 18 / 总量 24</text>
+  <rect class="card" x="724" y="190" width="168" height="96" rx="8" />
+  <text class="label" x="748" y="222">借用中</text>
+  <text class="value" x="748" y="256">5</text>
+  <rect class="card" x="912" y="190" width="168" height="96" rx="8" />
+  <text class="label" x="936" y="222">逾期</text>
+  <text class="value" x="936" y="256">0</text>
+
+  <rect class="outline" x="724" y="316" width="356" height="42" rx="6" />
+  <text class="body" x="748" y="343">搜索物资、规格、位置或社团</text>
+
+  <text class="h2" x="92" y="344">物资库存</text>
+  <text class="body" x="92" y="376">负责人维护本社团库存，管理员维护全校库存。</text>
+  <rect class="top" x="92" y="400" width="988" height="132" />
+  <line class="line" x1="92" y1="448" x2="1080" y2="448" />
+  <text class="table-head" x="116" y="432">物资</text>
+  <text class="table-head" x="340" y="432">社团</text>
+  <text class="table-head" x="508" y="432">库存</text>
+  <text class="table-head" x="646" y="432">存放位置</text>
+  <text class="table-head" x="800" y="432">状态</text>
+  <text class="table-head" x="918" y="432">操作</text>
+  <text class="table-text" x="116" y="484">相机套件</text>
+  <text class="small" x="116" y="508">Canon R10 / 含备用电池</text>
+  <text class="table-text" x="340" y="492">摄影社</text>
+  <text class="table-text" x="508" y="492">4 / 6</text>
+  <rect class="line" x="508" y="504" width="118" height="6" rx="3" />
+  <rect class="primary" x="508" y="504" width="78" height="6" rx="3" />
+  <text class="table-text" x="646" y="492">学生活动中心 A102</text>
+  <rect class="success" x="800" y="472" width="64" height="30" rx="5" />
+  <text class="success-text" x="814" y="492">可借用</text>
+  <rect class="outline" x="918" y="466" width="60" height="34" rx="5" />
+  <text class="outline-text" x="934" y="488">借用</text>
+  <rect class="outline" x="986" y="466" width="60" height="34" rx="5" />
+  <text class="outline-text" x="1002" y="488">编辑</text>
+
+  <text class="h2" x="92" y="588">借用记录</text>
+  <text class="body" x="92" y="620">授权角色可处理自己社团的归还、损坏和赔偿登记。</text>
+  <rect class="top" x="92" y="642" width="988" height="72" />
+  <line class="line" x1="92" y1="676" x2="1080" y2="676" />
+  <text class="table-head" x="116" y="664">物资/借用人</text>
+  <text class="table-head" x="352" y="664">数量</text>
+  <text class="table-head" x="452" y="664">预计归还</text>
+  <text class="table-head" x="640" y="664">状态</text>
+  <text class="table-head" x="760" y="664">损坏/赔偿</text>
+  <text class="table-head" x="920" y="664">操作</text>
+  <text class="table-text" x="116" y="702">相机套件 / 张国雄</text>
+  <text class="table-text" x="352" y="702">1</text>
+  <text class="table-text" x="452" y="702">2026-07-19 18:00</text>
+  <rect class="warning" x="640" y="684" width="64" height="28" rx="5" />
+  <text class="warning-text" x="654" y="703">借用中</text>
+  <text class="table-text" x="760" y="702">-</text>
+  <rect class="outline" x="920" y="682" width="60" height="32" rx="5" />
+  <text class="outline-text" x="936" y="703">归还</text>
+  <rect class="danger" x="988" y="682" width="60" height="32" rx="5" />
+  <text class="danger-text" x="1004" y="703">损坏</text>
+
+  <rect class="card" x="92" y="724" width="988" height="1" />
+</svg>
