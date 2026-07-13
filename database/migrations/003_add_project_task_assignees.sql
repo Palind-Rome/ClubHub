@@ -1,6 +1,9 @@
 -- Issue #17 后续：支持一项项目任务分配给多名项目成员。
 -- 仅可在已确认的共享开发库或明确测试库执行，禁止用于生产/演示库。
 -- Oracle DDL 会隐式提交；执行前请备份并确认 PROJECT_TASKS、USERS 已存在。
+-- 影响范围：新增 PROJECT_TASK_ASSIGNEES 表并回填既有单人任务数据，不修改 PROJECT_TASKS 现有列。
+-- 回滚方案：确认应用已回退到读取 PROJECT_TASKS.assignee_user_id 的旧逻辑后，手动执行
+-- DROP TABLE PROJECT_TASK_ASSIGNEES CASCADE CONSTRAINTS; Oracle DDL 不能事务回滚，执行前请确认影响并保留备份。
 
 DECLARE
   table_count NUMBER;

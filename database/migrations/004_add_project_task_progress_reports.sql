@@ -1,6 +1,9 @@
 -- Issue #17 后续：记录每次项目任务进度提交，供任务历史可视化追溯。
 -- 仅可在已确认的共享开发库或明确测试库执行，禁止用于生产/演示库。
 -- Oracle DDL 会隐式提交；执行前请备份并确认 PROJECT_TASKS、USERS 已存在。
+-- 影响范围：新增 PROJECT_TASK_PROGRESS_REPORTS 表，不回填或修改既有任务数据。
+-- 回滚方案：确认应用已回退到不查询该表的版本后，手动执行
+-- DROP TABLE PROJECT_TASK_PROGRESS_REPORTS CASCADE CONSTRAINTS; Oracle DDL 不能事务回滚，执行前请确认影响并保留备份。
 
 DECLARE
   table_count NUMBER;
