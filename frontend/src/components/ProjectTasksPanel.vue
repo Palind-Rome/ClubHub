@@ -283,7 +283,12 @@ onMounted(() => void loadTasks());
         ><el-table-column prop="title" label="任务" min-width="190"
           ><template #default="{ row }"
             ><strong>{{ row.title }}</strong
-            ><span v-if="row.content" class="task-content">{{ row.content }}</span></template
+            ><span v-if="row.content" class="task-content">{{ row.content }}</span
+            ><span
+              v-if="row.taskStatus === ProjectTaskTaskStatusEnum.Delayed && row.delayReason"
+              class="task-delay-reason"
+              >延期原因：{{ row.delayReason }}</span
+            ></template
           ></el-table-column
         ><el-table-column label="执行人" min-width="150"
           ><template #default="{ row }">{{ assigneeNames(row) }}</template></el-table-column
@@ -430,6 +435,14 @@ onMounted(() => void loadTasks());
   display: block;
   margin-top: 4px;
   color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.task-delay-reason {
+  display: block;
+  margin-top: 4px;
+  color: var(--el-color-danger);
   font-size: 12px;
   line-height: 1.45;
 }
