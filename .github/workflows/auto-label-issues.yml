@@ -1,0 +1,110 @@
+name: Issue 自动打标与标题校验
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  auto-label:
+    name: 解析表单并自动打标
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const title = issue.title || '';
+            const repo = context.repo;
+
+            // ── 1. 从表单正文中提取优先级和领域 ──
+            function extractSection(text, heading) {
+              const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const regex = new RegExp(`###\\s+${escaped}\\s*\\n+([^\\n#]+)`);
+              const match = text.match(regex);
+              return match ? match[1].trim() : null;
+            }
+
+            const priority = extractSection(body, '优先级');
+            const area = extractSection(body, '领域');
+
+            // ── 2. 打标（仅 opened 事件执行，edited 不打标避免重复） ──
+            const labelsToAdd = [];
+
+            if (priority && /^优先级:P[012]$/.test(priority)) {
+              labelsToAdd.push(priority);
+            }
+
+            if (area && /^area:[a-z]+$/.test(area)) {
+              labelsToAdd.push(area);
+            }
+
+            if (labelsToAdd.length > 0 && context.payload.action === 'opened') {
+              await github.rest.issues.addLabels({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              console.log(`已添加标签: ${labelsToAdd.join(', ')}`);
+            } else if (labelsToAdd.length === 0) {
+              console.log('未在表单正文中找到优先级或领域信息，跳过多余打标。');
+            } else {
+              console.log(`非 opened 事件，跳过多余打标（已检测到: ${labelsToAdd.join(', ')}）。`);
+            }
+
+            // ── 3. 标题前缀校验 ──
+            const validPrefixes = ['[缺陷] ', '[改进] ', '[功能点] ', '[文档] '];
+            const hasValidPrefix = validPrefixes.some(p => title.startsWith(p));
+
+            if (!hasValidPrefix) {
+              const warningLabel = 'invalid';
+              const prefixList = validPrefixes.map(p => `\`${p}\``).join(' / ');
+
+              const bodyComment = [
+                ':warning: **标题前缀不符合规范**',
+                '',
+                `当前标题：\`${title}\``,
+                '',
+                `Issue 标题必须以以下前缀之一开头：${prefixList}`,
+                '',
+                '请编辑 Issue 标题，在开头添加对应类型前缀。'
+              ].join('\n');
+
+              // 查找是否已有相同警告评论
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: issue.number
+              });
+
+              const existingWarning = comments.find(c =>
+                c.body && c.body.includes('标题前缀不符合规范')
+              );
+
+              if (!existingWarning) {
+                await github.rest.issues.createComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: issue.number,
+                  body: bodyComment
+                });
+                console.log('已添加标题前缀警告评论。');
+              } else {
+                console.log('已存在标题前缀警告评论，跳过重复添加。');
+              }
+
+              // 添加 invalid 标签（幂等操作）
+              await github.rest.issues.addLabels({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: issue.number,
+                labels: [warningLabel]
+              });
+              console.log(`已添加 "${warningLabel}" 标签。`);
+            } else {
+              console.log('标题前缀校验通过。');
+            }
