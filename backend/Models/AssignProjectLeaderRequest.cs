@@ -26,17 +26,9 @@ namespace Org.OpenAPITools.Models
     public partial class AssignProjectLeaderRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
+        /// User id of a current valid club member.
         /// </summary>
-        /* <example>7</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
-        /// <summary>
-        /// User id of an active club member.
-        /// </summary>
-        /// <value>User id of an active club member.</value>
+        /// <value>User id of a current valid club member.</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="leaderUserId", EmitDefaultValue=true)]

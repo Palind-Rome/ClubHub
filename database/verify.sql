@@ -42,14 +42,14 @@ WHERE (table_name, column_name) IN (
 )
 ORDER BY table_name, column_name;
 
--- ClubHub 核心表应为 23 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- ClubHub 核心表应为 25 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
   'USERS', 'ROLES', 'USER_ROLES',
   'CLUBS', 'CLUB_MEMBERS', 'RECRUITMENTS', 'RECRUITMENT_APPLICATIONS',
   'ACTIVITIES', 'ACTIVITY_PARTICIPATIONS', 'VENUES', 'VENUE_RESERVATIONS',
-  'PROJECTS', 'PROJECT_MEMBERS', 'PROJECT_TASKS',
+  'PROJECTS', 'PROJECT_MEMBERS', 'PROJECT_TASKS', 'PROJECT_TASK_ASSIGNEES', 'PROJECT_TASK_PROGRESS_REPORTS',
   'LEARNING_ITEMS', 'LEARNING_RECORDS',
   'MATERIALS', 'MATERIAL_BORROWS', 'EVALUATIONS',
   'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS'
@@ -97,3 +97,13 @@ FROM project_members
 WHERE member_role = 'leader' AND member_status = 'active'
 GROUP BY project_id
 HAVING COUNT(*) > 1;
+
+SELECT task_id, user_id, COUNT(*) AS duplicate_count
+FROM project_task_assignees
+GROUP BY task_id, user_id
+HAVING COUNT(*) > 1;
+
+SELECT task_progress_report_id, progress, task_status
+FROM project_task_progress_reports
+WHERE progress NOT BETWEEN 0 AND 100
+   OR task_status NOT IN ('pending', 'in_progress', 'completed', 'delayed');

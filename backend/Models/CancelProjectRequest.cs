@@ -26,14 +26,6 @@ namespace Org.OpenAPITools.Models
     public partial class CancelProjectRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
-        /// </summary>
-        /* <example>12</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
-        /// <summary>
         /// Optional applicant cancellation reason.
         /// </summary>
         /// <value>Optional applicant cancellation reason.</value>

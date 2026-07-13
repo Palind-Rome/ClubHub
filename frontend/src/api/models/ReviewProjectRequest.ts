@@ -21,12 +21,6 @@ import { mapValues } from "../runtime";
  */
 export interface ReviewProjectRequest {
   /**
-   *
-   * @type {number}
-   * @memberof ReviewProjectRequest
-   */
-  currentUserId: number;
-  /**
    * Review result. running means approved; closed means rejected or closed.
    * @type {ReviewProjectRequestProjectStatusEnum}
    * @memberof ReviewProjectRequest
@@ -54,7 +48,6 @@ export type ReviewProjectRequestProjectStatusEnum =
  * Check if a given object implements the ReviewProjectRequest interface.
  */
 export function instanceOfReviewProjectRequest(value: object): value is ReviewProjectRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("projectStatus" in value) || value["projectStatus"] === undefined) return false;
   return true;
 }
@@ -71,7 +64,6 @@ export function ReviewProjectRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     projectStatus: json["projectStatus"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
   };
@@ -90,7 +82,6 @@ export function ReviewProjectRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     projectStatus: value["projectStatus"],
     reviewComment: value["reviewComment"],
   };

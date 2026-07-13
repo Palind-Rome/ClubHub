@@ -26,14 +26,6 @@ namespace Org.OpenAPITools.Models
     public partial class CreateProjectRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
-        /// </summary>
-        /* <example>12</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
-        /// <summary>
         /// Club that submits the project application.
         /// </summary>
         /// <value>Club that submits the project application.</value>

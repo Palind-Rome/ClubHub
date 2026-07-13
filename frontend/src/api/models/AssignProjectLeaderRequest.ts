@@ -21,13 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface AssignProjectLeaderRequest {
   /**
-   *
-   * @type {number}
-   * @memberof AssignProjectLeaderRequest
-   */
-  currentUserId: number;
-  /**
-   * User id of an active club member.
+   * User id of a current valid club member.
    * @type {number}
    * @memberof AssignProjectLeaderRequest
    */
@@ -40,7 +34,6 @@ export interface AssignProjectLeaderRequest {
 export function instanceOfAssignProjectLeaderRequest(
   value: object,
 ): value is AssignProjectLeaderRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("leaderUserId" in value) || value["leaderUserId"] === undefined) return false;
   return true;
 }
@@ -57,7 +50,6 @@ export function AssignProjectLeaderRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     leaderUserId: json["leaderUserId"],
   };
 }
@@ -75,7 +67,6 @@ export function AssignProjectLeaderRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     leaderUserId: value["leaderUserId"],
   };
 }

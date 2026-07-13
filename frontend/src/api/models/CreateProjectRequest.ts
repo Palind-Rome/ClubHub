@@ -21,12 +21,6 @@ import { mapValues } from "../runtime";
  */
 export interface CreateProjectRequest {
   /**
-   *
-   * @type {number}
-   * @memberof CreateProjectRequest
-   */
-  currentUserId: number;
-  /**
    * Club that submits the project application.
    * @type {number}
    * @memberof CreateProjectRequest
@@ -68,7 +62,6 @@ export interface CreateProjectRequest {
  * Check if a given object implements the CreateProjectRequest interface.
  */
 export function instanceOfCreateProjectRequest(value: object): value is CreateProjectRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("projectName" in value) || value["projectName"] === undefined) return false;
   if (!("startDate" in value) || value["startDate"] === undefined) return false;
@@ -87,7 +80,6 @@ export function CreateProjectRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     clubId: json["clubId"],
     projectName: json["projectName"],
     description: json["description"] == null ? undefined : json["description"],
@@ -110,7 +102,6 @@ export function CreateProjectRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     clubId: value["clubId"],
     projectName: value["projectName"],
     description: value["description"],
