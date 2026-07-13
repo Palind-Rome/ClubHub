@@ -71,7 +71,7 @@ export interface UpdateClubProfileRequest {
    */
   advisorName?: string | null;
   /**
-   *
+   * 社团对外联系电话或负责人联系电话。
    * @type {string}
    * @memberof UpdateClubProfileRequest
    */

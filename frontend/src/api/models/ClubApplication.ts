@@ -111,7 +111,7 @@ export interface ClubApplication {
    */
   reviewComment?: string | null;
   /**
-   *
+   * 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
    * @type {string}
    * @memberof ClubApplication
    */

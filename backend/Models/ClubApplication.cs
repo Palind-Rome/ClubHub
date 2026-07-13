@@ -151,8 +151,10 @@ namespace Org.OpenAPITools.Models
         public string? ReviewComment { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactPhone
+        /// 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
         /// </summary>
+        /// <value>申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。</value>
+        /* <example>13800000000</example> */
         [DataMember(Name="contactPhone", EmitDefaultValue=true)]
         public string? ContactPhone { get; set; }
 

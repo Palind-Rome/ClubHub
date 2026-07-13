@@ -103,8 +103,10 @@ namespace Org.OpenAPITools.Models
         public string? AdvisorName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactPhone
+        /// 社团对外联系电话或负责人联系电话。
         /// </summary>
+        /// <value>社团对外联系电话或负责人联系电话。</value>
+        /* <example>021-65980000</example> */
         [DataMember(Name="contactPhone", EmitDefaultValue=true)]
         public string? ContactPhone { get; set; }
 
