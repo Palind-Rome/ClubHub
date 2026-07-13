@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { ElMessage, type FormInstance, type FormRules } from "element-plus";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   CreateProjectTaskRequestPriorityEnum,
   ProjectMemberMemberStatusEnum,
@@ -10,6 +10,7 @@ import {
   UpdateProjectTaskProgressRequestTaskStatusEnum,
   type ProjectMember,
   type ProjectTask,
+  type ProjectTaskProgressReport,
   type UpdateProjectTaskProgressRequestTaskStatusEnum as UpdateTaskStatus,
 } from "../api";
 import { apiClient as api } from "../apiClient";
@@ -24,10 +25,15 @@ const props = defineProps<{
 const tasks = ref<ProjectTask[]>([]);
 const members = ref<ProjectMember[]>([]);
 const loading = ref(false);
+const showingCompleted = ref(false);
 const saving = ref(false);
 const loadError = ref("");
 const createVisible = ref(false);
 const updateVisible = ref(false);
+const reportsVisible = ref(false);
+const reportsLoading = ref(false);
+const reportsError = ref("");
+const progressReports = ref<ProjectTaskProgressReport[]>([]);
 const createFormRef = ref<FormInstance>();
 const updateFormRef = ref<FormInstance>();
 const selectedTask = ref<ProjectTask | null>(null);
@@ -55,13 +61,13 @@ const createForm = reactive({
 const updateForm = reactive<{
   progress: number;
   taskStatus: UpdateTaskStatus;
-  finishDate: string;
   delayReason: string;
+  reportContent: string;
 }>({
   progress: 0,
   taskStatus: UpdateProjectTaskProgressRequestTaskStatusEnum.Pending,
-  finishDate: "",
   delayReason: "",
+  reportContent: "",
 });
 const createRules: FormRules = {
   assigneeUserIds: [{ required: true, message: "请至少选择一名任务执行人", trigger: "change" }],
@@ -106,7 +112,7 @@ async function loadTasks() {
   loadError.value = "";
   try {
     const [nextTasks, nextMembers] = await Promise.all([
-      api.getProjectTasks({ projectId: props.projectId }),
+      api.getProjectTasks({ projectId: props.projectId, completedOnly: showingCompleted.value }),
       isLeader.value
         ? api.getProjectMembers({ projectId: props.projectId, includeInactive: false })
         : Promise.resolve([]),
@@ -141,6 +147,11 @@ async function openCreate() {
   await loadTasks();
 }
 
+async function toggleCompletedTasks() {
+  showingCompleted.value = !showingCompleted.value;
+  await loadTasks();
+}
+
 async function createTask() {
   const valid = await createFormRef.value?.validate().catch(() => false);
   if (!valid || createForm.assigneeUserIds.length === 0 || !createForm.dueDate) return;
@@ -170,9 +181,27 @@ function openUpdate(task: ProjectTask) {
   selectedTask.value = task;
   updateForm.progress = task.progress;
   updateForm.taskStatus = task.taskStatus as UpdateProjectTaskProgressRequestTaskStatusEnum;
-  updateForm.finishDate = task.finishDate ? toInputDateTime(task.finishDate) : "";
   updateForm.delayReason = task.delayReason ?? "";
+  updateForm.reportContent = "";
   updateVisible.value = true;
+}
+
+async function openReports(task: ProjectTask) {
+  selectedTask.value = task;
+  reportsVisible.value = true;
+  reportsLoading.value = true;
+  reportsError.value = "";
+  progressReports.value = [];
+  try {
+    progressReports.value = await api.getProjectTaskProgressReports({
+      projectId: props.projectId,
+      taskId: task.id,
+    });
+  } catch (error) {
+    reportsError.value = await toErrorMessage(error, "进度记录加载失败");
+  } finally {
+    reportsLoading.value = false;
+  }
 }
 
 async function updateTask() {
@@ -183,12 +212,15 @@ async function updateTask() {
   const completed =
     updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Completed;
   const delayed = updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed;
-  if (completed && !updateForm.finishDate) {
-    ElMessage.warning("完成任务时请填写完成日期。");
-    return;
-  }
   if (delayed && !optional(updateForm.delayReason)) {
     ElMessage.warning("已延期任务必须填写延期原因。");
+    return;
+  }
+  if (
+    updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.InProgress &&
+    !optional(updateForm.reportContent)
+  ) {
+    ElMessage.warning("进行中任务请填写本次进度汇报。");
     return;
   }
   saving.value = true;
@@ -199,9 +231,8 @@ async function updateTask() {
       updateProjectTaskProgressRequest: {
         progress: updateForm.progress,
         taskStatus: updateForm.taskStatus,
-        finishDate:
-          completed && updateForm.finishDate ? new Date(updateForm.finishDate) : undefined,
         delayReason: completed ? undefined : optional(updateForm.delayReason),
+        reportContent: optional(updateForm.reportContent),
       },
     });
     ElMessage.success("任务进度已更新");
@@ -209,6 +240,26 @@ async function updateTask() {
     await loadTasks();
   } catch (error) {
     ElMessage.error(await toErrorMessage(error, "任务进度更新失败"));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function deleteTask(task: ProjectTask) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除“${task.title}”吗？关联的进度记录也会一并删除，且无法恢复。`,
+      "删除项目任务",
+      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" },
+    );
+    saving.value = true;
+    await api.deleteProjectTask({ projectId: props.projectId, taskId: task.id });
+    ElMessage.success("项目任务已删除");
+    await loadTasks();
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") {
+      ElMessage.error(await toErrorMessage(error, "项目任务删除失败"));
+    }
   } finally {
     saving.value = false;
   }
@@ -236,10 +287,6 @@ function formatDate(value?: Date | null) {
         hour12: false,
       }).format(value)
     : "—";
-}
-function toInputDateTime(value: Date) {
-  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
 }
 function optional(value: string) {
   const text = value.trim();
@@ -270,16 +317,29 @@ onMounted(() => void loadTasks());
     <div class="panel-toolbar">
       <div>
         <h2 id="project-tasks-heading">项目任务</h2>
-        <p>负责人可分配任务；成员只能查看并更新分配给自己的任务。</p>
+        <p>
+          {{
+            showingCompleted
+              ? "已完成任务及其历史进度记录。"
+              : "负责人可分配任务；成员只能查看并更新分配给自己的任务。"
+          }}
+        </p>
       </div>
       <div class="panel-actions">
         <el-button :loading="loading" @click="loadTasks">刷新</el-button
+        ><el-button @click="toggleCompletedTasks">{{
+          showingCompleted ? "返回进行中任务" : "查看已完成任务"
+        }}</el-button
         ><el-button type="primary" :disabled="!canCreate" @click="openCreate">创建任务</el-button>
       </div>
     </div>
     <el-alert v-if="loadError" type="error" :title="loadError" show-icon :closable="false" />
     <div class="table-wrap">
-      <el-table v-loading="loading" :data="tasks" row-key="id" empty-text="暂无可查看的项目任务"
+      <el-table
+        v-loading="loading"
+        :data="tasks"
+        row-key="id"
+        :empty-text="showingCompleted ? '暂无已完成项目任务' : '暂无可查看的项目任务'"
         ><el-table-column prop="title" label="任务" min-width="190"
           ><template #default="{ row }"
             ><strong>{{ row.title }}</strong
@@ -313,11 +373,25 @@ onMounted(() => void loadTasks());
           ></el-table-column
         ><el-table-column label="截止时间" min-width="145"
           ><template #default="{ row }">{{ formatDate(row.dueDate) }}</template></el-table-column
-        ><el-table-column label="操作" width="100" fixed="right"
+        ><el-table-column label="操作" width="132" fixed="right"
           ><template #default="{ row }"
-            ><el-button v-if="canUpdate(row)" link type="primary" @click="openUpdate(row)"
-              >更新进度</el-button
-            ><span v-else>—</span></template
+            ><div class="task-actions">
+              <el-button
+                v-if="canUpdate(row) && !showingCompleted"
+                link
+                type="primary"
+                @click="openUpdate(row)"
+                >更新进度</el-button
+              ><el-button link @click="openReports(row)">进度记录</el-button
+              ><el-button
+                v-if="isLeader"
+                link
+                type="danger"
+                :loading="saving"
+                @click="deleteTask(row)"
+                >删除任务</el-button
+              >
+            </div></template
           ></el-table-column
         ></el-table
       >
@@ -358,7 +432,9 @@ onMounted(() => void loadTasks());
           ><el-date-picker
             v-model="createForm.dueDate"
             type="datetime"
-            value-format="YYYY-MM-DDTHH:mm" /></el-form-item></el-form
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm"
+            :show-seconds="false" /></el-form-item></el-form
       ><template #footer
         ><el-button @click="createVisible = false">取消</el-button
         ><el-button type="primary" :loading="saving" @click="createTask">创建</el-button></template
@@ -383,13 +459,22 @@ onMounted(() => void loadTasks());
               :value="
                 UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed
               " /></el-select></el-form-item
-        ><el-form-item
+        ><el-alert
           v-if="updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Completed"
-          label="完成日期"
-          ><el-date-picker
-            v-model="updateForm.finishDate"
-            type="datetime"
-            value-format="YYYY-MM-DDTHH:mm" /></el-form-item
+          title="完成时间将以本次提交的服务器时间自动记录。"
+          type="success"
+          :closable="false"
+          show-icon />
+        <el-form-item
+          v-if="updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.InProgress"
+          label="进度汇报"
+          ><el-input
+            v-model="updateForm.reportContent"
+            type="textarea"
+            :rows="3"
+            maxlength="1000"
+            placeholder="说明本次已完成的工作和下一步计划"
+            show-word-limit /></el-form-item
         ><el-form-item
           v-if="updateForm.taskStatus === UpdateProjectTaskProgressRequestTaskStatusEnum.Delayed"
           label="延期原因"
@@ -402,6 +487,45 @@ onMounted(() => void loadTasks());
         ><el-button @click="updateVisible = false">取消</el-button
         ><el-button type="primary" :loading="saving" @click="updateTask">保存</el-button></template
       ></el-dialog
+    >
+    <el-drawer
+      v-model="reportsVisible"
+      :title="`${selectedTask?.title || '任务'} · 进度记录`"
+      size="min(480px, 92vw)"
+      ><el-alert
+        v-if="reportsError"
+        type="error"
+        :title="reportsError"
+        show-icon
+        :closable="false"
+      />
+      <div v-else v-loading="reportsLoading" class="reports-drawer">
+        <el-empty
+          v-if="!reportsLoading && progressReports.length === 0"
+          description="暂未提交进度记录"
+        />
+        <el-timeline v-else
+          ><el-timeline-item
+            v-for="report in progressReports"
+            :key="report.id"
+            :timestamp="formatDate(report.submittedAt)"
+            placement="top"
+            ><div class="report-entry">
+              <div class="report-entry__heading">
+                <strong>{{ report.reporterName }}</strong
+                ><el-tag :type="statusType[report.taskStatus]" effect="plain">{{
+                  statusLabel[report.taskStatus] || report.taskStatus
+                }}</el-tag>
+              </div>
+              <el-progress :percentage="report.progress" :stroke-width="8" />
+              <p v-if="report.reportContent">{{ report.reportContent }}</p>
+              <p v-if="report.delayReason" class="report-entry__delay">
+                延期原因：{{ report.delayReason }}
+              </p>
+            </div></el-timeline-item
+          ></el-timeline
+        >
+      </div></el-drawer
     >
   </section>
 </template>
@@ -448,6 +572,39 @@ onMounted(() => void loadTasks());
 }
 .tasks-panel :deep(.el-progress) {
   min-width: 110px;
+}
+.task-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.task-actions .el-button {
+  margin-left: 0;
+}
+.reports-drawer {
+  min-height: 180px;
+  padding: 8px 4px;
+}
+.report-entry {
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: 10px;
+}
+.report-entry__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.report-entry p {
+  margin: 10px 0 0;
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.report-entry .report-entry__delay {
+  color: var(--el-color-danger);
 }
 @media (max-width: 640px) {
   .panel-toolbar {
