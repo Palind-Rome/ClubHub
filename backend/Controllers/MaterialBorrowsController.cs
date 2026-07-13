@@ -7,6 +7,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiError = Org.OpenAPITools.Models.ApiError;
+using ApiBorrowMaterialRequest = Org.OpenAPITools.Models.BorrowMaterialRequest;
+using ApiCreateMaterialRequest = Org.OpenAPITools.Models.CreateMaterialRequest;
+using ApiMaterial = Org.OpenAPITools.Models.Material;
+using ApiMaterialBorrow = Org.OpenAPITools.Models.MaterialBorrow;
+using ApiRegisterMaterialDamageRequest = Org.OpenAPITools.Models.RegisterMaterialDamageRequest;
+using ApiUpdateMaterialRequest = Org.OpenAPITools.Models.UpdateMaterialRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -101,7 +107,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("materials")]
-    public async Task<IActionResult> CreateMaterial([FromBody] CreateMaterialRequest req)
+    public async Task<IActionResult> CreateMaterial([FromBody] ApiCreateMaterialRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
@@ -125,7 +131,8 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_available_quantity_invalid", "可用数量必须在 0 到总数量之间。"));
         }
 
-        if (!IsValidStatus(req.Status, AllowedMaterialStatuses, out var normalizedStatus))
+        var normalizedStatus = NormalizeMaterialStatus(req.Status);
+        if (normalizedStatus is null)
         {
             return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
         }
@@ -154,7 +161,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPut("materials/{materialId:int}")]
-    public async Task<IActionResult> UpdateMaterial(int materialId, [FromBody] UpdateMaterialRequest req)
+    public async Task<IActionResult> UpdateMaterial(int materialId, [FromBody] ApiUpdateMaterialRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
@@ -192,7 +199,8 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_available_quantity_invalid", "可用数量不能超过扣除当前借出数量后的库存余量。"));
         }
 
-        if (!IsValidStatus(req.Status, AllowedMaterialStatuses, out var normalizedStatus) || normalizedStatus is null)
+        var normalizedStatus = NormalizeMaterialStatus(req.Status);
+        if (normalizedStatus is null)
         {
             return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
         }
@@ -274,7 +282,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows")]
-    public async Task<IActionResult> BorrowMaterial([FromBody] BorrowMaterialRequest req)
+    public async Task<IActionResult> BorrowMaterial([FromBody] ApiBorrowMaterialRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
@@ -284,13 +292,13 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("borrow_quantity_invalid", "借用数量必须大于 0。"));
         }
 
-        if (req.ExpectedReturnAt is null)
+        if (req.ExpectedReturnAt == default)
         {
             return BadRequest(Error("expected_return_time_required", "预计归还时间不能为空。"));
         }
 
         var now = DateTime.UtcNow;
-        var expectedReturnAt = RequestTimeToUtc(req.ExpectedReturnAt.Value);
+        var expectedReturnAt = RequestTimeToUtc(req.ExpectedReturnAt);
         if (expectedReturnAt <= now)
         {
             return BadRequest(Error("expected_return_time_invalid", "预计归还时间必须晚于当前时间。"));
@@ -389,7 +397,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows/{borrowId:int}/damage")]
-    public async Task<IActionResult> RegisterDamage(int borrowId, [FromBody] RegisterMaterialDamageRequest req)
+    public async Task<IActionResult> RegisterDamage(int borrowId, [FromBody] ApiRegisterMaterialDamageRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
@@ -400,30 +408,41 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("damage_description_required", "损坏说明不能为空。"));
         }
 
-        if (req.CompensationAmount < 0)
+        if (!double.IsFinite(req.CompensationAmount) ||
+            req.CompensationAmount < 0 ||
+            req.CompensationAmount > (double)decimal.MaxValue)
         {
-            return BadRequest(Error("compensation_amount_invalid", "赔偿金额不能为负数。"));
+            return BadRequest(Error("compensation_amount_invalid", "赔偿金额不合法。"));
         }
 
-        var borrow = await BorrowQuery().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
+        var compensationAmount = Convert.ToDecimal(req.CompensationAmount);
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        var borrow = await BorrowQuery().AsNoTracking().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
         if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
 
         var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
         if (permission is not null) return permission;
 
-        if (NormalizeStatus(borrow.BorrowStatus) != BorrowStatusBorrowed)
+        var returnAt = DateTime.UtcNow;
+        var affected = await _db.MaterialBorrows
+            .Where(b => b.BorrowId == borrowId && b.BorrowStatus == BorrowStatusBorrowed)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(b => b.BorrowStatus, BorrowStatusDamaged)
+                .SetProperty(b => b.ReturnAt, returnAt)
+                .SetProperty(b => b.DamageDesc, damageDesc)
+                .SetProperty(b => b.CompensationAmount, compensationAmount));
+
+        if (affected != 1)
         {
-            return BadRequest(Error("borrow_status_not_borrowed", "只有借用中的记录可以登记损坏。"));
+            await transaction.RollbackAsync();
+            return Conflict(Error("borrow_status_changed", "借用记录状态已变化，请刷新后重试。"));
         }
 
-        borrow.BorrowStatus = BorrowStatusDamaged;
-        borrow.ReturnAt = DateTime.UtcNow;
-        borrow.DamageDesc = damageDesc;
-        borrow.CompensationAmount = req.CompensationAmount;
+        var updatedBorrow = await BorrowQuery().AsNoTracking().FirstAsync(b => b.BorrowId == borrowId);
+        await transaction.CommitAsync();
 
-        await _db.SaveChangesAsync();
-
-        return Ok(ToDto(borrow));
+        return Ok(ToDto(updatedBorrow));
     }
 
     private IQueryable<Material> MaterialQuery()
@@ -502,46 +521,79 @@ public class MaterialBorrowsController : ControllerBase
         return (null, canManageAll, clubIds.OrderBy(id => id).ToList());
     }
 
-    private static MaterialDto ToDto(Material material)
+    private static ApiMaterial ToDto(Material material)
     {
         var totalQty = material.TotalQty ?? 0;
         var availableQty = Math.Clamp(material.AvailableQty ?? 0, 0, totalQty);
-        return new MaterialDto(
-            material.MaterialId,
-            material.ClubId,
-            material.Club?.ClubName ?? "",
-            material.MaterialName ?? "",
-            material.Specification,
-            totalQty,
-            availableQty,
-            Math.Max(0, totalQty - availableQty),
-            material.StorageLocation,
-            NormalizeMaterialStatus(material.MaterialStatus),
-            StoredTimeToUtc(material.CreatedAt ?? DateTime.MinValue));
+        return new ApiMaterial
+        {
+            Id = material.MaterialId,
+            ClubId = material.ClubId,
+            ClubName = material.Club?.ClubName ?? "",
+            Name = material.MaterialName ?? "",
+            Specification = material.Specification,
+            TotalQuantity = totalQty,
+            AvailableQuantity = availableQty,
+            BorrowedQuantity = Math.Max(0, totalQty - availableQty),
+            StorageLocation = material.StorageLocation,
+            Status = ToApiMaterialStatus(material.MaterialStatus),
+            CreatedAt = StoredTimeToUtc(material.CreatedAt ?? DateTime.MinValue)
+        };
     }
 
-    private static MaterialBorrowDto ToDto(MaterialBorrow borrow)
+    private static ApiMaterialBorrow ToDto(MaterialBorrow borrow)
     {
-        return new MaterialBorrowDto(
-            borrow.BorrowId,
-            borrow.MaterialId,
-            borrow.Material?.MaterialName ?? "",
-            borrow.Material?.Specification,
-            borrow.ClubId,
-            borrow.Club?.ClubName ?? "",
-            borrow.BorrowerUserId,
-            DisplayName(borrow.BorrowerUser),
-            borrow.Quantity ?? 0,
-            StoredTimeToUtc(borrow.BorrowAt ?? DateTime.MinValue),
-            borrow.ExpectedReturnAt is null ? null : StoredTimeToUtc(borrow.ExpectedReturnAt.Value),
-            borrow.ReturnAt is null ? null : StoredTimeToUtc(borrow.ReturnAt.Value),
-            NormalizeBorrowStatus(borrow.BorrowStatus),
-            borrow.DamageDesc,
-            borrow.CompensationAmount ?? 0,
-            NormalizeBorrowStatus(borrow.BorrowStatus) == BorrowStatusBorrowed &&
+        return new ApiMaterialBorrow
+        {
+            Id = borrow.BorrowId,
+            MaterialId = borrow.MaterialId,
+            MaterialName = borrow.Material?.MaterialName ?? "",
+            Specification = borrow.Material?.Specification,
+            ClubId = borrow.ClubId,
+            ClubName = borrow.Club?.ClubName ?? "",
+            BorrowerUserId = borrow.BorrowerUserId,
+            BorrowerName = DisplayName(borrow.BorrowerUser),
+            Quantity = borrow.Quantity ?? 0,
+            BorrowAt = StoredTimeToUtc(borrow.BorrowAt ?? DateTime.MinValue),
+            ExpectedReturnAt = borrow.ExpectedReturnAt is null
+                ? null
+                : StoredTimeToUtc(borrow.ExpectedReturnAt.Value),
+            ReturnAt = borrow.ReturnAt is null ? null : StoredTimeToUtc(borrow.ReturnAt.Value),
+            Status = ToApiBorrowStatus(borrow.BorrowStatus),
+            DamageDescription = borrow.DamageDesc,
+            CompensationAmount = Convert.ToDouble(borrow.CompensationAmount ?? 0),
+            Overdue = NormalizeBorrowStatus(borrow.BorrowStatus) == BorrowStatusBorrowed &&
                 borrow.ExpectedReturnAt is not null &&
-                StoredTimeToUtc(borrow.ExpectedReturnAt.Value) < DateTime.UtcNow);
+                StoredTimeToUtc(borrow.ExpectedReturnAt.Value) < DateTime.UtcNow
+        };
     }
+
+    private static string? NormalizeMaterialStatus(ApiCreateMaterialRequest.StatusEnum status) => status switch
+    {
+        ApiCreateMaterialRequest.StatusEnum.ActiveEnum => MaterialStatusActive,
+        ApiCreateMaterialRequest.StatusEnum.DisabledEnum => MaterialStatusDisabled,
+        _ => null
+    };
+
+    private static string? NormalizeMaterialStatus(ApiUpdateMaterialRequest.StatusEnum status) => status switch
+    {
+        ApiUpdateMaterialRequest.StatusEnum.ActiveEnum => MaterialStatusActive,
+        ApiUpdateMaterialRequest.StatusEnum.DisabledEnum => MaterialStatusDisabled,
+        _ => null
+    };
+
+    private static ApiMaterial.StatusEnum ToApiMaterialStatus(string? status) =>
+        NormalizeMaterialStatus(status) == MaterialStatusDisabled
+            ? ApiMaterial.StatusEnum.DisabledEnum
+            : ApiMaterial.StatusEnum.ActiveEnum;
+
+    private static ApiMaterialBorrow.StatusEnum ToApiBorrowStatus(string? status) =>
+        NormalizeBorrowStatus(status) switch
+        {
+            BorrowStatusReturned => ApiMaterialBorrow.StatusEnum.ReturnedEnum,
+            BorrowStatusDamaged => ApiMaterialBorrow.StatusEnum.DamagedEnum,
+            _ => ApiMaterialBorrow.StatusEnum.BorrowedEnum
+        };
 
     private static bool IsValidStatus(string? status, HashSet<string> allowed, out string? normalized)
     {
@@ -631,61 +683,3 @@ public class MaterialBorrowsController : ControllerBase
         Detail = detail
     };
 }
-
-public record MaterialDto(
-    int Id,
-    int ClubId,
-    string ClubName,
-    string Name,
-    string? Specification,
-    int TotalQuantity,
-    int AvailableQuantity,
-    int BorrowedQuantity,
-    string? StorageLocation,
-    string Status,
-    DateTime CreatedAt);
-
-public record MaterialBorrowDto(
-    int Id,
-    int MaterialId,
-    string MaterialName,
-    string? Specification,
-    int ClubId,
-    string ClubName,
-    int BorrowerUserId,
-    string? BorrowerName,
-    int Quantity,
-    DateTime BorrowAt,
-    DateTime? ExpectedReturnAt,
-    DateTime? ReturnAt,
-    string Status,
-    string? DamageDescription,
-    decimal CompensationAmount,
-    bool Overdue);
-
-public record CreateMaterialRequest(
-    int ClubId,
-    string Name,
-    string? Specification,
-    int TotalQuantity,
-    int? AvailableQuantity,
-    string? StorageLocation,
-    string? Status);
-
-public record BorrowMaterialRequest(
-    int MaterialId,
-    int ClubId,
-    int Quantity,
-    DateTime? ExpectedReturnAt);
-
-public record UpdateMaterialRequest(
-    string Name,
-    string? Specification,
-    int TotalQuantity,
-    int AvailableQuantity,
-    string? StorageLocation,
-    string Status);
-
-public record RegisterMaterialDamageRequest(
-    string DamageDescription,
-    decimal CompensationAmount);

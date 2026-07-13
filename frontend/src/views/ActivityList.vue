@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 
 interface Activity {
   id: number;
@@ -425,10 +426,8 @@ function canReviewBudget(activity: Activity) {
 }
 
 function canManageMaterial(activity: Activity) {
-  return (
-    hasScopedPermission("material:borrow:use", activity.clubId) ||
-    hasScopedPermission("material:borrow:record", activity.clubId) ||
-    hasScopedPermission("material:inventory:manage", activity.clubId)
+  return MATERIAL_ACCESS_PERMISSIONS.some((permission) =>
+    hasScopedPermission(permission, activity.clubId),
   );
 }
 

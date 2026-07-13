@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
+import { MATERIAL_ACCESS_PERMISSIONS } from "./materialPermissions";
 
 const healthOk = ref(false);
 const healthChecking = ref(false);
@@ -59,9 +60,7 @@ const canAccessMaterialBorrows = computed(() => {
   const permissions = auth.value?.permissions ?? [];
   return (
     permissions.includes("*") ||
-    permissions.includes("material:borrow:use") ||
-    permissions.includes("material:borrow:record") ||
-    permissions.includes("material:inventory:manage")
+    MATERIAL_ACCESS_PERMISSIONS.some((permission) => permissions.includes(permission))
   );
 });
 

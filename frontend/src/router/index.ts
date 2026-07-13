@@ -13,6 +13,7 @@ import VenueReservationApply from "../views/VenueReservationApply.vue";
 import LearningCenter from "../views/LearningCenter.vue";
 import MaterialBorrow from "../views/MaterialBorrow.vue";
 import { hasCompletedSession, readAuth } from "../authSession";
+import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -53,12 +54,9 @@ router.beforeEach((to) => {
 
   if (to.path === "/materials") {
     const permissions = readAuth()?.permissions ?? [];
-    const canAccess = [
-      "*",
-      "material:borrow:use",
-      "material:borrow:record",
-      "material:inventory:manage",
-    ].some((permission) => permissions.includes(permission));
+    const canAccess =
+      permissions.includes("*") ||
+      MATERIAL_ACCESS_PERMISSIONS.some((permission) => permissions.includes(permission));
     if (!canAccess) return { path: "/clubs" };
   }
 });

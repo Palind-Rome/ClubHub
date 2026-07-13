@@ -6,6 +6,12 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "elem
 import { readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 import {
+  MATERIAL_ACCESS_PERMISSIONS,
+  MATERIAL_BORROW_RECORD_PERMISSION,
+  MATERIAL_BORROW_USE_PERMISSION,
+  MATERIAL_INVENTORY_MANAGE_PERMISSION,
+} from "../materialPermissions";
+import {
   beijingDateTimeTimestamp,
   beijingDateTimeToUtcIso,
   formatVenueReservationDateTime,
@@ -79,7 +85,10 @@ const materials = ref<Material[]>([]);
 const borrows = ref<MaterialBorrow[]>([]);
 const loading = ref(false);
 const borrowLoading = ref(false);
+const materialsError = ref("");
+const borrowError = ref("");
 const submitting = ref(false);
+const returningBorrowId = ref<number | null>(null);
 const activeClubId = ref<number>();
 const materialSearch = ref("");
 const borrowStatus = ref("");
@@ -115,14 +124,6 @@ const damageForm = reactive<DamageForm>({
   compensationAmount: 0,
 });
 
-const borrowUsePermission = "material:borrow:use";
-const borrowRecordPermission = "material:borrow:record";
-const inventoryManagePermission = "material:inventory:manage";
-const materialAccessPermissions = [
-  borrowUsePermission,
-  borrowRecordPermission,
-  inventoryManagePermission,
-];
 const maxBorrowDays = 7;
 
 const hasGlobalAccess = computed(() => {
@@ -156,31 +157,31 @@ function clubIdsForPermission(permission: string) {
 
 function canUseMaterialForClub(clubId: number) {
   return (
-    hasSystemPermission(borrowUsePermission) ||
-    clubIdsForPermission(borrowUsePermission).includes(clubId)
+    hasSystemPermission(MATERIAL_BORROW_USE_PERMISSION) ||
+    clubIdsForPermission(MATERIAL_BORROW_USE_PERMISSION).includes(clubId)
   );
 }
 
 function canRecordBorrowForClub(clubId: number) {
   return (
-    hasSystemPermission(borrowRecordPermission) ||
-    clubIdsForPermission(borrowRecordPermission).includes(clubId)
+    hasSystemPermission(MATERIAL_BORROW_RECORD_PERMISSION) ||
+    clubIdsForPermission(MATERIAL_BORROW_RECORD_PERMISSION).includes(clubId)
   );
 }
 
 function canManageInventoryForClub(clubId: number) {
   return (
-    hasSystemPermission(inventoryManagePermission) ||
-    clubIdsForPermission(inventoryManagePermission).includes(clubId)
+    hasSystemPermission(MATERIAL_INVENTORY_MANAGE_PERMISSION) ||
+    clubIdsForPermission(MATERIAL_INVENTORY_MANAGE_PERMISSION).includes(clubId)
   );
 }
 
 const canViewAllMaterials = computed(() =>
-  materialAccessPermissions.some((permission) => hasSystemPermission(permission)),
+  MATERIAL_ACCESS_PERMISSIONS.some((permission) => hasSystemPermission(permission)),
 );
 
 const visibleMaterialClubIds = computed(() => [
-  ...new Set(materialAccessPermissions.flatMap((permission) => clubIdsForPermission(permission))),
+  ...new Set(MATERIAL_ACCESS_PERMISSIONS.flatMap((permission) => clubIdsForPermission(permission))),
 ]);
 
 const canAccessMaterials = computed(
@@ -189,14 +190,14 @@ const canAccessMaterials = computed(
 
 const canViewBorrowRecords = computed(
   () =>
-    hasSystemPermission(borrowRecordPermission) ||
-    hasSystemPermission(inventoryManagePermission) ||
-    clubIdsForPermission(borrowRecordPermission).length > 0 ||
-    clubIdsForPermission(inventoryManagePermission).length > 0,
+    hasSystemPermission(MATERIAL_BORROW_RECORD_PERMISSION) ||
+    hasSystemPermission(MATERIAL_INVENTORY_MANAGE_PERMISSION) ||
+    clubIdsForPermission(MATERIAL_BORROW_RECORD_PERMISSION).length > 0 ||
+    clubIdsForPermission(MATERIAL_INVENTORY_MANAGE_PERMISSION).length > 0,
 );
 
 const canManageInventoryForActiveClub = computed(() => {
-  if (activeClubId.value === 0) return hasSystemPermission(inventoryManagePermission);
+  if (activeClubId.value === 0) return hasSystemPermission(MATERIAL_INVENTORY_MANAGE_PERMISSION);
   return activeClubId.value !== undefined && canManageInventoryForClub(activeClubId.value);
 });
 
@@ -204,6 +205,10 @@ const visibleClubs = computed(() => {
   if (canViewAllMaterials.value) return clubs.value;
   return clubs.value.filter((club) => visibleMaterialClubIds.value.includes(club.id));
 });
+
+const inventoryManageClubs = computed(() =>
+  clubs.value.filter((club) => canManageInventoryForClub(club.id)),
+);
 
 const activeClubOptions = computed(() => [
   ...(canViewAllMaterials.value ? [{ id: 0, name: "全部社团" }] : []),
@@ -347,14 +352,19 @@ async function loadClubs() {
 }
 
 async function loadMaterials() {
-  if (!canAccessMaterials.value) return;
+  materialsError.value = "";
+  if (!canAccessMaterials.value) {
+    materials.value = [];
+    return;
+  }
   loading.value = true;
   try {
     const query =
       activeClubId.value && activeClubId.value !== 0 ? `?clubId=${activeClubId.value}` : "";
     materials.value = await requestJson<Material[]>(`/api/materials${query}`);
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载物资失败");
+    materialsError.value = e instanceof Error ? e.message : "加载物资失败";
+    ElMessage.error(materialsError.value);
     materials.value = [];
   } finally {
     loading.value = false;
@@ -362,7 +372,11 @@ async function loadMaterials() {
 }
 
 async function loadBorrows() {
-  if (!canViewBorrowRecords.value) return;
+  borrowError.value = "";
+  if (!canViewBorrowRecords.value) {
+    borrows.value = [];
+    return;
+  }
   borrowLoading.value = true;
   try {
     const params = new URLSearchParams();
@@ -372,7 +386,8 @@ async function loadBorrows() {
     const query = params.toString() ? `?${params.toString()}` : "";
     borrows.value = await requestJson<MaterialBorrow[]>(`/api/material-borrows${query}`);
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载借用记录失败");
+    borrowError.value = e instanceof Error ? e.message : "加载借用记录失败";
+    ElMessage.error(borrowError.value);
     borrows.value = [];
   } finally {
     borrowLoading.value = false;
@@ -391,7 +406,9 @@ function openCreateMaterial() {
 
   editingMaterial.value = null;
   materialForm.clubId =
-    activeClubId.value && activeClubId.value !== 0 ? activeClubId.value : visibleClubs.value[0]?.id;
+    activeClubId.value && activeClubId.value !== 0
+      ? activeClubId.value
+      : inventoryManageClubs.value[0]?.id;
   materialForm.name = "";
   materialForm.specification = "";
   materialForm.totalQuantity = 1;
@@ -459,8 +476,7 @@ async function submitMaterial() {
 
   submitting.value = true;
   try {
-    const payload = {
-      clubId: materialForm.clubId,
+    const materialPayload = {
       name: materialForm.name.trim(),
       specification: materialForm.specification.trim() || null,
       totalQuantity: materialForm.totalQuantity,
@@ -468,6 +484,9 @@ async function submitMaterial() {
       storageLocation: materialForm.storageLocation.trim() || null,
       status: materialForm.status,
     };
+    const payload = editingMaterial.value
+      ? materialPayload
+      : { clubId: materialForm.clubId, ...materialPayload };
     const requestUrl = editingMaterial.value
       ? `/api/materials/${editingMaterial.value.id}`
       : "/api/materials";
@@ -519,11 +538,14 @@ async function submitBorrow() {
 }
 
 async function returnBorrow(borrow: MaterialBorrow) {
+  if (returningBorrowId.value !== null || !isBorrowInProgress(borrow)) return;
+
   if (!canRecordBorrowForClub(borrow.clubId)) {
     ElMessage.warning("当前账号没有处理该社团借还记录的权限");
     return;
   }
 
+  returningBorrowId.value = borrow.id;
   try {
     await ElMessageBox.confirm(
       `确认登记「${borrow.materialName}」已归还？归还后库存会回补 ${borrow.quantity} 件。`,
@@ -535,10 +557,10 @@ async function returnBorrow(borrow: MaterialBorrow) {
       },
     );
   } catch {
+    returningBorrowId.value = null;
     return;
   }
 
-  submitting.value = true;
   try {
     await requestJson<MaterialBorrow>(`/api/material-borrows/${borrow.id}/return`, {
       method: "POST",
@@ -548,7 +570,7 @@ async function returnBorrow(borrow: MaterialBorrow) {
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "登记归还失败");
   } finally {
-    submitting.value = false;
+    returningBorrowId.value = null;
   }
 }
 
@@ -724,7 +746,20 @@ onMounted(async () => {
         />
       </div>
 
-      <el-table v-loading="loading" :data="activeMaterials" stripe empty-text="暂无物资">
+      <el-alert
+        v-if="materialsError"
+        :title="materialsError"
+        type="error"
+        show-icon
+        class="notice"
+      />
+
+      <el-table
+        v-loading="loading"
+        :data="activeMaterials"
+        stripe
+        :empty-text="materialsError ? '物资加载失败' : '暂无物资'"
+      >
         <el-table-column label="物资" min-width="210">
           <template #default="{ row }">
             <div class="primary-text">{{ row.name }}</div>
@@ -814,11 +849,13 @@ onMounted(async () => {
         </el-select>
       </div>
 
+      <el-alert v-if="borrowError" :title="borrowError" type="error" show-icon class="notice" />
+
       <el-table
         v-loading="borrowLoading"
         :data="activeBorrows"
         stripe
-        empty-text="暂无借用记录"
+        :empty-text="borrowError ? '借用记录加载失败' : '暂无借用记录'"
         :row-class-name="rowClassName"
       >
         <el-table-column label="物资/借用人" min-width="210">
@@ -869,7 +906,8 @@ onMounted(async () => {
                 :icon="Check"
                 type="success"
                 size="small"
-                :disabled="!isBorrowInProgress(row)"
+                :loading="returningBorrowId === row.id"
+                :disabled="returningBorrowId !== null || !isBorrowInProgress(row)"
                 @click="returnBorrow(row)"
               >
                 归还
@@ -906,11 +944,12 @@ onMounted(async () => {
           <el-select
             v-model="materialForm.clubId"
             filterable
+            :disabled="Boolean(editingMaterial)"
             class="full-width"
             placeholder="选择社团"
           >
             <el-option
-              v-for="club in visibleClubs"
+              v-for="club in inventoryManageClubs"
               :key="club.id"
               :label="club.name"
               :value="club.id"
