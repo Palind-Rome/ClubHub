@@ -950,6 +950,7 @@ async function openParticipations(activity: Activity) {
             <el-button
               v-if="canManageMaterial(row)"
               size="small"
+              type="primary"
               plain
               @click="openMaterialBorrows(row)"
             >
