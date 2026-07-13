@@ -112,6 +112,16 @@ public class ClubsController : ControllerBase
                 u.AccountStatus.ToLower() == "active" ||
                 u.AccountStatus.ToLower() == "normal" ||
                 u.AccountStatus.ToLower() == "enabled")
+            .Where(u =>
+                (u.StudentNo != null && u.StudentNo.Length == 5) ||
+                u.UserRoles.Any(ur =>
+                    ur.Role != null &&
+                    ((ur.Role.RoleCode != null &&
+                      (ur.Role.RoleCode.ToUpper() == "TEACHER" ||
+                       ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode)) ||
+                     (ur.Role.RoleName != null &&
+                      (ur.Role.RoleName.Contains("教师") ||
+                       ur.Role.RoleName.Contains("老师"))))))
             .OrderBy(u => u.RealName)
             .ThenBy(u => u.StudentNo)
             .ThenBy(u => u.UserId)
@@ -205,13 +215,13 @@ public class ClubsController : ControllerBase
 
         if (startDate is not null)
         {
-            var start = DateTime.SpecifyKind(startDate.Value.Date, DateTimeKind.Utc);
+            var start = BusinessDateBoundaryUtc(startDate.Value.Date);
             query = query.Where(c => c.CreatedAt >= start);
         }
 
         if (endDate is not null)
         {
-            var endExclusive = DateTime.SpecifyKind(endDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var endExclusive = BusinessDateBoundaryUtc(endDate.Value.Date.AddDays(1));
             query = query.Where(c => c.CreatedAt < endExclusive);
         }
 
@@ -2983,6 +2993,12 @@ public class ClubsController : ControllerBase
             ? utcDateTime
             : DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
         return TimeZoneInfo.ConvertTimeFromUtc(utc, BusinessTimeZone).Date;
+    }
+
+    private static DateTime BusinessDateBoundaryUtc(DateTime businessDate)
+    {
+        var localBoundary = DateTime.SpecifyKind(businessDate.Date, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localBoundary, BusinessTimeZone);
     }
 
     private static TimeZoneInfo ResolveBusinessTimeZone()
