@@ -20,22 +20,26 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// Request to complete an active borrow as damaged and record compensation.
     /// </summary>
     [DataContract]
     public partial class RegisterMaterialDamageRequest 
     {
         /// <summary>
-        /// Gets or Sets DamageDescription
+        /// Required description of the observed damage.
         /// </summary>
+        /// <value>Required description of the observed damage.</value>
+        /* <example>麦克风网罩变形</example> */
         [Required]
         [StringLength(255, MinimumLength=1)]
         [DataMember(Name="damageDescription", EmitDefaultValue=false)]
         public string DamageDescription { get; set; }
 
         /// <summary>
-        /// Gets or Sets CompensationAmount
+        /// Non-negative compensation amount in CNY.
         /// </summary>
+        /// <value>Non-negative compensation amount in CNY.</value>
+        /* <example>120</example> */
         [Required]
         [DataMember(Name="compensationAmount", EmitDefaultValue=true)]
         public double CompensationAmount { get; set; }

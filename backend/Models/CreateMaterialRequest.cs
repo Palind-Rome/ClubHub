@@ -20,57 +20,70 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// Request to register a new material in a manageable club inventory.
     /// </summary>
     [DataContract]
     public partial class CreateMaterialRequest 
     {
         /// <summary>
-        /// Gets or Sets ClubId
+        /// Club that will own the new material.
         /// </summary>
+        /// <value>Club that will own the new material.</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Name
+        /// Material name.
         /// </summary>
+        /// <value>Material name.</value>
+        /* <example>无线麦克风</example> */
         [Required]
         [StringLength(255, MinimumLength=1)]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Specification
+        /// Optional model or specification.
         /// </summary>
+        /// <value>Optional model or specification.</value>
+        /* <example>UHF 双通道</example> */
         [MaxLength(255)]
         [DataMember(Name="specification", EmitDefaultValue=true)]
         public string? Specification { get; set; }
 
         /// <summary>
-        /// Gets or Sets TotalQuantity
+        /// Initial total inventory quantity.
         /// </summary>
+        /// <value>Initial total inventory quantity.</value>
+        /* <example>10</example> */
         [Required]
         [DataMember(Name="totalQuantity", EmitDefaultValue=true)]
         public int TotalQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets AvailableQuantity
+        /// Initial available quantity; defaults to totalQuantity when omitted.
         /// </summary>
+        /// <value>Initial available quantity; defaults to totalQuantity when omitted.</value>
+        /* <example>10</example> */
         [DataMember(Name="availableQuantity", EmitDefaultValue=true)]
         public int? AvailableQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets StorageLocation
+        /// Optional physical storage location.
         /// </summary>
+        /// <value>Optional physical storage location.</value>
+        /* <example>学生活动中心 A102</example> */
         [MaxLength(255)]
         [DataMember(Name="storageLocation", EmitDefaultValue=true)]
         public string? StorageLocation { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Initial material status.
         /// </summary>
+        /// <value>Initial material status.</value>
         
         public enum StatusEnum
         {
@@ -89,8 +102,10 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Initial material status.
         /// </summary>
+        /// <value>Initial material status.</value>
+        /* <example>active</example> */
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; } = StatusEnum.ActiveEnum;
 

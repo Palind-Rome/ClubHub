@@ -20,76 +20,95 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// A club-owned material and its current inventory balance.
     /// </summary>
     [DataContract]
     public partial class Material 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// Material identifier in MATERIALS.MATERIAL_ID.
         /// </summary>
+        /// <value>Material identifier in MATERIALS.MATERIAL_ID.</value>
+        /* <example>101</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// Club that owns the material.
         /// </summary>
+        /// <value>Club that owns the material.</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// Display name of the owning club.
         /// </summary>
+        /// <value>Display name of the owning club.</value>
+        /* <example>摄影社</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets Name
+        /// Material name.
         /// </summary>
+        /// <value>Material name.</value>
+        /* <example>无线麦克风</example> */
         [Required]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Specification
+        /// Optional model or specification.
         /// </summary>
+        /// <value>Optional model or specification.</value>
+        /* <example>UHF 双通道</example> */
         [DataMember(Name="specification", EmitDefaultValue=true)]
         public string? Specification { get; set; }
 
         /// <summary>
-        /// Gets or Sets TotalQuantity
+        /// Total registered inventory quantity.
         /// </summary>
+        /// <value>Total registered inventory quantity.</value>
+        /* <example>10</example> */
         [Required]
         [DataMember(Name="totalQuantity", EmitDefaultValue=true)]
         public int TotalQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets AvailableQuantity
+        /// Quantity currently available to borrow.
         /// </summary>
+        /// <value>Quantity currently available to borrow.</value>
+        /* <example>7</example> */
         [Required]
         [DataMember(Name="availableQuantity", EmitDefaultValue=true)]
         public int AvailableQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets BorrowedQuantity
+        /// Quantity currently checked out.
         /// </summary>
+        /// <value>Quantity currently checked out.</value>
+        /* <example>3</example> */
         [Required]
         [DataMember(Name="borrowedQuantity", EmitDefaultValue=true)]
         public int BorrowedQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets StorageLocation
+        /// Optional physical storage location.
         /// </summary>
+        /// <value>Optional physical storage location.</value>
+        /* <example>学生活动中心 A102</example> */
         [DataMember(Name="storageLocation", EmitDefaultValue=true)]
         public string? StorageLocation { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Whether the material is available for new borrows.
         /// </summary>
+        /// <value>Whether the material is available for new borrows.</value>
         
         public enum StatusEnum
         {
@@ -108,15 +127,19 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Whether the material is available for new borrows.
         /// </summary>
+        /// <value>Whether the material is available for new borrows.</value>
+        /* <example>active</example> */
         [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// Material creation time in UTC.
         /// </summary>
+        /// <value>Material creation time in UTC.</value>
+        /* <example>2026-07-13T02:00Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }

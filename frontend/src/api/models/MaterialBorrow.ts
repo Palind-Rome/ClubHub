@@ -15,103 +15,103 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * A material borrow record, including return or damage outcome.
  * @export
  * @interface MaterialBorrow
  */
 export interface MaterialBorrow {
   /**
-   *
+   * Borrow record identifier in MATERIAL_BORROWS.BORROW_ID.
    * @type {number}
    * @memberof MaterialBorrow
    */
   id: number;
   /**
-   *
+   * Borrowed material identifier.
    * @type {number}
    * @memberof MaterialBorrow
    */
   materialId: number;
   /**
-   *
+   * Borrowed material display name.
    * @type {string}
    * @memberof MaterialBorrow
    */
   materialName: string;
   /**
-   *
+   * Material specification captured for display.
    * @type {string}
    * @memberof MaterialBorrow
    */
   specification?: string | null;
   /**
-   *
+   * Club responsible for the borrow record.
    * @type {number}
    * @memberof MaterialBorrow
    */
   clubId: number;
   /**
-   *
+   * Display name of the responsible club.
    * @type {string}
    * @memberof MaterialBorrow
    */
   clubName: string;
   /**
-   *
+   * User who borrowed the material.
    * @type {number}
    * @memberof MaterialBorrow
    */
   borrowerUserId: number;
   /**
-   *
+   * Borrower display name.
    * @type {string}
    * @memberof MaterialBorrow
    */
   borrowerName?: string | null;
   /**
-   *
+   * Borrowed quantity.
    * @type {number}
    * @memberof MaterialBorrow
    */
   quantity: number;
   /**
-   *
+   * Borrow registration time in UTC.
    * @type {Date}
    * @memberof MaterialBorrow
    */
   borrowAt: Date;
   /**
-   *
+   * Expected return time in UTC.
    * @type {Date}
    * @memberof MaterialBorrow
    */
   expectedReturnAt?: Date | null;
   /**
-   *
+   * Actual completion time for a return or damage registration.
    * @type {Date}
    * @memberof MaterialBorrow
    */
   returnAt?: Date | null;
   /**
-   *
+   * Current borrow lifecycle status.
    * @type {MaterialBorrowStatusEnum}
    * @memberof MaterialBorrow
    */
   status: MaterialBorrowStatusEnum;
   /**
-   *
+   * Damage details when status is damaged.
    * @type {string}
    * @memberof MaterialBorrow
    */
   damageDescription?: string | null;
   /**
-   *
+   * Registered compensation amount in CNY.
    * @type {number}
    * @memberof MaterialBorrow
    */
   compensationAmount: number;
   /**
-   *
+   * Whether an active borrow is past its expected return time.
    * @type {boolean}
    * @memberof MaterialBorrow
    */

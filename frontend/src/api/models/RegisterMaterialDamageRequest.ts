@@ -15,19 +15,19 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * Request to complete an active borrow as damaged and record compensation.
  * @export
  * @interface RegisterMaterialDamageRequest
  */
 export interface RegisterMaterialDamageRequest {
   /**
-   *
+   * Required description of the observed damage.
    * @type {string}
    * @memberof RegisterMaterialDamageRequest
    */
   damageDescription: string;
   /**
-   *
+   * Non-negative compensation amount in CNY.
    * @type {number}
    * @memberof RegisterMaterialDamageRequest
    */

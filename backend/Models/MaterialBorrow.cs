@@ -20,95 +20,120 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// A material borrow record, including return or damage outcome.
     /// </summary>
     [DataContract]
     public partial class MaterialBorrow 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// Borrow record identifier in MATERIAL_BORROWS.BORROW_ID.
         /// </summary>
+        /// <value>Borrow record identifier in MATERIAL_BORROWS.BORROW_ID.</value>
+        /* <example>501</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or Sets MaterialId
+        /// Borrowed material identifier.
         /// </summary>
+        /// <value>Borrowed material identifier.</value>
+        /* <example>101</example> */
         [Required]
         [DataMember(Name="materialId", EmitDefaultValue=true)]
         public int MaterialId { get; set; }
 
         /// <summary>
-        /// Gets or Sets MaterialName
+        /// Borrowed material display name.
         /// </summary>
+        /// <value>Borrowed material display name.</value>
+        /* <example>无线麦克风</example> */
         [Required]
         [DataMember(Name="materialName", EmitDefaultValue=false)]
         public string MaterialName { get; set; }
 
         /// <summary>
-        /// Gets or Sets Specification
+        /// Material specification captured for display.
         /// </summary>
+        /// <value>Material specification captured for display.</value>
+        /* <example>UHF 双通道</example> */
         [DataMember(Name="specification", EmitDefaultValue=true)]
         public string? Specification { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// Club responsible for the borrow record.
         /// </summary>
+        /// <value>Club responsible for the borrow record.</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// Display name of the responsible club.
         /// </summary>
+        /// <value>Display name of the responsible club.</value>
+        /* <example>摄影社</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets BorrowerUserId
+        /// User who borrowed the material.
         /// </summary>
+        /// <value>User who borrowed the material.</value>
+        /* <example>2350007</example> */
         [Required]
         [DataMember(Name="borrowerUserId", EmitDefaultValue=true)]
         public int BorrowerUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets BorrowerName
+        /// Borrower display name.
         /// </summary>
+        /// <value>Borrower display name.</value>
+        /* <example>张国雄</example> */
         [DataMember(Name="borrowerName", EmitDefaultValue=true)]
         public string? BorrowerName { get; set; }
 
         /// <summary>
-        /// Gets or Sets Quantity
+        /// Borrowed quantity.
         /// </summary>
+        /// <value>Borrowed quantity.</value>
+        /* <example>2</example> */
         [Required]
         [DataMember(Name="quantity", EmitDefaultValue=true)]
         public int Quantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets BorrowAt
+        /// Borrow registration time in UTC.
         /// </summary>
+        /// <value>Borrow registration time in UTC.</value>
+        /* <example>2026-07-13T02:00Z</example> */
         [Required]
         [DataMember(Name="borrowAt", EmitDefaultValue=true)]
         public DateTime BorrowAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ExpectedReturnAt
+        /// Expected return time in UTC.
         /// </summary>
+        /// <value>Expected return time in UTC.</value>
+        /* <example>2026-07-20T02:00Z</example> */
         [DataMember(Name="expectedReturnAt", EmitDefaultValue=true)]
         public DateTime? ExpectedReturnAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReturnAt
+        /// Actual completion time for a return or damage registration.
         /// </summary>
+        /// <value>Actual completion time for a return or damage registration.</value>
+        /* <example>2026-07-19T08:30Z</example> */
         [DataMember(Name="returnAt", EmitDefaultValue=true)]
         public DateTime? ReturnAt { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Current borrow lifecycle status.
         /// </summary>
+        /// <value>Current borrow lifecycle status.</value>
         
         public enum StatusEnum
         {
@@ -133,28 +158,36 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Current borrow lifecycle status.
         /// </summary>
+        /// <value>Current borrow lifecycle status.</value>
+        /* <example>borrowed</example> */
         [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }
 
         /// <summary>
-        /// Gets or Sets DamageDescription
+        /// Damage details when status is damaged.
         /// </summary>
+        /// <value>Damage details when status is damaged.</value>
+        /* <example>麦克风网罩变形</example> */
         [DataMember(Name="damageDescription", EmitDefaultValue=true)]
         public string? DamageDescription { get; set; }
 
         /// <summary>
-        /// Gets or Sets CompensationAmount
+        /// Registered compensation amount in CNY.
         /// </summary>
+        /// <value>Registered compensation amount in CNY.</value>
+        /* <example>120</example> */
         [Required]
         [DataMember(Name="compensationAmount", EmitDefaultValue=true)]
         public double CompensationAmount { get; set; }
 
         /// <summary>
-        /// Gets or Sets Overdue
+        /// Whether an active borrow is past its expected return time.
         /// </summary>
+        /// <value>Whether an active borrow is past its expected return time.</value>
+        /* <example>false</example> */
         [Required]
         [DataMember(Name="overdue", EmitDefaultValue=true)]
         public bool Overdue { get; set; }

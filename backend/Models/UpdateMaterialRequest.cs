@@ -20,51 +20,62 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// Request to update a material without changing its owning club.
     /// </summary>
     [DataContract]
     public partial class UpdateMaterialRequest 
     {
         /// <summary>
-        /// Gets or Sets Name
+        /// Updated material name.
         /// </summary>
+        /// <value>Updated material name.</value>
+        /* <example>无线麦克风</example> */
         [Required]
         [StringLength(255, MinimumLength=1)]
         [DataMember(Name="name", EmitDefaultValue=false)]
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or Sets Specification
+        /// Updated optional model or specification.
         /// </summary>
+        /// <value>Updated optional model or specification.</value>
+        /* <example>UHF 双通道</example> */
         [MaxLength(255)]
         [DataMember(Name="specification", EmitDefaultValue=true)]
         public string? Specification { get; set; }
 
         /// <summary>
-        /// Gets or Sets TotalQuantity
+        /// Updated total inventory quantity.
         /// </summary>
+        /// <value>Updated total inventory quantity.</value>
+        /* <example>12</example> */
         [Required]
         [DataMember(Name="totalQuantity", EmitDefaultValue=true)]
         public int TotalQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets AvailableQuantity
+        /// Updated available quantity after accounting for checked-out items.
         /// </summary>
+        /// <value>Updated available quantity after accounting for checked-out items.</value>
+        /* <example>9</example> */
         [Required]
         [DataMember(Name="availableQuantity", EmitDefaultValue=true)]
         public int AvailableQuantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets StorageLocation
+        /// Updated optional physical storage location.
         /// </summary>
+        /// <value>Updated optional physical storage location.</value>
+        /* <example>学生活动中心 A102</example> */
         [MaxLength(255)]
         [DataMember(Name="storageLocation", EmitDefaultValue=true)]
         public string? StorageLocation { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Updated material status.
         /// </summary>
+        /// <value>Updated material status.</value>
         
         public enum StatusEnum
         {
@@ -83,8 +94,10 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets Status
+        /// Updated material status.
         /// </summary>
+        /// <value>Updated material status.</value>
+        /* <example>active</example> */
         [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }

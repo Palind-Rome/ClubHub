@@ -15,49 +15,49 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * Request to register a new material in a manageable club inventory.
  * @export
  * @interface CreateMaterialRequest
  */
 export interface CreateMaterialRequest {
   /**
-   *
+   * Club that will own the new material.
    * @type {number}
    * @memberof CreateMaterialRequest
    */
   clubId: number;
   /**
-   *
+   * Material name.
    * @type {string}
    * @memberof CreateMaterialRequest
    */
   name: string;
   /**
-   *
+   * Optional model or specification.
    * @type {string}
    * @memberof CreateMaterialRequest
    */
   specification?: string | null;
   /**
-   *
+   * Initial total inventory quantity.
    * @type {number}
    * @memberof CreateMaterialRequest
    */
   totalQuantity: number;
   /**
-   *
+   * Initial available quantity; defaults to totalQuantity when omitted.
    * @type {number}
    * @memberof CreateMaterialRequest
    */
   availableQuantity?: number | null;
   /**
-   *
+   * Optional physical storage location.
    * @type {string}
    * @memberof CreateMaterialRequest
    */
   storageLocation?: string | null;
   /**
-   *
+   * Initial material status.
    * @type {CreateMaterialRequestStatusEnum}
    * @memberof CreateMaterialRequest
    */

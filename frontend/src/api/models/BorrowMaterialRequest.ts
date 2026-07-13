@@ -15,31 +15,31 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * Request to register a material borrow without an approval step.
  * @export
  * @interface BorrowMaterialRequest
  */
 export interface BorrowMaterialRequest {
   /**
-   *
+   * Material to borrow.
    * @type {number}
    * @memberof BorrowMaterialRequest
    */
   materialId: number;
   /**
-   *
+   * Club that owns the material and borrow record.
    * @type {number}
    * @memberof BorrowMaterialRequest
    */
   clubId: number;
   /**
-   *
+   * Quantity to borrow; must not exceed available inventory.
    * @type {number}
    * @memberof BorrowMaterialRequest
    */
   quantity: number;
   /**
-   *
+   * Required return deadline, later than the borrow time and no more than 7 days after it.
    * @type {Date}
    * @memberof BorrowMaterialRequest
    */

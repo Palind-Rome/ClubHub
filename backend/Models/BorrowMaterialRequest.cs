@@ -20,35 +20,43 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// Request to register a material borrow without an approval step.
     /// </summary>
     [DataContract]
     public partial class BorrowMaterialRequest 
     {
         /// <summary>
-        /// Gets or Sets MaterialId
+        /// Material to borrow.
         /// </summary>
+        /// <value>Material to borrow.</value>
+        /* <example>101</example> */
         [Required]
         [DataMember(Name="materialId", EmitDefaultValue=true)]
         public int MaterialId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// Club that owns the material and borrow record.
         /// </summary>
+        /// <value>Club that owns the material and borrow record.</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Quantity
+        /// Quantity to borrow; must not exceed available inventory.
         /// </summary>
+        /// <value>Quantity to borrow; must not exceed available inventory.</value>
+        /* <example>2</example> */
         [Required]
         [DataMember(Name="quantity", EmitDefaultValue=true)]
         public int Quantity { get; set; }
 
         /// <summary>
-        /// Gets or Sets ExpectedReturnAt
+        /// Required return deadline, later than the borrow time and no more than 7 days after it.
         /// </summary>
+        /// <value>Required return deadline, later than the borrow time and no more than 7 days after it.</value>
+        /* <example>2026-07-20T02:00Z</example> */
         [Required]
         [DataMember(Name="expectedReturnAt", EmitDefaultValue=true)]
         public DateTime ExpectedReturnAt { get; set; }
