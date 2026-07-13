@@ -17,6 +17,7 @@ export * from "./CancelProjectRequest";
 export * from "./Club";
 export * from "./ClubApplication";
 export * from "./ClubEvaluationRecord";
+export * from "./ClubEvaluationScorePreview";
 export * from "./ClubMemberRecord";
 export * from "./CreateActivityRequest";
 export * from "./CreateClubApplicationRequest";

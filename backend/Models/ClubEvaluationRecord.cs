@@ -192,36 +192,36 @@ namespace Org.OpenAPITools.Models
         public string? AwardReason { get; set; }
 
         /// <summary>
-        /// 活动参与得分，取值范围 0-100。
+        /// 活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。
         /// </summary>
-        /// <value>活动参与得分，取值范围 0-100。</value>
+        /// <value>活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。</value>
         /* <example>92</example> */
         [Required]
         [DataMember(Name="activityScore", EmitDefaultValue=true)]
         public decimal ActivityScore { get; set; }
 
         /// <summary>
-        /// 项目任务得分，取值范围 0-100。
+        /// 项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。
         /// </summary>
-        /// <value>项目任务得分，取值范围 0-100。</value>
+        /// <value>项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。</value>
         /* <example>88</example> */
         [Required]
         [DataMember(Name="taskScore", EmitDefaultValue=true)]
         public decimal TaskScore { get; set; }
 
         /// <summary>
-        /// 学习记录得分，取值范围 0-100。
+        /// 学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。
         /// </summary>
-        /// <value>学习记录得分，取值范围 0-100。</value>
+        /// <value>学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。</value>
         /* <example>95</example> */
         [Required]
         [DataMember(Name="learningScore", EmitDefaultValue=true)]
         public decimal LearningScore { get; set; }
 
         /// <summary>
-        /// 奖项或附加贡献得分，取值范围 0-100。
+        /// 奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。
         /// </summary>
-        /// <value>奖项或附加贡献得分，取值范围 0-100。</value>
+        /// <value>奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。</value>
         /* <example>80</example> */
         [Required]
         [DataMember(Name="awardScore", EmitDefaultValue=true)]

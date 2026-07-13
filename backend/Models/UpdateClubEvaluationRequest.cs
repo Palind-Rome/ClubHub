@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+    /// 更新社团成员评价考核或评优评奖结果记录；学期考核四项分数、总分和等级由后端按业务来源重新生成，评优评奖记录的奖项分由维护人录入。
     /// </summary>
     [DataContract]
     public partial class UpdateClubEvaluationRequest 
@@ -97,36 +97,36 @@ namespace Org.OpenAPITools.Models
         public string? AwardReason { get; set; }
 
         /// <summary>
-        /// 活动参与得分。
+        /// 学期考核时由后端根据活动签到、签退和参与记录重新生成；评优评奖记录可传 0。
         /// </summary>
-        /// <value>活动参与得分。</value>
+        /// <value>学期考核时由后端根据活动签到、签退和参与记录重新生成；评优评奖记录可传 0。</value>
         /* <example>92</example> */
         [Range(0, 100)]
         [DataMember(Name="activityScore", EmitDefaultValue=true)]
         public decimal? ActivityScore { get; set; }
 
         /// <summary>
-        /// 项目任务得分。
+        /// 学期考核时由后端根据项目任务进度、完成状态和成果审核重新生成；评优评奖记录可传 0。
         /// </summary>
-        /// <value>项目任务得分。</value>
+        /// <value>学期考核时由后端根据项目任务进度、完成状态和成果审核重新生成；评优评奖记录可传 0。</value>
         /* <example>88</example> */
         [Range(0, 100)]
         [DataMember(Name="taskScore", EmitDefaultValue=true)]
         public decimal? TaskScore { get; set; }
 
         /// <summary>
-        /// 学习记录得分。
+        /// 学期考核时由后端根据课程学习记录和进度重新生成；评优评奖记录可传 0。
         /// </summary>
-        /// <value>学习记录得分。</value>
+        /// <value>学期考核时由后端根据课程学习记录和进度重新生成；评优评奖记录可传 0。</value>
         /* <example>95</example> */
         [Range(0, 100)]
         [DataMember(Name="learningScore", EmitDefaultValue=true)]
         public decimal? LearningScore { get; set; }
 
         /// <summary>
-        /// 奖项或附加贡献得分。
+        /// 学期考核时由后端汇总同社团、同成员、同学期的评优评奖记录重新生成；评优评奖记录中表示该奖项贡献的奖项分。
         /// </summary>
-        /// <value>奖项或附加贡献得分。</value>
+        /// <value>学期考核时由后端汇总同社团、同成员、同学期的评优评奖记录重新生成；评优评奖记录中表示该奖项贡献的奖项分。</value>
         /* <example>80</example> */
         [Range(0, 100)]
         [DataMember(Name="awardScore", EmitDefaultValue=true)]

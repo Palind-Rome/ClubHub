@@ -57,6 +57,18 @@ export interface ClubApplication {
    */
   applicantName?: string | null;
   /**
+   * 拟邀请的指导老师用户 ID。
+   * @type {number}
+   * @memberof ClubApplication
+   */
+  advisorUserId?: number | null;
+  /**
+   * 拟邀请的指导老师姓名。
+   * @type {string}
+   * @memberof ClubApplication
+   */
+  advisorName?: string | null;
+  /**
    *
    * @type {string}
    * @memberof ClubApplication
@@ -174,6 +186,8 @@ export function ClubApplicationFromJSONTyped(
     description: json["description"] == null ? undefined : json["description"],
     applicantUserId: json["applicantUserId"] == null ? undefined : json["applicantUserId"],
     applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
+    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
+    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
     applyReason: json["applyReason"],
     materialUrl: json["materialUrl"],
     auditStatus: json["auditStatus"],
@@ -208,6 +222,8 @@ export function ClubApplicationToJSONTyped(
     description: value["description"],
     applicantUserId: value["applicantUserId"],
     applicantName: value["applicantName"],
+    advisorUserId: value["advisorUserId"],
+    advisorName: value["advisorName"],
     applyReason: value["applyReason"],
     materialUrl: value["materialUrl"],
     auditStatus: value["auditStatus"],

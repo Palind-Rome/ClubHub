@@ -73,6 +73,11 @@ import {
   ClubEvaluationRecordToJSON,
 } from "../models/ClubEvaluationRecord";
 import {
+  type ClubEvaluationScorePreview,
+  ClubEvaluationScorePreviewFromJSON,
+  ClubEvaluationScorePreviewToJSON,
+} from "../models/ClubEvaluationScorePreview";
+import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
@@ -644,6 +649,12 @@ export interface LoginUserRequest {
 export interface MarkNoticeReadOperationRequest {
   noticeId: number;
   markNoticeReadRequest: MarkNoticeReadRequest;
+}
+
+export interface PreviewClubEvaluationScoresRequest {
+  clubId: number;
+  userId: number;
+  termName: string;
 }
 
 export interface RegisterActivityRequest {
@@ -2999,6 +3010,50 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubAdvisorCandidates without sending the request
+   */
+  async getClubAdvisorCandidatesRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/advisor-candidates`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidatesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
+    const requestOptions = await this.getClubAdvisorCandidatesRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningTeacherCandidateFromJSON),
+    );
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidates(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningTeacherCandidate>> {
+    const response = await this.getClubAdvisorCandidatesRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubApplications without sending the request
    */
   async getClubApplicationsRequestOpts(
@@ -4810,6 +4865,84 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for previewClubEvaluationScores without sending the request
+   */
+  async previewClubEvaluationScoresRequestOpts(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["termName"] == null) {
+      throw new runtime.RequiredError(
+        "termName",
+        'Required parameter "termName" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["userId"] != null) {
+      queryParameters["userId"] = requestParameters["userId"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/score-preview`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；保存学期考核时后端会按同一规则重新生成。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScoresRaw(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationScorePreview>> {
+    const requestOptions = await this.previewClubEvaluationScoresRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationScorePreviewFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；保存学期考核时后端会按同一规则重新生成。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScores(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationScorePreview> {
+    const response = await this.previewClubEvaluationScoresRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

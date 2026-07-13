@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+ * 创建社团成员评价考核或评优评奖结果记录；学期考核四项分数、总分和等级由后端按业务来源生成，评优评奖记录的奖项分由维护人录入。
  * @export
  * @interface CreateClubEvaluationRequest
  */
@@ -64,29 +64,29 @@ export interface CreateClubEvaluationRequest {
    */
   awardReason?: string | null;
   /**
-   * 活动参与得分。
+   * 学期考核时由后端根据活动签到、签退和参与记录生成；评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  activityScore: number;
+  activityScore?: number;
   /**
-   * 项目任务得分。
+   * 学期考核时由后端根据项目任务进度、完成状态和成果审核生成；评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  taskScore: number;
+  taskScore?: number;
   /**
-   * 学习记录得分。
+   * 学期考核时由后端根据课程学习记录和进度生成；评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  learningScore: number;
+  learningScore?: number;
   /**
-   * 奖项或附加贡献得分。
+   * 学期考核时由后端汇总同社团、同成员、同学期的评优评奖记录生成；评优评奖记录中表示该奖项贡献的奖项分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  awardScore: number;
+  awardScore?: number;
   /**
    * 公示状态；默认保存为草稿。
    * @type {CreateClubEvaluationRequestPublicStatusEnum}
@@ -130,10 +130,6 @@ export function instanceOfCreateClubEvaluationRequest(
   if (!("evaluationType" in value) || value["evaluationType"] === undefined) return false;
   if (!("userId" in value) || value["userId"] === undefined) return false;
   if (!("termName" in value) || value["termName"] === undefined) return false;
-  if (!("activityScore" in value) || value["activityScore"] === undefined) return false;
-  if (!("taskScore" in value) || value["taskScore"] === undefined) return false;
-  if (!("learningScore" in value) || value["learningScore"] === undefined) return false;
-  if (!("awardScore" in value) || value["awardScore"] === undefined) return false;
   return true;
 }
 
@@ -156,10 +152,10 @@ export function CreateClubEvaluationRequestFromJSONTyped(
     awardTitle: json["awardTitle"] == null ? undefined : json["awardTitle"],
     awardLevel: json["awardLevel"] == null ? undefined : json["awardLevel"],
     awardReason: json["awardReason"] == null ? undefined : json["awardReason"],
-    activityScore: json["activityScore"],
-    taskScore: json["taskScore"],
-    learningScore: json["learningScore"],
-    awardScore: json["awardScore"],
+    activityScore: json["activityScore"] == null ? undefined : json["activityScore"],
+    taskScore: json["taskScore"] == null ? undefined : json["taskScore"],
+    learningScore: json["learningScore"] == null ? undefined : json["learningScore"],
+    awardScore: json["awardScore"] == null ? undefined : json["awardScore"],
     publicStatus: json["publicStatus"] == null ? undefined : json["publicStatus"],
     commentText: json["commentText"] == null ? undefined : json["commentText"],
   };
