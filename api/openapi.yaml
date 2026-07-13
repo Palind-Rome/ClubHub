@@ -440,6 +440,26 @@ paths:
           schema:
             type: string
             enum: [pending, approved, rejected]
+        - name: keyword
+          in: query
+          required: false
+          description: 按社团名称、申请人姓名、用户名或学号模糊搜索。
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: false
+          description: 申请提交开始日期，按 createdAt 过滤。
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          description: 申请提交结束日期，按 createdAt 过滤，包含当天。
+          schema:
+            type: string
+            format: date
       responses:
         "200":
           description: 社团注册申请列表

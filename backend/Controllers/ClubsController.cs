@@ -156,7 +156,10 @@ public class ClubsController : ControllerBase
 
     [HttpGet("applications")]
     public async Task<IActionResult> GetApplications(
-        [FromQuery] string? auditStatus)
+        [FromQuery] string? auditStatus,
+        [FromQuery] string? keyword,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -182,6 +185,34 @@ public class ClubsController : ControllerBase
             }
 
             query = query.Where(c => c.AuditStatus == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var normalizedKeyword = keyword.Trim().ToUpperInvariant();
+            query = query.Where(c =>
+                c.ClubName.ToUpper().Contains(normalizedKeyword) ||
+                (c.Applicant != null &&
+                 ((c.Applicant.RealName ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.Username ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.StudentNo ?? string.Empty).ToUpper().Contains(normalizedKeyword))));
+        }
+
+        if (startDate is not null && endDate is not null && startDate.Value.Date > endDate.Value.Date)
+        {
+            return BadRequest(new { message = "提交开始日期不能晚于结束日期。" });
+        }
+
+        if (startDate is not null)
+        {
+            var start = DateTime.SpecifyKind(startDate.Value.Date, DateTimeKind.Utc);
+            query = query.Where(c => c.CreatedAt >= start);
+        }
+
+        if (endDate is not null)
+        {
+            var endExclusive = DateTime.SpecifyKind(endDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(c => c.CreatedAt < endExclusive);
         }
 
         var applications = await query

@@ -525,6 +525,9 @@ export interface GetActivityParticipationsRequest {
 
 export interface GetClubApplicationsRequest {
   auditStatus?: GetClubApplicationsAuditStatusEnum;
+  keyword?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface GetClubByIdRequest {
@@ -3068,6 +3071,22 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    if (requestParameters["startDate"] != null) {
+      queryParameters["startDate"] = (requestParameters["startDate"] as any)
+        .toISOString()
+        .substring(0, 10);
+    }
+
+    if (requestParameters["endDate"] != null) {
+      queryParameters["endDate"] = (requestParameters["endDate"] as any)
+        .toISOString()
+        .substring(0, 10);
     }
 
     const headerParameters: runtime.HTTPHeaders = {};

@@ -291,6 +291,8 @@ const transitionTermForm = reactive(currentAcademicTermOption());
 
 const filters = reactive({
   auditStatus: "",
+  keyword: "",
+  submittedRange: [] as string[],
 });
 
 const memberFilters = reactive({
@@ -941,6 +943,11 @@ async function loadData() {
   try {
     const query = new URLSearchParams();
     if (filters.auditStatus) query.set("auditStatus", filters.auditStatus);
+    if (filters.keyword.trim()) query.set("keyword", filters.keyword.trim());
+    if (filters.submittedRange.length >= 2) {
+      query.set("startDate", filters.submittedRange[0]);
+      query.set("endDate", filters.submittedRange[1]);
+    }
     const shouldLoadApplications =
       isRegistrationWorkspace.value && (canSubmitApplication.value || isReviewer.value);
     const shouldLoadClubs =
@@ -1901,6 +1908,8 @@ function clearEvaluationFilters() {
 
 function resetFilters() {
   filters.auditStatus = "";
+  filters.keyword = "";
+  filters.submittedRange = [];
   void loadData();
 }
 
@@ -2610,6 +2619,13 @@ onUnmounted(() => {
         </div>
 
         <div v-if="isReviewer" class="filter-bar">
+          <el-input
+            v-model="filters.keyword"
+            clearable
+            placeholder="社团名 / 申请人"
+            class="filter-item"
+            @keyup.enter="loadData"
+          />
           <el-select
             v-model="filters.auditStatus"
             clearable
@@ -2620,6 +2636,14 @@ onUnmounted(() => {
             <el-option label="已通过" value="approved" />
             <el-option label="已退回" value="rejected" />
           </el-select>
+          <el-date-picker
+            v-model="filters.submittedRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            start-placeholder="提交开始"
+            end-placeholder="提交结束"
+            class="filter-date-range"
+          />
           <el-button type="primary" plain :icon="Search" @click="loadData">查询</el-button>
           <el-button @click="resetFilters">重置</el-button>
         </div>
@@ -4044,6 +4068,10 @@ onUnmounted(() => {
   width: 180px;
 }
 
+.filter-date-range {
+  width: 260px;
+}
+
 .application-detail {
   display: grid;
   gap: 16px;
@@ -4237,6 +4265,7 @@ onUnmounted(() => {
 
   .club-selector,
   .context-select,
+  .filter-date-range,
   .filter-item {
     width: 100%;
   }
