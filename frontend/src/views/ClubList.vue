@@ -2877,9 +2877,6 @@ onUnmounted(() => {
                   {{ selectedClub.statusText }}
                 </el-tag>
                 <el-tag effect="plain">{{ selectedClub.category || "未设置类别" }}</el-tag>
-                <el-tag :type="auditTagType(selectedClub.auditStatus)" effect="plain">
-                  {{ selectedClub.auditStatusText }}
-                </el-tag>
               </div>
             </div>
             <el-button
@@ -2918,15 +2915,6 @@ onUnmounted(() => {
             <el-descriptions-item label="Logo 地址">
               {{ selectedClub.logoUrl || "-" }}
             </el-descriptions-item>
-            <el-descriptions-item label="申请材料">
-              {{ selectedClub.materialUrl || "-" }}
-            </el-descriptions-item>
-            <el-descriptions-item label="申请理由" :span="2">
-              {{ selectedClub.applyReason || "-" }}
-            </el-descriptions-item>
-            <el-descriptions-item label="审核意见" :span="2">
-              {{ selectedClub.reviewComment || "-" }}
-            </el-descriptions-item>
             <el-descriptions-item label="创建时间">
               {{ formatDate(selectedClub.createdAt) }}
             </el-descriptions-item>
@@ -2934,6 +2922,33 @@ onUnmounted(() => {
               {{ formatDate(selectedClub.updatedAt || selectedClub.createdAt) }}
             </el-descriptions-item>
           </el-descriptions>
+
+          <el-collapse class="approval-collapse">
+            <el-collapse-item title="注册审批记录" name="approval">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="审核状态">
+                  <el-tag :type="auditTagType(selectedClub.auditStatus)" effect="plain">
+                    {{ selectedClub.auditStatusText }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="申请人">
+                  {{ selectedClub.applicantName || "-" }}
+                </el-descriptions-item>
+                <el-descriptions-item label="申请材料">
+                  {{ selectedClub.materialUrl || "-" }}
+                </el-descriptions-item>
+                <el-descriptions-item label="审核人">
+                  {{ selectedClub.reviewerName || "-" }}
+                </el-descriptions-item>
+                <el-descriptions-item label="申请理由" :span="2">
+                  {{ selectedClub.applyReason || "-" }}
+                </el-descriptions-item>
+                <el-descriptions-item label="审核意见" :span="2">
+                  {{ selectedClub.reviewComment || "-" }}
+                </el-descriptions-item>
+              </el-descriptions>
+            </el-collapse-item>
+          </el-collapse>
         </div>
       </el-tab-pane>
 
@@ -4086,6 +4101,10 @@ onUnmounted(() => {
 
 .club-detail.compact {
   padding: 12px;
+}
+
+.approval-collapse {
+  margin-top: 14px;
 }
 
 .club-detail-header {
