@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 成员学期考核系统生成分预览；保存考核记录时后端会按同一规则重新生成。
+    /// 成员学期考核系统生成分预览；维护人可在系统生成分基础上微调后保存。
     /// </summary>
     [DataContract]
     public partial class ClubEvaluationScorePreview 

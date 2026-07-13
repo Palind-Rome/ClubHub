@@ -163,6 +163,16 @@ import {
   ExitClubMemberRequestToJSON,
 } from "../models/ExitClubMemberRequest";
 import {
+  type GenerateClubEvaluationsRequest,
+  GenerateClubEvaluationsRequestFromJSON,
+  GenerateClubEvaluationsRequestToJSON,
+} from "../models/GenerateClubEvaluationsRequest";
+import {
+  type GenerateClubEvaluationsResult,
+  GenerateClubEvaluationsResultFromJSON,
+  GenerateClubEvaluationsResultToJSON,
+} from "../models/GenerateClubEvaluationsResult";
+import {
   type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
@@ -508,6 +518,11 @@ export interface EnrollLearningItemRequest {
 export interface ExitCurrentClubMemberRequest {
   clubId: number;
   exitClubMemberRequest: ExitClubMemberRequest;
+}
+
+export interface GenerateClubEvaluationsOperationRequest {
+  clubId: number;
+  generateClubEvaluationsRequest: GenerateClubEvaluationsRequest;
 }
 
 export interface GetActivitiesRequest {
@@ -2843,6 +2858,74 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for generateClubEvaluations without sending the request
+   */
+  async generateClubEvaluationsRequestOpts(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    if (requestParameters["generateClubEvaluationsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "generateClubEvaluationsRequest",
+        'Required parameter "generateClubEvaluationsRequest" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/generate`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: GenerateClubEvaluationsRequestToJSON(
+        requestParameters["generateClubEvaluationsRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluationsRaw(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<GenerateClubEvaluationsResult>> {
+    const requestOptions = await this.generateClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      GenerateClubEvaluationsResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluations(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<GenerateClubEvaluationsResult> {
+    const response = await this.generateClubEvaluationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getActivities without sending the request
    */
   async getActivitiesRequestOpts(
@@ -4943,7 +5026,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；保存学期考核时后端会按同一规则重新生成。
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
    * 预览成员考核系统生成分
    */
   async previewClubEvaluationScoresRaw(
@@ -4959,7 +5042,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；保存学期考核时后端会按同一规则重新生成。
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
    * 预览成员考核系统生成分
    */
   async previewClubEvaluationScores(
@@ -6176,7 +6259,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluationRaw(
@@ -6192,7 +6275,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluation(

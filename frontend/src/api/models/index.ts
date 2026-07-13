@@ -35,6 +35,8 @@ export * from "./CreateVenueReservationRequest";
 export * from "./DeleteVenueRequest";
 export * from "./DissolveClubRequest";
 export * from "./ExitClubMemberRequest";
+export * from "./GenerateClubEvaluationsRequest";
+export * from "./GenerateClubEvaluationsResult";
 export * from "./HealthStatus";
 export * from "./LearningDownloadResult";
 export * from "./LearningItem";
