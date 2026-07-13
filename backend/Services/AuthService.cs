@@ -29,6 +29,7 @@ public class AuthService
         new("club:apply", "申请创建社团", "提交社团注册申请并查看审核状态。"),
         new("recruitment:apply", "报名招募", "向社团招募提交报名申请。"),
         new("activity:register", "报名活动", "报名参加公开活动。"),
+        new("course:enroll", "报名课程", "加入对当前学生开放且仍有名额的培训课程。"),
         new("own:records:view", "查看个人记录", "查看自己的报名、签到、学习和通知记录。"),
         new("club:internal:view", "查看社团内部信息", "查看所在社团的内部成员、通知、资源和讨论区。"),
         new("club:notice:view", "查看社团通知", "查看指定社团发布的内部通知。"),
@@ -42,6 +43,8 @@ public class AuthService
         new("activity:checkin:manage", "管理活动签到", "维护活动签到码、签退码和签到时间段。"),
         new("notice:publish", "发布社团通知", "向社团、部门或成员发布通知公告。"),
         new("resource:upload", "上传学习资源", "上传社团培训视频、文档资料等学习资源。"),
+        new("resource:review", "审核学习资源", "审核社团提交的课程和学习资源并决定发布或驳回。"),
+        new("resource:delete", "删除学习资源", "删除课程和学习资源并清理相关学习记录与文件。"),
         new("project:task:manage", "管理项目任务", "分配项目任务、跟踪进度并审核阶段成果。"),
         new("material:borrow:manage", "登记物资借还", "登记物资借用、归还、损坏和赔偿情况。"),
         new("evaluation:draft", "录入考核草稿", "录入成员学期考核或评优评奖草稿。"),
@@ -81,7 +84,7 @@ public class AuthService
             "普通学生",
             SystemScope,
             "注册后默认角色，可维护个人信息、浏览公开内容、申请社团和参与报名。",
-            ["profile:view", "profile:update", "public:view", "club:apply", "recruitment:apply", "activity:register", "own:records:view"]),
+            ["profile:view", "profile:update", "public:view", "club:apply", "recruitment:apply", "activity:register", "course:enroll", "own:records:view"]),
         new(
             TeacherRole,
             "教师",
@@ -110,14 +113,14 @@ public class AuthService
             AdvisorRole,
             "指导老师",
             ClubScope,
-            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
-            ["club:internal:view", "club:operation:view", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
+            "指定社团指导角色，可查看社团运营、维护并审核学习资源，以及审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
+            ["club:internal:view", "club:operation:view", "resource:upload", "resource:review", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
         new(
             "CLUB_ADMIN",
             "社团管理员",
             SystemScope,
             "校级社团管理角色，可审核社团注册申请并管理社团状态，不参与社团内部档案、成员任期和干部换届维护。",
-            ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
+            ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "resource:review", "resource:delete", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
         new(
             VenueAdminRole,
             "场地管理员",
@@ -512,7 +515,7 @@ public class AuthService
             permissions);
     }
 
-    private async Task<IReadOnlyList<AuthRole>> GetPermissionRolesAsync(int userId)
+    public async Task<IReadOnlyList<AuthRole>> GetPermissionRolesAsync(int userId)
     {
         var rawRoles = await GetRawAuthRolesAsync(userId);
         return BuildPermissionRoles(rawRoles);
@@ -762,6 +765,11 @@ public class AuthService
         return clubId is not null &&
             (role.ClubId == clubId || role.ClubIds.Contains(clubId.Value));
     }
+
+    public static bool RolesAllow(
+        IReadOnlyList<AuthRole> roles,
+        string permission,
+        int? clubId) => roles.Any(role => RoleAllows(role, permission, clubId));
 
     private async Task<List<Role>> GetBaseRoleRowsAsync()
     {

@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * Course enrollment and learning progress record.
+ * 课程报名、资源学习进度和下载行为记录。
  * @export
  * @interface LearningRecord
  */
@@ -81,11 +81,23 @@ export interface LearningRecord {
    */
   lastLearnAt?: Date | null;
   /**
-   * Completion time.
+   * 完成时间。
    * @type {Date}
    * @memberof LearningRecord
    */
   completedAt?: Date | null;
+  /**
+   * 最近一次下载时间。
+   * @type {Date}
+   * @memberof LearningRecord
+   */
+  downloadedAt?: Date | null;
+  /**
+   * 最近一次下载 IP。
+   * @type {string}
+   * @memberof LearningRecord
+   */
+  downloadIp?: string | null;
 }
 
 /**
@@ -135,6 +147,8 @@ export function LearningRecordFromJSONTyped(
     durationSeconds: json["durationSeconds"] == null ? undefined : json["durationSeconds"],
     lastLearnAt: json["lastLearnAt"] == null ? undefined : new Date(json["lastLearnAt"]),
     completedAt: json["completedAt"] == null ? undefined : new Date(json["completedAt"]),
+    downloadedAt: json["downloadedAt"] == null ? undefined : new Date(json["downloadedAt"]),
+    downloadIp: json["downloadIp"] == null ? undefined : json["downloadIp"],
   };
 }
 
@@ -165,5 +179,8 @@ export function LearningRecordToJSONTyped(
       value["lastLearnAt"] == null ? value["lastLearnAt"] : value["lastLearnAt"].toISOString(),
     completedAt:
       value["completedAt"] == null ? value["completedAt"] : value["completedAt"].toISOString(),
+    downloadedAt:
+      value["downloadedAt"] == null ? value["downloadedAt"] : value["downloadedAt"].toISOString(),
+    downloadIp: value["downloadIp"],
   };
 }

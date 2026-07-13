@@ -17,6 +17,10 @@ services:
              dotnet watch run --project backend/ClubHub.Api.csproj --urls http://0.0.0.0:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - Oss__Region=${OSS_REGION:-cn-shanghai}
+      - Oss__Endpoint=${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
+      - Oss__Bucket=${OSS_BUCKET:-}
+      - Oss__RoleName=${OSS_ROLE_NAME:-}
 
   frontend:
     image: node:22-alpine

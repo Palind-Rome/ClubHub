@@ -148,11 +148,6 @@ import {
   DissolveClubRequestToJSON,
 } from "../models/DissolveClubRequest";
 import {
-  type EnrollLearningItemRequest,
-  EnrollLearningItemRequestFromJSON,
-  EnrollLearningItemRequestToJSON,
-} from "../models/EnrollLearningItemRequest";
-import {
   type ExitClubMemberRequest,
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
@@ -163,10 +158,20 @@ import {
   HealthStatusToJSON,
 } from "../models/HealthStatus";
 import {
+  type LearningDownloadResult,
+  LearningDownloadResultFromJSON,
+  LearningDownloadResultToJSON,
+} from "../models/LearningDownloadResult";
+import {
   type LearningItem,
   LearningItemFromJSON,
   LearningItemToJSON,
 } from "../models/LearningItem";
+import {
+  type LearningItemStatistics,
+  LearningItemStatisticsFromJSON,
+  LearningItemStatisticsToJSON,
+} from "../models/LearningItemStatistics";
 import {
   type LearningRecord,
   LearningRecordFromJSON,
@@ -240,6 +245,11 @@ import {
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
 } from "../models/ReviewClubApplicationRequest";
+import {
+  type ReviewLearningItemRequest,
+  ReviewLearningItemRequestFromJSON,
+  ReviewLearningItemRequestToJSON,
+} from "../models/ReviewLearningItemRequest";
 import {
   type ReviewProjectRequest,
   ReviewProjectRequestFromJSON,
@@ -359,7 +369,6 @@ export interface AssignUserRoleRequest {
 
 export interface CancelLearningEnrollmentRequest {
   itemId: number;
-  enrollLearningItemRequest: EnrollLearningItemRequest;
 }
 
 export interface CancelProjectOperationRequest {
@@ -434,6 +443,10 @@ export interface CreateVenueReservationOperationRequest {
   createVenueReservationRequest: CreateVenueReservationRequest;
 }
 
+export interface DeleteLearningResourceRequest {
+  itemId: number;
+}
+
 export interface DeleteRecruitmentRequest {
   currentUserId: number;
   recruitId: number;
@@ -453,9 +466,12 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
-export interface EnrollLearningItemOperationRequest {
+export interface DownloadLearningItemRequest {
   itemId: number;
-  enrollLearningItemRequest: EnrollLearningItemRequest;
+}
+
+export interface EnrollLearningItemRequest {
+  itemId: number;
 }
 
 export interface ExitCurrentClubMemberRequest {
@@ -498,19 +514,25 @@ export interface GetClubMembersRequest {
   termName?: string;
 }
 
+export interface GetLearningInstructorByUserNumberRequest {
+  clubId: number;
+  userNumber: string;
+}
+
+export interface GetLearningItemStatisticsRequest {
+  itemId: number;
+}
+
 export interface GetLearningItemsRequest {
-  currentUserId: number;
   clubId?: number;
 }
 
 export interface GetLearningRecordsRequest {
-  currentUserId: number;
   itemId?: number;
 }
 
-export interface GetLearningTeacherCandidatesRequest {
-  currentUserId: number;
-  clubId: number;
+export interface GetLearningResourceFileRequest {
+  itemId: number;
 }
 
 export interface GetNoticesRequest {
@@ -622,6 +644,11 @@ export interface ReviewClubApplicationOperationRequest {
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
 }
 
+export interface ReviewLearningItemOperationRequest {
+  itemId: number;
+  reviewLearningItemRequest: ReviewLearningItemRequest;
+}
+
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
@@ -640,6 +667,10 @@ export interface ReviewRecruitmentApplicationOperationRequest {
 export interface ReviewVenueReservationOperationRequest {
   reservationId: number;
   reviewVenueReservationRequest: ReviewVenueReservationRequest;
+}
+
+export interface StartLearningItemRequest {
+  itemId: number;
 }
 
 export interface UpdateActivityCheckinSettingsRequest {
@@ -698,6 +729,16 @@ export interface UpdateVenueOperationRequest {
 export interface UpdateVenueStatusOperationRequest {
   venueId: number;
   updateVenueStatusRequest: UpdateVenueStatusRequest;
+}
+
+export interface UploadLearningResourceRequest {
+  clubId: number;
+  file: Blob;
+  visibility: UploadLearningResourceVisibilityEnum;
+  downloadPermission: UploadLearningResourceDownloadPermissionEnum;
+  title?: string | null;
+  categoryName?: string | null;
+  description?: string | null;
 }
 
 /**
@@ -981,18 +1022,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["enrollLearningItemRequest"] == null) {
-      throw new runtime.RequiredError(
-        "enrollLearningItemRequest",
-        'Required parameter "enrollLearningItemRequest" was null or undefined when calling cancelLearningEnrollment().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
@@ -1002,13 +1043,12 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
     };
   }
 
   /**
-   * ???????????????????????????????????????
-   * ??????
+   * 当前登录用户在课程结束前退出尚未完成的课程。
+   * 退出培训课程
    */
   async cancelLearningEnrollmentRaw(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -1021,8 +1061,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ???????????????????????????????????????
-   * ??????
+   * 当前登录用户在课程结束前退出尚未完成的课程。
+   * 退出培训课程
    */
   async cancelLearningEnrollment(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -1653,6 +1693,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/items`;
 
     return {
@@ -1665,8 +1714,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ?????????
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
+   * 发布课程或上传学习资源
    */
   async createLearningItemRaw(
     requestParameters: CreateLearningItemOperationRequest,
@@ -1679,8 +1728,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ?????????
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
+   * 发布课程或上传学习资源
    */
   async createLearningItem(
     requestParameters: CreateLearningItemOperationRequest,
@@ -2047,6 +2096,68 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for deleteLearningResource without sending the request
+   */
+  async deleteLearningResourceRequestOpts(
+    requestParameters: DeleteLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling deleteLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
+   */
+  async deleteLearningResourceRaw(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
+   */
+  async deleteLearningResource(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteLearningResourceRaw(requestParameters, initOverrides);
+  }
+
+  /**
    * Creates request options for deleteRecruitment without sending the request
    */
   async deleteRecruitmentRequestOpts(
@@ -2304,10 +2415,75 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for downloadLearningItem without sending the request
+   */
+  async downloadLearningItemRequestOpts(
+    requestParameters: DownloadLearningItemRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling downloadLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/download`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
+   * 校验权限并记录学习资源下载
+   */
+  async downloadLearningItemRaw(
+    requestParameters: DownloadLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningDownloadResult>> {
+    const requestOptions = await this.downloadLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningDownloadResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
+   * 校验权限并记录学习资源下载
+   */
+  async downloadLearningItem(
+    requestParameters: DownloadLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningDownloadResult> {
+    const response = await this.downloadLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for enrollLearningItem without sending the request
    */
   async enrollLearningItemRequestOpts(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
@@ -2316,18 +2492,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["enrollLearningItemRequest"] == null) {
-      throw new runtime.RequiredError(
-        "enrollLearningItemRequest",
-        'Required parameter "enrollLearningItemRequest" was null or undefined when calling enrollLearningItem().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
@@ -2337,16 +2513,15 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
     };
   }
 
   /**
-   * ??????????????????????????????????????????????????????
-   * ??????
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
+   * 加入培训课程
    */
   async enrollLearningItemRaw(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<LearningRecord>> {
     const requestOptions = await this.enrollLearningItemRequestOpts(requestParameters);
@@ -2356,11 +2531,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????????????????????
-   * ??????
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
+   * 加入培训课程
    */
   async enrollLearningItem(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningRecord> {
     const response = await this.enrollLearningItemRaw(requestParameters, initOverrides);
@@ -2882,29 +3057,175 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for getLearningItems without sending the request
+   * Creates request options for getLearningInstructorByUserNumber without sending the request
    */
-  async getLearningItemsRequestOpts(
-    requestParameters: GetLearningItemsRequest,
+  async getLearningInstructorByUserNumberRequestOpts(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
+    if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningItems().',
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getLearningInstructorByUserNumber().',
+      );
+    }
+
+    if (requestParameters["userNumber"] == null) {
+      throw new runtime.RequiredError(
+        "userNumber",
+        'Required parameter "userNumber" was null or undefined when calling getLearningInstructorByUserNumber().',
       );
     }
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
     }
+
+    if (requestParameters["userNumber"] != null) {
+      queryParameters["userNumber"] = requestParameters["userNumber"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/instructor-lookup`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumberRaw(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningTeacherCandidate>> {
+    const requestOptions =
+      await this.getLearningInstructorByUserNumberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningTeacherCandidateFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumber(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningTeacherCandidate> {
+    const response = await this.getLearningInstructorByUserNumberRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItemStatistics without sending the request
+   */
+  async getLearningItemStatisticsRequestOpts(
+    requestParameters: GetLearningItemStatisticsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningItemStatistics().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/statistics`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
+   * 获取学习资源统计
+   */
+  async getLearningItemStatisticsRaw(
+    requestParameters: GetLearningItemStatisticsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItemStatistics>> {
+    const requestOptions = await this.getLearningItemStatisticsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningItemStatisticsFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
+   * 获取学习资源统计
+   */
+  async getLearningItemStatistics(
+    requestParameters: GetLearningItemStatisticsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItemStatistics> {
+    const response = await this.getLearningItemStatisticsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItems without sending the request
+   */
+  async getLearningItemsRequestOpts(
+    requestParameters: GetLearningItemsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
 
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items`;
 
@@ -2917,8 +3238,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????
-   * ????????
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
+   * 获取可见的课程与学习资源
    */
   async getLearningItemsRaw(
     requestParameters: GetLearningItemsRequest,
@@ -2933,11 +3254,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????
-   * ????????
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
+   * 获取可见的课程与学习资源
    */
   async getLearningItems(
-    requestParameters: GetLearningItemsRequest,
+    requestParameters: GetLearningItemsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningItem>> {
     const response = await this.getLearningItemsRaw(requestParameters, initOverrides);
@@ -2950,24 +3271,22 @@ export class DefaultApi extends runtime.BaseAPI {
   async getLearningRecordsRequestOpts(
     requestParameters: GetLearningRecordsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
-      throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningRecords().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
-    }
 
     if (requestParameters["itemId"] != null) {
       queryParameters["itemId"] = requestParameters["itemId"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/records`;
 
@@ -2980,8 +3299,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????
-   * ??????
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
+   * 获取学习记录
    */
   async getLearningRecordsRaw(
     requestParameters: GetLearningRecordsRequest,
@@ -2996,11 +3315,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????
-   * ??????
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
+   * 获取学习记录
    */
   async getLearningRecords(
-    requestParameters: GetLearningRecordsRequest,
+    requestParameters: GetLearningRecordsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningRecord>> {
     const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
@@ -3008,38 +3327,33 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for getLearningTeacherCandidates without sending the request
+   * Creates request options for getLearningResourceFile without sending the request
    */
-  async getLearningTeacherCandidatesRequestOpts(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getLearningResourceFileRequestOpts(
+    requestParameters: GetLearningResourceFileRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
+    if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningTeacherCandidates().',
-      );
-    }
-
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling getLearningTeacherCandidates().',
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningResourceFile().',
       );
     }
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
-    }
-
-    if (requestParameters["clubId"] != null) {
-      queryParameters["clubId"] = requestParameters["clubId"];
-    }
-
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/learning/teacher-candidates`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/file`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
       path: urlPath,
@@ -3050,30 +3364,28 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????????????
-   * ????????
+   * 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
+   * 获取受保护的学习资源文件
    */
-  async getLearningTeacherCandidatesRaw(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getLearningResourceFileRaw(
+    requestParameters: GetLearningResourceFileRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
-    const requestOptions = await this.getLearningTeacherCandidatesRequestOpts(requestParameters);
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getLearningResourceFileRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(LearningTeacherCandidateFromJSON),
-    );
+    return new runtime.BlobApiResponse(response);
   }
 
   /**
-   * ?????????????????????????????????????????????
-   * ????????
+   * 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
+   * 获取受保护的学习资源文件
    */
-  async getLearningTeacherCandidates(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getLearningResourceFile(
+    requestParameters: GetLearningResourceFileRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<LearningTeacherCandidate>> {
-    const response = await this.getLearningTeacherCandidatesRaw(requestParameters, initOverrides);
+  ): Promise<Blob> {
+    const response = await this.getLearningResourceFileRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4666,6 +4978,79 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewLearningItem without sending the request
+   */
+  async reviewLearningItemRequestOpts(
+    requestParameters: ReviewLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    if (requestParameters["reviewLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewLearningItemRequest",
+        'Required parameter "reviewLearningItemRequest" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/review`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewLearningItemRequestToJSON(requestParameters["reviewLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItemRaw(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.reviewLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItem(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.reviewLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewProject without sending the request
    */
   async reviewProjectRequestOpts(
@@ -4943,6 +5328,69 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<VenueReservation> {
     const response = await this.reviewVenueReservationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for startLearningItem without sending the request
+   */
+  async startLearningItemRequestOpts(
+    requestParameters: StartLearningItemRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling startLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/learning`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+   * 开始或继续学习资源
+   */
+  async startLearningItemRaw(
+    requestParameters: StartLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.startLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+   * 开始或继续学习资源
+   */
+  async startLearningItem(
+    requestParameters: StartLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.startLearningItemRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5407,6 +5855,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/items/{itemId}`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
@@ -5420,8 +5877,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ??????
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
+   * 更新课程或学习资源
    */
   async updateLearningItemRaw(
     requestParameters: UpdateLearningItemOperationRequest,
@@ -5434,8 +5891,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ??????
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
+   * 更新课程或学习资源
    */
   async updateLearningItem(
     requestParameters: UpdateLearningItemOperationRequest,
@@ -5471,6 +5928,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/records/{recordId}/progress`;
     urlPath = urlPath.replace(
       "{recordId}",
@@ -5487,8 +5953,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????? 100 ????????
-   * ??????
+   * 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
+   * 更新学习进度和累计时长
    */
   async updateLearningProgressRaw(
     requestParameters: UpdateLearningProgressOperationRequest,
@@ -5501,8 +5967,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????? 100 ????????
-   * ??????
+   * 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
+   * 更新学习进度和累计时长
    */
   async updateLearningProgress(
     requestParameters: UpdateLearningProgressOperationRequest,
@@ -5708,6 +6174,131 @@ export class DefaultApi extends runtime.BaseAPI {
     const response = await this.updateVenueStatusRaw(requestParameters, initOverrides);
     return await response.value();
   }
+
+  /**
+   * Creates request options for uploadLearningResource without sending the request
+   */
+  async uploadLearningResourceRequestOpts(
+    requestParameters: UploadLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["visibility"] == null) {
+      throw new runtime.RequiredError(
+        "visibility",
+        'Required parameter "visibility" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["downloadPermission"] == null) {
+      throw new runtime.RequiredError(
+        "downloadPermission",
+        'Required parameter "downloadPermission" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["clubId"] != null) {
+      formParams.append("clubId", requestParameters["clubId"] as any);
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    if (requestParameters["title"] != null) {
+      formParams.append("title", requestParameters["title"] as any);
+    }
+
+    if (requestParameters["categoryName"] != null) {
+      formParams.append("categoryName", requestParameters["categoryName"] as any);
+    }
+
+    if (requestParameters["description"] != null) {
+      formParams.append("description", requestParameters["description"] as any);
+    }
+
+    if (requestParameters["visibility"] != null) {
+      formParams.append("visibility", requestParameters["visibility"] as any);
+    }
+
+    if (requestParameters["downloadPermission"] != null) {
+      formParams.append("downloadPermission", requestParameters["downloadPermission"] as any);
+    }
+
+    let urlPath = `/api/learning/resources/upload`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResourceRaw(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.uploadLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResource(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.uploadLearningResourceRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
 }
 
 /**
@@ -5782,3 +6373,23 @@ export const GetVenuesStatusEnum = {
   Maintenance: "maintenance",
 } as const;
 export type GetVenuesStatusEnum = (typeof GetVenuesStatusEnum)[keyof typeof GetVenuesStatusEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceVisibilityEnum = {
+  Public: "public",
+  Club: "club",
+  Department: "department",
+} as const;
+export type UploadLearningResourceVisibilityEnum =
+  (typeof UploadLearningResourceVisibilityEnum)[keyof typeof UploadLearningResourceVisibilityEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type UploadLearningResourceDownloadPermissionEnum =
+  (typeof UploadLearningResourceDownloadPermissionEnum)[keyof typeof UploadLearningResourceDownloadPermissionEnum];

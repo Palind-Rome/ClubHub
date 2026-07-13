@@ -3,15 +3,22 @@ using ClubHub.Api.Data.Entities;
 namespace ClubHub.Api.Services;
 
 /// <summary>
-/// 提供培训课程状态、报名窗口和学习进度的无状态业务规则。
+/// 提供培训课程、学习资源、可见范围、下载设置和学习进度的无状态业务规则。
 /// </summary>
 public static class LearningWorkflow
 {
     public const string VisibilityClub = "club";
     public const string VisibilityPublic = "public";
+    public const string VisibilityDepartment = "department";
+
+    public const string DownloadPermissionAllow = "allow";
+    public const string DownloadPermissionDeny = "deny";
+    public const string DownloadPermissionApproval = "approval";
 
     public const string ItemStatusDraft = "draft";
+    public const string ItemStatusPendingReview = "pending_review";
     public const string ItemStatusPublished = "published";
+    public const string ItemStatusRejected = "rejected";
     public const string ItemStatusClosed = "closed";
     public const string ItemStatusFinished = "finished";
 
@@ -26,6 +33,13 @@ public static class LearningWorkflow
         "course",
         "lecture",
         "training"
+    };
+
+    private static readonly HashSet<string> SupportedResourceTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "video",
+        "document",
+        "material"
     };
 
     /// <summary>
@@ -61,10 +75,22 @@ public static class LearningWorkflow
         SupportedCourseTypes.Contains(Normalize(itemType));
 
     /// <summary>
+    /// 判断类型是否属于视频、文档或资料资源。
+    /// </summary>
+    public static bool IsSupportedResourceType(string? itemType) =>
+        SupportedResourceTypes.Contains(Normalize(itemType));
+
+    /// <summary>
+    /// 判断资源类型是否属于系统支持范围。
+    /// </summary>
+    public static bool IsSupportedItemType(string? itemType) =>
+        IsSupportedCourseType(itemType) || IsSupportedResourceType(itemType);
+
+    /// <summary>
     /// 判断课程开放范围是否有效。
     /// </summary>
     public static bool IsVisibilityValid(string? visibility) =>
-        Normalize(visibility) is VisibilityClub or VisibilityPublic;
+        Normalize(visibility) is VisibilityClub or VisibilityPublic or VisibilityDepartment;
 
     /// <summary>
     /// 将合法开放范围归一化为本社团或全校；非法值返回空。
@@ -74,8 +100,60 @@ public static class LearningWorkflow
         {
             VisibilityClub => VisibilityClub,
             VisibilityPublic => VisibilityPublic,
+            VisibilityDepartment => VisibilityDepartment,
             _ => null
         };
+
+    /// <summary>
+    /// 判断资源下载设置是否有效。
+    /// </summary>
+    public static bool IsDownloadPermissionValid(string? permission) =>
+        NormalizeDownloadPermission(permission) is not null;
+
+    /// <summary>
+    /// 归一化资源下载设置；兼容历史 none 值为禁止下载。
+    /// </summary>
+    public static string? NormalizeDownloadPermission(string? permission) =>
+        Normalize(permission) switch
+        {
+            DownloadPermissionAllow => DownloadPermissionAllow,
+            DownloadPermissionDeny or "none" or "" => DownloadPermissionDeny,
+            DownloadPermissionApproval => DownloadPermissionApproval,
+            _ => null
+        };
+
+    /// <summary>
+    /// 校验文件地址为 HTTP/HTTPS 绝对地址、本系统受鉴权的上传文件地址，
+    /// 或厂商无关的对象 Key；历史 OSS 引用继续只读兼容。
+    /// </summary>
+    public static bool IsFileUrlValid(string? fileUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl) || fileUrl.Trim().Length > 255) return false;
+        var normalized = fileUrl.Trim();
+        var localSegments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (localSegments is ["api", "learning", "items", var itemId, "file"] &&
+            int.TryParse(itemId, out var parsedItemId) &&
+            parsedItemId > 0)
+        {
+            return true;
+        }
+        if (normalized.StartsWith("clubs/", StringComparison.Ordinal) &&
+            normalized.Contains("/learning/", StringComparison.Ordinal) &&
+            !normalized.Contains('\\') &&
+            !normalized.Split('/').Any(segment => segment is "" or "." or ".."))
+        {
+            return true;
+        }
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri)) return false;
+        if (string.Equals(uri.Scheme, "oss", StringComparison.OrdinalIgnoreCase))
+        {
+            return !string.IsNullOrWhiteSpace(uri.Host) &&
+                   !string.IsNullOrWhiteSpace(uri.AbsolutePath.Trim('/')) &&
+                   !Uri.UnescapeDataString(uri.AbsolutePath).Contains("..", StringComparison.Ordinal);
+        }
+        return string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// 判断课程是否开放加入；未设置结束时间时长期开放。
@@ -116,6 +194,8 @@ public static class LearningWorkflow
         {
             "" => ItemStatusDraft,
             "published" or "open" => ItemStatusPublished,
+            "pending_review" or "pending" or "reviewing" => ItemStatusPendingReview,
+            "rejected" => ItemStatusRejected,
             "closed" => ItemStatusClosed,
             "finished" => ItemStatusFinished,
             var value => value

@@ -1623,7 +1623,7 @@ public class ClubsController : ControllerBase
         var role = await EnsureClubRoleAsync(
             ClubAdvisorRoleCode,
             "指导老师",
-            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价。",
+            "指定社团指导角色，可查看社团运营、维护并审核学习资源，以及审核活动、项目、经费和评价。",
             now);
         await RemoveClubAdvisorRolesExceptAsync(clubId, userId);
 
@@ -1660,7 +1660,15 @@ public class ClubsController : ControllerBase
     private async Task<Role> EnsureClubRoleAsync(string roleCode, string roleName, string permissionDesc, DateTime now)
     {
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
-        if (role is not null) return role;
+        if (role is not null)
+        {
+            if (!string.Equals(role.PermissionDesc, permissionDesc, StringComparison.Ordinal))
+            {
+                role.PermissionDesc = permissionDesc;
+            }
+
+            return role;
+        }
 
         role = new Role
         {
