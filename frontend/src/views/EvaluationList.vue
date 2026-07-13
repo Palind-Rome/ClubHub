@@ -550,7 +550,7 @@ onUnmounted(() => {
     <div class="page-head">
       <div>
         <h2>成员考核</h2>
-        <div class="subtitle">查看成员学期考核，维护参与、任务、学习和奖项分。</div>
+        <div class="subtitle">四项分数由系统生成，负责人和指导老师确认后公示。</div>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -585,6 +585,21 @@ onUnmounted(() => {
       <div>
         <span>当前社团</span>
         <strong>{{ selectedClub?.name || "-" }}</strong>
+      </div>
+    </div>
+
+    <div class="process-strip">
+      <div>
+        <span>1. 系统生成</span>
+        <strong>汇总活动、项目任务、学习记录和已公示奖项</strong>
+      </div>
+      <div>
+        <span>2. 人工确认</span>
+        <strong>维护人员检查说明与公示状态</strong>
+      </div>
+      <div>
+        <span>3. 公示查看</span>
+        <strong>普通成员只查看已公示考核</strong>
       </div>
     </div>
 
@@ -722,6 +737,13 @@ onUnmounted(() => {
         :rules="evaluationRules"
         label-width="100px"
       >
+        <el-alert
+          class="workflow-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          title="参与分、任务分、学习分和奖项分保存时会由系统重新生成；未公示记录仅维护人员可见。"
+        />
         <el-form-item label="社团">
           <el-input :model-value="selectedClub?.name" disabled />
         </el-form-item>
@@ -888,6 +910,39 @@ onUnmounted(() => {
   color: var(--el-text-color-primary);
 }
 
+.process-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.process-strip div {
+  padding: 14px 16px;
+  border-right: 1px solid var(--el-border-color-light);
+  background: #fff;
+}
+
+.process-strip div:last-child {
+  border-right: none;
+}
+
+.process-strip span {
+  display: block;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.process-strip strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .club-select {
   width: 220px;
 }
@@ -917,16 +972,22 @@ onUnmounted(() => {
   background: var(--el-fill-color-light);
 }
 
+.workflow-alert {
+  margin-bottom: 16px;
+}
+
 @media (max-width: 900px) {
   .page-head {
     flex-direction: column;
   }
 
-  .summary-strip {
+  .summary-strip,
+  .process-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .summary-strip div {
+  .summary-strip div,
+  .process-strip div {
     border-bottom: 1px solid var(--el-border-color-light);
   }
 
