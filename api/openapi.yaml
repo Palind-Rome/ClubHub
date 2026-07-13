@@ -2072,7 +2072,7 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 创建项目任务
-      description: 仅进行中项目的负责人可以创建任务，且执行人必须是正在参与该项目的成员。
+      description: 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
       operationId: createProjectTask
       security:
         - bearerAuth: []
@@ -2109,7 +2109,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
-          description: 当前用户不是项目负责人，或执行人不是正在参与该项目的成员
+          description: 当前用户不是项目负责人，或存在未参与该项目的执行人
           content:
             application/json:
               schema:
@@ -2130,7 +2130,7 @@ paths:
   /api/projects/{projectId}/tasks/{taskId}/progress:
     patch:
       summary: 更新项目任务进度
-      description: 仅仍在参与项目的任务执行人可以更新自己的任务；已完成任务不能重新打开。
+      description: 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
       operationId: updateProjectTaskProgress
       security:
         - bearerAuth: []
@@ -2173,7 +2173,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
-          description: 当前用户不是该任务的在项目执行人
+          description: 当前用户不是该任务仍在参与项目的执行人
           content:
             application/json:
               schema:
@@ -5789,14 +5789,11 @@ components:
           type: integer
           description: 所属项目 ID。
           example: 1001
-        assigneeUserId:
-          type: integer
-          description: 任务执行人用户 ID。
-          example: 12
-        assigneeName:
-          type: string
-          description: 任务执行人姓名或账号展示名。
-          example: 王同学
+        assignees:
+          type: array
+          description: 任务执行人列表；每位执行人都必须正在参与该项目。
+          items:
+            $ref: "#/components/schemas/ProjectTaskAssignee"
         title:
           type: string
           description: 任务标题。
@@ -5843,8 +5840,7 @@ components:
       required:
         - id
         - projectId
-        - assigneeUserId
-        - assigneeName
+        - assignees
         - title
         - priority
         - startDate
@@ -5856,11 +5852,15 @@ components:
       type: object
       description: 项目负责人创建任务的请求。
       properties:
-        assigneeUserId:
-          type: integer
-          minimum: 1
-          description: 正在参与该项目的执行人用户 ID。
-          example: 12
+        assigneeUserIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: 正在参与该项目的执行人用户 ID 列表。
+          items:
+            type: integer
+            minimum: 1
+          example: [12, 15]
         title:
           type: string
           minLength: 1
@@ -5882,7 +5882,7 @@ components:
           format: date-time
           description: 截止时间，必须晚于任务创建时间。
       required:
-        - assigneeUserId
+        - assigneeUserIds
         - title
         - priority
         - dueDate
@@ -5910,11 +5910,27 @@ components:
         delayReason:
           type: string
           maxLength: 255
-          description: 延期原因；delayed 或逾期未完成时必填，completed 时会被清空。
+          description: 延期原因；仅 delayed 状态必填，completed 时会被清空。
           nullable: true
       required:
         - progress
         - taskStatus
+
+    ProjectTaskAssignee:
+      type: object
+      description: 项目任务的执行人展示信息。
+      properties:
+        userId:
+          type: integer
+          description: 执行人用户 ID。
+          example: 12
+        displayName:
+          type: string
+          description: 执行人姓名或账号展示名。
+          example: 王同学
+      required:
+        - userId
+        - displayName
 
     LearningTeacherCandidate:
       type: object
