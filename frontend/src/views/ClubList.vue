@@ -23,7 +23,6 @@ import {
 import { requestJson } from "../composables/useApiRequest";
 import {
   collectCadreScopesFromMemberships,
-  groupingMatchesScope,
   type MemberGroupingScope,
 } from "../composables/useClubEvaluationScope";
 import { hasScopedRole, roleCoversClub } from "../composables/useManageableClubs";
@@ -34,9 +33,6 @@ type MemberStatus = "active" | "ended" | "suspended";
 type TermMode = "create" | "edit";
 type GroupingMode = "free" | "own" | "department";
 type GroupingField = "departmentName" | "groupName";
-type EvaluationType = "semester" | "award";
-type EvaluationPublicStatus = "draft" | "published";
-type EvaluationMode = "create" | "edit";
 
 interface UserRoleSummary {
   roleCode: string;
@@ -150,36 +146,6 @@ interface IdentityRow {
   memberStatus: string | null;
 }
 
-interface ClubEvaluationRecord {
-  evaluationId: number;
-  evaluationType: EvaluationType;
-  evaluationTypeText: string;
-  clubId: number;
-  clubName: string;
-  userId: number;
-  userName: string;
-  studentNo: string | null;
-  departmentName: string | null;
-  groupName: string | null;
-  positionName: string | null;
-  evaluatorUserId: number | null;
-  evaluatorName: string | null;
-  termName: string;
-  awardTitle: string | null;
-  awardLevel: string | null;
-  awardReason: string | null;
-  activityScore: number;
-  taskScore: number;
-  learningScore: number;
-  awardScore: number;
-  totalScore: number;
-  grade: string;
-  publicStatus: EvaluationPublicStatus;
-  publicStatusText: string;
-  commentText: string | null;
-  createdAt: string | null;
-}
-
 interface ClubContextOption {
   clubId: number;
   clubName: string;
@@ -187,16 +153,6 @@ interface ClubContextOption {
   statusText: string;
   optionLabel: string;
   canManage: boolean;
-}
-
-interface IdentityRow {
-  clubId: number;
-  clubName: string;
-  departmentName: string | null;
-  groupName: string | null;
-  positionName: string | null;
-  termName: string | null;
-  memberStatus: string | null;
 }
 
 interface MemberGroupOption {
@@ -258,8 +214,6 @@ const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
-const evaluationMembers = ref<ClubMemberRecord[]>([]);
-const evaluations = ref<ClubEvaluationRecord[]>([]);
 const manualDepartmentOptions = ref<Record<number, string[]>>({});
 const manualGroupOptions = ref<Record<number, MemberGroupOption[]>>({});
 const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
@@ -268,13 +222,11 @@ const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
 const applicationAdvisorLoading = ref(false);
 const memberLoading = ref(false);
-const evaluationLoading = ref(false);
 const saving = ref(false);
 const reviewing = ref(false);
 const profileSaving = ref(false);
 const termSaving = ref(false);
 const groupingSaving = ref(false);
-const evaluationSaving = ref(false);
 const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
@@ -306,10 +258,6 @@ const newDepartmentName = ref("");
 const newGroupDepartmentName = ref("");
 const newGroupName = ref("");
 const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
-
-const evaluationFilters = reactive({
-  termName: "",
-});
 
 const applicationDialogVisible = ref(false);
 const applicationFormRef = ref<FormInstance>();
@@ -388,25 +336,6 @@ const memberBatchPositionForm = reactive({
   positionName: "",
 });
 
-const evaluationDialogVisible = ref(false);
-const evaluationFormRef = ref<FormInstance>();
-const evaluationMode = ref<EvaluationMode>("create");
-const evaluationTarget = ref<ClubEvaluationRecord | null>(null);
-const evaluationForm = reactive({
-  evaluationType: "semester" as EvaluationType,
-  userId: undefined as number | undefined,
-  termName: `${new Date().getFullYear()} 学年春季学期`,
-  awardTitle: "",
-  awardLevel: "",
-  awardReason: "",
-  activityScore: 0,
-  taskScore: 0,
-  learningScore: 0,
-  awardScore: 0,
-  publicStatus: "draft" as EvaluationPublicStatus,
-  commentText: "",
-});
-
 const applicationRules: FormRules = {
   name: [{ required: true, message: "请填写社团名称", trigger: "blur" }],
   category: [{ required: true, message: "请填写社团类别", trigger: "blur" }],
@@ -430,48 +359,6 @@ const memberTermRules: FormRules = {
   termStart: [{ required: true, message: "请选择任期开始时间", trigger: "change" }],
 };
 
-const evaluationRules: FormRules = {
-  evaluationType: [{ required: true, message: "请选择评价类型", trigger: "change" }],
-  userId: [{ required: true, message: "请选择被评价成员", trigger: "change" }],
-  termName: [{ required: true, message: "请填写考核学期", trigger: "blur" }],
-  awardTitle: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写评优评奖标题"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
-  awardLevel: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写奖项等级"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
-  awardReason: [
-    {
-      validator: (_rule, value, callback) => {
-        if (evaluationForm.evaluationType === "award" && !String(value ?? "").trim()) {
-          callback(new Error("请填写获奖原因"));
-          return;
-        }
-        callback();
-      },
-      trigger: "blur",
-    },
-  ],
-};
-
 function defaultActiveTab(workspace: ClubWorkspace) {
   if (workspace === "members") return "members";
   if (workspace === "registration") return "workspace";
@@ -483,8 +370,6 @@ let usersRequestId = 0;
 let dialogUsersRequestId = 0;
 let dataRequestId = 0;
 let membersRequestId = 0;
-let evaluationMembersRequestId = 0;
-let evaluationsRequestId = 0;
 
 const currentUser = computed<UserSummary | null>(() => {
   const session = auth.value;
@@ -513,8 +398,6 @@ const hasAllPermissions = computed(() => auth.value?.permissions?.includes("*") 
 const isReviewer = computed(() => currentUser.value?.canReviewClubApplication ?? false);
 const canSubmitApplication = computed(() => currentUser.value?.canSubmitClubApplication ?? false);
 const canManageClubProfiles = computed(() => hasPermission(clubInfoManagePermission));
-// Member evaluations now live in EvaluationList.vue; keep the legacy club tab disabled explicitly.
-const showLegacyEvaluationTab = false;
 const hasAnyMemberTermManagePermission = computed(() => hasPermission(clubMemberManagePermission));
 const canManageMemberTerms = computed(() => {
   const clubId = selectedClubId.value;
@@ -560,9 +443,6 @@ const manageableClubs = computed(() => clubs.value.filter((club) => canManageClu
 const profileRows = computed(() => (canManageClubProfiles.value ? manageableClubs.value : []));
 const memberViewClubs = computed(() =>
   canViewMemberDirectory.value ? clubs.value.filter((club) => canViewClubDirectory(club)) : [],
-);
-const evaluationViewClubs = computed(() =>
-  clubs.value.filter((club) => canViewClubEvaluations(club)),
 );
 const clubContextOptions = computed<ClubContextOption[]>(() =>
   memberViewClubs.value.map((club) => buildClubContextOption(club)),
@@ -788,44 +668,6 @@ const memberGroupSummary = computed(() => {
     unassigned: rows.filter(isMemberUnassigned).length,
   };
 });
-const evaluationTermOptions = computed(() =>
-  uniqueTextOptions(evaluations.value.map((evaluation) => evaluation.termName)),
-);
-const evaluationSummary = computed(() => {
-  const published = evaluations.value.filter(
-    (evaluation) => evaluation.publicStatus === "published",
-  ).length;
-  const average =
-    evaluations.value.length === 0
-      ? 0
-      : evaluations.value.reduce((sum, evaluation) => sum + evaluation.totalScore, 0) /
-        evaluations.value.length;
-
-  return {
-    total: evaluations.value.length,
-    published,
-    average: Number(average.toFixed(1)),
-  };
-});
-const evaluationTargetOptions = computed(() =>
-  evaluationMembers.value.filter(
-    (member) => member.isCurrent && canMaintainEvaluationForMember(member),
-  ),
-);
-const canMaintainSelectedEvaluations = computed(
-  () => selectedClub.value?.status === "active" && evaluationTargetOptions.value.length > 0,
-);
-const evaluationFormTotal = computed(() =>
-  Number(
-    (
-      Number(evaluationForm.activityScore || 0) +
-      Number(evaluationForm.taskScore || 0) +
-      Number(evaluationForm.learningScore || 0) +
-      Number(evaluationForm.awardScore || 0)
-    ).toFixed(1),
-  ),
-);
-const evaluationFormGrade = computed(() => evaluationGrade(evaluationFormTotal.value));
 const workspaceTitle = computed(() => {
   if (isMemberWorkspace.value) return "成员管理";
   if (isRegistrationWorkspace.value) return "社团注册";
@@ -963,8 +805,6 @@ async function loadData() {
       applications.value = [];
       clubs.value = [];
       clubMembers.value = [];
-      evaluationMembers.value = [];
-      evaluations.value = [];
     }
     return;
   }
@@ -994,15 +834,13 @@ async function loadData() {
     applications.value = applicationData;
     clubs.value = clubData;
     syncSelectedClub();
-    await Promise.all([loadMembers(), loadEvaluationMembers(), loadEvaluations()]);
+    await loadMembers();
   } catch (e) {
     if (requestId === dataRequestId) {
       error.value = e instanceof Error ? e.message : "加载失败";
       applications.value = [];
       clubs.value = [];
       clubMembers.value = [];
-      evaluationMembers.value = [];
-      evaluations.value = [];
     }
   } finally {
     if (requestId === dataRequestId) loading.value = false;
@@ -1042,54 +880,6 @@ async function loadMembers() {
     }
   } finally {
     if (requestId === membersRequestId) memberLoading.value = false;
-  }
-}
-
-async function loadEvaluationMembers() {
-  const requestId = ++evaluationMembersRequestId;
-  const clubId = selectedClubId.value;
-  if (!currentUserId.value || !clubId || !canViewSelectedClub()) {
-    if (requestId === evaluationMembersRequestId) evaluationMembers.value = [];
-    return;
-  }
-
-  try {
-    const query = new URLSearchParams({
-      includeHistory: "false",
-    });
-    const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
-    );
-    if (requestId === evaluationMembersRequestId) evaluationMembers.value = data;
-  } catch {
-    if (requestId === evaluationMembersRequestId) evaluationMembers.value = [];
-  }
-}
-
-async function loadEvaluations() {
-  const requestId = ++evaluationsRequestId;
-  const clubId = selectedClubId.value;
-  if (!currentUserId.value || !clubId || evaluationViewClubs.value.length === 0) {
-    if (requestId === evaluationsRequestId) evaluations.value = [];
-    return;
-  }
-
-  evaluationLoading.value = true;
-  try {
-    const query = new URLSearchParams();
-    if (evaluationFilters.termName) query.set("termName", evaluationFilters.termName);
-    query.set("evaluationType", "semester");
-    const data = await requestJson<ClubEvaluationRecord[]>(
-      `/api/clubs/${clubId}/evaluations?${query.toString()}`,
-    );
-    if (requestId === evaluationsRequestId) evaluations.value = data;
-  } catch (e) {
-    if (requestId === evaluationsRequestId) {
-      evaluations.value = [];
-      ElMessage.error(e instanceof Error ? e.message : "成员考核加载失败");
-    }
-  } finally {
-    if (requestId === evaluationsRequestId) evaluationLoading.value = false;
   }
 }
 
@@ -1160,17 +950,6 @@ function canViewClubDirectory(club: Club) {
   );
 
   return hasParticipantRole || hasAdvisorRole || hasMembership;
-}
-
-function canViewClubEvaluations(club: Club) {
-  if (hasAllPermissions.value || canManageClub(club)) return true;
-
-  const user = currentUser.value;
-  if (!user) return false;
-
-  return user.memberships.some(
-    (membership) => membership.clubId === club.id && isActiveStatus(membership.memberStatus),
-  );
 }
 
 function buildClubContextOption(club: Club): ClubContextOption {
@@ -1940,40 +1719,6 @@ async function submitMemberTerm() {
   }
 }
 
-function canMaintainEvaluationForMember(member: ClubMemberRecord) {
-  if (hasAllPermissions.value || canManageSelectedClub.value) return true;
-
-  return selectedCadreGroupingScopes.value.some((scope) =>
-    groupingMatchesScope(
-      member.departmentName,
-      member.groupName,
-      scope.departmentName,
-      scope.groupName,
-    ),
-  );
-}
-
-function canMaintainEvaluationRecord(row: ClubEvaluationRecord) {
-  const member = evaluationMembers.value.find((item) => item.userId === row.userId);
-  return Boolean(member && canMaintainEvaluationForMember(member));
-}
-
-function resetEvaluationForm() {
-  evaluationForm.evaluationType = "semester";
-  evaluationForm.userId = evaluationTargetOptions.value[0]?.userId;
-  evaluationForm.termName = `${new Date().getFullYear()} 学年春季学期`;
-  evaluationForm.awardTitle = "";
-  evaluationForm.awardLevel = "";
-  evaluationForm.awardReason = "";
-  evaluationForm.activityScore = 0;
-  evaluationForm.taskScore = 0;
-  evaluationForm.learningScore = 0;
-  evaluationForm.awardScore = 0;
-  evaluationForm.publicStatus = "draft";
-  evaluationForm.commentText = "";
-  evaluationFormRef.value?.clearValidate();
-}
-
 function addAcademicTermOption() {
   if (!canCreateAcademicTerm.value) return;
 
@@ -1995,96 +1740,6 @@ function addAcademicTermOption() {
   ]);
   newAcademicTermStartYear.value = startYear + 1;
   ElMessage.success("任期已加入可选项");
-}
-
-function openCreateEvaluationDialog() {
-  if (!canMaintainSelectedEvaluations.value) {
-    ElMessage.warning("当前身份没有可录入评价的成员。");
-    return;
-  }
-
-  evaluationMode.value = "create";
-  evaluationTarget.value = null;
-  resetEvaluationForm();
-  evaluationDialogVisible.value = true;
-}
-
-function openEditEvaluationDialog(row: ClubEvaluationRecord) {
-  const target = evaluationMembers.value.find((member) => member.userId === row.userId);
-  if (!target || !canMaintainEvaluationForMember(target)) {
-    ElMessage.warning("当前身份不能维护该成员评价。");
-    return;
-  }
-
-  evaluationMode.value = "edit";
-  evaluationTarget.value = row;
-  evaluationForm.evaluationType = row.evaluationType;
-  evaluationForm.userId = row.userId;
-  evaluationForm.termName = row.termName;
-  evaluationForm.awardTitle = row.awardTitle ?? "";
-  evaluationForm.awardLevel = row.awardLevel ?? "";
-  evaluationForm.awardReason = row.awardReason ?? "";
-  evaluationForm.activityScore = row.activityScore;
-  evaluationForm.taskScore = row.taskScore;
-  evaluationForm.learningScore = row.learningScore;
-  evaluationForm.awardScore = row.awardScore;
-  evaluationForm.publicStatus = row.publicStatus;
-  evaluationForm.commentText = row.commentText ?? "";
-  evaluationFormRef.value?.clearValidate();
-  evaluationDialogVisible.value = true;
-}
-
-async function submitEvaluation() {
-  if (!evaluationFormRef.value || !selectedClubId.value || !currentUserId.value) return;
-  if (!(await validateForm(evaluationFormRef.value))) return;
-
-  evaluationSaving.value = true;
-  try {
-    const payload = {
-      evaluationType: evaluationForm.evaluationType,
-      userId: evaluationForm.userId,
-      termName: evaluationForm.termName,
-      awardTitle: emptyToNull(evaluationForm.awardTitle),
-      awardLevel: emptyToNull(evaluationForm.awardLevel),
-      awardReason: emptyToNull(evaluationForm.awardReason),
-      activityScore: evaluationForm.activityScore,
-      taskScore: evaluationForm.taskScore,
-      learningScore: evaluationForm.learningScore,
-      awardScore: evaluationForm.awardScore,
-      publicStatus: evaluationForm.publicStatus,
-      commentText: emptyToNull(evaluationForm.commentText),
-    };
-
-    if (evaluationMode.value === "create") {
-      await requestJson<ClubEvaluationRecord>(`/api/clubs/${selectedClubId.value}/evaluations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else if (evaluationTarget.value) {
-      await requestJson<ClubEvaluationRecord>(
-        `/api/clubs/${selectedClubId.value}/evaluations/${evaluationTarget.value.evaluationId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-    }
-
-    ElMessage.success(evaluationMode.value === "create" ? "评价考核已录入" : "评价考核已更新");
-    evaluationDialogVisible.value = false;
-    await loadEvaluations();
-  } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "评价考核保存失败");
-  } finally {
-    evaluationSaving.value = false;
-  }
-}
-
-function clearEvaluationFilters() {
-  evaluationFilters.termName = "";
-  void loadEvaluations();
 }
 
 function resetFilters() {
@@ -2373,24 +2028,6 @@ function memberTermPhaseText(row: ClubMemberRecord) {
       : "历史";
 }
 
-function evaluationPublicTagType(status: EvaluationPublicStatus) {
-  return status === "published" ? "success" : "info";
-}
-
-function evaluationGradeTagType(grade: string) {
-  if (grade === "优秀") return "success";
-  if (grade === "良好") return "primary";
-  if (grade === "合格") return "warning";
-  return "danger";
-}
-
-function evaluationGrade(totalScore: number) {
-  if (totalScore >= 320) return "优秀";
-  if (totalScore >= 260) return "良好";
-  if (totalScore >= 200) return "合格";
-  return "待提升";
-}
-
 function statusStep(row: ClubApplication) {
   if (row.auditStatus === "pending") return 1;
   if (row.auditStatus === "rejected") return 2;
@@ -2590,7 +2227,6 @@ watch(selectedClubId, () => {
   newDepartmentName.value = "";
   newGroupDepartmentName.value = "";
   newGroupName.value = "";
-  evaluationFilters.termName = "";
 });
 
 watch(
@@ -2629,17 +2265,6 @@ watch(
     clubs.value = [];
     clubMembers.value = [];
     void loadData();
-  },
-);
-
-watch(selectedClubId, () => {
-  void Promise.all([loadEvaluationMembers(), loadEvaluations()]);
-});
-
-watch(
-  () => evaluationFilters.termName,
-  () => {
-    void loadEvaluations();
   },
 );
 
@@ -3511,133 +3136,6 @@ onUnmounted(() => {
       </el-tab-pane>
 
       <el-tab-pane
-        v-if="showLegacyEvaluationTab && evaluationViewClubs.length > 0"
-        label="成员考核"
-        name="evaluations"
-      >
-        <div class="member-head">
-          <div class="member-controls">
-            <el-select
-              v-model="selectedClubId"
-              class="club-selector"
-              placeholder="选择社团"
-              filterable
-            >
-              <el-option
-                v-for="club in evaluationViewClubs"
-                :key="club.id"
-                :label="club.name"
-                :value="club.id"
-              />
-            </el-select>
-            <el-select
-              v-model="evaluationFilters.termName"
-              class="filter-item"
-              clearable
-              filterable
-              allow-create
-              default-first-option
-              placeholder="考核学期"
-            >
-              <el-option
-                v-for="term in evaluationTermOptions"
-                :key="term"
-                :label="term"
-                :value="term"
-              />
-            </el-select>
-            <el-button :icon="Refresh" @click="clearEvaluationFilters">清除筛选</el-button>
-          </div>
-          <el-button
-            v-if="canMaintainSelectedEvaluations"
-            type="primary"
-            :icon="Plus"
-            @click="openCreateEvaluationDialog"
-          >
-            录入评价
-          </el-button>
-        </div>
-
-        <div class="member-summary">
-          <span>考核记录 {{ evaluationSummary.total }} 条</span>
-          <span>已公示 {{ evaluationSummary.published }} 条</span>
-          <span>平均总分 {{ evaluationSummary.average }}</span>
-          <span>可评价成员 {{ evaluationTargetOptions.length }} 人</span>
-        </div>
-
-        <el-table
-          v-loading="evaluationLoading"
-          :data="evaluations"
-          border
-          stripe
-          empty-text="暂无成员考核记录"
-          row-key="evaluationId"
-        >
-          <el-table-column type="expand">
-            <template #default="{ row }">
-              <div class="application-detail">
-                <el-descriptions :column="2" border>
-                  <el-descriptions-item label="成员">
-                    {{ row.userName }}（{{ row.studentNo || "-" }}）
-                  </el-descriptions-item>
-                  <el-descriptions-item label="评价人">
-                    {{ row.evaluatorName || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="部门/小组">
-                    {{ row.departmentName || "-" }} / {{ row.groupName || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="职位">
-                    {{ row.positionName || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="评价说明" :span="2">
-                    {{ row.commentText || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="创建时间">
-                    {{ formatDate(row.createdAt) }}
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="userName" label="成员" min-width="150" />
-          <el-table-column prop="termName" label="学期" min-width="150" />
-          <el-table-column prop="activityScore" label="参与分" width="100" />
-          <el-table-column prop="taskScore" label="任务分" width="100" />
-          <el-table-column prop="learningScore" label="学习分" width="100" />
-          <el-table-column prop="awardScore" label="奖项分" width="100" />
-          <el-table-column prop="totalScore" label="总分" width="100" />
-          <el-table-column label="等级" width="110">
-            <template #default="{ row }">
-              <el-tag :type="evaluationGradeTagType(row.grade)" effect="plain">
-                {{ row.grade }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="公示" width="110">
-            <template #default="{ row }">
-              <el-tag :type="evaluationPublicTagType(row.publicStatus)" effect="plain">
-                {{ row.publicStatusText }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
-            <template #default="{ row }">
-              <el-button
-                v-if="canMaintainEvaluationRecord(row)"
-                type="primary"
-                plain
-                :icon="Edit"
-                @click="openEditEvaluationDialog(row)"
-              >
-                编辑
-              </el-button>
-              <span v-else class="muted">仅查看</span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <el-tab-pane
         v-if="isClubWorkspace && visibleIdentityRows.length > 0"
         label="我的社团身份"
         name="identity"
@@ -4132,103 +3630,6 @@ onUnmounted(() => {
         <el-button type="primary" :loading="termSaving" @click="submitMemberTerm"> 保存 </el-button>
       </template>
     </el-dialog>
-
-    <el-dialog
-      v-model="evaluationDialogVisible"
-      :title="evaluationMode === 'create' ? '录入评价考核' : '编辑评价考核'"
-      width="720px"
-    >
-      <el-form
-        ref="evaluationFormRef"
-        :model="evaluationForm"
-        :rules="evaluationRules"
-        label-width="100px"
-      >
-        <el-form-item label="社团">
-          <el-input :model-value="selectedClub?.name" disabled />
-        </el-form-item>
-        <el-form-item v-if="evaluationMode === 'create'" label="成员" prop="userId">
-          <el-select v-model="evaluationForm.userId" filterable placeholder="选择被评价成员">
-            <el-option
-              v-for="member in evaluationTargetOptions"
-              :key="member.memberId"
-              :label="memberOptionLabel(member)"
-              :value="member.userId"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-else label="成员">
-          <el-input :model-value="evaluationTarget?.userName" disabled />
-        </el-form-item>
-        <el-form-item label="考核学期" prop="termName">
-          <el-input v-model="evaluationForm.termName" maxlength="80" show-word-limit />
-        </el-form-item>
-
-        <div class="score-grid">
-          <el-form-item label="参与分">
-            <el-input-number
-              v-model="evaluationForm.activityScore"
-              :min="0"
-              :max="100"
-              :precision="1"
-            />
-          </el-form-item>
-          <el-form-item label="任务分">
-            <el-input-number
-              v-model="evaluationForm.taskScore"
-              :min="0"
-              :max="100"
-              :precision="1"
-            />
-          </el-form-item>
-          <el-form-item label="学习分">
-            <el-input-number
-              v-model="evaluationForm.learningScore"
-              :min="0"
-              :max="100"
-              :precision="1"
-            />
-          </el-form-item>
-          <el-form-item label="奖项分">
-            <el-input-number
-              v-model="evaluationForm.awardScore"
-              :min="0"
-              :max="100"
-              :precision="1"
-            />
-          </el-form-item>
-        </div>
-
-        <div class="evaluation-preview">
-          <span>总分 {{ evaluationFormTotal }}</span>
-          <el-tag :type="evaluationGradeTagType(evaluationFormGrade)" effect="plain">
-            {{ evaluationFormGrade }}
-          </el-tag>
-        </div>
-
-        <el-form-item label="公示状态">
-          <el-radio-group v-model="evaluationForm.publicStatus">
-            <el-radio-button label="draft">草稿</el-radio-button>
-            <el-radio-button label="published">已公示</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="评价说明">
-          <el-input
-            v-model="evaluationForm.commentText"
-            type="textarea"
-            :rows="3"
-            maxlength="255"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="evaluationDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="evaluationSaving" @click="submitEvaluation">
-          保存评价
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -4511,21 +3912,6 @@ onUnmounted(() => {
   background: var(--el-color-primary-light-9);
 }
 
-.score-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 12px;
-}
-
-.evaluation-preview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 0 18px 100px;
-  color: #20262e;
-  font-weight: 600;
-}
-
 .club-selector {
   width: 280px;
 }
@@ -4586,14 +3972,6 @@ onUnmounted(() => {
   .club-detail-header {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .score-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .evaluation-preview {
-    padding-left: 0;
   }
 }
 </style>
