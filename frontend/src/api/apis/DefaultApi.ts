@@ -118,6 +118,11 @@ import {
   CreateProjectRequestToJSON,
 } from "../models/CreateProjectRequest";
 import {
+  type CreateProjectTaskRequest,
+  CreateProjectTaskRequestFromJSON,
+  CreateProjectTaskRequestToJSON,
+} from "../models/CreateProjectTaskRequest";
+import {
   type CreateRecruitmentApplicationRequest,
   CreateRecruitmentApplicationRequestFromJSON,
   CreateRecruitmentApplicationRequestToJSON,
@@ -219,6 +224,7 @@ import {
   ProjectMemberCandidateFromJSON,
   ProjectMemberCandidateToJSON,
 } from "../models/ProjectMemberCandidate";
+import { type ProjectTask, ProjectTaskFromJSON, ProjectTaskToJSON } from "../models/ProjectTask";
 import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
 import {
   type RecruitmentApplication,
@@ -320,6 +326,11 @@ import {
   UpdateLearningProgressRequestFromJSON,
   UpdateLearningProgressRequestToJSON,
 } from "../models/UpdateLearningProgressRequest";
+import {
+  type UpdateProjectTaskProgressRequest,
+  UpdateProjectTaskProgressRequestFromJSON,
+  UpdateProjectTaskProgressRequestToJSON,
+} from "../models/UpdateProjectTaskProgressRequest";
 import {
   type UpdateRecruitmentRequest,
   UpdateRecruitmentRequestFromJSON,
@@ -424,6 +435,11 @@ export interface CreateNoticeOperationRequest {
 
 export interface CreateProjectOperationRequest {
   createProjectRequest: CreateProjectRequest;
+}
+
+export interface CreateProjectTaskOperationRequest {
+  projectId: number;
+  createProjectTaskRequest: CreateProjectTaskRequest;
 }
 
 export interface CreateRecruitmentOperationRequest {
@@ -554,6 +570,10 @@ export interface GetProjectMemberCandidatesRequest {
 export interface GetProjectMembersRequest {
   projectId: number;
   includeInactive?: boolean;
+}
+
+export interface GetProjectTasksRequest {
+  projectId: number;
 }
 
 export interface GetProjectsRequest {
@@ -716,6 +736,12 @@ export interface UpdateLearningProgressOperationRequest {
   updateLearningProgressRequest: UpdateLearningProgressRequest;
 }
 
+export interface UpdateProjectTaskProgressOperationRequest {
+  projectId: number;
+  taskId: number;
+  updateProjectTaskProgressRequest: UpdateProjectTaskProgressRequest;
+}
+
 export interface UpdateRecruitmentOperationRequest {
   recruitId: number;
   updateRecruitmentRequest: UpdateRecruitmentRequest;
@@ -796,7 +822,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
    * 添加项目成员
    */
   async addProjectMemberRaw(
@@ -810,7 +836,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
    * 添加项目成员
    */
   async addProjectMember(
@@ -913,6 +939,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects/{projectId}/leader`;
     urlPath = urlPath.replace(
@@ -1097,6 +1132,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects/{projectId}/cancel`;
     urlPath = urlPath.replace(
@@ -1814,6 +1858,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/projects`;
 
     return {
@@ -1846,6 +1899,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Project> {
     const response = await this.createProjectRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createProjectTask without sending the request
+   */
+  async createProjectTaskRequestOpts(
+    requestParameters: CreateProjectTaskOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling createProjectTask().',
+      );
+    }
+
+    if (requestParameters["createProjectTaskRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createProjectTaskRequest",
+        'Required parameter "createProjectTaskRequest" was null or undefined when calling createProjectTask().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateProjectTaskRequestToJSON(requestParameters["createProjectTaskRequest"]),
+    };
+  }
+
+  /**
+   * 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
+   * 创建项目任务
+   */
+  async createProjectTaskRaw(
+    requestParameters: CreateProjectTaskOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.createProjectTaskRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
+   * 创建项目任务
+   */
+  async createProjectTask(
+    requestParameters: CreateProjectTaskOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.createProjectTaskRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -3598,7 +3727,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidatesRaw(
@@ -3614,7 +3743,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidates(
@@ -3670,7 +3799,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
    * 获取项目成员列表
    */
   async getProjectMembersRaw(
@@ -3686,7 +3815,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
    * 获取项目成员列表
    */
   async getProjectMembers(
@@ -3694,6 +3823,72 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ProjectMember>> {
     const response = await this.getProjectMembersRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getProjectTasks without sending the request
+   */
+  async getProjectTasksRequestOpts(
+    requestParameters: GetProjectTasksRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectTasks().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。
+   * 获取项目任务列表
+   */
+  async getProjectTasksRaw(
+    requestParameters: GetProjectTasksRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ProjectTask>>> {
+    const requestOptions = await this.getProjectTasksRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ProjectTaskFromJSON));
+  }
+
+  /**
+   * 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。
+   * 获取项目任务列表
+   */
+  async getProjectTasks(
+    requestParameters: GetProjectTasksRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ProjectTask>> {
+    const response = await this.getProjectTasksRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5076,6 +5271,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/projects/{projectId}/review`;
     urlPath = urlPath.replace(
       "{projectId}",
@@ -5975,6 +6179,92 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningRecord> {
     const response = await this.updateLearningProgressRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateProjectTaskProgress without sending the request
+   */
+  async updateProjectTaskProgressRequestOpts(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    if (requestParameters["updateProjectTaskProgressRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateProjectTaskProgressRequest",
+        'Required parameter "updateProjectTaskProgressRequest" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/progress`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateProjectTaskProgressRequestToJSON(
+        requestParameters["updateProjectTaskProgressRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
+   * 更新项目任务进度
+   */
+  async updateProjectTaskProgressRaw(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.updateProjectTaskProgressRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
+   * 更新项目任务进度
+   */
+  async updateProjectTaskProgress(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.updateProjectTaskProgressRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

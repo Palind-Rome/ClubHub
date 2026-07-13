@@ -20,41 +20,25 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 可加入项目的所属社团当前有效成员。
+    /// 项目任务的执行人展示信息。
     /// </summary>
     [DataContract]
-    public partial class ProjectMemberCandidate 
+    public partial class ProjectTaskAssignee 
     {
         /// <summary>
-        /// 候选用户 ID。
+        /// 执行人用户 ID。
         /// </summary>
-        /// <value>候选用户 ID。</value>
+        /// <value>执行人用户 ID。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// 候选用户真实姓名。
+        /// 执行人姓名或账号展示名。
         /// </summary>
-        /// <value>候选用户真实姓名。</value>
+        /// <value>执行人姓名或账号展示名。</value>
         /* <example>王同学</example> */
-        [DataMember(Name="realName", EmitDefaultValue=true)]
-        public string? RealName { get; set; }
-
-        /// <summary>
-        /// 候选用户学号或工号。
-        /// </summary>
-        /// <value>候选用户学号或工号。</value>
-        /* <example>2450001</example> */
-        [DataMember(Name="studentNo", EmitDefaultValue=true)]
-        public string? StudentNo { get; set; }
-
-        /// <summary>
-        /// 前端下拉框展示文本。
-        /// </summary>
-        /// <value>前端下拉框展示文本。</value>
-        /* <example>王同学（2450001）</example> */
         [Required]
         [DataMember(Name="displayName", EmitDefaultValue=false)]
         public string DisplayName { get; set; }

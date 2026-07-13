@@ -143,17 +143,17 @@ namespace Org.OpenAPITools.Models
         public MemberStatusEnum MemberStatus { get; set; }
 
         /// <summary>
-        /// 本次加入或恢复为 active 的时间。
+        /// 本次加入或恢复为正在参与状态的时间。
         /// </summary>
-        /// <value>本次加入或恢复为 active 的时间。</value>
+        /// <value>本次加入或恢复为正在参与状态的时间。</value>
         [Required]
         [DataMember(Name="joinedAt", EmitDefaultValue=true)]
         public DateTime JoinedAt { get; set; }
 
         /// <summary>
-        /// 退出或移除时间；active 成员为空。
+        /// 退出或移除时间；正在参与的成员为空。
         /// </summary>
-        /// <value>退出或移除时间；active 成员为空。</value>
+        /// <value>退出或移除时间；正在参与的成员为空。</value>
         [DataMember(Name="leftAt", EmitDefaultValue=true)]
         public DateTime? LeftAt { get; set; }
 

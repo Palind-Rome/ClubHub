@@ -63,13 +63,13 @@ export interface ProjectMember {
    */
   memberStatus: ProjectMemberMemberStatusEnum;
   /**
-   * 本次加入或恢复为 active 的时间。
+   * 本次加入或恢复为正在参与状态的时间。
    * @type {Date}
    * @memberof ProjectMember
    */
   joinedAt: Date;
   /**
-   * 退出或移除时间；active 成员为空。
+   * 退出或移除时间；正在参与的成员为空。
    * @type {Date}
    * @memberof ProjectMember
    */
