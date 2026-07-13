@@ -3808,6 +3808,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material status (`material_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "401":
           description: Authentication required.
           content:
@@ -3858,6 +3864,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
           content:
             application/json:
               schema:
@@ -3950,6 +3962,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow status (`borrow_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "401":
           description: Authentication required.
           content:
@@ -4005,7 +4023,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: Available material stock is not enough.
+          description: Available stock is insufficient (`material_stock_not_enough`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
           content:
             application/json:
               schema:
@@ -4050,6 +4068,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: Borrow record or material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent borrow write conflict (`borrow_concurrent_conflict`).
           content:
             application/json:
               schema:
@@ -4100,6 +4124,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: Borrow record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Borrow status changed (`borrow_status_changed`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
           content:
             application/json:
               schema:

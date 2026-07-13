@@ -30,6 +30,7 @@ public class MaterialBorrowsController : ControllerBase
     private const string BorrowStatusBorrowed = "borrowed";
     private const string BorrowStatusReturned = "returned";
     private const string BorrowStatusDamaged = "damaged";
+    private const int MaxWriteRetries = 3;
     private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
 
     private static readonly HashSet<string> AllowedMaterialStatuses = new(StringComparer.OrdinalIgnoreCase)
@@ -137,27 +138,33 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
         }
 
-        var club = await _db.Clubs.FindAsync(req.ClubId);
-        if (club is null) return NotFound(Error("club_not_found", "社团不存在。"));
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var club = await _db.Clubs.FindAsync(req.ClubId);
+                if (club is null) return NotFound(Error("club_not_found", "社团不存在。"));
 
-        var material = new Material
-        {
-            MaterialId = (await _db.Materials.MaxAsync(m => (int?)m.MaterialId) ?? 0) + 1,
-            ClubId = req.ClubId,
-            MaterialName = name,
-            Specification = NullIfBlank(req.Specification),
-            TotalQty = req.TotalQuantity,
-            AvailableQty = req.AvailableQuantity ?? req.TotalQuantity,
-            StorageLocation = NullIfBlank(req.StorageLocation),
-            MaterialStatus = normalizedStatus ?? MaterialStatusActive,
-            CreatedAt = DateTime.UtcNow,
-            Club = club
-        };
+                var material = new Material
+                {
+                    MaterialId = (await _db.Materials.MaxAsync(m => (int?)m.MaterialId) ?? 0) + 1,
+                    ClubId = req.ClubId,
+                    MaterialName = name,
+                    Specification = NullIfBlank(req.Specification),
+                    TotalQty = req.TotalQuantity,
+                    AvailableQty = req.AvailableQuantity ?? req.TotalQuantity,
+                    StorageLocation = NullIfBlank(req.StorageLocation),
+                    MaterialStatus = normalizedStatus ?? MaterialStatusActive,
+                    CreatedAt = DateTime.UtcNow,
+                    Club = club
+                };
 
-        _db.Materials.Add(material);
-        await _db.SaveChangesAsync();
+                _db.Materials.Add(material);
+                await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetMaterials), new { clubId = material.ClubId }, ToDto(material));
+                return CreatedAtAction(nameof(GetMaterials), new { clubId = material.ClubId }, ToDto(material));
+            },
+            "material_write_conflict",
+            "物资正在被其他操作修改，请稍后重试。");
     }
 
     [HttpPut("materials/{materialId:int}")]
@@ -309,55 +316,58 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("expected_return_time_too_late", "预计归还时间不能超过 7 天。"));
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var material = await MaterialQuery()
+                    .FirstOrDefaultAsync(m => m.MaterialId == req.MaterialId);
+                if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
+                if (material.ClubId != req.ClubId)
+                {
+                    return BadRequest(Error("material_club_mismatch", "物资不属于所选社团。"));
+                }
 
-        var material = await MaterialQuery()
-            .FirstOrDefaultAsync(m => m.MaterialId == req.MaterialId);
-        if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
-        if (material.ClubId != req.ClubId)
-        {
-            return BadRequest(Error("material_club_mismatch", "物资不属于所选社团。"));
-        }
+                var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowUsePermission, req.ClubId);
+                if (permission is not null) return permission;
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowUsePermission, req.ClubId);
-        if (permission is not null) return permission;
+                if (NormalizeStatus(material.MaterialStatus) != MaterialStatusActive)
+                {
+                    return BadRequest(Error("material_not_active", "该物资当前不可借用。"));
+                }
 
-        if (NormalizeStatus(material.MaterialStatus) != MaterialStatusActive)
-        {
-            return BadRequest(Error("material_not_active", "该物资当前不可借用。"));
-        }
+                var availableQty = material.AvailableQty ?? 0;
+                if (availableQty < req.Quantity)
+                {
+                    return Conflict(Error("material_stock_not_enough", "物资可用数量不足。"));
+                }
 
-        var availableQty = material.AvailableQty ?? 0;
-        if (availableQty < req.Quantity)
-        {
-            return Conflict(Error("material_stock_not_enough", "物资可用数量不足。"));
-        }
+                var borrower = await _db.Users.FindAsync(currentUserId.Value);
+                if (borrower is null) return NotFound(Error("borrower_not_found", "借用人不存在。"));
 
-        var borrower = await _db.Users.FindAsync(currentUserId.Value);
-        if (borrower is null) return NotFound(Error("borrower_not_found", "借用人不存在。"));
+                material.AvailableQty = availableQty - req.Quantity;
 
-        material.AvailableQty = availableQty - req.Quantity;
+                var borrow = new MaterialBorrow
+                {
+                    BorrowId = (await _db.MaterialBorrows.MaxAsync(b => (int?)b.BorrowId) ?? 0) + 1,
+                    MaterialId = req.MaterialId,
+                    ClubId = req.ClubId,
+                    BorrowerUserId = currentUserId.Value,
+                    Quantity = req.Quantity,
+                    BorrowAt = DateTime.UtcNow,
+                    ExpectedReturnAt = expectedReturnAt,
+                    BorrowStatus = BorrowStatusBorrowed,
+                    Material = material,
+                    Club = material.Club,
+                    BorrowerUser = borrower
+                };
 
-        var borrow = new MaterialBorrow
-        {
-            BorrowId = (await _db.MaterialBorrows.MaxAsync(b => (int?)b.BorrowId) ?? 0) + 1,
-            MaterialId = req.MaterialId,
-            ClubId = req.ClubId,
-            BorrowerUserId = currentUserId.Value,
-            Quantity = req.Quantity,
-            BorrowAt = DateTime.UtcNow,
-            ExpectedReturnAt = expectedReturnAt,
-            BorrowStatus = BorrowStatusBorrowed,
-            Material = material,
-            Club = material.Club,
-            BorrowerUser = borrower
-        };
+                _db.MaterialBorrows.Add(borrow);
+                await _db.SaveChangesAsync();
 
-        _db.MaterialBorrows.Add(borrow);
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return CreatedAtAction(nameof(GetBorrows), new { clubId = borrow.ClubId }, ToDto(borrow));
+                return CreatedAtAction(nameof(GetBorrows), new { clubId = borrow.ClubId }, ToDto(borrow));
+            },
+            "borrow_concurrent_conflict",
+            "物资库存正在被其他操作修改，请稍后重试。");
     }
 
     [HttpPost("material-borrows/{borrowId:int}/return")]
@@ -366,34 +376,37 @@ public class MaterialBorrowsController : ControllerBase
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var borrow = await BorrowQuery().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
+                if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
 
-        var borrow = await BorrowQuery().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
-        if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
+                var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
+                if (permission is not null) return permission;
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
-        if (permission is not null) return permission;
+                if (NormalizeStatus(borrow.BorrowStatus) != BorrowStatusBorrowed)
+                {
+                    return BadRequest(Error("borrow_status_not_borrowed", "只有借用中的记录可以登记归还。"));
+                }
 
-        if (NormalizeStatus(borrow.BorrowStatus) != BorrowStatusBorrowed)
-        {
-            return BadRequest(Error("borrow_status_not_borrowed", "只有借用中的记录可以登记归还。"));
-        }
+                var material = borrow.Material;
+                if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
 
-        var material = borrow.Material;
-        if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
+                var quantity = borrow.Quantity ?? 0;
+                var totalQty = material.TotalQty ?? 0;
+                material.AvailableQty = Math.Min(totalQty, (material.AvailableQty ?? 0) + quantity);
+                borrow.BorrowStatus = BorrowStatusReturned;
+                borrow.ReturnAt = DateTime.UtcNow;
+                borrow.DamageDesc = null;
+                borrow.CompensationAmount = null;
 
-        var quantity = borrow.Quantity ?? 0;
-        var totalQty = material.TotalQty ?? 0;
-        material.AvailableQty = Math.Min(totalQty, (material.AvailableQty ?? 0) + quantity);
-        borrow.BorrowStatus = BorrowStatusReturned;
-        borrow.ReturnAt = DateTime.UtcNow;
-        borrow.DamageDesc = null;
-        borrow.CompensationAmount = null;
+                await _db.SaveChangesAsync();
 
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return Ok(ToDto(borrow));
+                return Ok(ToDto(borrow));
+            },
+            "borrow_concurrent_conflict",
+            "借用记录正在被其他操作修改，请稍后重试。");
     }
 
     [HttpPost("material-borrows/{borrowId:int}/damage")]
@@ -416,33 +429,34 @@ public class MaterialBorrowsController : ControllerBase
         }
 
         var compensationAmount = Convert.ToDecimal(req.CompensationAmount);
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var borrow = await BorrowQuery().AsNoTracking().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
+                if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
 
-        var borrow = await BorrowQuery().AsNoTracking().FirstOrDefaultAsync(b => b.BorrowId == borrowId);
-        if (borrow is null) return NotFound(Error("borrow_not_found", "借用记录不存在。"));
+                var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
+                if (permission is not null) return permission;
 
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, BorrowRecordPermission, borrow.ClubId);
-        if (permission is not null) return permission;
+                var returnAt = DateTime.UtcNow;
+                var affected = await _db.MaterialBorrows
+                    .Where(b => b.BorrowId == borrowId && b.BorrowStatus == BorrowStatusBorrowed)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(b => b.BorrowStatus, BorrowStatusDamaged)
+                        .SetProperty(b => b.ReturnAt, returnAt)
+                        .SetProperty(b => b.DamageDesc, damageDesc)
+                        .SetProperty(b => b.CompensationAmount, compensationAmount));
 
-        var returnAt = DateTime.UtcNow;
-        var affected = await _db.MaterialBorrows
-            .Where(b => b.BorrowId == borrowId && b.BorrowStatus == BorrowStatusBorrowed)
-            .ExecuteUpdateAsync(update => update
-                .SetProperty(b => b.BorrowStatus, BorrowStatusDamaged)
-                .SetProperty(b => b.ReturnAt, returnAt)
-                .SetProperty(b => b.DamageDesc, damageDesc)
-                .SetProperty(b => b.CompensationAmount, compensationAmount));
+                if (affected != 1)
+                {
+                    return Conflict(Error("borrow_status_changed", "借用记录状态已变化，请刷新后重试。"));
+                }
 
-        if (affected != 1)
-        {
-            await transaction.RollbackAsync();
-            return Conflict(Error("borrow_status_changed", "借用记录状态已变化，请刷新后重试。"));
-        }
-
-        var updatedBorrow = await BorrowQuery().AsNoTracking().FirstAsync(b => b.BorrowId == borrowId);
-        await transaction.CommitAsync();
-
-        return Ok(ToDto(updatedBorrow));
+                var updatedBorrow = await BorrowQuery().AsNoTracking().FirstAsync(b => b.BorrowId == borrowId);
+                return Ok(ToDto(updatedBorrow));
+            },
+            "borrow_concurrent_conflict",
+            "借用记录正在被其他操作修改，请稍后重试。");
     }
 
     private IQueryable<Material> MaterialQuery()
@@ -457,6 +471,58 @@ public class MaterialBorrowsController : ControllerBase
             .Include(b => b.Material)
             .Include(b => b.Club)
             .Include(b => b.BorrowerUser);
+    }
+
+    private async Task<IActionResult> ExecuteSerializableWriteAsync(
+        Func<Task<IActionResult>> operation,
+        string conflictCode,
+        string conflictMessage)
+    {
+        for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var result = await operation();
+                if (IsSuccessResult(result))
+                {
+                    await transaction.CommitAsync();
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                }
+
+                _db.ChangeTracker.Clear();
+                return result;
+            }
+            catch (Exception ex) when (
+                ex is not OperationCanceledException &&
+                ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+
+                if (attempt == MaxWriteRetries)
+                {
+                    return Conflict(Error(conflictCode, conflictMessage));
+                }
+            }
+        }
+
+        return Conflict(Error(conflictCode, conflictMessage));
+    }
+
+    private static bool IsSuccessResult(IActionResult result)
+    {
+        var statusCode = result switch
+        {
+            ObjectResult objectResult => objectResult.StatusCode ?? StatusCodes.Status200OK,
+            StatusCodeResult statusCodeResult => statusCodeResult.StatusCode,
+            _ => StatusCodes.Status200OK
+        };
+
+        return statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status300MultipleChoices;
     }
 
     private async Task<IActionResult?> RequireClubPermissionAsync(int userId, string permissionCode, int clubId)
