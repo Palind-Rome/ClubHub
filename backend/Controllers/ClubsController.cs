@@ -1222,10 +1222,17 @@ public class ClubsController : ControllerBase
             req.GroupId is not null ||
             req.DepartmentName is not null ||
             req.GroupName is not null;
+        var departmentSelectionRequested =
+            req.DepartmentId is not null ||
+            EmptyToNull(req.DepartmentName) is not null;
+        var groupRequested =
+            req.GroupId is not null ||
+            req.GroupName is not null;
+        var shouldPreserveExistingGroup = departmentSelectionRequested && !groupRequested;
         var validationError = ValidateMemberTermRequest(
             member.UserId,
             organizationRequested ? req.DepartmentName : member.DepartmentName,
-            organizationRequested ? req.GroupName : member.GroupName,
+            shouldPreserveExistingGroup ? member.GroupName : organizationRequested ? req.GroupName : member.GroupName,
             req.PositionName ?? member.PositionName,
             req.TermName ?? member.TermName,
             termStart,
@@ -1245,7 +1252,9 @@ public class ClubsController : ControllerBase
                 req.DepartmentId,
                 req.GroupId,
                 req.DepartmentName,
-                req.GroupName);
+                req.GroupName,
+                shouldPreserveExistingGroup ? member.GroupId : null,
+                shouldPreserveExistingGroup ? member.GroupName : null);
             if (resolved.Result is not null)
             {
                 return resolved.Result;
@@ -2766,7 +2775,9 @@ public class ClubsController : ControllerBase
         int? departmentId,
         int? groupId,
         string? departmentName,
-        string? groupName)
+        string? groupName,
+        int? preservedGroupId = null,
+        string? preservedGroupName = null)
     {
         if (departmentId is <= 0)
         {
@@ -2780,6 +2791,7 @@ public class ClubsController : ControllerBase
 
         var requestedDepartmentName = EmptyToNull(departmentName);
         var requestedGroupName = EmptyToNull(groupName);
+        var requestedPreservedGroupName = EmptyToNull(preservedGroupName);
         if (departmentId is null && groupId is null && requestedDepartmentName is null && requestedGroupName is null)
         {
             return (null, MemberOrganizationSelection.Empty);
@@ -2856,6 +2868,54 @@ public class ClubsController : ControllerBase
             if (group is null)
             {
                 return (BadRequest(new { message = "小组不存在，请先在组织架构中维护小组后再选择。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (group is null && preservedGroupId is not null)
+        {
+            group = await _db.ClubGroups
+                .Include(g => g.Department)
+                .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == preservedGroupId.Value);
+            if (group is null)
+            {
+                return (BadRequest(new { message = "原小组不存在，请重新选择小组。" }), MemberOrganizationSelection.Empty);
+            }
+
+            if (department is not null && group.DepartmentId != department.DepartmentId)
+            {
+                return (BadRequest(new { message = "原小组不属于所选部门，请同时选择该部门下的小组。" }), MemberOrganizationSelection.Empty);
+            }
+
+            department ??= group.Department;
+            if (department is null)
+            {
+                department = await _db.ClubDepartments.FirstOrDefaultAsync(d =>
+                    d.ClubId == clubId &&
+                    d.DepartmentId == group.DepartmentId);
+            }
+
+            if (department is null)
+            {
+                return (Conflict(new { message = "原小组缺少有效的所属部门，请先检查组织架构数据。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (group is null && requestedPreservedGroupName is not null)
+        {
+            if (department is null)
+            {
+                return (BadRequest(new { message = "保留原小组前请先选择部门。" }), MemberOrganizationSelection.Empty);
+            }
+
+            var normalizedPreservedGroupName = requestedPreservedGroupName.ToUpperInvariant();
+            group = await _db.ClubGroups
+                .FirstOrDefaultAsync(g =>
+                    g.ClubId == clubId &&
+                    g.DepartmentId == department.DepartmentId &&
+                    g.GroupName.ToUpper() == normalizedPreservedGroupName);
+            if (group is null)
+            {
+                return (BadRequest(new { message = "原小组不属于所选部门，请同时选择该部门下的小组。" }), MemberOrganizationSelection.Empty);
             }
         }
 
