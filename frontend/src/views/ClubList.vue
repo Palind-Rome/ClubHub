@@ -201,6 +201,7 @@ interface OrganizationSelectionForm {
 
 type ClubWorkspace = "club" | "members" | "registration";
 type MemberWorkspaceMode = "current" | "history" | "transition" | "organization";
+type MemberSortMode = "organization" | "studentNo" | "term";
 
 interface AcademicTermOption {
   label: string;
@@ -242,6 +243,15 @@ const clubMemberManagePermission = "club:member:manage";
 const clubInternalViewPermission = "club:internal:view";
 const clubOperationViewPermission = "club:operation:view";
 const defaultMemberPositionOptions = ["社员", "干事", "组长", "副组长", "部长", "副部长"];
+const memberSortCollator = new Intl.Collator("zh-CN", {
+  numeric: true,
+  sensitivity: "base",
+});
+const memberSortOptions: Array<{ label: string; value: MemberSortMode }> = [
+  { label: "按部门小组", value: "organization" },
+  { label: "按学号", value: "studentNo" },
+  { label: "按任期", value: "term" },
+];
 
 const route = useRoute();
 const router = useRouter();
@@ -298,6 +308,7 @@ const memberFilters = reactive({
   groupId: undefined as number | undefined,
   unassignedOnly: false,
 });
+const memberSortMode = ref<MemberSortMode>("organization");
 const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
 
 const applicationDialogVisible = ref(false);
@@ -700,15 +711,19 @@ const memberTermFilterOptions = computed(() =>
   ]),
 );
 const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
-const memberTableRows = computed(() =>
-  (memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value).filter(
+const memberTableRows = computed(() => {
+  const rows = (
+    memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value
+  ).filter(
     (member) =>
       (memberWorkspaceMode.value !== "history" ||
         !memberFilters.termName ||
         member.termName === memberFilters.termName) &&
       (!memberFilters.unassignedOnly || isMemberUnassigned(member)),
-  ),
-);
+  );
+
+  return sortMemberRows(rows, memberSortMode.value);
+});
 const transitionSourceRows = computed(() => {
   const rows = new Map<number, ClubMemberRecord>();
 
@@ -2360,6 +2375,72 @@ function dateOnly(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
+function compareOptionalText(left: string | null | undefined, right: string | null | undefined) {
+  const normalizedLeft = left?.trim() ?? "";
+  const normalizedRight = right?.trim() ?? "";
+  if (!normalizedLeft && !normalizedRight) return 0;
+  if (!normalizedLeft) return 1;
+  if (!normalizedRight) return -1;
+  return memberSortCollator.compare(normalizedLeft, normalizedRight);
+}
+
+function compareOptionalNumber(left: number | null | undefined, right: number | null | undefined) {
+  const normalizedLeft = left ?? Number.MAX_SAFE_INTEGER;
+  const normalizedRight = right ?? Number.MAX_SAFE_INTEGER;
+  return normalizedLeft - normalizedRight;
+}
+
+function compareDateDesc(left: string | null | undefined, right: string | null | undefined) {
+  const normalizedLeft = dateOnly(left);
+  const normalizedRight = dateOnly(right);
+  if (!normalizedLeft && !normalizedRight) return 0;
+  if (!normalizedLeft) return 1;
+  if (!normalizedRight) return -1;
+  return normalizedRight.localeCompare(normalizedLeft);
+}
+
+function sortMemberRows(rows: readonly ClubMemberRecord[], mode: MemberSortMode) {
+  return [...rows].sort((left, right) => {
+    if (mode === "studentNo") return compareMemberByStudentNo(left, right);
+    if (mode === "term") return compareMemberByTerm(left, right);
+    return compareMemberByOrganization(left, right);
+  });
+}
+
+function compareMemberByStudentNo(left: ClubMemberRecord, right: ClubMemberRecord) {
+  return (
+    compareOptionalText(left.studentNo, right.studentNo) ||
+    compareOptionalText(left.userName, right.userName) ||
+    compareMemberByOrganization(left, right)
+  );
+}
+
+function compareMemberByTerm(left: ClubMemberRecord, right: ClubMemberRecord) {
+  return (
+    compareDateDesc(left.termStart, right.termStart) ||
+    compareDateDesc(left.termEnd, right.termEnd) ||
+    compareOptionalText(left.termName, right.termName) ||
+    compareMemberByOrganization(left, right)
+  );
+}
+
+function compareMemberByOrganization(left: ClubMemberRecord, right: ClubMemberRecord) {
+  const leftDepartment = departmentById(left.departmentId);
+  const rightDepartment = departmentById(right.departmentId);
+  const leftGroup = groupById(left.groupId);
+  const rightGroup = groupById(right.groupId);
+
+  return (
+    compareOptionalNumber(leftDepartment?.displayOrder, rightDepartment?.displayOrder) ||
+    compareOptionalText(left.departmentName, right.departmentName) ||
+    compareOptionalNumber(leftGroup?.displayOrder, rightGroup?.displayOrder) ||
+    compareOptionalText(left.groupName, right.groupName) ||
+    compareOptionalText(left.positionName, right.positionName) ||
+    compareOptionalText(left.studentNo, right.studentNo) ||
+    compareOptionalText(left.userName, right.userName)
+  );
+}
+
 function todayDateOnly() {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -3319,6 +3400,14 @@ onUnmounted(() => {
                 :key="group.groupId"
                 :label="group.groupName"
                 :value="group.groupId"
+              />
+            </el-select>
+            <el-select v-model="memberSortMode" class="filter-item" placeholder="排序方式">
+              <el-option
+                v-for="option in memberSortOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
               />
             </el-select>
             <el-checkbox
