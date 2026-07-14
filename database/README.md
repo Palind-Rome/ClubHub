@@ -3,7 +3,7 @@
 本目录保存 ClubHub 的 Oracle 数据库脚本。
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
-- `verify.sql`：验证当前用户、25 张核心表、项目成员、任务执行人和进度记录约束。
+- `verify.sql`：验证当前用户、27 张核心表、项目成员、任务执行人、进度记录、社团部门和小组约束。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
@@ -26,8 +26,14 @@
    sequence 推进到现有最大主键之后，并保持至少从 `1000000` 起步；脚本可重复执行，
    中断后修复原因即可重跑。执行期间必须停止仍按 `MAX(id)+1` 写入的旧后端，
    并在 `verify.sql` 验证默认值后再恢复写入。
+4. `20260714_add_club_departments_groups.sql`：为 `CLUB_DEPARTMENTS`、
+   `CLUB_GROUPS` 增加数据库生成主键和组织架构实体，并为 `CLUB_MEMBERS`
+   增加可空 `department_id`、`group_id`。脚本会从现有 `department_name`、
+   `group_name` 去重生成部门和小组并回填成员任期；若存在“有小组但没有部门”
+   的历史记录，脚本会停止，需要先清理数据再迁移。迁移完成后会添加组合外键，
+   保证成员不能跨社团引用部门或小组，小组也不能跨社团或跨部门引用。
 
-迁移完成后执行 `verify.sql`，确认 sequence、唯一索引及列默认值均已生效。
+迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码和回填结果均已生效。
 
 ### 演示数据脚本
 
@@ -68,7 +74,8 @@
 4. 再执行 `migrations/002_harden_project_members_constraints.sql`。脚本将备注列改为 255 个字符语义，并在确认无重复有效负责人后创建唯一函数索引。
 5. 执行 `migrations/003_add_project_task_assignees.sql`。脚本创建多人任务执行人关系，并从既有单人任务回填数据。
 6. 执行 `migrations/004_add_project_task_progress_reports.sql`。脚本创建任务进度提交记录表；既有任务不会伪造历史记录。
-7. 执行 `verify.sql`；25 张核心表计数应为 25，重复关系、非法角色/状态、缺失负责人关系和多有效负责人查询均应返回 0 行。
+7. 执行 `migrations/20260714_add_club_departments_groups.sql`。若脚本提示存在没有部门的小组历史数据，先补齐或清理 `CLUB_MEMBERS.department_name` 后再重跑。
+8. 执行 `verify.sql`；27 张核心表计数应为 27，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填和非法组织架构引用查询均应返回 0 行。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
