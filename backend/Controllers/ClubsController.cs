@@ -762,7 +762,14 @@ public class ClubsController : ControllerBase
         };
 
         _db.ClubDepartments.Add(department);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
 
         var created = await DepartmentQuery(includeInactive: true)
             .FirstAsync(d => d.DepartmentId == department.DepartmentId);
@@ -827,16 +834,23 @@ public class ClubsController : ControllerBase
         department.UpdatedAt = DateTime.UtcNow;
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
-        await _db.SaveChangesAsync();
-
-        if (!string.Equals(previousName, department.DepartmentName, StringComparison.Ordinal))
+        try
         {
-            await _db.ClubMembers
-                .Where(cm => cm.ClubId == clubId && cm.DepartmentId == departmentId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(cm => cm.DepartmentName, department.DepartmentName));
+            await _db.SaveChangesAsync();
+
+            if (!string.Equals(previousName, department.DepartmentName, StringComparison.Ordinal))
+            {
+                await _db.ClubMembers
+                    .Where(cm => cm.ClubId == clubId && cm.DepartmentId == departmentId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(cm => cm.DepartmentName, department.DepartmentName));
+            }
+            await transaction.CommitAsync();
         }
-        await transaction.CommitAsync();
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
 
         var updated = await DepartmentQuery(includeInactive: true)
             .FirstAsync(d => d.DepartmentId == departmentId);
@@ -895,7 +909,14 @@ public class ClubsController : ControllerBase
         };
 
         _db.ClubGroups.Add(group);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
 
         var created = await _db.ClubGroups
             .AsNoTracking()
@@ -959,16 +980,23 @@ public class ClubsController : ControllerBase
         group.UpdatedAt = DateTime.UtcNow;
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
-        await _db.SaveChangesAsync();
-
-        if (!string.Equals(previousName, group.GroupName, StringComparison.Ordinal))
+        try
         {
-            await _db.ClubMembers
-                .Where(cm => cm.ClubId == clubId && cm.GroupId == groupId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(cm => cm.GroupName, group.GroupName));
+            await _db.SaveChangesAsync();
+
+            if (!string.Equals(previousName, group.GroupName, StringComparison.Ordinal))
+            {
+                await _db.ClubMembers
+                    .Where(cm => cm.ClubId == clubId && cm.GroupId == groupId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(cm => cm.GroupName, group.GroupName));
+            }
+            await transaction.CommitAsync();
         }
-        await transaction.CommitAsync();
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
 
         var updated = await _db.ClubGroups
             .AsNoTracking()
@@ -4157,6 +4185,21 @@ public class ClubsController : ControllerBase
             "inactive" or "disabled" or "停用" => OrganizationInactive,
             _ => null
         };
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+        {
+            var message = current.Message;
+            if (message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? ToOrganizationStatus(CreateClubDepartmentRequest.DepartmentStatusEnum status) =>
