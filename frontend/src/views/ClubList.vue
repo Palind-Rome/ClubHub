@@ -266,6 +266,8 @@ const termSaving = ref(false);
 const groupingSaving = ref(false);
 const organizationLoading = ref(false);
 const organizationSaving = ref(false);
+const departmentDialogVisible = ref(false);
+const groupDialogVisible = ref(false);
 const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
@@ -1895,6 +1897,11 @@ function resetDepartmentForm() {
   departmentForm.departmentStatus = "active";
 }
 
+function openCreateDepartmentDialog() {
+  resetDepartmentForm();
+  departmentDialogVisible.value = true;
+}
+
 function editDepartment(row: ClubDepartmentRecord) {
   departmentEditTarget.value = row;
   departmentForm.departmentName = row.departmentName;
@@ -1905,6 +1912,7 @@ function editDepartment(row: ClubDepartmentRecord) {
   departmentForm.officeLocation = row.officeLocation ?? "";
   departmentForm.displayOrder = row.displayOrder;
   departmentForm.departmentStatus = row.departmentStatus;
+  departmentDialogVisible.value = true;
 }
 
 async function submitDepartmentForm() {
@@ -1939,6 +1947,7 @@ async function submitDepartmentForm() {
     );
     ElMessage.success(target ? "部门已更新" : "部门已新增");
     resetDepartmentForm();
+    departmentDialogVisible.value = false;
     await Promise.all([loadDepartments(), loadMembers()]);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "部门保存失败");
@@ -1960,6 +1969,15 @@ function resetGroupForm(departmentId = groupCreateDepartmentOptions.value[0]?.de
   groupForm.groupStatus = "active";
 }
 
+function openCreateGroupDialog(departmentId?: number) {
+  if (!groupCreateDepartmentOptions.value.length) {
+    ElMessage.warning("请先新增可用部门。");
+    return;
+  }
+  resetGroupForm(departmentId);
+  groupDialogVisible.value = true;
+}
+
 function editGroup(row: ClubGroupRecord) {
   groupEditTarget.value = row;
   groupForm.departmentId = row.departmentId;
@@ -1971,6 +1989,7 @@ function editGroup(row: ClubGroupRecord) {
   groupForm.activityLocation = row.activityLocation ?? "";
   groupForm.displayOrder = row.displayOrder;
   groupForm.groupStatus = row.groupStatus;
+  groupDialogVisible.value = true;
 }
 
 async function submitGroupForm() {
@@ -2010,6 +2029,7 @@ async function submitGroupForm() {
     );
     ElMessage.success(target ? "小组已更新" : "小组已新增");
     resetGroupForm(departmentId);
+    groupDialogVisible.value = false;
     await Promise.all([loadDepartments(), loadMembers()]);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "小组保存失败");
@@ -3161,134 +3181,13 @@ onUnmounted(() => {
         </div>
 
         <div v-if="memberWorkspaceMode === 'organization'" class="organization-panel">
-          <div v-if="canManageSelectedClub" class="organization-forms">
-            <el-form class="organization-form" label-width="82px">
-              <h3>{{ departmentEditTarget ? "编辑部门" : "新增部门" }}</h3>
-              <el-form-item label="部门名称" required>
-                <el-input v-model="departmentForm.departmentName" maxlength="80" />
-              </el-form-item>
-              <el-form-item label="部门编码">
-                <el-input v-model="departmentForm.departmentCode" maxlength="40" />
-              </el-form-item>
-              <el-form-item label="职责">
-                <el-input
-                  v-model="departmentForm.responsibilities"
-                  type="textarea"
-                  :rows="2"
-                  maxlength="200"
-                />
-              </el-form-item>
-              <el-form-item label="联系方式">
-                <div class="organization-inline">
-                  <el-input
-                    v-model="departmentForm.contactPhone"
-                    maxlength="40"
-                    placeholder="电话"
-                  />
-                  <el-input
-                    v-model="departmentForm.contactEmail"
-                    maxlength="80"
-                    placeholder="邮箱"
-                  />
-                </div>
-              </el-form-item>
-              <el-form-item label="地点">
-                <el-input v-model="departmentForm.officeLocation" maxlength="80" />
-              </el-form-item>
-              <el-form-item label="排序/状态">
-                <div class="organization-inline">
-                  <el-input-number
-                    v-model="departmentForm.displayOrder"
-                    :min="0"
-                    :precision="0"
-                    controls-position="right"
-                  />
-                  <el-select v-model="departmentForm.departmentStatus">
-                    <el-option label="启用" value="active" />
-                    <el-option label="停用" value="inactive" />
-                  </el-select>
-                </div>
-              </el-form-item>
-              <div class="row-actions">
-                <el-button
-                  type="primary"
-                  :icon="Check"
-                  :loading="organizationSaving"
-                  @click="submitDepartmentForm"
-                >
-                  保存部门
-                </el-button>
-                <el-button v-if="departmentEditTarget" @click="resetDepartmentForm"
-                  >取消编辑</el-button
-                >
-              </div>
-            </el-form>
-
-            <el-form class="organization-form" label-width="82px">
-              <h3>{{ groupEditTarget ? "编辑小组" : "新增小组" }}</h3>
-              <el-form-item label="所属部门" required>
-                <el-select
-                  v-model="groupForm.departmentId"
-                  class="full-width"
-                  :disabled="Boolean(groupEditTarget)"
-                >
-                  <el-option
-                    v-for="department in groupCreateDepartmentOptions"
-                    :key="department.departmentId"
-                    :label="department.departmentName"
-                    :value="department.departmentId"
-                  />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="小组名称" required>
-                <el-input v-model="groupForm.groupName" maxlength="80" />
-              </el-form-item>
-              <el-form-item label="小组编码">
-                <el-input v-model="groupForm.groupCode" maxlength="40" />
-              </el-form-item>
-              <el-form-item label="职责">
-                <el-input
-                  v-model="groupForm.responsibilities"
-                  type="textarea"
-                  :rows="2"
-                  maxlength="200"
-                />
-              </el-form-item>
-              <el-form-item label="联系方式">
-                <div class="organization-inline">
-                  <el-input v-model="groupForm.contactPhone" maxlength="40" placeholder="电话" />
-                  <el-input v-model="groupForm.contactEmail" maxlength="80" placeholder="邮箱" />
-                </div>
-              </el-form-item>
-              <el-form-item label="地点">
-                <el-input v-model="groupForm.activityLocation" maxlength="80" />
-              </el-form-item>
-              <el-form-item label="排序/状态">
-                <div class="organization-inline">
-                  <el-input-number
-                    v-model="groupForm.displayOrder"
-                    :min="0"
-                    :precision="0"
-                    controls-position="right"
-                  />
-                  <el-select v-model="groupForm.groupStatus">
-                    <el-option label="启用" value="active" />
-                    <el-option label="停用" value="inactive" />
-                  </el-select>
-                </div>
-              </el-form-item>
-              <div class="row-actions">
-                <el-button
-                  type="primary"
-                  :icon="Check"
-                  :loading="organizationSaving"
-                  @click="submitGroupForm"
-                >
-                  保存小组
-                </el-button>
-                <el-button v-if="groupEditTarget" @click="resetGroupForm()">取消编辑</el-button>
-              </div>
-            </el-form>
+          <div v-if="canManageSelectedClub" class="organization-toolbar">
+            <el-button type="primary" :icon="Plus" @click="openCreateDepartmentDialog">
+              新增部门
+            </el-button>
+            <el-button type="primary" plain :icon="Plus" @click="openCreateGroupDialog()">
+              新增小组
+            </el-button>
           </div>
 
           <el-table
@@ -3354,10 +3253,18 @@ onUnmounted(() => {
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column v-if="canManageSelectedClub" label="操作" width="100">
+            <el-table-column v-if="canManageSelectedClub" label="操作" width="190">
               <template #default="{ row }">
                 <el-button type="primary" plain :icon="Edit" @click="editDepartment(row)">
                   编辑
+                </el-button>
+                <el-button
+                  type="primary"
+                  plain
+                  :icon="Plus"
+                  @click="openCreateGroupDialog(row.departmentId)"
+                >
+                  小组
                 </el-button>
               </template>
             </el-table-column>
@@ -3761,6 +3668,124 @@ onUnmounted(() => {
         <el-button type="primary" :loading="profileSaving" @click="submitProfile"
           >保存档案</el-button
         >
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="departmentDialogVisible"
+      :title="departmentEditTarget ? '编辑部门' : '新增部门'"
+      width="620px"
+    >
+      <el-form label-width="90px">
+        <el-form-item label="部门名称" required>
+          <el-input v-model="departmentForm.departmentName" maxlength="80" />
+        </el-form-item>
+        <el-form-item label="部门编码">
+          <el-input v-model="departmentForm.departmentCode" maxlength="40" />
+        </el-form-item>
+        <el-form-item label="职责">
+          <el-input
+            v-model="departmentForm.responsibilities"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+          />
+        </el-form-item>
+        <el-form-item label="联系方式">
+          <div class="organization-inline">
+            <el-input v-model="departmentForm.contactPhone" maxlength="40" placeholder="电话" />
+            <el-input v-model="departmentForm.contactEmail" maxlength="80" placeholder="邮箱" />
+          </div>
+        </el-form-item>
+        <el-form-item label="常用地点">
+          <el-input v-model="departmentForm.officeLocation" maxlength="80" />
+        </el-form-item>
+        <el-form-item label="显示顺序">
+          <el-input-number
+            v-model="departmentForm.displayOrder"
+            :min="0"
+            :precision="0"
+            controls-position="right"
+          />
+        </el-form-item>
+        <el-form-item label="启用状态">
+          <el-select v-model="departmentForm.departmentStatus">
+            <el-option label="启用" value="active" />
+            <el-option label="停用" value="inactive" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="departmentDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="organizationSaving" @click="submitDepartmentForm">
+          保存部门
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="groupDialogVisible"
+      :title="groupEditTarget ? '编辑小组' : '新增小组'"
+      width="620px"
+    >
+      <el-form label-width="90px">
+        <el-form-item label="所属部门" required>
+          <el-select
+            v-model="groupForm.departmentId"
+            class="full-width"
+            :disabled="Boolean(groupEditTarget)"
+          >
+            <el-option
+              v-for="department in groupCreateDepartmentOptions"
+              :key="department.departmentId"
+              :label="department.departmentName"
+              :value="department.departmentId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="小组名称" required>
+          <el-input v-model="groupForm.groupName" maxlength="80" />
+        </el-form-item>
+        <el-form-item label="小组编码">
+          <el-input v-model="groupForm.groupCode" maxlength="40" />
+        </el-form-item>
+        <el-form-item label="职责">
+          <el-input
+            v-model="groupForm.responsibilities"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+          />
+        </el-form-item>
+        <el-form-item label="联系方式">
+          <div class="organization-inline">
+            <el-input v-model="groupForm.contactPhone" maxlength="40" placeholder="电话" />
+            <el-input v-model="groupForm.contactEmail" maxlength="80" placeholder="邮箱" />
+          </div>
+        </el-form-item>
+        <el-form-item label="活动地点">
+          <el-input v-model="groupForm.activityLocation" maxlength="80" />
+        </el-form-item>
+        <el-form-item label="显示顺序">
+          <el-input-number
+            v-model="groupForm.displayOrder"
+            :min="0"
+            :precision="0"
+            controls-position="right"
+          />
+        </el-form-item>
+        <el-form-item label="启用状态">
+          <el-select v-model="groupForm.groupStatus">
+            <el-option label="启用" value="active" />
+            <el-option label="停用" value="inactive" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="groupDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="organizationSaving" @click="submitGroupForm">
+          保存小组
+        </el-button>
       </template>
     </el-dialog>
 
@@ -4296,22 +4321,10 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.organization-forms {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.organization-form {
-  border: 1px solid #d9e1ea;
-  padding: 14px;
-}
-
-.organization-form h3 {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 650;
+.organization-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .organization-inline {
@@ -4390,7 +4403,6 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
-  .organization-forms,
   .organization-inline {
     grid-template-columns: 1fr;
   }
@@ -4406,6 +4418,7 @@ onUnmounted(() => {
   .member-filter-row,
   .filter-bar,
   .taxonomy-add,
+  .organization-toolbar,
   .transition-actions {
     align-items: stretch;
     flex-direction: column;
