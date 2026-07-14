@@ -284,6 +284,7 @@ const dragOverDepartmentId = ref<number | null>(null);
 const dragOverGroupId = ref<number | null>(null);
 const organizationTreeCollapsed = ref(false);
 const collapsedOrganizationDepartmentIds = ref<Set<number>>(new Set());
+const expandedOrganizationGroupIds = ref<Set<number>>(new Set());
 const departmentDialogVisible = ref(false);
 const groupDialogVisible = ref(false);
 const dissolvingClubId = ref<number | null>(null);
@@ -717,6 +718,36 @@ const memberTermFilterOptions = computed(() =>
   ]),
 );
 const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
+const currentActiveClubMembers = computed(() =>
+  currentClubMembers.value.filter((member) => isActiveStatus(member.memberStatus)),
+);
+const organizationDepartmentMemberCounts = computed(() => {
+  const counts = new Map<number, number>();
+  currentActiveClubMembers.value.forEach((member) => {
+    if (!member.departmentId) return;
+    counts.set(member.departmentId, (counts.get(member.departmentId) ?? 0) + 1);
+  });
+  return counts;
+});
+const organizationGroupMembers = computed(() => {
+  const rows = new Map<number, ClubMemberRecord[]>();
+  currentActiveClubMembers.value.forEach((member) => {
+    if (!member.groupId) return;
+    const members = rows.get(member.groupId) ?? [];
+    members.push(member);
+    rows.set(member.groupId, members);
+  });
+
+  rows.forEach((members) => {
+    members.sort(
+      (left, right) =>
+        compareOptionalText(left.positionName, right.positionName) ||
+        compareOptionalText(left.studentNo, right.studentNo) ||
+        compareOptionalText(left.userName, right.userName),
+    );
+  });
+  return rows;
+});
 const memberTableRows = computed(() => {
   const rows = (
     memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value
@@ -766,6 +797,7 @@ const organizationSummary = computed(() => {
     activeDepartments: activeClubDepartments.value.length,
     groups: groups.length,
     activeGroups: activeClubGroups.value.length,
+    currentMembers: currentActiveClubMembers.value.length,
   };
 });
 const workspaceTitle = computed(() => {
@@ -974,11 +1006,20 @@ async function loadMembers() {
     const query = new URLSearchParams({
       includeHistory: String(include),
     });
-    if (memberWorkspaceMode.value === "history" && memberFilters.termName) {
+    const shouldApplyMemberFilters = isMemberWorkspace.value;
+    if (
+      shouldApplyMemberFilters &&
+      memberWorkspaceMode.value === "history" &&
+      memberFilters.termName
+    ) {
       query.set("termName", memberFilters.termName);
     }
-    if (memberFilters.departmentId) query.set("departmentId", String(memberFilters.departmentId));
-    if (memberFilters.groupId) query.set("groupId", String(memberFilters.groupId));
+    if (shouldApplyMemberFilters && memberFilters.departmentId) {
+      query.set("departmentId", String(memberFilters.departmentId));
+    }
+    if (shouldApplyMemberFilters && memberFilters.groupId) {
+      query.set("groupId", String(memberFilters.groupId));
+    }
     const data = await requestJson<ClubMemberRecord[]>(
       `/api/clubs/${clubId}/members?${query.toString()}`,
     );
@@ -1142,6 +1183,18 @@ function canShowGroupOperationColumn(department: ClubDepartmentRecord) {
 
 function canReorderDepartmentGroups(department: ClubDepartmentRecord) {
   return canMaintainDepartmentGroups(department);
+}
+
+function departmentCurrentMemberCount(department: ClubDepartmentRecord) {
+  return organizationDepartmentMemberCounts.value.get(department.departmentId) ?? 0;
+}
+
+function groupCurrentMembers(group: ClubGroupRecord) {
+  return organizationGroupMembers.value.get(group.groupId) ?? [];
+}
+
+function groupCurrentMemberCount(group: ClubGroupRecord) {
+  return groupCurrentMembers(group).length;
 }
 
 function organizationNameMatches(
@@ -2059,6 +2112,20 @@ function toggleOrganizationDepartment(department: ClubDepartmentRecord) {
   collapsedOrganizationDepartmentIds.value = next;
 }
 
+function isOrganizationGroupExpanded(group: ClubGroupRecord) {
+  return expandedOrganizationGroupIds.value.has(group.groupId);
+}
+
+function toggleOrganizationGroup(group: ClubGroupRecord) {
+  const next = new Set(expandedOrganizationGroupIds.value);
+  if (next.has(group.groupId)) {
+    next.delete(group.groupId);
+  } else {
+    next.add(group.groupId);
+  }
+  expandedOrganizationGroupIds.value = next;
+}
+
 function startDepartmentDrag(row: ClubDepartmentRecord) {
   if (!canReorderDepartments.value || organizationSaving.value) return;
   draggingDepartmentId.value = row.departmentId;
@@ -2844,6 +2911,7 @@ watch(selectedClubId, () => {
   resetGroupForm();
   organizationTreeCollapsed.value = false;
   collapsedOrganizationDepartmentIds.value = new Set();
+  expandedOrganizationGroupIds.value = new Set();
   endOrganizationDrag();
   void loadDepartments();
 });
@@ -3439,6 +3507,7 @@ onUnmounted(() => {
             <span>启用部门 {{ organizationSummary.activeDepartments }} 个</span>
             <span>小组 {{ organizationSummary.groups }} 个</span>
             <span>启用小组 {{ organizationSummary.activeGroups }} 个</span>
+            <span>当前成员 {{ organizationSummary.currentMembers }} 人</span>
           </div>
 
           <div class="organization-panel">
@@ -3460,6 +3529,37 @@ onUnmounted(() => {
                     empty-text="暂无小组"
                     row-key="groupId"
                   >
+                    <el-table-column type="expand" width="48">
+                      <template #default="{ row: group }">
+                        <div class="group-member-panel">
+                          <div class="group-member-panel-head">
+                            <strong>{{ group.groupName }} 成员</strong>
+                            <span>当前 {{ groupCurrentMemberCount(group) }} 人</span>
+                          </div>
+                          <el-table
+                            :data="groupCurrentMembers(group)"
+                            border
+                            stripe
+                            size="small"
+                            empty-text="暂无当前成员"
+                            row-key="memberId"
+                          >
+                            <el-table-column prop="userName" label="成员" min-width="140" />
+                            <el-table-column prop="studentNo" label="学号/工号" width="130" />
+                            <el-table-column prop="positionName" label="职务" width="130">
+                              <template #default="{ row: member }">
+                                {{ member.positionName || "-" }}
+                              </template>
+                            </el-table-column>
+                            <el-table-column prop="termName" label="任期" min-width="150">
+                              <template #default="{ row: member }">
+                                {{ member.termName || "-" }}
+                              </template>
+                            </el-table-column>
+                          </el-table>
+                        </div>
+                      </template>
+                    </el-table-column>
                     <el-table-column
                       v-if="canReorderDepartmentGroups(row)"
                       label=""
@@ -3487,6 +3587,11 @@ onUnmounted(() => {
                       </template>
                     </el-table-column>
                     <el-table-column prop="groupName" label="小组" min-width="140" />
+                    <el-table-column label="当前人数" width="100">
+                      <template #default="{ row: group }">
+                        {{ groupCurrentMemberCount(group) }}
+                      </template>
+                    </el-table-column>
                     <el-table-column prop="responsibilities" label="职责" min-width="180" />
                     <el-table-column prop="contactPhone" label="电话" width="130" />
                     <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
@@ -3550,6 +3655,9 @@ onUnmounted(() => {
               <el-table-column label="小组数" width="90">
                 <template #default="{ row }">{{ row.groups.length }}</template>
               </el-table-column>
+              <el-table-column label="当前人数" width="100">
+                <template #default="{ row }">{{ departmentCurrentMemberCount(row) }}</template>
+              </el-table-column>
               <el-table-column label="状态" width="100">
                 <template #default="{ row }">
                   <el-tag
@@ -3605,8 +3713,13 @@ onUnmounted(() => {
                     </el-icon>
                   </button>
                   <div class="tree-node tree-node-root">
-                    <strong>{{ selectedClub.name }}</strong>
-                    <span>{{ selectedClub.category || "社团" }}</span>
+                    <div>
+                      <strong>{{ selectedClub.name }}</strong>
+                      <span>{{ selectedClub.category || "社团" }}</span>
+                    </div>
+                    <el-tag size="small" effect="plain">
+                      当前 {{ organizationSummary.currentMembers }} 人
+                    </el-tag>
                   </div>
                 </div>
 
@@ -3644,13 +3757,18 @@ onUnmounted(() => {
                           <strong>{{ department.departmentName }}</strong>
                           <span>{{ department.responsibilities || "暂无职责" }}</span>
                         </div>
-                        <el-tag
-                          size="small"
-                          :type="department.departmentStatus === 'active' ? 'success' : 'info'"
-                          effect="plain"
-                        >
-                          {{ department.departmentStatus === "active" ? "启用" : "停用" }}
-                        </el-tag>
+                        <div class="tree-node-meta">
+                          <el-tag size="small" effect="plain">
+                            当前 {{ departmentCurrentMemberCount(department) }} 人
+                          </el-tag>
+                          <el-tag
+                            size="small"
+                            :type="department.departmentStatus === 'active' ? 'success' : 'info'"
+                            effect="plain"
+                          >
+                            {{ department.departmentStatus === "active" ? "启用" : "停用" }}
+                          </el-tag>
+                        </div>
                       </div>
                     </div>
 
@@ -3664,20 +3782,68 @@ onUnmounted(() => {
                       <div
                         v-for="group in department.groups"
                         :key="group.groupId"
-                        class="tree-group-line"
+                        class="tree-group-branch"
                       >
-                        <div class="tree-node tree-node-group">
-                          <div>
-                            <strong>{{ group.groupName }}</strong>
-                            <span>{{ group.responsibilities || "暂无职责" }}</span>
-                          </div>
-                          <el-tag
-                            size="small"
-                            :type="group.groupStatus === 'active' ? 'success' : 'info'"
-                            effect="plain"
+                        <div class="tree-group-line">
+                          <button
+                            class="tree-toggle"
+                            type="button"
+                            :aria-label="
+                              isOrganizationGroupExpanded(group) ? '收起小组成员' : '展开小组成员'
+                            "
+                            :title="
+                              isOrganizationGroupExpanded(group) ? '收起小组成员' : '展开小组成员'
+                            "
+                            @click="toggleOrganizationGroup(group)"
                           >
-                            {{ group.groupStatus === "active" ? "启用" : "停用" }}
-                          </el-tag>
+                            <el-icon>
+                              <Plus v-if="isOrganizationGroupExpanded(group)" />
+                              <Minus v-else />
+                            </el-icon>
+                          </button>
+                          <div class="tree-node tree-node-group">
+                            <div>
+                              <strong>{{ group.groupName }}</strong>
+                              <span>{{ group.responsibilities || "暂无职责" }}</span>
+                            </div>
+                            <div class="tree-node-meta">
+                              <el-tag size="small" effect="plain">
+                                当前 {{ groupCurrentMemberCount(group) }} 人
+                              </el-tag>
+                              <el-tag
+                                size="small"
+                                :type="group.groupStatus === 'active' ? 'success' : 'info'"
+                                effect="plain"
+                              >
+                                {{ group.groupStatus === "active" ? "启用" : "停用" }}
+                              </el-tag>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div v-if="isOrganizationGroupExpanded(group)" class="tree-member-list">
+                          <div
+                            v-for="member in groupCurrentMembers(group)"
+                            :key="member.memberId"
+                            class="tree-member-line"
+                          >
+                            <div class="tree-node tree-node-member">
+                              <strong>{{ member.userName }}</strong>
+                              <span>
+                                {{ member.positionName || "成员" }}
+                                <template v-if="member.studentNo">
+                                  / {{ member.studentNo }}</template
+                                >
+                              </span>
+                            </div>
+                          </div>
+
+                          <div
+                            v-if="groupCurrentMemberCount(group) === 0"
+                            class="tree-empty-member"
+                          >
+                            暂无当前成员
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4893,6 +5059,29 @@ onUnmounted(() => {
   width: calc(100% - 46px);
 }
 
+.group-member-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 12px 54px;
+}
+
+.group-member-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #455a6f;
+}
+
+.group-member-panel-head strong {
+  color: #1f2d3d;
+  font-weight: 650;
+}
+
+.group-member-panel-head span {
+  font-size: 13px;
+}
+
 .drag-handle {
   display: inline-flex;
   align-items: center;
@@ -5015,6 +5204,39 @@ onUnmounted(() => {
   border-color: #e4edf6;
 }
 
+.tree-member-list {
+  position: relative;
+  margin-left: 58px;
+  padding: 2px 0 6px 22px;
+  border-left: 2px solid #edf2d7;
+}
+
+.tree-member-line {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.tree-member-line::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: -22px;
+  width: 22px;
+  border-top: 2px solid #edf2d7;
+}
+
+.tree-empty-member {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  border: 1px dashed #d7dfca;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #7a8794;
+  background: #fcfdf8;
+  font-size: 13px;
+}
+
 .tree-toggle {
   flex: 0 0 32px;
   display: inline-flex;
@@ -5059,21 +5281,46 @@ onUnmounted(() => {
   box-shadow: 0 10px 24px rgb(31 41 55 / 6%);
 }
 
-.tree-node strong,
-.tree-node span {
+.tree-node > div > strong,
+.tree-node > div > span {
   display: block;
 }
 
-.tree-node strong {
+.tree-node > div > strong {
   color: #1f2d3d;
   font-size: 14px;
   font-weight: 650;
 }
 
-.tree-node span {
+.tree-node > div > span {
   margin-top: 3px;
   color: #66727f;
   font-size: 12px;
+}
+
+.tree-node-member strong,
+.tree-node-member span {
+  display: block;
+}
+
+.tree-node-member strong {
+  color: #1f2d3d;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tree-node-member span {
+  margin-top: 2px;
+  color: #66727f;
+  font-size: 12px;
+}
+
+.tree-node-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .tree-node-root {
@@ -5093,6 +5340,17 @@ onUnmounted(() => {
   padding: 9px 12px;
   border-color: #dce7d5;
   background: #fbfdf9;
+}
+
+.tree-node-member {
+  min-width: 200px;
+  min-height: 38px;
+  justify-content: flex-start;
+  display: block;
+  padding: 8px 12px;
+  border-color: #e1e8cf;
+  background: #fdfef9;
+  box-shadow: none;
 }
 
 .transition-toolbar {
