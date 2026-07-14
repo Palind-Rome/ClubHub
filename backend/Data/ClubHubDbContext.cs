@@ -134,6 +134,8 @@ public class ClubHubDbContext : DbContext
              .HasDefaultValueSql("SEQ_CLUB_DEPARTMENTS.NEXTVAL");
             e.Property(d => d.DepartmentName).HasMaxLength(255);
             e.Property(d => d.DepartmentCode).HasMaxLength(100);
+            e.Property(d => d.Description).HasColumnType("CLOB");
+            e.Property(d => d.Responsibilities).HasColumnType("CLOB");
             e.Property(d => d.ContactPhone).HasMaxLength(255);
             e.Property(d => d.ContactEmail).HasMaxLength(255);
             e.Property(d => d.OfficeLocation).HasMaxLength(255);
@@ -160,6 +162,8 @@ public class ClubHubDbContext : DbContext
              .HasDefaultValueSql("SEQ_CLUB_GROUPS.NEXTVAL");
             e.Property(g => g.GroupName).HasMaxLength(255);
             e.Property(g => g.GroupCode).HasMaxLength(100);
+            e.Property(g => g.Description).HasColumnType("CLOB");
+            e.Property(g => g.Responsibilities).HasColumnType("CLOB");
             e.Property(g => g.ContactPhone).HasMaxLength(255);
             e.Property(g => g.ContactEmail).HasMaxLength(255);
             e.Property(g => g.ActivityLocation).HasMaxLength(255);
