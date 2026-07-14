@@ -62,10 +62,11 @@ USING (
          '021-6598-3304', 'media@badminton.club', '嘉定校区体育馆 104', 40, 'active'
   FROM dual
 ) source
-ON (target.department_id = source.department_id)
+ON (
+  target.club_id = source.club_id
+  AND target.department_name = source.department_name
+)
 WHEN MATCHED THEN UPDATE SET
-  target.club_id = source.club_id,
-  target.department_name = source.department_name,
   target.department_code = source.department_code,
   target.responsibilities = source.responsibilities,
   target.contact_phone = source.contact_phone,
@@ -80,78 +81,95 @@ WHEN NOT MATCHED THEN
 
 MERGE INTO CLUB_GROUPS target
 USING (
-  SELECT 20101 AS group_id, 1 AS club_id, 10101 AS department_id, '负责人组' AS group_name,
+  SELECT raw.group_id,
+         raw.club_id,
+         department.department_id,
+         raw.group_name,
+         raw.group_code,
+         raw.responsibilities,
+         raw.contact_phone,
+         raw.contact_email,
+         raw.activity_location,
+         raw.display_order,
+         raw.group_status
+  FROM (
+  SELECT 20101 AS group_id, 1 AS club_id, '主席团' AS department_name, '负责人组' AS group_name,
          'COMP-PRES-LEAD' AS group_code, '处理协会日常决策、对外沟通和审批确认' AS responsibilities,
          '021-6598-1111' AS contact_phone, 'lead@computer.club' AS contact_email,
          '四平路校区学生活动中心 305' AS activity_location, 10 AS display_order,
          'active' AS group_status
   FROM dual
   UNION ALL
-  SELECT 20102, 1, 10102, '开发组', 'COMP-TECH-DEV', '承担协会网站、工具和活动系统开发',
+  SELECT 20102, 1, '技术部', '开发组', 'COMP-TECH-DEV', '承担协会网站、工具和活动系统开发',
          '021-6598-1121', 'dev@computer.club', '嘉定校区创新工坊 B204', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20103, 1, 10102, '后端组', 'COMP-TECH-BE', '维护后端服务、数据库脚本和接口文档',
+  SELECT 20103, 1, '技术部', '后端组', 'COMP-TECH-BE', '维护后端服务、数据库脚本和接口文档',
          '021-6598-1122', 'backend@computer.club', '嘉定校区创新工坊 B205', 20, 'active'
   FROM dual
   UNION ALL
-  SELECT 20104, 1, 10103, '赛事组', 'COMP-ACT-MATCH', '组织编程竞赛报名、志愿服务和现场执行',
+  SELECT 20104, 1, '活动部', '赛事组', 'COMP-ACT-MATCH', '组织编程竞赛报名、志愿服务和现场执行',
          '021-6598-1131', 'contest@computer.club', '四平路校区学生活动中心 307', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20105, 1, 10104, '训练组', 'COMP-ALGO-TRAIN', '负责周赛训练、题单维护和赛后复盘',
+  SELECT 20105, 1, '算法部', '训练组', 'COMP-ALGO-TRAIN', '负责周赛训练、题单维护和赛后复盘',
          '021-6598-1141', 'train@computer.club', '嘉定校区机房 A312', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20106, 1, 10105, '新媒体组', 'COMP-MEDIA-NEW', '负责推文排版、海报发布和活动摄影',
+  SELECT 20106, 1, '宣传部', '新媒体组', 'COMP-MEDIA-NEW', '负责推文排版、海报发布和活动摄影',
          '021-6598-1151', 'newmedia@computer.club', '四平路校区学生活动中心 309', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20201, 2, 10201, '负责人组', 'PHOTO-PRES-LEAD', '协调摄影社排期、影展选题和校内沟通',
+  SELECT 20201, 2, '主席团', '负责人组', 'PHOTO-PRES-LEAD', '协调摄影社排期、影展选题和校内沟通',
          '021-6598-2211', 'lead@photo.club', '四平路校区艺术实践室 201', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20202, 2, 10202, '影展组', 'PHOTO-ACT-EXPO', '负责作品征集、布展、讲解和撤展',
+  SELECT 20202, 2, '活动部', '影展组', 'PHOTO-ACT-EXPO', '负责作品征集、布展、讲解和撤展',
          '021-6598-2221', 'expo@photo.club', '四平路校区艺术实践室 202', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20203, 2, 10203, '校园采风组', 'PHOTO-FIELD-CAMPUS', '组织校园采风路线、器材借用和安全提醒',
+  SELECT 20203, 2, '外拍部', '校园采风组', 'PHOTO-FIELD-CAMPUS', '组织校园采风路线、器材借用和安全提醒',
          '021-6598-2231', 'campus@photo.club', '四平路校区暗房 103', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20204, 2, 10204, '修图组', 'PHOTO-POST-EDIT', '负责后期教学、作品调色和输出规范',
+  SELECT 20204, 2, '后期部', '修图组', 'PHOTO-POST-EDIT', '负责后期教学、作品调色和输出规范',
          '021-6598-2241', 'edit@photo.club', '四平路校区数字媒体实验室 406', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20205, 2, 10205, '活动跟拍组', 'PHOTO-REC-EVENT', '承担校内活动跟拍、素材整理和交付',
+  SELECT 20205, 2, '影像记录部', '活动跟拍组', 'PHOTO-REC-EVENT', '承担校内活动跟拍、素材整理和交付',
          '021-6598-2251', 'event@photo.club', '四平路校区艺术实践室 204', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20301, 3, 10301, '负责人组', 'BADM-PRES-LEAD', '负责协会训练计划、校队沟通和审批确认',
+  SELECT 20301, 3, '主席团', '负责人组', 'BADM-PRES-LEAD', '负责协会训练计划、校队沟通和审批确认',
          '021-6598-3311', 'lead@badminton.club', '嘉定校区体育馆 102', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20302, 3, 10302, '校队训练组', 'BADM-TRAIN-TEAM', '负责校队训练、对抗赛和技术复盘',
+  SELECT 20302, 3, '竞训部', '校队训练组', 'BADM-TRAIN-TEAM', '负责校队训练、对抗赛和技术复盘',
          '021-6598-3321', 'team@badminton.club', '嘉定校区体育馆 3 号场', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20303, 3, 10302, '兴趣训练组', 'BADM-TRAIN-OPEN', '负责零基础训练、兴趣课和新人带练',
+  SELECT 20303, 3, '竞训部', '兴趣训练组', 'BADM-TRAIN-OPEN', '负责零基础训练、兴趣课和新人带练',
          '021-6598-3322', 'open@badminton.club', '嘉定校区体育馆 4 号场', 20, 'active'
   FROM dual
   UNION ALL
-  SELECT 20304, 3, 10303, '裁判组', 'BADM-MATCH-REF', '负责比赛执裁、计分、赛程和申诉记录',
+  SELECT 20304, 3, '赛事部', '裁判组', 'BADM-MATCH-REF', '负责比赛执裁、计分、赛程和申诉记录',
          '021-6598-3331', 'referee@badminton.club', '嘉定校区体育馆赛事办公室', 10, 'active'
   FROM dual
   UNION ALL
-  SELECT 20305, 3, 10304, '赛讯组', 'BADM-MEDIA-NEWS', '负责赛讯推送、赛后战报和招新宣传',
+  SELECT 20305, 3, '宣传部', '赛讯组', 'BADM-MEDIA-NEWS', '负责赛讯推送、赛后战报和招新宣传',
          '021-6598-3341', 'news@badminton.club', '嘉定校区体育馆 104', 10, 'active'
   FROM dual
+  ) raw
+  JOIN CLUB_DEPARTMENTS department
+    ON department.club_id = raw.club_id
+   AND department.department_name = raw.department_name
 ) source
-ON (target.group_id = source.group_id)
+ON (
+  target.club_id = source.club_id
+  AND target.department_id = source.department_id
+  AND target.group_name = source.group_name
+)
 WHEN MATCHED THEN UPDATE SET
-  target.club_id = source.club_id,
-  target.department_id = source.department_id,
-  target.group_name = source.group_name,
   target.group_code = source.group_code,
   target.responsibilities = source.responsibilities,
   target.contact_phone = source.contact_phone,

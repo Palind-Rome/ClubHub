@@ -45,7 +45,7 @@
 4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
-7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`。
+7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新演示信息。
 
 样例账号统一密码为 `123456`：
 
