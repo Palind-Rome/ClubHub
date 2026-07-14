@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   Close,
   Delete as DeleteIcon,
@@ -2150,6 +2152,24 @@ async function dropDepartment(row: ClubDepartmentRecord) {
   await persistDepartmentOrder(reordered);
 }
 
+function canMoveDepartment(department: ClubDepartmentRecord, direction: -1 | 1) {
+  if (!canReorderDepartments.value || organizationSaving.value) return false;
+  const index = clubDepartments.value.findIndex(
+    (item) => item.departmentId === department.departmentId,
+  );
+  return index >= 0 && index + direction >= 0 && index + direction < clubDepartments.value.length;
+}
+
+async function moveDepartmentByKeyboard(department: ClubDepartmentRecord, direction: -1 | 1) {
+  if (!canMoveDepartment(department, direction)) return;
+
+  const sourceIndex = clubDepartments.value.findIndex(
+    (item) => item.departmentId === department.departmentId,
+  );
+  const reordered = moveItem(clubDepartments.value, sourceIndex, sourceIndex + direction);
+  await persistDepartmentOrder(reordered);
+}
+
 async function persistDepartmentOrder(reordered: ClubDepartmentRecord[]) {
   if (!selectedClubId.value || !canReorderDepartments.value) return;
 
@@ -2217,6 +2237,27 @@ async function dropGroup(target: ClubGroupRecord) {
   if (sourceIndex < 0 || targetIndex < 0) return;
 
   const reordered = moveItem(department.groups, sourceIndex, targetIndex);
+  await persistGroupOrder(reordered);
+}
+
+function canMoveGroup(group: ClubGroupRecord, direction: -1 | 1) {
+  const department = departmentById(group.departmentId);
+  if (!department || !canReorderDepartmentGroups(department) || organizationSaving.value) {
+    return false;
+  }
+
+  const index = department.groups.findIndex((item) => item.groupId === group.groupId);
+  return index >= 0 && index + direction >= 0 && index + direction < department.groups.length;
+}
+
+async function moveGroupByKeyboard(group: ClubGroupRecord, direction: -1 | 1) {
+  if (!canMoveGroup(group, direction)) return;
+
+  const department = departmentById(group.departmentId);
+  if (!department) return;
+
+  const sourceIndex = department.groups.findIndex((item) => item.groupId === group.groupId);
+  const reordered = moveItem(department.groups, sourceIndex, sourceIndex + direction);
   await persistGroupOrder(reordered);
 }
 
@@ -3562,27 +3603,51 @@ onUnmounted(() => {
                     <el-table-column
                       v-if="canReorderDepartmentGroups(row)"
                       label=""
-                      width="64"
+                      width="116"
                       align="center"
                     >
                       <template #default="{ row: group }">
-                        <button
-                          class="drag-handle"
-                          :class="{
-                            'is-dragging': draggingGroup?.groupId === group.groupId,
-                            'is-drop-target': dragOverGroupId === group.groupId,
-                          }"
-                          type="button"
-                          draggable="true"
-                          :disabled="organizationSaving"
-                          @dragstart="startGroupDrag(group)"
-                          @dragover.prevent
-                          @dragenter.prevent="markGroupDropTarget(group)"
-                          @drop.prevent="dropGroup(group)"
-                          @dragend="endOrganizationDrag"
-                        >
-                          <el-icon><Rank /></el-icon>
-                        </button>
+                        <div class="reorder-controls">
+                          <button
+                            class="drag-handle"
+                            :class="{
+                              'is-dragging': draggingGroup?.groupId === group.groupId,
+                              'is-drop-target': dragOverGroupId === group.groupId,
+                            }"
+                            type="button"
+                            draggable="true"
+                            aria-label="拖拽调整顺序"
+                            title="拖拽调整顺序"
+                            :disabled="organizationSaving"
+                            @dragstart="startGroupDrag(group)"
+                            @dragover.prevent
+                            @dragenter.prevent="markGroupDropTarget(group)"
+                            @drop.prevent="dropGroup(group)"
+                            @dragend="endOrganizationDrag"
+                          >
+                            <el-icon><Rank /></el-icon>
+                          </button>
+                          <button
+                            class="reorder-button"
+                            type="button"
+                            aria-label="上移小组"
+                            title="上移小组"
+                            :disabled="!canMoveGroup(group, -1)"
+                            @click="moveGroupByKeyboard(group, -1)"
+                          >
+                            <el-icon><ArrowUp /></el-icon>
+                          </button>
+                          <button
+                            class="reorder-button"
+                            type="button"
+                            aria-label="下移小组"
+                            title="下移小组"
+                            :disabled="!canMoveGroup(group, 1)"
+                            @click="moveGroupByKeyboard(group, 1)"
+                          >
+                            <el-icon><ArrowDown /></el-icon>
+                          </button>
+                        </div>
                       </template>
                     </el-table-column>
                     <el-table-column prop="groupName" label="小组" min-width="140" />
@@ -3625,25 +3690,49 @@ onUnmounted(() => {
                   </el-table>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canReorderDepartments" label="" width="64" align="center">
+              <el-table-column v-if="canReorderDepartments" label="" width="116" align="center">
                 <template #default="{ row }">
-                  <button
-                    class="drag-handle"
-                    :class="{
-                      'is-dragging': draggingDepartmentId === row.departmentId,
-                      'is-drop-target': dragOverDepartmentId === row.departmentId,
-                    }"
-                    type="button"
-                    draggable="true"
-                    :disabled="organizationSaving"
-                    @dragstart="startDepartmentDrag(row)"
-                    @dragover.prevent
-                    @dragenter.prevent="markDepartmentDropTarget(row)"
-                    @drop.prevent="dropDepartment(row)"
-                    @dragend="endOrganizationDrag"
-                  >
-                    <el-icon><Rank /></el-icon>
-                  </button>
+                  <div class="reorder-controls">
+                    <button
+                      class="drag-handle"
+                      :class="{
+                        'is-dragging': draggingDepartmentId === row.departmentId,
+                        'is-drop-target': dragOverDepartmentId === row.departmentId,
+                      }"
+                      type="button"
+                      draggable="true"
+                      aria-label="拖拽调整顺序"
+                      title="拖拽调整顺序"
+                      :disabled="organizationSaving"
+                      @dragstart="startDepartmentDrag(row)"
+                      @dragover.prevent
+                      @dragenter.prevent="markDepartmentDropTarget(row)"
+                      @drop.prevent="dropDepartment(row)"
+                      @dragend="endOrganizationDrag"
+                    >
+                      <el-icon><Rank /></el-icon>
+                    </button>
+                    <button
+                      class="reorder-button"
+                      type="button"
+                      aria-label="上移部门"
+                      title="上移部门"
+                      :disabled="!canMoveDepartment(row, -1)"
+                      @click="moveDepartmentByKeyboard(row, -1)"
+                    >
+                      <el-icon><ArrowUp /></el-icon>
+                    </button>
+                    <button
+                      class="reorder-button"
+                      type="button"
+                      aria-label="下移部门"
+                      title="下移部门"
+                      :disabled="!canMoveDepartment(row, 1)"
+                      @click="moveDepartmentByKeyboard(row, 1)"
+                    >
+                      <el-icon><ArrowDown /></el-icon>
+                    </button>
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column prop="departmentName" label="部门" min-width="150" />
@@ -5081,6 +5170,14 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
+.reorder-controls {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 30px);
+  align-items: center;
+  gap: 4px;
+  width: 98px;
+}
+
 .drag-handle {
   display: inline-flex;
   align-items: center;
@@ -5100,8 +5197,27 @@ onUnmounted(() => {
     transform 0.18s ease;
 }
 
+.reorder-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  color: #66727f;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
 .drag-handle:hover:not(:disabled),
-.drag-handle.is-dragging {
+.drag-handle.is-dragging,
+.reorder-button:hover:not(:disabled) {
   border-color: var(--el-color-primary);
   color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
@@ -5120,7 +5236,12 @@ onUnmounted(() => {
   transform: scale(0.96);
 }
 
-.drag-handle:disabled {
+.reorder-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.drag-handle:disabled,
+.reorder-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
