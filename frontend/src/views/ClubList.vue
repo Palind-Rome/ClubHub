@@ -1769,11 +1769,6 @@ function openMemberBatchPositionDialog() {
 async function submitMemberGrouping() {
   if (!memberGroupingTarget.value || !selectedClubId.value || !currentUserId.value) return;
 
-  if (memberGroupingField.value === "groupName" && !memberGroupingForm.groupId) {
-    ElMessage.warning("请选择小组。");
-    return;
-  }
-
   if (memberGroupingMode.value !== "free" && !memberGroupingForm.groupId) {
     ElMessage.warning(
       memberGroupingMode.value === "own"
