@@ -3,6 +3,20 @@
 -- This migration keeps legacy text columns for compatibility, adds ID columns,
 -- backfills IDs from existing text, and adds composite foreign keys to prevent
 -- cross-club or cross-department references.
+-- Manual rollback guide:
+-- 1. Roll back only after confirming no business data depends on these objects
+--    and after taking a database backup.
+-- 2. Remove objects in reverse dependency order:
+--    IX_CLUB_MEMBERS_ORG, IX_CLUB_GROUPS_ORDER, IX_CLUB_DEPARTMENTS_ORDER;
+--    FK_CLUB_MEMBERS_GROUP, FK_CLUB_MEMBERS_DEPARTMENT,
+--    CK_CLUB_MEMBERS_GROUP_DEPT, FK_CLUB_GROUPS_DEPARTMENT,
+--    FK_CLUB_DEPARTMENTS_CLUB; CLUB_MEMBERS.group_id and department_id;
+--    CLUB_GROUPS, CLUB_DEPARTMENTS; SEQ_CLUB_GROUPS, SEQ_CLUB_DEPARTMENTS.
+-- 3. Dropping CLUB_GROUPS and CLUB_DEPARTMENTS also removes their inline
+--    UQ_CLUB_DEPARTMENTS_SCOPE, UQ_CLUB_DEPARTMENTS_NAME,
+--    CK_CLUB_DEPARTMENTS_STATUS, UQ_CLUB_GROUPS_SCOPE,
+--    UQ_CLUB_GROUPS_DEPT_SCOPE, UQ_CLUB_GROUPS_NAME, and
+--    CK_CLUB_GROUPS_STATUS constraints.
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
 
