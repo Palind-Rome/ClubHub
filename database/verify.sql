@@ -149,11 +149,6 @@ WHERE index_name IN (
 ORDER BY index_name;
 
 -- 以下查询均应返回 0 行。
-SELECT department_id, club_id, department_name, COUNT(*) AS duplicate_count
-FROM club_departments
-GROUP BY department_id, club_id, department_name
-HAVING COUNT(*) > 1;
-
 SELECT club_id, department_name, COUNT(*) AS duplicate_count
 FROM club_departments
 GROUP BY club_id, department_name
