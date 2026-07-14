@@ -294,6 +294,26 @@ function defaultTermName(date = new Date()) {
   return `${fallStartYear}-${fallStartYear + 1}学年秋季`;
 }
 
+function isAmbiguousSemesterTermName(termName: string) {
+  const normalized = termName.trim();
+  const yearRange = normalized.match(/(20\d{2})\s*[-—~至]\s*(20\d{2})/);
+  const hasSingleAcademicYear = /20\d{2}\s*学年/.test(normalized);
+  const hasSemester = normalized.includes("春") || normalized.includes("秋");
+
+  if (yearRange) {
+    const startYear = Number(yearRange[1]);
+    const endYear = Number(yearRange[2]);
+    return endYear !== startYear + 1;
+  }
+
+  return hasSingleAcademicYear && hasSemester;
+}
+
+function preferredSemesterTermName() {
+  const candidates = [filters.termName, ...termOptions.value];
+  return candidates.find((term) => term && !isAmbiguousSemesterTermName(term)) ?? defaultTermName();
+}
+
 function uniqueSorted(values: Array<string | null | undefined>) {
   return Array.from(
     new Set(
@@ -466,7 +486,7 @@ async function reloadAll() {
 
 function resetEvaluationForm() {
   evaluationForm.userId = memberOptions.value[0]?.userId;
-  evaluationForm.termName = filters.termName || termOptions.value[0] || defaultTermName();
+  evaluationForm.termName = preferredSemesterTermName();
   evaluationForm.activityScore = 0;
   evaluationForm.taskScore = 0;
   evaluationForm.learningScore = 0;
@@ -477,7 +497,7 @@ function resetEvaluationForm() {
 }
 
 function resetGenerateForm() {
-  generateForm.termName = filters.termName || termOptions.value[0] || defaultTermName();
+  generateForm.termName = preferredSemesterTermName();
   generateForm.overwriteDrafts = true;
   generateFormRef.value?.clearValidate();
 }
