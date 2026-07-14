@@ -29,7 +29,7 @@ namespace Org.OpenAPITools.Models
         /// 本次生成的考核学期。
         /// </summary>
         /// <value>本次生成的考核学期。</value>
-        /* <example>2026-2027学年</example> */
+        /* <example>2025-2026学年春季</example> */
         [Required]
         [DataMember(Name="termName", EmitDefaultValue=false)]
         public string TermName { get; set; }

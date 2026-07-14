@@ -74,10 +74,10 @@ namespace Org.OpenAPITools.Models
         public int UserId { get; set; }
 
         /// <summary>
-        /// 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。
+        /// 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
         /// </summary>
-        /// <value>考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。</value>
-        /* <example>2026-2027学年春季</example> */
+        /// <value>考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。</value>
+        /* <example>2025-2026学年春季</example> */
         [Required]
         [MinLength(1)]
         [DataMember(Name="termName", EmitDefaultValue=false)]

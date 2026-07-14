@@ -34,7 +34,7 @@ export interface UpdateClubEvaluationRequest {
    */
   evaluationType?: UpdateClubEvaluationRequestEvaluationTypeEnum;
   /**
-   * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。
+   * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
