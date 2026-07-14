@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
@@ -7,6 +8,7 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.OpenAPITools.Converters;
 using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
 using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
 using CreateClubMemberTermRequest = Org.OpenAPITools.Models.CreateClubMemberTermRequest;
@@ -54,6 +56,7 @@ public class ClubsController : ControllerBase
     private const decimal ActivityAcceptedScore = 5m;
 
     private readonly ClubHubDbContext _db;
+    private static readonly JsonSerializerOptions RequestJsonOptions = CreateRequestJsonOptions();
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
     private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -1233,8 +1236,29 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> UpdateMemberTerm(
         int clubId,
         int memberId,
-        [FromBody] UpdateClubMemberTermRequest req)
+        [FromBody] JsonElement requestBody)
     {
+        if (requestBody.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        UpdateClubMemberTermRequest? req;
+        try
+        {
+            req = requestBody.Deserialize<UpdateClubMemberTermRequest>(RequestJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        if (req is null)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        var organizationFields = MemberTermOrganizationPatchFields.FromJson(requestBody);
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -1254,22 +1278,20 @@ public class ClubsController : ControllerBase
 
         var termStart = req.TermStart?.Date ?? member.TermStart?.Date;
         var termEnd = req.TermEnd?.Date ?? member.TermEnd?.Date;
-        var organizationRequested =
-            req.DepartmentId is not null ||
-            req.GroupId is not null ||
-            req.DepartmentName is not null ||
-            req.GroupName is not null;
-        var departmentSelectionRequested =
-            req.DepartmentId is not null ||
-            EmptyToNull(req.DepartmentName) is not null;
-        var groupRequested =
-            req.GroupId is not null ||
-            req.GroupName is not null;
-        var shouldPreserveExistingGroup = departmentSelectionRequested && !groupRequested;
+        var organizationPatch = MemberTermOrganizationPatchPlanner.Plan(
+            organizationFields,
+            req.DepartmentId,
+            req.DepartmentName,
+            req.GroupId,
+            req.GroupName,
+            member.DepartmentId,
+            member.DepartmentName,
+            member.GroupId,
+            member.GroupName);
         var validationError = ValidateMemberTermRequest(
             member.UserId,
-            organizationRequested ? req.DepartmentName : member.DepartmentName,
-            shouldPreserveExistingGroup ? member.GroupName : organizationRequested ? req.GroupName : member.GroupName,
+            organizationPatch.ValidationDepartmentName,
+            organizationPatch.ValidationGroupName,
             req.PositionName ?? member.PositionName,
             req.TermName ?? member.TermName,
             termStart,
@@ -1282,16 +1304,16 @@ public class ClubsController : ControllerBase
         }
 
         MemberOrganizationSelection? organization = null;
-        if (organizationRequested)
+        if (organizationPatch.OrganizationRequested)
         {
             var resolved = await ResolveMemberOrganizationAsync(
                 clubId,
-                req.DepartmentId,
-                req.GroupId,
-                req.DepartmentName,
-                req.GroupName,
-                shouldPreserveExistingGroup ? member.GroupId : null,
-                shouldPreserveExistingGroup ? member.GroupName : null);
+                organizationPatch.DepartmentId,
+                organizationPatch.GroupId,
+                organizationPatch.DepartmentName,
+                organizationPatch.GroupName,
+                organizationPatch.PreservedGroupId,
+                organizationPatch.PreservedGroupName);
             if (resolved.Result is not null)
             {
                 return resolved.Result;
@@ -1300,7 +1322,7 @@ public class ClubsController : ControllerBase
             organization = resolved.Selection;
         }
 
-        if (organizationRequested) ApplyMemberOrganization(member, organization);
+        if (organizationPatch.OrganizationRequested) ApplyMemberOrganization(member, organization);
         if (req.PositionName is not null) member.PositionName = req.PositionName.Trim();
         if (req.TermName is not null) member.TermName = req.TermName.Trim();
         if (req.TermStart is not null) member.TermStart = req.TermStart.Value.Date;
@@ -4096,6 +4118,13 @@ public class ClubsController : ControllerBase
     {
         var localBoundary = DateTime.SpecifyKind(businessDate.Date, DateTimeKind.Unspecified);
         return TimeZoneInfo.ConvertTimeToUtc(localBoundary, BusinessTimeZone);
+    }
+
+    private static JsonSerializerOptions CreateRequestJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumMemberConverter());
+        return options;
     }
 
     private static TimeZoneInfo ResolveBusinessTimeZone()
