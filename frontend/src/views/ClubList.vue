@@ -649,8 +649,8 @@ const groupCreateDepartmentOptions = computed(() =>
   canManageSelectedClub.value
     ? activeClubDepartments.value
     : activeClubDepartments.value.filter((department) =>
-        selectedDepartmentManagerScopes.value.some(
-          (scope) => scope.departmentName === department.departmentName,
+        selectedDepartmentManagerScopes.value.some((scope) =>
+          organizationNameMatches(scope.departmentName, department.departmentName),
         ),
       ),
 );
@@ -2389,7 +2389,9 @@ function departmentById(departmentId: number | null | undefined) {
 function departmentByName(departmentName: string | null | undefined) {
   const normalized = departmentName?.trim();
   if (!normalized) return undefined;
-  return activeClubDepartments.value.find((department) => department.departmentName === normalized);
+  return activeClubDepartments.value.find((department) =>
+    organizationNameMatches(department.departmentName, normalized),
+  );
 }
 
 function groupById(groupId: number | null | undefined) {
@@ -2405,7 +2407,9 @@ function groupByName(
 ) {
   const normalized = groupName?.trim();
   if (!departmentId || !normalized) return undefined;
-  return groupOptionsForDepartmentId(departmentId).find((group) => group.groupName === normalized);
+  return groupOptionsForDepartmentId(departmentId).find((group) =>
+    organizationNameMatches(group.groupName, normalized),
+  );
 }
 
 function groupOptionsForDepartmentId(departmentId: number | null | undefined) {
