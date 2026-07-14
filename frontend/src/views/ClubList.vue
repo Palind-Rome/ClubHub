@@ -8,6 +8,7 @@ import {
   Delete as DeleteIcon,
   Edit,
   Plus,
+  Rank,
   Refresh,
   Search,
   User,
@@ -266,6 +267,8 @@ const termSaving = ref(false);
 const groupingSaving = ref(false);
 const organizationLoading = ref(false);
 const organizationSaving = ref(false);
+const draggingDepartmentId = ref<number | null>(null);
+const draggingGroup = ref<{ departmentId: number; groupId: number } | null>(null);
 const departmentDialogVisible = ref(false);
 const groupDialogVisible = ref(false);
 const dissolvingClubId = ref<number | null>(null);
@@ -382,7 +385,6 @@ const memberBatchPositionForm = reactive({
 
 const departmentForm = reactive({
   departmentName: "",
-  departmentCode: "",
   responsibilities: "",
   contactPhone: "",
   contactEmail: "",
@@ -394,7 +396,6 @@ const departmentEditTarget = ref<ClubDepartmentRecord | null>(null);
 const groupForm = reactive({
   departmentId: undefined as number | undefined,
   groupName: "",
-  groupCode: "",
   responsibilities: "",
   contactPhone: "",
   contactEmail: "",
@@ -609,6 +610,12 @@ const canCreateMemberDepartment = computed(
 const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
   () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
+);
+const canReorderDepartments = computed(
+  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
+);
+const canShowOrganizationOperationColumn = computed(
+  () => canManageSelectedClub.value || canCreateMemberGroup.value,
 );
 const canShowMemberOperationColumn = computed(
   () =>
@@ -1070,6 +1077,27 @@ function buildClubContextOption(club: Club): ClubContextOption {
     optionLabel: `${club.name} / ${roleText}`,
     canManage,
   };
+}
+
+function canMaintainDepartment(_department: ClubDepartmentRecord) {
+  return canManageSelectedClub.value;
+}
+
+function canMaintainDepartmentGroups(_department: ClubDepartmentRecord) {
+  return canManageSelectedClub.value;
+}
+
+function canMaintainGroup(group: ClubGroupRecord) {
+  const department = departmentById(group.departmentId);
+  return Boolean(department && canMaintainDepartmentGroups(department));
+}
+
+function canShowGroupOperationColumn(department: ClubDepartmentRecord) {
+  return department.groups.some((group) => canMaintainGroup(group));
+}
+
+function canReorderDepartmentGroups(department: ClubDepartmentRecord) {
+  return canMaintainDepartmentGroups(department);
 }
 
 function roleNameInClub(role: UserRoleSummary, clubName: string) {
@@ -1885,15 +1913,197 @@ function toggleUnassignedMemberFilter(value: string | number | boolean) {
   void loadMembers();
 }
 
+function nextDisplayOrder(records: readonly { displayOrder: number }[]) {
+  if (records.length === 0) return 10;
+  return Math.max(...records.map((record) => record.displayOrder || 0)) + 10;
+}
+
+function nextDepartmentDisplayOrder() {
+  return nextDisplayOrder(clubDepartments.value);
+}
+
+function nextGroupDisplayOrder(departmentId: number | undefined) {
+  const department = departmentById(departmentId);
+  return nextDisplayOrder(department?.groups ?? []);
+}
+
+function departmentPayloadFromForm(target: ClubDepartmentRecord | null) {
+  return {
+    departmentName: departmentForm.departmentName.trim(),
+    departmentCode: target?.departmentCode ?? null,
+    responsibilities: emptyToNull(departmentForm.responsibilities),
+    contactPhone: emptyToNull(departmentForm.contactPhone),
+    contactEmail: emptyToNull(departmentForm.contactEmail),
+    officeLocation: emptyToNull(departmentForm.officeLocation),
+    displayOrder: departmentForm.displayOrder,
+    departmentStatus: departmentForm.departmentStatus,
+  };
+}
+
+function groupPayloadFromForm(target: ClubGroupRecord | null) {
+  return {
+    groupName: groupForm.groupName.trim(),
+    groupCode: target?.groupCode ?? null,
+    responsibilities: emptyToNull(groupForm.responsibilities),
+    contactPhone: emptyToNull(groupForm.contactPhone),
+    contactEmail: emptyToNull(groupForm.contactEmail),
+    activityLocation: emptyToNull(groupForm.activityLocation),
+    displayOrder: groupForm.displayOrder,
+    groupStatus: groupForm.groupStatus,
+  };
+}
+
+function departmentPayloadFromRecord(department: ClubDepartmentRecord, displayOrder: number) {
+  return {
+    departmentName: department.departmentName,
+    departmentCode: department.departmentCode,
+    responsibilities: department.responsibilities,
+    contactPhone: department.contactPhone,
+    contactEmail: department.contactEmail,
+    officeLocation: department.officeLocation,
+    displayOrder,
+    departmentStatus: department.departmentStatus,
+  };
+}
+
+function groupPayloadFromRecord(group: ClubGroupRecord, displayOrder: number) {
+  return {
+    groupName: group.groupName,
+    groupCode: group.groupCode,
+    responsibilities: group.responsibilities,
+    contactPhone: group.contactPhone,
+    contactEmail: group.contactEmail,
+    activityLocation: group.activityLocation,
+    displayOrder,
+    groupStatus: group.groupStatus,
+  };
+}
+
+function moveItem<T>(items: readonly T[], sourceIndex: number, targetIndex: number) {
+  const next = [...items];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+}
+
+function startDepartmentDrag(row: ClubDepartmentRecord) {
+  if (!canReorderDepartments.value || organizationSaving.value) return;
+  draggingDepartmentId.value = row.departmentId;
+}
+
+async function dropDepartment(row: ClubDepartmentRecord) {
+  const sourceId = draggingDepartmentId.value;
+  draggingDepartmentId.value = null;
+  if (!sourceId || sourceId === row.departmentId || !selectedClubId.value) return;
+
+  const sourceIndex = clubDepartments.value.findIndex(
+    (department) => department.departmentId === sourceId,
+  );
+  const targetIndex = clubDepartments.value.findIndex(
+    (department) => department.departmentId === row.departmentId,
+  );
+  if (sourceIndex < 0 || targetIndex < 0) return;
+
+  const reordered = moveItem(clubDepartments.value, sourceIndex, targetIndex);
+  await persistDepartmentOrder(reordered);
+}
+
+async function persistDepartmentOrder(reordered: ClubDepartmentRecord[]) {
+  if (!selectedClubId.value || !canReorderDepartments.value) return;
+
+  organizationSaving.value = true;
+  try {
+    await Promise.all(
+      reordered.map((department, index) =>
+        requestJson<ClubDepartmentRecord>(
+          `/api/clubs/${selectedClubId.value}/departments/${department.departmentId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(departmentPayloadFromRecord(department, (index + 1) * 10)),
+          },
+        ),
+      ),
+    );
+    ElMessage.success("排序已更新");
+    await Promise.all([loadDepartments(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "排序保存失败");
+  } finally {
+    organizationSaving.value = false;
+  }
+}
+
+function startGroupDrag(group: ClubGroupRecord) {
+  if (organizationSaving.value) return;
+  const department = departmentById(group.departmentId);
+  if (!department || !canReorderDepartmentGroups(department)) return;
+  draggingGroup.value = {
+    departmentId: group.departmentId,
+    groupId: group.groupId,
+  };
+}
+
+async function dropGroup(target: ClubGroupRecord) {
+  const source = draggingGroup.value;
+  draggingGroup.value = null;
+  if (
+    !source ||
+    source.groupId === target.groupId ||
+    source.departmentId !== target.departmentId ||
+    !selectedClubId.value
+  ) {
+    return;
+  }
+
+  const department = departmentById(target.departmentId);
+  if (!department) return;
+  if (!canReorderDepartmentGroups(department)) return;
+
+  const sourceIndex = department.groups.findIndex((group) => group.groupId === source.groupId);
+  const targetIndex = department.groups.findIndex((group) => group.groupId === target.groupId);
+  if (sourceIndex < 0 || targetIndex < 0) return;
+
+  const reordered = moveItem(department.groups, sourceIndex, targetIndex);
+  await persistGroupOrder(reordered);
+}
+
+async function persistGroupOrder(reordered: ClubGroupRecord[]) {
+  if (!selectedClubId.value) return;
+
+  organizationSaving.value = true;
+  try {
+    await Promise.all(
+      reordered.map((group, index) =>
+        requestJson<ClubGroupRecord>(`/api/clubs/${selectedClubId.value}/groups/${group.groupId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(groupPayloadFromRecord(group, (index + 1) * 10)),
+        }),
+      ),
+    );
+    ElMessage.success("排序已更新");
+    await Promise.all([loadDepartments(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "排序保存失败");
+  } finally {
+    organizationSaving.value = false;
+  }
+}
+
+function endOrganizationDrag() {
+  draggingDepartmentId.value = null;
+  draggingGroup.value = null;
+}
+
 function resetDepartmentForm() {
   departmentEditTarget.value = null;
   departmentForm.departmentName = "";
-  departmentForm.departmentCode = "";
   departmentForm.responsibilities = "";
   departmentForm.contactPhone = "";
   departmentForm.contactEmail = "";
   departmentForm.officeLocation = "";
-  departmentForm.displayOrder = 0;
+  departmentForm.displayOrder = nextDepartmentDisplayOrder();
   departmentForm.departmentStatus = "active";
 }
 
@@ -1905,7 +2115,6 @@ function openCreateDepartmentDialog() {
 function editDepartment(row: ClubDepartmentRecord) {
   departmentEditTarget.value = row;
   departmentForm.departmentName = row.departmentName;
-  departmentForm.departmentCode = row.departmentCode ?? "";
   departmentForm.responsibilities = row.responsibilities ?? "";
   departmentForm.contactPhone = row.contactPhone ?? "";
   departmentForm.contactEmail = row.contactEmail ?? "";
@@ -1933,16 +2142,7 @@ async function submitDepartmentForm() {
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          departmentName,
-          departmentCode: emptyToNull(departmentForm.departmentCode),
-          responsibilities: emptyToNull(departmentForm.responsibilities),
-          contactPhone: emptyToNull(departmentForm.contactPhone),
-          contactEmail: emptyToNull(departmentForm.contactEmail),
-          officeLocation: emptyToNull(departmentForm.officeLocation),
-          displayOrder: departmentForm.displayOrder,
-          departmentStatus: departmentForm.departmentStatus,
-        }),
+        body: JSON.stringify(departmentPayloadFromForm(target)),
       },
     );
     ElMessage.success(target ? "部门已更新" : "部门已新增");
@@ -1960,12 +2160,11 @@ function resetGroupForm(departmentId = groupCreateDepartmentOptions.value[0]?.de
   groupEditTarget.value = null;
   groupForm.departmentId = departmentId;
   groupForm.groupName = "";
-  groupForm.groupCode = "";
   groupForm.responsibilities = "";
   groupForm.contactPhone = "";
   groupForm.contactEmail = "";
   groupForm.activityLocation = "";
-  groupForm.displayOrder = 0;
+  groupForm.displayOrder = nextGroupDisplayOrder(departmentId);
   groupForm.groupStatus = "active";
 }
 
@@ -1982,7 +2181,6 @@ function editGroup(row: ClubGroupRecord) {
   groupEditTarget.value = row;
   groupForm.departmentId = row.departmentId;
   groupForm.groupName = row.groupName;
-  groupForm.groupCode = row.groupCode ?? "";
   groupForm.responsibilities = row.responsibilities ?? "";
   groupForm.contactPhone = row.contactPhone ?? "";
   groupForm.contactEmail = row.contactEmail ?? "";
@@ -2015,16 +2213,7 @@ async function submitGroupForm() {
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          groupName,
-          groupCode: emptyToNull(groupForm.groupCode),
-          responsibilities: emptyToNull(groupForm.responsibilities),
-          contactPhone: emptyToNull(groupForm.contactPhone),
-          contactEmail: emptyToNull(groupForm.contactEmail),
-          activityLocation: emptyToNull(groupForm.activityLocation),
-          displayOrder: groupForm.displayOrder,
-          groupStatus: groupForm.groupStatus,
-        }),
+        body: JSON.stringify(groupPayloadFromForm(target)),
       },
     );
     ElMessage.success(target ? "小组已更新" : "小组已新增");
@@ -3208,8 +3397,29 @@ onUnmounted(() => {
                   empty-text="暂无小组"
                   row-key="groupId"
                 >
+                  <el-table-column
+                    v-if="canReorderDepartmentGroups(row)"
+                    label=""
+                    width="64"
+                    align="center"
+                  >
+                    <template #default="{ row: group }">
+                      <button
+                        class="drag-handle"
+                        type="button"
+                        draggable="true"
+                        :disabled="organizationSaving"
+                        @dragstart="startGroupDrag(group)"
+                        @dragover.prevent
+                        @dragenter.prevent
+                        @drop.prevent="dropGroup(group)"
+                        @dragend="endOrganizationDrag"
+                      >
+                        <el-icon><Rank /></el-icon>
+                      </button>
+                    </template>
+                  </el-table-column>
                   <el-table-column prop="groupName" label="小组" min-width="140" />
-                  <el-table-column prop="groupCode" label="编码" width="110" />
                   <el-table-column prop="responsibilities" label="职责" min-width="180" />
                   <el-table-column prop="contactPhone" label="电话" width="130" />
                   <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
@@ -3224,9 +3434,15 @@ onUnmounted(() => {
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canManageSelectedClub" label="操作" width="100">
+                  <el-table-column v-if="canShowGroupOperationColumn(row)" label="操作" width="100">
                     <template #default="{ row: group }">
-                      <el-button type="primary" plain :icon="Edit" @click="editGroup(group)">
+                      <el-button
+                        v-if="canMaintainGroup(group)"
+                        type="primary"
+                        plain
+                        :icon="Edit"
+                        @click="editGroup(group)"
+                      >
                         编辑
                       </el-button>
                     </template>
@@ -3234,8 +3450,24 @@ onUnmounted(() => {
                 </el-table>
               </template>
             </el-table-column>
+            <el-table-column v-if="canReorderDepartments" label="" width="64" align="center">
+              <template #default="{ row }">
+                <button
+                  class="drag-handle"
+                  type="button"
+                  draggable="true"
+                  :disabled="organizationSaving"
+                  @dragstart="startDepartmentDrag(row)"
+                  @dragover.prevent
+                  @dragenter.prevent
+                  @drop.prevent="dropDepartment(row)"
+                  @dragend="endOrganizationDrag"
+                >
+                  <el-icon><Rank /></el-icon>
+                </button>
+              </template>
+            </el-table-column>
             <el-table-column prop="departmentName" label="部门" min-width="150" />
-            <el-table-column prop="departmentCode" label="编码" width="110" />
             <el-table-column prop="responsibilities" label="职责" min-width="180" />
             <el-table-column prop="contactPhone" label="电话" width="130" />
             <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
@@ -3253,12 +3485,19 @@ onUnmounted(() => {
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column v-if="canManageSelectedClub" label="操作" width="190">
+            <el-table-column v-if="canShowOrganizationOperationColumn" label="操作" width="190">
               <template #default="{ row }">
-                <el-button type="primary" plain :icon="Edit" @click="editDepartment(row)">
+                <el-button
+                  v-if="canMaintainDepartment(row)"
+                  type="primary"
+                  plain
+                  :icon="Edit"
+                  @click="editDepartment(row)"
+                >
                   编辑
                 </el-button>
                 <el-button
+                  v-if="canMaintainDepartmentGroups(row)"
                   type="primary"
                   plain
                   :icon="Plus"
@@ -3680,9 +3919,6 @@ onUnmounted(() => {
         <el-form-item label="部门名称" required>
           <el-input v-model="departmentForm.departmentName" maxlength="80" />
         </el-form-item>
-        <el-form-item label="部门编码">
-          <el-input v-model="departmentForm.departmentCode" maxlength="40" />
-        </el-form-item>
         <el-form-item label="职责">
           <el-input
             v-model="departmentForm.responsibilities"
@@ -3699,14 +3935,6 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="常用地点">
           <el-input v-model="departmentForm.officeLocation" maxlength="80" />
-        </el-form-item>
-        <el-form-item label="显示顺序">
-          <el-input-number
-            v-model="departmentForm.displayOrder"
-            :min="0"
-            :precision="0"
-            controls-position="right"
-          />
         </el-form-item>
         <el-form-item label="启用状态">
           <el-select v-model="departmentForm.departmentStatus">
@@ -3746,9 +3974,6 @@ onUnmounted(() => {
         <el-form-item label="小组名称" required>
           <el-input v-model="groupForm.groupName" maxlength="80" />
         </el-form-item>
-        <el-form-item label="小组编码">
-          <el-input v-model="groupForm.groupCode" maxlength="40" />
-        </el-form-item>
         <el-form-item label="职责">
           <el-input
             v-model="groupForm.responsibilities"
@@ -3765,14 +3990,6 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="活动地点">
           <el-input v-model="groupForm.activityLocation" maxlength="80" />
-        </el-form-item>
-        <el-form-item label="显示顺序">
-          <el-input-number
-            v-model="groupForm.displayOrder"
-            :min="0"
-            :precision="0"
-            controls-position="right"
-          />
         </el-form-item>
         <el-form-item label="启用状态">
           <el-select v-model="groupForm.groupStatus">
@@ -4337,6 +4554,27 @@ onUnmounted(() => {
 .nested-table {
   margin: 8px 0 8px 46px;
   width: calc(100% - 46px);
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--el-border-color);
+  color: #66727f;
+  background: #fff;
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .transition-toolbar {
