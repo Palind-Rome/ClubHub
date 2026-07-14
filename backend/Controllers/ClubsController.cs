@@ -819,6 +819,7 @@ public class ClubsController : ControllerBase
         department.DepartmentStatus = NormalizeOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
         department.UpdatedAt = DateTime.UtcNow;
 
+        await using var transaction = await _db.Database.BeginTransactionAsync();
         await _db.SaveChangesAsync();
 
         if (!string.Equals(previousName, department.DepartmentName, StringComparison.Ordinal))
@@ -828,6 +829,7 @@ public class ClubsController : ControllerBase
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(cm => cm.DepartmentName, department.DepartmentName));
         }
+        await transaction.CommitAsync();
 
         var updated = await DepartmentQuery(includeInactive: true)
             .FirstAsync(d => d.DepartmentId == departmentId);
@@ -949,6 +951,7 @@ public class ClubsController : ControllerBase
         group.GroupStatus = NormalizeOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
         group.UpdatedAt = DateTime.UtcNow;
 
+        await using var transaction = await _db.Database.BeginTransactionAsync();
         await _db.SaveChangesAsync();
 
         if (!string.Equals(previousName, group.GroupName, StringComparison.Ordinal))
@@ -958,6 +961,7 @@ public class ClubsController : ControllerBase
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(cm => cm.GroupName, group.GroupName));
         }
+        await transaction.CommitAsync();
 
         var updated = await _db.ClubGroups
             .AsNoTracking()
