@@ -3145,7 +3145,7 @@ public class ClubsController : ControllerBase
 
     private static string? ValidateSemesterEvaluationTermName(string termName) =>
         ResolveEvaluationTermWindow(termName) is null
-            ? "考核学期格式无法识别，请填写如 2026-2027学年、2026秋季或 2027春季。"
+            ? "考核学期格式无法识别，请填写如 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间必须为相邻学年。"
             : null;
 
     private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
@@ -3161,11 +3161,16 @@ public class ClubsController : ControllerBase
         }
 
         var yearRange = Regex.Match(normalized, @"(?<start>20\d{2})\s*[-—~至]\s*(?<end>20\d{2})");
+        if (!yearRange.Success && hasAcademicYear && (hasSpring || hasFall))
+        {
+            return null;
+        }
+
         if (yearRange.Success &&
             int.TryParse(yearRange.Groups["start"].Value, out var startYear) &&
             int.TryParse(yearRange.Groups["end"].Value, out var endYear))
         {
-            if (endYear < startYear)
+            if (endYear != startYear + 1)
             {
                 return null;
             }
@@ -3181,7 +3186,7 @@ public class ClubsController : ControllerBase
             {
                 return new EvaluationTermWindow(
                     new DateTime(startYear, 9, 1),
-                    EndOfDay(new DateTime(startYear + 1, 1, 31)));
+                    EndOfDay(new DateTime(endYear, 1, 31)));
             }
 
             return new EvaluationTermWindow(
@@ -3197,10 +3202,9 @@ public class ClubsController : ControllerBase
 
         if (hasSpring)
         {
-            var springYear = hasAcademicYear ? year + 1 : year;
             return new EvaluationTermWindow(
-                new DateTime(springYear, 2, 1),
-                EndOfDay(new DateTime(springYear, 7, 31)));
+                new DateTime(year, 2, 1),
+                EndOfDay(new DateTime(year, 7, 31)));
         }
 
         if (hasFall)
