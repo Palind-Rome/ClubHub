@@ -7,8 +7,15 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
+using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
+using CreateClubMemberTermRequest = Org.OpenAPITools.Models.CreateClubMemberTermRequest;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
 using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
+using UpdateClubDepartmentRequest = Org.OpenAPITools.Models.UpdateClubDepartmentRequest;
+using UpdateClubGroupRequest = Org.OpenAPITools.Models.UpdateClubGroupRequest;
+using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
+using UpdateClubMemberTermRequest = Org.OpenAPITools.Models.UpdateClubMemberTermRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -749,7 +756,7 @@ public class ClubsController : ControllerBase
             ContactEmail = EmptyToNull(req.ContactEmail),
             OfficeLocation = EmptyToNull(req.OfficeLocation),
             DisplayOrder = req.DisplayOrder ?? 0,
-            DepartmentStatus = NormalizeOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive,
+            DepartmentStatus = ToOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -816,7 +823,7 @@ public class ClubsController : ControllerBase
         department.ContactEmail = EmptyToNull(req.ContactEmail);
         department.OfficeLocation = EmptyToNull(req.OfficeLocation);
         department.DisplayOrder = req.DisplayOrder ?? 0;
-        department.DepartmentStatus = NormalizeOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
+        department.DepartmentStatus = ToOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
         department.UpdatedAt = DateTime.UtcNow;
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
@@ -882,7 +889,7 @@ public class ClubsController : ControllerBase
             ContactEmail = EmptyToNull(req.ContactEmail),
             ActivityLocation = EmptyToNull(req.ActivityLocation),
             DisplayOrder = req.DisplayOrder ?? 0,
-            GroupStatus = NormalizeOrganizationStatus(req.GroupStatus) ?? OrganizationActive,
+            GroupStatus = ToOrganizationStatus(req.GroupStatus) ?? OrganizationActive,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -948,7 +955,7 @@ public class ClubsController : ControllerBase
         group.ContactEmail = EmptyToNull(req.ContactEmail);
         group.ActivityLocation = EmptyToNull(req.ActivityLocation);
         group.DisplayOrder = req.DisplayOrder ?? 0;
-        group.GroupStatus = NormalizeOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
+        group.GroupStatus = ToOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
         group.UpdatedAt = DateTime.UtcNow;
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
@@ -1102,7 +1109,7 @@ public class ClubsController : ControllerBase
             req.TermName,
             req.TermStart,
             req.TermEnd,
-            req.MemberStatus,
+            ToMemberStatus(req.MemberStatus),
             req.ContributionScore);
         if (validationError is not null)
         {
@@ -1134,9 +1141,9 @@ public class ClubsController : ControllerBase
         var now = DateTime.UtcNow;
         var termStart = req.TermStart.Date;
         var termEnd = req.TermEnd?.Date;
-        var memberStatus = NormalizeMemberStatus(req.MemberStatus) ?? MemberActive;
+        var memberStatus = ToMemberStatus(req.MemberStatus) ?? MemberActive;
 
-        if (req.CloseCurrentTerm)
+        if (req.CloseCurrentTerm ?? true)
         {
             var closeDate = termStart.AddDays(-1);
             var activeTerms = await _db.ClubMembers
@@ -1218,6 +1225,8 @@ public class ClubsController : ControllerBase
         }
 
         var member = access.Member!;
+        var hasRequestedMemberStatus = IsSpecified(req.MemberStatus);
+        var requestedMemberStatus = hasRequestedMemberStatus ? ToMemberStatus(req.MemberStatus) : null;
 
         var termStart = req.TermStart?.Date ?? member.TermStart?.Date;
         var termEnd = req.TermEnd?.Date ?? member.TermEnd?.Date;
@@ -1241,7 +1250,7 @@ public class ClubsController : ControllerBase
             req.TermName ?? member.TermName,
             termStart,
             termEnd,
-            req.MemberStatus ?? member.MemberStatus,
+            hasRequestedMemberStatus ? requestedMemberStatus : member.MemberStatus,
             req.ContributionScore ?? member.ContributionScore);
         if (validationError is not null)
         {
@@ -1272,7 +1281,7 @@ public class ClubsController : ControllerBase
         if (req.TermName is not null) member.TermName = req.TermName.Trim();
         if (req.TermStart is not null) member.TermStart = req.TermStart.Value.Date;
         if (req.TermEnd is not null) member.TermEnd = req.TermEnd.Value.Date;
-        if (req.MemberStatus is not null) member.MemberStatus = NormalizeMemberStatus(req.MemberStatus);
+        if (hasRequestedMemberStatus) member.MemberStatus = requestedMemberStatus;
         if (req.ContributionScore is not null) member.ContributionScore = req.ContributionScore;
 
         var now = DateTime.UtcNow;
@@ -3087,29 +3096,83 @@ public class ClubsController : ControllerBase
         return null;
     }
 
-    private static string? ValidateDepartmentRequest(CreateClubDepartmentRequest req)
+    private static string? ValidateDepartmentRequest(CreateClubDepartmentRequest req) =>
+        ValidateDepartmentRequest(
+            req.DepartmentName,
+            req.DepartmentCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.OfficeLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.DepartmentStatus));
+
+    private static string? ValidateDepartmentRequest(UpdateClubDepartmentRequest req) =>
+        ValidateDepartmentRequest(
+            req.DepartmentName,
+            req.DepartmentCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.OfficeLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.DepartmentStatus));
+
+    private static string? ValidateDepartmentRequest(
+        string? departmentName,
+        string? departmentCode,
+        string? contactPhone,
+        string? contactEmail,
+        string? officeLocation,
+        int? displayOrder,
+        string? departmentStatus)
     {
-        if (string.IsNullOrWhiteSpace(req.DepartmentName)) return "部门名称不能为空。";
-        if (TextTooLong(req.DepartmentName)) return "部门名称不能超过 255 个字符。";
-        if (TextTooLong(req.DepartmentCode, 100)) return "部门编码不能超过 100 个字符。";
-        if (TextTooLong(req.ContactPhone)) return "部门联系电话不能超过 255 个字符。";
-        if (TextTooLong(req.ContactEmail)) return "部门联系邮箱不能超过 255 个字符。";
-        if (TextTooLong(req.OfficeLocation)) return "部门办公地点不能超过 255 个字符。";
-        if (req.DisplayOrder is < 0) return "部门排序不能为负数。";
-        if (NormalizeOrganizationStatus(req.DepartmentStatus) is null) return "部门状态只能是 active 或 inactive。";
+        if (string.IsNullOrWhiteSpace(departmentName)) return "部门名称不能为空。";
+        if (TextTooLong(departmentName)) return "部门名称不能超过 255 个字符。";
+        if (TextTooLong(departmentCode, 100)) return "部门编码不能超过 100 个字符。";
+        if (TextTooLong(contactPhone)) return "部门联系电话不能超过 255 个字符。";
+        if (TextTooLong(contactEmail)) return "部门联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(officeLocation)) return "部门办公地点不能超过 255 个字符。";
+        if (displayOrder is < 0) return "部门排序不能为负数。";
+        if (departmentStatus is null) return "部门状态只能是 active 或 inactive。";
         return null;
     }
 
-    private static string? ValidateGroupRequest(CreateClubGroupRequest req)
+    private static string? ValidateGroupRequest(CreateClubGroupRequest req) =>
+        ValidateGroupRequest(
+            req.GroupName,
+            req.GroupCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.ActivityLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.GroupStatus));
+
+    private static string? ValidateGroupRequest(UpdateClubGroupRequest req) =>
+        ValidateGroupRequest(
+            req.GroupName,
+            req.GroupCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.ActivityLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.GroupStatus));
+
+    private static string? ValidateGroupRequest(
+        string? groupName,
+        string? groupCode,
+        string? contactPhone,
+        string? contactEmail,
+        string? activityLocation,
+        int? displayOrder,
+        string? groupStatus)
     {
-        if (string.IsNullOrWhiteSpace(req.GroupName)) return "小组名称不能为空。";
-        if (TextTooLong(req.GroupName)) return "小组名称不能超过 255 个字符。";
-        if (TextTooLong(req.GroupCode, 100)) return "小组编码不能超过 100 个字符。";
-        if (TextTooLong(req.ContactPhone)) return "小组联系电话不能超过 255 个字符。";
-        if (TextTooLong(req.ContactEmail)) return "小组联系邮箱不能超过 255 个字符。";
-        if (TextTooLong(req.ActivityLocation)) return "小组活动地点不能超过 255 个字符。";
-        if (req.DisplayOrder is < 0) return "小组排序不能为负数。";
-        if (NormalizeOrganizationStatus(req.GroupStatus) is null) return "小组状态只能是 active 或 inactive。";
+        if (string.IsNullOrWhiteSpace(groupName)) return "小组名称不能为空。";
+        if (TextTooLong(groupName)) return "小组名称不能超过 255 个字符。";
+        if (TextTooLong(groupCode, 100)) return "小组编码不能超过 100 个字符。";
+        if (TextTooLong(contactPhone)) return "小组联系电话不能超过 255 个字符。";
+        if (TextTooLong(contactEmail)) return "小组联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(activityLocation)) return "小组活动地点不能超过 255 个字符。";
+        if (displayOrder is < 0) return "小组排序不能为负数。";
+        if (groupStatus is null) return "小组状态只能是 active 或 inactive。";
         return null;
     }
 
@@ -4063,6 +4126,27 @@ public class ClubsController : ControllerBase
         };
     }
 
+    private static bool IsSpecified(UpdateClubMemberTermRequest.MemberStatusEnum status) =>
+        !EqualityComparer<UpdateClubMemberTermRequest.MemberStatusEnum>.Default.Equals(status, default);
+
+    private static string? ToMemberStatus(CreateClubMemberTermRequest.MemberStatusEnum status) =>
+        status switch
+        {
+            CreateClubMemberTermRequest.MemberStatusEnum.ActiveEnum => MemberActive,
+            CreateClubMemberTermRequest.MemberStatusEnum.EndedEnum => MemberEnded,
+            CreateClubMemberTermRequest.MemberStatusEnum.SuspendedEnum => MemberSuspended,
+            _ => null
+        };
+
+    private static string? ToMemberStatus(UpdateClubMemberTermRequest.MemberStatusEnum status) =>
+        status switch
+        {
+            UpdateClubMemberTermRequest.MemberStatusEnum.ActiveEnum => MemberActive,
+            UpdateClubMemberTermRequest.MemberStatusEnum.EndedEnum => MemberEnded,
+            UpdateClubMemberTermRequest.MemberStatusEnum.SuspendedEnum => MemberSuspended,
+            _ => null
+        };
+
     private static string? NormalizeOrganizationStatus(string? status)
     {
         if (string.IsNullOrWhiteSpace(status)) return OrganizationActive;
@@ -4074,6 +4158,38 @@ public class ClubsController : ControllerBase
             _ => null
         };
     }
+
+    private static string? ToOrganizationStatus(CreateClubDepartmentRequest.DepartmentStatusEnum status) =>
+        status switch
+        {
+            CreateClubDepartmentRequest.DepartmentStatusEnum.ActiveEnum => OrganizationActive,
+            CreateClubDepartmentRequest.DepartmentStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(UpdateClubDepartmentRequest.DepartmentStatusEnum status) =>
+        status switch
+        {
+            UpdateClubDepartmentRequest.DepartmentStatusEnum.ActiveEnum => OrganizationActive,
+            UpdateClubDepartmentRequest.DepartmentStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(CreateClubGroupRequest.GroupStatusEnum status) =>
+        status switch
+        {
+            CreateClubGroupRequest.GroupStatusEnum.ActiveEnum => OrganizationActive,
+            CreateClubGroupRequest.GroupStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(UpdateClubGroupRequest.GroupStatusEnum status) =>
+        status switch
+        {
+            UpdateClubGroupRequest.GroupStatusEnum.ActiveEnum => OrganizationActive,
+            UpdateClubGroupRequest.GroupStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
 
     private static bool IsKnownAuditStatus(string status) =>
         status is AuditPending or AuditApproved or AuditRejected;
@@ -4277,80 +4393,6 @@ public record ClubDepartmentRecordDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     IReadOnlyCollection<ClubGroupRecordDto> Groups);
-
-public class CreateClubDepartmentRequest
-{
-    public string DepartmentName { get; set; } = string.Empty;
-    public string? DepartmentCode { get; set; }
-    public string? Description { get; set; }
-    public string? Responsibilities { get; set; }
-    public string? ContactPhone { get; set; }
-    public string? ContactEmail { get; set; }
-    public string? OfficeLocation { get; set; }
-    public int? DisplayOrder { get; set; }
-    public string? DepartmentStatus { get; set; } = "active";
-}
-
-public class UpdateClubDepartmentRequest : CreateClubDepartmentRequest
-{
-}
-
-public class CreateClubGroupRequest
-{
-    public string GroupName { get; set; } = string.Empty;
-    public string? GroupCode { get; set; }
-    public string? Description { get; set; }
-    public string? Responsibilities { get; set; }
-    public string? ContactPhone { get; set; }
-    public string? ContactEmail { get; set; }
-    public string? ActivityLocation { get; set; }
-    public int? DisplayOrder { get; set; }
-    public string? GroupStatus { get; set; } = "active";
-}
-
-public class UpdateClubGroupRequest : CreateClubGroupRequest
-{
-}
-
-public class CreateClubMemberTermRequest
-{
-    public int CurrentUserId { get; set; }
-    public int UserId { get; set; }
-    public int? DepartmentId { get; set; }
-    public string? DepartmentName { get; set; }
-    public int? GroupId { get; set; }
-    public string? GroupName { get; set; }
-    public string PositionName { get; set; } = string.Empty;
-    public string TermName { get; set; } = string.Empty;
-    public DateTime TermStart { get; set; }
-    public DateTime? TermEnd { get; set; }
-    public string? MemberStatus { get; set; } = "active";
-    public decimal? ContributionScore { get; set; }
-    public bool CloseCurrentTerm { get; set; } = true;
-}
-
-public class UpdateClubMemberTermRequest
-{
-    public int CurrentUserId { get; set; }
-    public int? DepartmentId { get; set; }
-    public string? DepartmentName { get; set; }
-    public int? GroupId { get; set; }
-    public string? GroupName { get; set; }
-    public string? PositionName { get; set; }
-    public string? TermName { get; set; }
-    public DateTime? TermStart { get; set; }
-    public DateTime? TermEnd { get; set; }
-    public string? MemberStatus { get; set; }
-    public decimal? ContributionScore { get; set; }
-}
-
-public class UpdateClubMemberGroupingRequest
-{
-    public int? DepartmentId { get; set; }
-    public string? DepartmentName { get; set; }
-    public int? GroupId { get; set; }
-    public string? GroupName { get; set; }
-}
 
 public record ClubEvaluationRecordDto(
     int EvaluationId,
