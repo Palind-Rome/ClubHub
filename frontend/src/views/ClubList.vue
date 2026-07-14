@@ -124,7 +124,9 @@ interface ClubMemberRecord {
   userId: number;
   userName: string;
   studentNo: string | null;
+  departmentId: number | null;
   departmentName: string | null;
+  groupId: number | null;
   groupName: string | null;
   positionName: string | null;
   termName: string | null;
@@ -155,13 +157,49 @@ interface ClubContextOption {
   canManage: boolean;
 }
 
-interface MemberGroupOption {
+interface ClubGroupRecord {
+  groupId: number;
+  clubId: number;
+  departmentId: number;
+  groupName: string;
+  groupCode: string | null;
+  description: string | null;
+  responsibilities: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  activityLocation: string | null;
+  displayOrder: number;
+  groupStatus: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ClubDepartmentRecord {
+  departmentId: number;
+  clubId: number;
   departmentName: string;
+  departmentCode: string | null;
+  description: string | null;
+  responsibilities: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  officeLocation: string | null;
+  displayOrder: number;
+  departmentStatus: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+  groups: ClubGroupRecord[];
+}
+
+interface OrganizationSelectionForm {
+  departmentId: number | undefined;
+  departmentName: string;
+  groupId: number | undefined;
   groupName: string;
 }
 
 type ClubWorkspace = "club" | "members" | "registration";
-type MemberWorkspaceMode = "current" | "history" | "transition";
+type MemberWorkspaceMode = "current" | "history" | "transition" | "organization";
 
 interface AcademicTermOption {
   label: string;
@@ -214,8 +252,7 @@ const currentUserId = computed(() => auth.value?.user.id);
 const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
-const manualDepartmentOptions = ref<Record<number, string[]>>({});
-const manualGroupOptions = ref<Record<number, MemberGroupOption[]>>({});
+const clubDepartments = ref<ClubDepartmentRecord[]>([]);
 const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
@@ -227,6 +264,8 @@ const reviewing = ref(false);
 const profileSaving = ref(false);
 const termSaving = ref(false);
 const groupingSaving = ref(false);
+const organizationLoading = ref(false);
+const organizationSaving = ref(false);
 const dissolvingClubId = ref<number | null>(null);
 const exitingMemberId = ref<number | null>(null);
 const exitingClubId = ref<number | null>(null);
@@ -250,13 +289,10 @@ const filters = reactive({
 
 const memberFilters = reactive({
   termName: "",
-  departmentName: "",
-  groupName: "",
+  departmentId: undefined as number | undefined,
+  groupId: undefined as number | undefined,
   unassignedOnly: false,
 });
-const newDepartmentName = ref("");
-const newGroupDepartmentName = ref("");
-const newGroupName = ref("");
 const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
 
 const applicationDialogVisible = ref(false);
@@ -306,7 +342,9 @@ const memberTermMode = ref<TermMode>("create");
 const memberTermTarget = ref<ClubMemberRecord | null>(null);
 const memberTermForm = reactive({
   userId: undefined as number | undefined,
+  departmentId: undefined as number | undefined,
   departmentName: "",
+  groupId: undefined as number | undefined,
   groupName: "",
   positionName: "",
   termName: currentAcademicTermOption().label,
@@ -322,19 +360,47 @@ const memberGroupingTarget = ref<ClubMemberRecord | null>(null);
 const memberGroupingMode = ref<GroupingMode>("free");
 const memberGroupingField = ref<GroupingField>("departmentName");
 const memberGroupingForm = reactive({
+  departmentId: undefined as number | undefined,
   departmentName: "",
+  groupId: undefined as number | undefined,
   groupName: "",
 });
 const selectedMemberRows = ref<ClubMemberRecord[]>([]);
 const memberBatchGroupingDialogVisible = ref(false);
 const memberBatchGroupingForm = reactive({
+  departmentId: undefined as number | undefined,
   departmentName: "",
+  groupId: undefined as number | undefined,
   groupName: "",
 });
 const memberBatchPositionDialogVisible = ref(false);
 const memberBatchPositionForm = reactive({
   positionName: "",
 });
+
+const departmentForm = reactive({
+  departmentName: "",
+  departmentCode: "",
+  responsibilities: "",
+  contactPhone: "",
+  contactEmail: "",
+  officeLocation: "",
+  displayOrder: 0,
+  departmentStatus: "active" as "active" | "inactive",
+});
+const departmentEditTarget = ref<ClubDepartmentRecord | null>(null);
+const groupForm = reactive({
+  departmentId: undefined as number | undefined,
+  groupName: "",
+  groupCode: "",
+  responsibilities: "",
+  contactPhone: "",
+  contactEmail: "",
+  activityLocation: "",
+  displayOrder: 0,
+  groupStatus: "active" as "active" | "inactive",
+});
+const groupEditTarget = ref<ClubGroupRecord | null>(null);
 
 const applicationRules: FormRules = {
   name: [{ required: true, message: "请填写社团名称", trigger: "blur" }],
@@ -370,6 +436,7 @@ let usersRequestId = 0;
 let dialogUsersRequestId = 0;
 let dataRequestId = 0;
 let membersRequestId = 0;
+let organizationRequestId = 0;
 
 const currentUser = computed<UserSummary | null>(() => {
   const session = auth.value;
@@ -513,29 +580,15 @@ const memberTermUserLocked = computed(
     memberTermMode.value === "create" &&
     memberTermTarget.value !== null,
 );
-const selectedManualDepartmentOptions = computed(() =>
-  selectedClubId.value ? (manualDepartmentOptions.value[selectedClubId.value] ?? []) : [],
+const activeClubDepartments = computed(() =>
+  clubDepartments.value.filter((department) => department.departmentStatus === "active"),
 );
-const selectedManualGroupOptions = computed(() =>
-  selectedClubId.value ? (manualGroupOptions.value[selectedClubId.value] ?? []) : [],
+const activeClubGroups = computed(() =>
+  activeClubDepartments.value.flatMap((department) =>
+    department.groups.filter((group) => group.groupStatus === "active"),
+  ),
 );
-const memberGroupEntries = computed<MemberGroupOption[]>(() => [
-  ...clubMembers.value
-    .map((member) => ({
-      departmentName: member.departmentName?.trim() ?? "",
-      groupName: member.groupName?.trim() ?? "",
-    }))
-    .filter((entry) => entry.groupName),
-  ...selectedManualGroupOptions.value,
-]);
-const memberDepartmentOptions = computed(() =>
-  uniqueTextOptions([
-    ...clubMembers.value.map((member) => member.departmentName),
-    ...selectedManualDepartmentOptions.value,
-    ...selectedManualGroupOptions.value.map((group) => group.departmentName),
-  ]),
-);
-const memberGroupOptions = computed(() => groupOptionsForDepartment(memberFilters.departmentName));
+const memberGroupOptions = computed(() => groupOptionsForDepartmentId(memberFilters.departmentId));
 const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const user = currentUser.value;
   const clubId = selectedClubId.value;
@@ -549,13 +602,11 @@ const selectedDepartmentManagerScopes = computed(() =>
   ),
 );
 const canCreateMemberDepartment = computed(
-  () => memberWorkspaceMode.value === "current" && canManageSelectedClub.value,
+  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
 );
 const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
-  () =>
-    memberWorkspaceMode.value === "current" &&
-    (canManageSelectedClub.value || selectedDepartmentManagerScopes.value.length > 0),
+  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
 );
 const canShowMemberOperationColumn = computed(
   () =>
@@ -568,14 +619,21 @@ const canShowMemberOperationColumn = computed(
 );
 const groupCreateDepartmentOptions = computed(() =>
   canManageSelectedClub.value
-    ? memberDepartmentOptions.value
-    : uniqueTextOptions(selectedDepartmentManagerScopes.value.map((scope) => scope.departmentName)),
+    ? activeClubDepartments.value
+    : activeClubDepartments.value.filter((department) =>
+        selectedDepartmentManagerScopes.value.some(
+          (scope) => scope.departmentName === department.departmentName,
+        ),
+      ),
 );
 const memberGroupingGroupOptions = computed(() =>
-  groupOptionsForDepartment(memberGroupingForm.departmentName),
+  groupOptionsForDepartmentId(memberGroupingForm.departmentId),
 );
 const memberBatchGroupingGroupOptions = computed(() =>
-  groupOptionsForDepartment(memberBatchGroupingForm.departmentName),
+  groupOptionsForDepartmentId(memberBatchGroupingForm.departmentId),
+);
+const memberTermGroupOptions = computed(() =>
+  groupOptionsForDepartmentId(memberTermForm.departmentId),
 );
 const memberPositionOptions = computed(() =>
   uniqueTextOptions([
@@ -805,6 +863,7 @@ async function loadData() {
       applications.value = [];
       clubs.value = [];
       clubMembers.value = [];
+      clubDepartments.value = [];
     }
     return;
   }
@@ -834,7 +893,7 @@ async function loadData() {
     applications.value = applicationData;
     clubs.value = clubData;
     syncSelectedClub();
-    await loadMembers();
+    await Promise.all([loadMembers(), loadDepartments()]);
   } catch (e) {
     if (requestId === dataRequestId) {
       error.value = e instanceof Error ? e.message : "加载失败";
@@ -851,7 +910,8 @@ async function loadMembers() {
   const requestId = ++membersRequestId;
   const clubId = selectedClubId.value;
   const userId = currentUserId.value;
-  const include = memberWorkspaceMode.value !== "current";
+  const include =
+    memberWorkspaceMode.value === "history" || memberWorkspaceMode.value === "transition";
   if (!userId || !clubId || !canViewSelectedClub()) {
     if (requestId === membersRequestId) {
       clubMembers.value = [];
@@ -867,8 +927,8 @@ async function loadMembers() {
     if (memberWorkspaceMode.value === "history" && memberFilters.termName) {
       query.set("termName", memberFilters.termName);
     }
-    if (memberFilters.departmentName) query.set("departmentName", memberFilters.departmentName);
-    if (memberFilters.groupName) query.set("groupName", memberFilters.groupName);
+    if (memberFilters.departmentId) query.set("departmentId", String(memberFilters.departmentId));
+    if (memberFilters.groupId) query.set("groupId", String(memberFilters.groupId));
     const data = await requestJson<ClubMemberRecord[]>(
       `/api/clubs/${clubId}/members?${query.toString()}`,
     );
@@ -880,6 +940,31 @@ async function loadMembers() {
     }
   } finally {
     if (requestId === membersRequestId) memberLoading.value = false;
+  }
+}
+
+async function loadDepartments() {
+  const requestId = ++organizationRequestId;
+  const clubId = selectedClubId.value;
+  const userId = currentUserId.value;
+  if (!userId || !clubId || !canViewSelectedClub()) {
+    if (requestId === organizationRequestId) clubDepartments.value = [];
+    return;
+  }
+
+  organizationLoading.value = true;
+  try {
+    const data = await requestJson<ClubDepartmentRecord[]>(
+      `/api/clubs/${clubId}/departments?includeInactive=true`,
+    );
+    if (requestId === organizationRequestId) clubDepartments.value = data;
+  } catch (e) {
+    if (requestId === organizationRequestId) {
+      clubDepartments.value = [];
+      ElMessage.error(e instanceof Error ? e.message : "部门和小组加载失败");
+    }
+  } finally {
+    if (requestId === organizationRequestId) organizationLoading.value = false;
   }
 }
 
@@ -1302,7 +1387,9 @@ async function removeClubMember(row: ClubMemberRecord) {
 function resetMemberTermForm() {
   const term = currentAcademicTermOption();
   memberTermForm.userId = undefined;
+  memberTermForm.departmentId = undefined;
   memberTermForm.departmentName = "";
+  memberTermForm.groupId = undefined;
   memberTermForm.groupName = "";
   memberTermForm.positionName = "";
   memberTermForm.termName = term.label;
@@ -1346,7 +1433,9 @@ async function openTransitionMemberTermDialog(row?: ClubMemberRecord) {
   memberTermForm.termEnd = transitionTermForm.termEnd;
   memberTermForm.closeCurrentTerm = true;
   memberTermForm.userId = row.userId;
+  memberTermForm.departmentId = row.departmentId ?? undefined;
   memberTermForm.departmentName = row.departmentName ?? "";
+  memberTermForm.groupId = row.groupId ?? undefined;
   memberTermForm.groupName = row.groupName ?? "";
   memberTermForm.positionName = row.positionName ?? "";
   memberTermForm.contributionScore = row.contributionScore ?? 0;
@@ -1380,7 +1469,9 @@ function openEditMemberTermDialog(row: ClubMemberRecord) {
   memberTermMode.value = "edit";
   memberTermTarget.value = row;
   memberTermForm.userId = row.userId;
+  memberTermForm.departmentId = row.departmentId ?? undefined;
   memberTermForm.departmentName = row.departmentName ?? "";
+  memberTermForm.groupId = row.groupId ?? undefined;
   memberTermForm.groupName = row.groupName ?? "";
   memberTermForm.positionName = row.positionName ?? "";
   memberTermForm.termName = row.termName ?? "";
@@ -1465,7 +1556,9 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
   memberGroupingField.value = field;
   if (canFreelyUpdateMemberGrouping(row)) {
     memberGroupingMode.value = "free";
+    memberGroupingForm.departmentId = row.departmentId ?? undefined;
     memberGroupingForm.departmentName = row.departmentName ?? "";
+    memberGroupingForm.groupId = row.groupId ?? undefined;
     memberGroupingForm.groupName = row.groupName ?? "";
   } else {
     const scope =
@@ -1475,8 +1568,11 @@ function openMemberGroupingDialog(row: ClubMemberRecord, field: GroupingField) {
       selectedCadreGroupingScopes.value.find((item) => !item.groupName) ??
       selectedCadreGroupingScopes.value[0];
     memberGroupingMode.value = scope.groupName ? "own" : "department";
-    memberGroupingForm.departmentName = scope.departmentName;
-    memberGroupingForm.groupName = scope.groupName || row.groupName || "";
+    applyGroupingSelectionByName(
+      memberGroupingForm,
+      scope.departmentName,
+      scope.groupName || row.groupName || "",
+    );
   }
   handleMemberGroupingDepartmentChange();
   memberGroupingDialogVisible.value = true;
@@ -1488,15 +1584,6 @@ function canSelectMemberForBatch(row: ClubMemberRecord) {
 
 function handleMemberSelectionChange(rows: ClubMemberRecord[]) {
   selectedMemberRows.value = rows;
-}
-
-function handleMemberBatchDepartmentChange() {
-  if (
-    memberBatchGroupingForm.groupName &&
-    !memberBatchGroupingGroupOptions.value.includes(memberBatchGroupingForm.groupName)
-  ) {
-    memberBatchGroupingForm.groupName = "";
-  }
 }
 
 function openMemberBatchGroupingDialog() {
@@ -1513,10 +1600,14 @@ function openMemberBatchGroupingDialog() {
 
   const first = rows[0];
   const sameDepartment = rows.every(
-    (row) => (row.departmentName ?? "") === (first.departmentName ?? ""),
+    (row) => (row.departmentId ?? null) === (first.departmentId ?? null),
   );
-  const sameGroup = rows.every((row) => (row.groupName ?? "") === (first.groupName ?? ""));
+  const sameGroup = rows.every((row) => (row.groupId ?? null) === (first.groupId ?? null));
+  memberBatchGroupingForm.departmentId = sameDepartment
+    ? (first.departmentId ?? undefined)
+    : undefined;
   memberBatchGroupingForm.departmentName = sameDepartment ? (first.departmentName ?? "") : "";
+  memberBatchGroupingForm.groupId = sameGroup ? (first.groupId ?? undefined) : undefined;
   memberBatchGroupingForm.groupName = sameGroup ? (first.groupName ?? "") : "";
   memberBatchGroupingDialogVisible.value = true;
 }
@@ -1542,12 +1633,12 @@ function openMemberBatchPositionDialog() {
 async function submitMemberGrouping() {
   if (!memberGroupingTarget.value || !selectedClubId.value || !currentUserId.value) return;
 
-  if (memberGroupingField.value === "groupName" && !memberGroupingForm.groupName.trim()) {
+  if (memberGroupingField.value === "groupName" && !memberGroupingForm.groupId) {
     ElMessage.warning("请选择小组。");
     return;
   }
 
-  if (memberGroupingMode.value !== "free" && !memberGroupingForm.groupName.trim()) {
+  if (memberGroupingMode.value !== "free" && !memberGroupingForm.groupId) {
     ElMessage.warning(
       memberGroupingMode.value === "own"
         ? "干部账号需要先登记自己的小组，才能把成员纳入本组。"
@@ -1555,9 +1646,6 @@ async function submitMemberGrouping() {
     );
     return;
   }
-
-  const nextDepartment = memberGroupingForm.departmentName;
-  const nextGroup = memberGroupingForm.groupName;
 
   groupingSaving.value = true;
   try {
@@ -1567,8 +1655,10 @@ async function submitMemberGrouping() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          departmentName: emptyToNull(nextDepartment),
-          groupName: emptyToNull(nextGroup),
+          departmentId: memberGroupingForm.departmentId ?? null,
+          departmentName: emptyToNull(memberGroupingForm.departmentName),
+          groupId: memberGroupingForm.groupId ?? null,
+          groupName: emptyToNull(memberGroupingForm.groupName),
         }),
       },
     );
@@ -1593,7 +1683,7 @@ async function submitMemberGrouping() {
 async function submitMemberBatchGrouping() {
   if (!selectedClubId.value || selectedBatchGroupableRows.value.length === 0) return;
 
-  if (!memberBatchGroupingForm.departmentName.trim()) {
+  if (!memberBatchGroupingForm.departmentId) {
     ElMessage.warning("请选择批量设置的部门。");
     return;
   }
@@ -1609,7 +1699,9 @@ async function submitMemberBatchGrouping() {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              departmentId: memberBatchGroupingForm.departmentId ?? null,
               departmentName: emptyToNull(memberBatchGroupingForm.departmentName),
+              groupId: memberBatchGroupingForm.groupId ?? null,
               groupName: emptyToNull(memberBatchGroupingForm.groupName),
             }),
           },
@@ -1702,7 +1794,9 @@ async function submitMemberTerm() {
   try {
     const payload = {
       userId: memberTermForm.userId,
+      departmentId: memberTermForm.departmentId ?? null,
       departmentName: emptyToNull(memberTermForm.departmentName),
+      groupId: memberTermForm.groupId ?? null,
       groupName: emptyToNull(memberTermForm.groupName),
       positionName: memberTermForm.positionName,
       termName: memberTermForm.termName,
@@ -1775,8 +1869,8 @@ function resetFilters() {
 
 function clearMemberFilters() {
   memberFilters.termName = "";
-  memberFilters.departmentName = "";
-  memberFilters.groupName = "";
+  memberFilters.departmentId = undefined;
+  memberFilters.groupId = undefined;
   memberFilters.unassignedOnly = false;
   void loadMembers();
 }
@@ -1784,43 +1878,106 @@ function clearMemberFilters() {
 function toggleUnassignedMemberFilter(value: string | number | boolean) {
   if (!value) return;
 
-  memberFilters.departmentName = "";
-  memberFilters.groupName = "";
+  memberFilters.departmentId = undefined;
+  memberFilters.groupId = undefined;
   void loadMembers();
 }
 
-function addMemberDepartmentOption() {
-  const clubId = selectedClubId.value;
-  const departmentName = newDepartmentName.value.trim();
-  if (!clubId || !canCreateMemberDepartment.value) return;
+function resetDepartmentForm() {
+  departmentEditTarget.value = null;
+  departmentForm.departmentName = "";
+  departmentForm.departmentCode = "";
+  departmentForm.responsibilities = "";
+  departmentForm.contactPhone = "";
+  departmentForm.contactEmail = "";
+  departmentForm.officeLocation = "";
+  departmentForm.displayOrder = 0;
+  departmentForm.departmentStatus = "active";
+}
+
+function editDepartment(row: ClubDepartmentRecord) {
+  departmentEditTarget.value = row;
+  departmentForm.departmentName = row.departmentName;
+  departmentForm.departmentCode = row.departmentCode ?? "";
+  departmentForm.responsibilities = row.responsibilities ?? "";
+  departmentForm.contactPhone = row.contactPhone ?? "";
+  departmentForm.contactEmail = row.contactEmail ?? "";
+  departmentForm.officeLocation = row.officeLocation ?? "";
+  departmentForm.displayOrder = row.displayOrder;
+  departmentForm.departmentStatus = row.departmentStatus;
+}
+
+async function submitDepartmentForm() {
+  if (!selectedClubId.value || !canCreateMemberDepartment.value) return;
+  const departmentName = departmentForm.departmentName.trim();
   if (!departmentName) {
     ElMessage.warning("请填写部门名称。");
     return;
   }
-  if (memberDepartmentOptions.value.includes(departmentName)) {
-    ElMessage.info("该部门已存在。");
-    return;
-  }
 
-  manualDepartmentOptions.value = {
-    ...manualDepartmentOptions.value,
-    [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
-  };
-  if (!newGroupDepartmentName.value) newGroupDepartmentName.value = departmentName;
-  newDepartmentName.value = "";
-  ElMessage.success("部门已加入可选项");
+  organizationSaving.value = true;
+  try {
+    const target = departmentEditTarget.value;
+    await requestJson<ClubDepartmentRecord>(
+      target
+        ? `/api/clubs/${selectedClubId.value}/departments/${target.departmentId}`
+        : `/api/clubs/${selectedClubId.value}/departments`,
+      {
+        method: target ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          departmentName,
+          departmentCode: emptyToNull(departmentForm.departmentCode),
+          responsibilities: emptyToNull(departmentForm.responsibilities),
+          contactPhone: emptyToNull(departmentForm.contactPhone),
+          contactEmail: emptyToNull(departmentForm.contactEmail),
+          officeLocation: emptyToNull(departmentForm.officeLocation),
+          displayOrder: departmentForm.displayOrder,
+          departmentStatus: departmentForm.departmentStatus,
+        }),
+      },
+    );
+    ElMessage.success(target ? "部门已更新" : "部门已新增");
+    resetDepartmentForm();
+    await Promise.all([loadDepartments(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "部门保存失败");
+  } finally {
+    organizationSaving.value = false;
+  }
 }
 
-function addMemberGroupOption() {
-  const clubId = selectedClubId.value;
-  const groupName = newGroupName.value.trim();
-  if (!clubId || !canCreateMemberGroup.value) return;
+function resetGroupForm(departmentId = groupCreateDepartmentOptions.value[0]?.departmentId) {
+  groupEditTarget.value = null;
+  groupForm.departmentId = departmentId;
+  groupForm.groupName = "";
+  groupForm.groupCode = "";
+  groupForm.responsibilities = "";
+  groupForm.contactPhone = "";
+  groupForm.contactEmail = "";
+  groupForm.activityLocation = "";
+  groupForm.displayOrder = 0;
+  groupForm.groupStatus = "active";
+}
 
-  const departmentOptions = groupCreateDepartmentOptions.value;
-  const departmentName =
-    newGroupDepartmentName.value.trim() ||
-    (departmentOptions.length === 1 ? departmentOptions[0] : "");
-  if (!departmentName) {
+function editGroup(row: ClubGroupRecord) {
+  groupEditTarget.value = row;
+  groupForm.departmentId = row.departmentId;
+  groupForm.groupName = row.groupName;
+  groupForm.groupCode = row.groupCode ?? "";
+  groupForm.responsibilities = row.responsibilities ?? "";
+  groupForm.contactPhone = row.contactPhone ?? "";
+  groupForm.contactEmail = row.contactEmail ?? "";
+  groupForm.activityLocation = row.activityLocation ?? "";
+  groupForm.displayOrder = row.displayOrder;
+  groupForm.groupStatus = row.groupStatus;
+}
+
+async function submitGroupForm() {
+  if (!selectedClubId.value || !canCreateMemberGroup.value) return;
+  const departmentId = groupForm.departmentId;
+  const groupName = groupForm.groupName.trim();
+  if (!departmentId) {
     ElMessage.warning("请选择小组所属部门。");
     return;
   }
@@ -1828,55 +1985,132 @@ function addMemberGroupOption() {
     ElMessage.warning("请填写小组名称。");
     return;
   }
-  if (!canManageSelectedClub.value && !departmentOptions.includes(departmentName)) {
-    ElMessage.warning("部长只能在自己所在部门新增小组。");
-    return;
-  }
-  if (groupOptionExists(departmentName, groupName)) {
-    ElMessage.info("该部门下已存在同名小组。");
-    return;
-  }
 
-  const nextGroups = [...(manualGroupOptions.value[clubId] ?? []), { departmentName, groupName }];
-  manualGroupOptions.value = {
-    ...manualGroupOptions.value,
-    [clubId]: nextGroups,
-  };
-  if (!memberDepartmentOptions.value.includes(departmentName)) {
-    manualDepartmentOptions.value = {
-      ...manualDepartmentOptions.value,
-      [clubId]: [...(manualDepartmentOptions.value[clubId] ?? []), departmentName],
-    };
+  organizationSaving.value = true;
+  try {
+    const target = groupEditTarget.value;
+    await requestJson<ClubGroupRecord>(
+      target
+        ? `/api/clubs/${selectedClubId.value}/groups/${target.groupId}`
+        : `/api/clubs/${selectedClubId.value}/departments/${departmentId}/groups`,
+      {
+        method: target ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupName,
+          groupCode: emptyToNull(groupForm.groupCode),
+          responsibilities: emptyToNull(groupForm.responsibilities),
+          contactPhone: emptyToNull(groupForm.contactPhone),
+          contactEmail: emptyToNull(groupForm.contactEmail),
+          activityLocation: emptyToNull(groupForm.activityLocation),
+          displayOrder: groupForm.displayOrder,
+          groupStatus: groupForm.groupStatus,
+        }),
+      },
+    );
+    ElMessage.success(target ? "小组已更新" : "小组已新增");
+    resetGroupForm(departmentId);
+    await Promise.all([loadDepartments(), loadMembers()]);
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "小组保存失败");
+  } finally {
+    organizationSaving.value = false;
   }
-  newGroupName.value = "";
-  newGroupDepartmentName.value = departmentName;
-  ElMessage.success("小组已加入可选项");
 }
 
-function groupOptionExists(departmentName: string, groupName: string) {
-  return memberGroupEntries.value.some(
-    (entry) =>
-      entry.departmentName.trim() === departmentName.trim() &&
-      entry.groupName.trim() === groupName.trim(),
+function departmentById(departmentId: number | null | undefined) {
+  if (!departmentId) return undefined;
+  return clubDepartments.value.find((department) => department.departmentId === departmentId);
+}
+
+function departmentByName(departmentName: string | null | undefined) {
+  const normalized = departmentName?.trim();
+  if (!normalized) return undefined;
+  return activeClubDepartments.value.find((department) => department.departmentName === normalized);
+}
+
+function groupById(groupId: number | null | undefined) {
+  if (!groupId) return undefined;
+  return clubDepartments.value
+    .flatMap((department) => department.groups)
+    .find((group) => group.groupId === groupId);
+}
+
+function groupByName(
+  departmentId: number | null | undefined,
+  groupName: string | null | undefined,
+) {
+  const normalized = groupName?.trim();
+  if (!departmentId || !normalized) return undefined;
+  return groupOptionsForDepartmentId(departmentId).find((group) => group.groupName === normalized);
+}
+
+function groupOptionsForDepartmentId(departmentId: number | null | undefined) {
+  return activeClubGroups.value.filter(
+    (group) => !departmentId || group.departmentId === departmentId,
   );
 }
 
-function handleMemberGroupingDepartmentChange() {
-  if (
-    memberGroupingForm.groupName &&
-    !memberGroupingGroupOptions.value.includes(memberGroupingForm.groupName)
-  ) {
-    memberGroupingForm.groupName = "";
+function applyDepartmentSelection(form: OrganizationSelectionForm) {
+  const department = departmentById(form.departmentId);
+  form.departmentName = department?.departmentName ?? "";
+  const group = groupById(form.groupId);
+  if (!group || group.departmentId !== form.departmentId) {
+    form.groupId = undefined;
+    form.groupName = "";
+  } else {
+    form.groupName = group.groupName;
   }
 }
 
-function handleMemberTermDepartmentChange() {
-  if (
-    memberTermForm.groupName &&
-    !groupOptionsForDepartment(memberTermForm.departmentName).includes(memberTermForm.groupName)
-  ) {
-    memberTermForm.groupName = "";
+function applyGroupSelection(form: OrganizationSelectionForm) {
+  const group = groupById(form.groupId);
+  form.groupName = group?.groupName ?? "";
+  if (group && form.departmentId !== group.departmentId) {
+    form.departmentId = group.departmentId;
+    form.departmentName = departmentById(group.departmentId)?.departmentName ?? "";
   }
+}
+
+function applyGroupingSelectionByName(
+  form: OrganizationSelectionForm,
+  departmentName: string | null | undefined,
+  groupName: string | null | undefined,
+) {
+  const department = departmentByName(departmentName);
+  form.departmentId = department?.departmentId;
+  form.departmentName = department?.departmentName ?? departmentName?.trim() ?? "";
+  const group = groupByName(form.departmentId, groupName);
+  form.groupId = group?.groupId;
+  form.groupName = group?.groupName ?? groupName?.trim() ?? "";
+}
+
+function handleMemberFilterDepartmentChange() {
+  memberFilters.groupId = undefined;
+}
+
+function handleMemberGroupingDepartmentChange() {
+  applyDepartmentSelection(memberGroupingForm);
+}
+
+function handleMemberGroupingGroupChange() {
+  applyGroupSelection(memberGroupingForm);
+}
+
+function handleMemberBatchDepartmentChange() {
+  applyDepartmentSelection(memberBatchGroupingForm);
+}
+
+function handleMemberBatchGroupChange() {
+  applyGroupSelection(memberBatchGroupingForm);
+}
+
+function handleMemberTermDepartmentChange() {
+  applyDepartmentSelection(memberTermForm);
+}
+
+function handleMemberTermGroupChange() {
+  applyGroupSelection(memberTermForm);
 }
 
 function formatDate(value: string | null | undefined) {
@@ -2224,15 +2458,6 @@ function uniqueTextOptions(values: Array<string | null | undefined>) {
   ).sort((left, right) => left.localeCompare(right, "zh-CN"));
 }
 
-function groupOptionsForDepartment(departmentName: string | null | undefined) {
-  const normalizedDepartment = departmentName?.trim() ?? "";
-  return uniqueTextOptions(
-    memberGroupEntries.value
-      .filter((entry) => !normalizedDepartment || entry.departmentName === normalizedDepartment)
-      .map((entry) => entry.groupName),
-  );
-}
-
 function isMemberUnassigned(member: ClubMemberRecord) {
   return (
     !member.departmentName?.trim() || !member.groupName?.trim() || !member.positionName?.trim()
@@ -2244,25 +2469,28 @@ watch(currentUserId, () => {
 });
 
 watch(selectedClubId, () => {
-  memberFilters.departmentName = "";
-  memberFilters.groupName = "";
+  memberFilters.departmentId = undefined;
+  memberFilters.groupId = undefined;
   memberFilters.termName = "";
   memberFilters.unassignedOnly = false;
-  newDepartmentName.value = "";
-  newGroupDepartmentName.value = "";
-  newGroupName.value = "";
+  resetDepartmentForm();
+  resetGroupForm();
+  void loadDepartments();
 });
 
 watch(
   groupCreateDepartmentOptions,
   (options) => {
-    if (!newGroupDepartmentName.value && options.length === 1) {
-      newGroupDepartmentName.value = options[0];
+    if (!options.length) {
+      groupForm.departmentId = undefined;
       return;
     }
 
-    if (newGroupDepartmentName.value && !options.includes(newGroupDepartmentName.value)) {
-      newGroupDepartmentName.value = options[0] ?? "";
+    if (
+      !groupForm.departmentId ||
+      !options.some((item) => item.departmentId === groupForm.departmentId)
+    ) {
+      groupForm.departmentId = options[0].departmentId;
     }
   },
   { immediate: true },
@@ -2273,8 +2501,8 @@ watch(
     selectedClubId,
     memberWorkspaceMode,
     () => memberFilters.termName,
-    () => memberFilters.departmentName,
-    () => memberFilters.groupName,
+    () => memberFilters.departmentId,
+    () => memberFilters.groupId,
   ],
   () => {
     void loadMembers();
@@ -2813,6 +3041,7 @@ onUnmounted(() => {
                   { label: '当前名册', value: 'current' },
                   { label: '任期历史', value: 'history' },
                   { label: '换届管理', value: 'transition' },
+                  { label: '部门小组', value: 'organization' },
                 ]"
               />
             </div>
@@ -2826,7 +3055,7 @@ onUnmounted(() => {
             </el-button>
           </div>
 
-          <div class="member-filter-row">
+          <div v-if="memberWorkspaceMode !== 'organization'" class="member-filter-row">
             <el-select
               v-if="memberWorkspaceMode === 'history'"
               v-model="memberFilters.termName"
@@ -2842,21 +3071,22 @@ onUnmounted(() => {
               />
             </el-select>
             <el-select
-              v-model="memberFilters.departmentName"
+              v-model="memberFilters.departmentId"
               class="filter-item"
               clearable
               :disabled="memberFilters.unassignedOnly"
               placeholder="按部门筛选"
+              @change="handleMemberFilterDepartmentChange"
             >
               <el-option
-                v-for="department in memberDepartmentOptions"
-                :key="department"
-                :label="department"
-                :value="department"
+                v-for="department in activeClubDepartments"
+                :key="department.departmentId"
+                :label="department.departmentName"
+                :value="department.departmentId"
               />
             </el-select>
             <el-select
-              v-model="memberFilters.groupName"
+              v-model="memberFilters.groupId"
               class="filter-item"
               clearable
               :disabled="memberFilters.unassignedOnly"
@@ -2864,9 +3094,9 @@ onUnmounted(() => {
             >
               <el-option
                 v-for="group in memberGroupOptions"
-                :key="group"
-                :label="group"
-                :value="group"
+                :key="group.groupId"
+                :label="group.groupName"
+                :value="group.groupId"
               />
             </el-select>
             <el-checkbox
@@ -2904,7 +3134,10 @@ onUnmounted(() => {
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
             <span>待补资料 {{ memberGroupSummary.unassigned }} 条</span>
-            <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
+            <div
+              v-if="canCreateAcademicTerm && memberWorkspaceMode !== 'organization'"
+              class="taxonomy-add term-add"
+            >
               <el-input-number
                 v-model="newAcademicTermStartYear"
                 size="small"
@@ -2924,60 +3157,215 @@ onUnmounted(() => {
                 新增学年
               </el-button>
             </div>
-            <div v-if="canCreateMemberDepartment" class="taxonomy-add">
-              <el-input
-                v-model="newDepartmentName"
-                size="small"
-                maxlength="60"
-                placeholder="新增部门"
-                @keyup.enter="addMemberDepartmentOption"
-              />
-              <el-button
-                size="small"
-                type="primary"
-                plain
-                :icon="Plus"
-                @click="addMemberDepartmentOption"
-              >
-                新增部门
-              </el-button>
-            </div>
-            <div v-if="canCreateMemberGroup" class="taxonomy-add group-add">
-              <el-select
-                v-model="newGroupDepartmentName"
-                size="small"
-                placeholder="所属部门"
-                :disabled="!canManageSelectedClub && groupCreateDepartmentOptions.length <= 1"
-              >
-                <el-option
-                  v-for="department in groupCreateDepartmentOptions"
-                  :key="department"
-                  :label="department"
-                  :value="department"
-                />
-              </el-select>
-              <el-input
-                v-model="newGroupName"
-                size="small"
-                maxlength="60"
-                placeholder="新增小组"
-                @keyup.enter="addMemberGroupOption"
-              />
-              <el-button
-                size="small"
-                type="primary"
-                plain
-                :icon="Plus"
-                @click="addMemberGroupOption"
-              >
-                新增小组
-              </el-button>
-            </div>
           </div>
         </div>
 
+        <div v-if="memberWorkspaceMode === 'organization'" class="organization-panel">
+          <div v-if="canManageSelectedClub" class="organization-forms">
+            <el-form class="organization-form" label-width="82px">
+              <h3>{{ departmentEditTarget ? "编辑部门" : "新增部门" }}</h3>
+              <el-form-item label="部门名称" required>
+                <el-input v-model="departmentForm.departmentName" maxlength="80" />
+              </el-form-item>
+              <el-form-item label="部门编码">
+                <el-input v-model="departmentForm.departmentCode" maxlength="40" />
+              </el-form-item>
+              <el-form-item label="职责">
+                <el-input
+                  v-model="departmentForm.responsibilities"
+                  type="textarea"
+                  :rows="2"
+                  maxlength="200"
+                />
+              </el-form-item>
+              <el-form-item label="联系方式">
+                <div class="organization-inline">
+                  <el-input
+                    v-model="departmentForm.contactPhone"
+                    maxlength="40"
+                    placeholder="电话"
+                  />
+                  <el-input
+                    v-model="departmentForm.contactEmail"
+                    maxlength="80"
+                    placeholder="邮箱"
+                  />
+                </div>
+              </el-form-item>
+              <el-form-item label="地点">
+                <el-input v-model="departmentForm.officeLocation" maxlength="80" />
+              </el-form-item>
+              <el-form-item label="排序/状态">
+                <div class="organization-inline">
+                  <el-input-number
+                    v-model="departmentForm.displayOrder"
+                    :min="0"
+                    :precision="0"
+                    controls-position="right"
+                  />
+                  <el-select v-model="departmentForm.departmentStatus">
+                    <el-option label="启用" value="active" />
+                    <el-option label="停用" value="inactive" />
+                  </el-select>
+                </div>
+              </el-form-item>
+              <div class="row-actions">
+                <el-button
+                  type="primary"
+                  :icon="Check"
+                  :loading="organizationSaving"
+                  @click="submitDepartmentForm"
+                >
+                  保存部门
+                </el-button>
+                <el-button v-if="departmentEditTarget" @click="resetDepartmentForm"
+                  >取消编辑</el-button
+                >
+              </div>
+            </el-form>
+
+            <el-form class="organization-form" label-width="82px">
+              <h3>{{ groupEditTarget ? "编辑小组" : "新增小组" }}</h3>
+              <el-form-item label="所属部门" required>
+                <el-select
+                  v-model="groupForm.departmentId"
+                  class="full-width"
+                  :disabled="Boolean(groupEditTarget)"
+                >
+                  <el-option
+                    v-for="department in groupCreateDepartmentOptions"
+                    :key="department.departmentId"
+                    :label="department.departmentName"
+                    :value="department.departmentId"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="小组名称" required>
+                <el-input v-model="groupForm.groupName" maxlength="80" />
+              </el-form-item>
+              <el-form-item label="小组编码">
+                <el-input v-model="groupForm.groupCode" maxlength="40" />
+              </el-form-item>
+              <el-form-item label="职责">
+                <el-input
+                  v-model="groupForm.responsibilities"
+                  type="textarea"
+                  :rows="2"
+                  maxlength="200"
+                />
+              </el-form-item>
+              <el-form-item label="联系方式">
+                <div class="organization-inline">
+                  <el-input v-model="groupForm.contactPhone" maxlength="40" placeholder="电话" />
+                  <el-input v-model="groupForm.contactEmail" maxlength="80" placeholder="邮箱" />
+                </div>
+              </el-form-item>
+              <el-form-item label="地点">
+                <el-input v-model="groupForm.activityLocation" maxlength="80" />
+              </el-form-item>
+              <el-form-item label="排序/状态">
+                <div class="organization-inline">
+                  <el-input-number
+                    v-model="groupForm.displayOrder"
+                    :min="0"
+                    :precision="0"
+                    controls-position="right"
+                  />
+                  <el-select v-model="groupForm.groupStatus">
+                    <el-option label="启用" value="active" />
+                    <el-option label="停用" value="inactive" />
+                  </el-select>
+                </div>
+              </el-form-item>
+              <div class="row-actions">
+                <el-button
+                  type="primary"
+                  :icon="Check"
+                  :loading="organizationSaving"
+                  @click="submitGroupForm"
+                >
+                  保存小组
+                </el-button>
+                <el-button v-if="groupEditTarget" @click="resetGroupForm()">取消编辑</el-button>
+              </div>
+            </el-form>
+          </div>
+
+          <el-table
+            v-loading="organizationLoading"
+            :data="clubDepartments"
+            border
+            stripe
+            row-key="departmentId"
+            empty-text="暂无部门"
+          >
+            <el-table-column type="expand">
+              <template #default="{ row }">
+                <el-table
+                  class="nested-table"
+                  :data="row.groups"
+                  border
+                  stripe
+                  empty-text="暂无小组"
+                  row-key="groupId"
+                >
+                  <el-table-column prop="groupName" label="小组" min-width="140" />
+                  <el-table-column prop="groupCode" label="编码" width="110" />
+                  <el-table-column prop="responsibilities" label="职责" min-width="180" />
+                  <el-table-column prop="contactPhone" label="电话" width="130" />
+                  <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
+                  <el-table-column prop="activityLocation" label="地点" width="140" />
+                  <el-table-column label="状态" width="100">
+                    <template #default="{ row: group }">
+                      <el-tag
+                        :type="group.groupStatus === 'active' ? 'success' : 'info'"
+                        effect="plain"
+                      >
+                        {{ group.groupStatus === "active" ? "启用" : "停用" }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column v-if="canManageSelectedClub" label="操作" width="100">
+                    <template #default="{ row: group }">
+                      <el-button type="primary" plain :icon="Edit" @click="editGroup(group)">
+                        编辑
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </template>
+            </el-table-column>
+            <el-table-column prop="departmentName" label="部门" min-width="150" />
+            <el-table-column prop="departmentCode" label="编码" width="110" />
+            <el-table-column prop="responsibilities" label="职责" min-width="180" />
+            <el-table-column prop="contactPhone" label="电话" width="130" />
+            <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
+            <el-table-column prop="officeLocation" label="地点" width="140" />
+            <el-table-column label="小组数" width="90">
+              <template #default="{ row }">{{ row.groups.length }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag
+                  :type="row.departmentStatus === 'active' ? 'success' : 'info'"
+                  effect="plain"
+                >
+                  {{ row.departmentStatus === "active" ? "启用" : "停用" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="canManageSelectedClub" label="操作" width="100">
+              <template #default="{ row }">
+                <el-button type="primary" plain :icon="Edit" @click="editDepartment(row)">
+                  编辑
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
         <el-table
-          v-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
+          v-else-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
           v-loading="memberLoading"
           :data="memberTableRows"
           border
@@ -3399,33 +3787,34 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="部门">
           <el-select
-            v-model="memberGroupingForm.departmentName"
+            v-model="memberGroupingForm.departmentId"
             class="full-width"
             :disabled="memberGroupingMode !== 'free'"
             placeholder="选择部门"
             @change="handleMemberGroupingDepartmentChange"
           >
             <el-option
-              v-for="department in memberDepartmentOptions"
-              :key="department"
-              :label="department"
-              :value="department"
+              v-for="department in activeClubDepartments"
+              :key="department.departmentId"
+              :label="department.departmentName"
+              :value="department.departmentId"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="小组">
           <el-select
-            v-model="memberGroupingForm.groupName"
+            v-model="memberGroupingForm.groupId"
             :disabled="memberGroupingMode === 'own'"
             class="full-width"
             clearable
             placeholder="选择小组"
+            @change="handleMemberGroupingGroupChange"
           >
             <el-option
               v-for="group in memberGroupingGroupOptions"
-              :key="group"
-              :label="group"
-              :value="group"
+              :key="group.groupId"
+              :label="group.groupName"
+              :value="group.groupId"
             />
           </el-select>
         </el-form-item>
@@ -3449,31 +3838,32 @@ onUnmounted(() => {
       <el-form label-width="90px">
         <el-form-item label="部门" required>
           <el-select
-            v-model="memberBatchGroupingForm.departmentName"
+            v-model="memberBatchGroupingForm.departmentId"
             class="full-width"
             placeholder="选择部门"
             @change="handleMemberBatchDepartmentChange"
           >
             <el-option
-              v-for="department in memberDepartmentOptions"
-              :key="department"
-              :label="department"
-              :value="department"
+              v-for="department in activeClubDepartments"
+              :key="department.departmentId"
+              :label="department.departmentName"
+              :value="department.departmentId"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="小组">
           <el-select
-            v-model="memberBatchGroupingForm.groupName"
+            v-model="memberBatchGroupingForm.groupId"
             class="full-width"
             clearable
             placeholder="选择小组（可选）"
+            @change="handleMemberBatchGroupChange"
           >
             <el-option
               v-for="group in memberBatchGroupingGroupOptions"
-              :key="group"
-              :label="group"
-              :value="group"
+              :key="group.groupId"
+              :label="group.groupName"
+              :value="group.groupId"
             />
           </el-select>
         </el-form-item>
@@ -3563,32 +3953,33 @@ onUnmounted(() => {
         </el-form-item>
         <el-form-item label="部门">
           <el-select
-            v-model="memberTermForm.departmentName"
+            v-model="memberTermForm.departmentId"
             class="full-width"
             clearable
             placeholder="选择部门"
             @change="handleMemberTermDepartmentChange"
           >
             <el-option
-              v-for="department in memberDepartmentOptions"
-              :key="department"
-              :label="department"
-              :value="department"
+              v-for="department in activeClubDepartments"
+              :key="department.departmentId"
+              :label="department.departmentName"
+              :value="department.departmentId"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="小组">
           <el-select
-            v-model="memberTermForm.groupName"
+            v-model="memberTermForm.groupId"
             class="full-width"
             clearable
             placeholder="选择小组"
+            @change="handleMemberTermGroupChange"
           >
             <el-option
-              v-for="group in groupOptionsForDepartment(memberTermForm.departmentName)"
-              :key="group"
-              :label="group"
-              :value="group"
+              v-for="group in memberTermGroupOptions"
+              :key="group.groupId"
+              :label="group.groupName"
+              :value="group.groupId"
             />
           </el-select>
         </el-form-item>
@@ -3899,6 +4290,42 @@ onUnmounted(() => {
   gap: 14px;
 }
 
+.organization-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.organization-forms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.organization-form {
+  border: 1px solid #d9e1ea;
+  padding: 14px;
+}
+
+.organization-form h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.organization-inline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.nested-table {
+  margin: 8px 0 8px 46px;
+  width: calc(100% - 46px);
+}
+
 .transition-toolbar {
   display: flex;
   align-items: flex-start;
@@ -3961,6 +4388,16 @@ onUnmounted(() => {
   .transition-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .organization-forms,
+  .organization-inline {
+    grid-template-columns: 1fr;
+  }
+
+  .nested-table {
+    margin-left: 0;
+    width: 100%;
   }
 
   .toolbar-actions,
