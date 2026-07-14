@@ -11,6 +11,8 @@ public class ClubHubDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Club> Clubs => Set<Club>();
+    public DbSet<ClubDepartment> ClubDepartments => Set<ClubDepartment>();
+    public DbSet<ClubGroup> ClubGroups => Set<ClubGroup>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
@@ -112,6 +114,69 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(c => c.PresidentUserId)
              .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.Departments)
+             .WithOne(d => d.Club)
+             .HasForeignKey(d => d.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.Groups)
+             .WithOne(g => g.Club)
+             .HasForeignKey(g => g.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ClubDepartment>(e =>
+        {
+            e.HasKey(d => d.DepartmentId);
+            e.HasAlternateKey(d => new { d.ClubId, d.DepartmentId })
+             .HasName("UQ_CLUB_DEPARTMENTS_SCOPE");
+            e.Property(d => d.DepartmentId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUB_DEPARTMENTS.NEXTVAL");
+            e.Property(d => d.DepartmentName).HasMaxLength(255);
+            e.Property(d => d.DepartmentCode).HasMaxLength(100);
+            e.Property(d => d.ContactPhone).HasMaxLength(255);
+            e.Property(d => d.ContactEmail).HasMaxLength(255);
+            e.Property(d => d.OfficeLocation).HasMaxLength(255);
+            e.Property(d => d.DisplayOrder).HasDefaultValue(0);
+            e.Property(d => d.DepartmentStatus).HasMaxLength(30).HasDefaultValue("active");
+            e.Property(d => d.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(d => d.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(d => new { d.ClubId, d.DepartmentName })
+             .IsUnique()
+             .HasDatabaseName("UQ_CLUB_DEPARTMENTS_NAME");
+            e.HasIndex(d => new { d.ClubId, d.DisplayOrder, d.DepartmentName })
+             .HasDatabaseName("IX_CLUB_DEPARTMENTS_ORDER");
+        });
+
+        modelBuilder.Entity<ClubGroup>(e =>
+        {
+            e.HasKey(g => g.GroupId);
+            e.HasAlternateKey(g => new { g.ClubId, g.GroupId })
+             .HasName("UQ_CLUB_GROUPS_SCOPE");
+            e.HasAlternateKey(g => new { g.ClubId, g.DepartmentId, g.GroupId })
+             .HasName("UQ_CLUB_GROUPS_DEPT_SCOPE");
+            e.Property(g => g.GroupId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_CLUB_GROUPS.NEXTVAL");
+            e.Property(g => g.GroupName).HasMaxLength(255);
+            e.Property(g => g.GroupCode).HasMaxLength(100);
+            e.Property(g => g.ContactPhone).HasMaxLength(255);
+            e.Property(g => g.ContactEmail).HasMaxLength(255);
+            e.Property(g => g.ActivityLocation).HasMaxLength(255);
+            e.Property(g => g.DisplayOrder).HasDefaultValue(0);
+            e.Property(g => g.GroupStatus).HasMaxLength(30).HasDefaultValue("active");
+            e.Property(g => g.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(g => g.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(g => new { g.ClubId, g.DepartmentId, g.GroupName })
+             .IsUnique()
+             .HasDatabaseName("UQ_CLUB_GROUPS_NAME");
+            e.HasIndex(g => new { g.ClubId, g.DepartmentId, g.DisplayOrder, g.GroupName })
+             .HasDatabaseName("IX_CLUB_GROUPS_ORDER");
+            e.HasOne(g => g.Department)
+             .WithMany(d => d.Groups)
+             .HasForeignKey(g => new { g.ClubId, g.DepartmentId })
+             .HasPrincipalKey(d => new { d.ClubId, d.DepartmentId })
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Activity>(e =>
@@ -178,6 +243,18 @@ public class ClubHubDbContext : DbContext
              .WithMany(c => c.Members)
              .HasForeignKey(cm => cm.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(cm => cm.Department)
+             .WithMany(d => d.Members)
+             .HasForeignKey(cm => new { cm.ClubId, cm.DepartmentId })
+             .HasPrincipalKey(d => new { d.ClubId, d.DepartmentId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(cm => cm.Group)
+             .WithMany(g => g.Members)
+             .HasForeignKey(cm => new { cm.ClubId, cm.DepartmentId, cm.GroupId })
+             .HasPrincipalKey(g => new { g.ClubId, g.DepartmentId, g.GroupId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasIndex(cm => new { cm.ClubId, cm.DepartmentId, cm.GroupId })
+             .HasDatabaseName("IX_CLUB_MEMBERS_ORG");
         });
 
         modelBuilder.Entity<Project>(e =>

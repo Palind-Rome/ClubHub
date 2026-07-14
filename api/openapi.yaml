@@ -686,20 +686,36 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: departmentId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 1001
+          description: 按 CLUB_MEMBERS.department_id 精确筛选；新流程优先使用该字段。
+        - name: groupId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 2001
+          description: 按 CLUB_MEMBERS.group_id 精确筛选；需要与 departmentId 对应的小组。
         - name: departmentName
           in: query
           required: false
           schema:
             type: string
             example: "宣传部"
-          description: 按 CLUB_MEMBERS.department_name 精确筛选。
+          description: 按 CLUB_MEMBERS.department_name 精确筛选；保留用于历史兼容。
         - name: groupName
           in: query
           required: false
           schema:
             type: string
             example: "摄影组"
-          description: 按 CLUB_MEMBERS.group_name 精确筛选。
+          description: 按 CLUB_MEMBERS.group_name 精确筛选；保留用于历史兼容。
         - name: termName
           in: query
           required: false
@@ -720,6 +736,184 @@ paths:
           description: 当前用户没有查看该社团成员的权限
         "404":
           description: 当前用户或社团不存在
+
+  /api/clubs/{clubId}/departments:
+    get:
+      summary: 查询社团部门和小组
+      description: 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+      operationId: getClubDepartments
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: includeInactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: 是否包含已停用的部门和小组。
+      responses:
+        "200":
+          description: 社团部门与小组列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubDepartmentRecord"
+        "403":
+          description: 当前用户没有查看该社团组织架构的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 新增社团部门
+      description: 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+      operationId: createClubDepartment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubDepartmentRequest"
+      responses:
+        "201":
+          description: 社团部门已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDepartmentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护或部门名称冲突
+
+  /api/clubs/{clubId}/departments/{departmentId}:
+    patch:
+      summary: 更新社团部门
+      description: 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+      operationId: updateClubDepartment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubDepartmentRequest"
+      responses:
+        "200":
+          description: 社团部门已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDepartmentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或部门不存在
+        "409":
+          description: 社团状态不允许维护或部门名称冲突
+
+  /api/clubs/{clubId}/departments/{departmentId}/groups:
+    post:
+      summary: 新增社团小组
+      description: 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+      operationId: createClubGroup
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubGroupRequest"
+      responses:
+        "201":
+          description: 社团小组已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubGroupRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或部门不存在
+        "409":
+          description: 社团状态不允许维护或小组名称冲突
+
+  /api/clubs/{clubId}/groups/{groupId}:
+    patch:
+      summary: 更新社团小组
+      description: 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+      operationId: updateClubGroup
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubGroupRequest"
+      responses:
+        "200":
+          description: 社团小组已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubGroupRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或小组不存在
+        "409":
+          description: 社团状态不允许维护或小组名称冲突
 
   /api/clubs/{clubId}/members/terms:
     post:
@@ -4188,6 +4382,188 @@ components:
           deprecated: true
           description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
+    ClubGroupRecord:
+      type: object
+      description: 社团小组记录，对应 CLUB_GROUPS 表。
+      properties:
+        groupId:
+          type: integer
+        clubId:
+          type: integer
+        departmentId:
+          type: integer
+        groupName:
+          type: string
+        groupCode:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        responsibilities:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        activityLocation:
+          type: string
+          nullable: true
+        displayOrder:
+          type: integer
+        groupStatus:
+          type: string
+          enum: [active, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - groupId
+        - clubId
+        - departmentId
+        - groupName
+        - displayOrder
+        - groupStatus
+        - createdAt
+        - updatedAt
+
+    ClubDepartmentRecord:
+      type: object
+      description: 社团部门记录，对应 CLUB_DEPARTMENTS 表，并携带下属小组。
+      properties:
+        departmentId:
+          type: integer
+        clubId:
+          type: integer
+        departmentName:
+          type: string
+        departmentCode:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        responsibilities:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        officeLocation:
+          type: string
+          nullable: true
+        displayOrder:
+          type: integer
+        departmentStatus:
+          type: string
+          enum: [active, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubGroupRecord"
+      required:
+        - departmentId
+        - clubId
+        - departmentName
+        - displayOrder
+        - departmentStatus
+        - createdAt
+        - updatedAt
+        - groups
+
+    CreateClubDepartmentRequest:
+      type: object
+      properties:
+        departmentName:
+          type: string
+          minLength: 1
+        departmentCode:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        responsibilities:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        officeLocation:
+          type: string
+          nullable: true
+        displayOrder:
+          type: integer
+          minimum: 0
+          default: 0
+        departmentStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+      required:
+        - departmentName
+
+    UpdateClubDepartmentRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateClubDepartmentRequest"
+
+    CreateClubGroupRequest:
+      type: object
+      properties:
+        groupName:
+          type: string
+          minLength: 1
+        groupCode:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        responsibilities:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        activityLocation:
+          type: string
+          nullable: true
+        displayOrder:
+          type: integer
+          minimum: 0
+          default: 0
+        groupStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+      required:
+        - groupName
+
+    UpdateClubGroupRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateClubGroupRequest"
+
     ClubMemberRecord:
       type: object
       properties:
@@ -4204,8 +4580,14 @@ components:
         studentNo:
           type: string
           nullable: true
+        departmentId:
+          type: integer
+          nullable: true
         departmentName:
           type: string
+          nullable: true
+        groupId:
+          type: integer
           nullable: true
         groupName:
           type: string
@@ -4256,12 +4638,22 @@ components:
         userId:
           type: integer
           minimum: 1
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
         departmentName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 departmentId。
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
         groupName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 groupId。
         positionName:
           type: string
           minLength: 1
@@ -4300,12 +4692,22 @@ components:
           deprecated: true
           description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
         departmentName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 departmentId。
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
         groupName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 groupId。
         positionName:
           type: string
           minLength: 1
@@ -4332,15 +4734,27 @@ components:
       type: object
       description: 更新成员部门和小组归属的请求体。
       properties:
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员调整后的部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
-          description: 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+          description: 历史兼容字段；新流程优先使用 departmentId。
           example: 技术部
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员调整后的小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
-          description: 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+          description: 历史兼容字段；新流程优先使用 groupId。
           example: 后端组
     ClubEvaluationRecord:
       type: object

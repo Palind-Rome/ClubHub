@@ -28,6 +28,8 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
+    private const string OrganizationActive = "active";
+    private const string OrganizationInactive = "inactive";
     private const string ApplicationAccepted = "accepted";
     private const string ApplicationRejected = "rejected";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
@@ -679,6 +681,302 @@ public class ClubsController : ControllerBase
 
         var updated = await ClubQuery().FirstAsync(c => c.ClubId == clubId);
         return Ok(ToClubDto(updated));
+    }
+
+    [HttpGet("{clubId:int}/departments")]
+    public async Task<IActionResult> GetDepartments(
+        int clubId,
+        [FromQuery] bool includeInactive = false)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewMembersAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var query = DepartmentQuery(includeInactive)
+            .Where(d => d.ClubId == clubId);
+
+        var departments = await query
+            .OrderBy(d => d.DisplayOrder)
+            .ThenBy(d => d.DepartmentName)
+            .ToListAsync();
+
+        return Ok(departments.Select(department => ToDepartmentRecordDto(department, includeInactive)));
+    }
+
+    [HttpPost("{clubId:int}/departments")]
+    public async Task<IActionResult> CreateDepartment(int clubId, [FromBody] CreateClubDepartmentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护部门。" });
+        }
+
+        var validationError = ValidateDepartmentRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var name = req.DepartmentName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubDepartments.AnyAsync(d =>
+            d.ClubId == clubId &&
+            d.DepartmentName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var now = DateTime.UtcNow;
+        var department = new ClubDepartment
+        {
+            ClubId = clubId,
+            DepartmentName = name,
+            DepartmentCode = EmptyToNull(req.DepartmentCode),
+            Description = EmptyToNull(req.Description),
+            Responsibilities = EmptyToNull(req.Responsibilities),
+            ContactPhone = EmptyToNull(req.ContactPhone),
+            ContactEmail = EmptyToNull(req.ContactEmail),
+            OfficeLocation = EmptyToNull(req.OfficeLocation),
+            DisplayOrder = req.DisplayOrder ?? 0,
+            DepartmentStatus = NormalizeOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.ClubDepartments.Add(department);
+        await _db.SaveChangesAsync();
+
+        var created = await DepartmentQuery(includeInactive: true)
+            .FirstAsync(d => d.DepartmentId == department.DepartmentId);
+        return Created(
+            $"/api/clubs/{clubId}/departments/{department.DepartmentId}",
+            ToDepartmentRecordDto(created, includeInactive: true));
+    }
+
+    [HttpPatch("{clubId:int}/departments/{departmentId:int}")]
+    public async Task<IActionResult> UpdateDepartment(
+        int clubId,
+        int departmentId,
+        [FromBody] UpdateClubDepartmentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护部门。" });
+        }
+
+        var validationError = ValidateDepartmentRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var department = await _db.ClubDepartments
+            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
+        if (department is null)
+        {
+            return NotFound(new { message = "社团部门不存在。" });
+        }
+
+        var name = req.DepartmentName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubDepartments.AnyAsync(d =>
+            d.ClubId == clubId &&
+            d.DepartmentId != departmentId &&
+            d.DepartmentName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var previousName = department.DepartmentName;
+        department.DepartmentName = name;
+        department.DepartmentCode = EmptyToNull(req.DepartmentCode);
+        department.Description = EmptyToNull(req.Description);
+        department.Responsibilities = EmptyToNull(req.Responsibilities);
+        department.ContactPhone = EmptyToNull(req.ContactPhone);
+        department.ContactEmail = EmptyToNull(req.ContactEmail);
+        department.OfficeLocation = EmptyToNull(req.OfficeLocation);
+        department.DisplayOrder = req.DisplayOrder ?? 0;
+        department.DepartmentStatus = NormalizeOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
+        department.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        if (!string.Equals(previousName, department.DepartmentName, StringComparison.Ordinal))
+        {
+            await _db.ClubMembers
+                .Where(cm => cm.ClubId == clubId && cm.DepartmentId == departmentId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(cm => cm.DepartmentName, department.DepartmentName));
+        }
+
+        var updated = await DepartmentQuery(includeInactive: true)
+            .FirstAsync(d => d.DepartmentId == departmentId);
+        return Ok(ToDepartmentRecordDto(updated, includeInactive: true));
+    }
+
+    [HttpPost("{clubId:int}/departments/{departmentId:int}/groups")]
+    public async Task<IActionResult> CreateGroup(
+        int clubId,
+        int departmentId,
+        [FromBody] CreateClubGroupRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" });
+        }
+
+        var department = await _db.ClubDepartments
+            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
+        if (department is null)
+        {
+            return NotFound(new { message = "社团部门不存在。" });
+        }
+
+        var validationError = ValidateGroupRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var name = req.GroupName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubGroups.AnyAsync(g =>
+            g.ClubId == clubId &&
+            g.DepartmentId == departmentId &&
+            g.GroupName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var now = DateTime.UtcNow;
+        var group = new ClubGroup
+        {
+            ClubId = clubId,
+            DepartmentId = departmentId,
+            GroupName = name,
+            GroupCode = EmptyToNull(req.GroupCode),
+            Description = EmptyToNull(req.Description),
+            Responsibilities = EmptyToNull(req.Responsibilities),
+            ContactPhone = EmptyToNull(req.ContactPhone),
+            ContactEmail = EmptyToNull(req.ContactEmail),
+            ActivityLocation = EmptyToNull(req.ActivityLocation),
+            DisplayOrder = req.DisplayOrder ?? 0,
+            GroupStatus = NormalizeOrganizationStatus(req.GroupStatus) ?? OrganizationActive,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.ClubGroups.Add(group);
+        await _db.SaveChangesAsync();
+
+        var created = await _db.ClubGroups
+            .AsNoTracking()
+            .FirstAsync(g => g.GroupId == group.GroupId);
+        return Created(
+            $"/api/clubs/{clubId}/groups/{group.GroupId}",
+            ToGroupRecordDto(created));
+    }
+
+    [HttpPatch("{clubId:int}/groups/{groupId:int}")]
+    public async Task<IActionResult> UpdateGroup(
+        int clubId,
+        int groupId,
+        [FromBody] UpdateClubGroupRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" });
+        }
+
+        var validationError = ValidateGroupRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var group = await _db.ClubGroups
+            .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == groupId);
+        if (group is null)
+        {
+            return NotFound(new { message = "社团小组不存在。" });
+        }
+
+        var name = req.GroupName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubGroups.AnyAsync(g =>
+            g.ClubId == clubId &&
+            g.DepartmentId == group.DepartmentId &&
+            g.GroupId != groupId &&
+            g.GroupName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var previousName = group.GroupName;
+        group.GroupName = name;
+        group.GroupCode = EmptyToNull(req.GroupCode);
+        group.Description = EmptyToNull(req.Description);
+        group.Responsibilities = EmptyToNull(req.Responsibilities);
+        group.ContactPhone = EmptyToNull(req.ContactPhone);
+        group.ContactEmail = EmptyToNull(req.ContactEmail);
+        group.ActivityLocation = EmptyToNull(req.ActivityLocation);
+        group.DisplayOrder = req.DisplayOrder ?? 0;
+        group.GroupStatus = NormalizeOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
+        group.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        if (!string.Equals(previousName, group.GroupName, StringComparison.Ordinal))
+        {
+            await _db.ClubMembers
+                .Where(cm => cm.ClubId == clubId && cm.GroupId == groupId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(cm => cm.GroupName, group.GroupName));
+        }
+
+        var updated = await _db.ClubGroups
+            .AsNoTracking()
+            .FirstAsync(g => g.GroupId == groupId);
+        return Ok(ToGroupRecordDto(updated));
     }
 
     [HttpGet("{clubId:int}/members")]
@@ -1854,6 +2152,12 @@ public class ClubsController : ControllerBase
             .Include(cm => cm.Club)
             .Include(cm => cm.User);
 
+    private IQueryable<ClubDepartment> DepartmentQuery(bool includeInactive = false) =>
+        _db.ClubDepartments
+            .AsNoTracking()
+            .Include(d => d.Groups)
+            .Where(d => includeInactive || d.DepartmentStatus == OrganizationActive);
+
     private IQueryable<Evaluation> EvaluationQuery() =>
         _db.Evaluations
             .AsNoTracking()
@@ -2278,6 +2582,45 @@ public class ClubsController : ControllerBase
         return null;
     }
 
+    private static ClubDepartmentRecordDto ToDepartmentRecordDto(
+        ClubDepartment department,
+        bool includeInactive = false) => new(
+        department.DepartmentId,
+        department.ClubId,
+        department.DepartmentName,
+        department.DepartmentCode,
+        department.Description,
+        department.Responsibilities,
+        department.ContactPhone,
+        department.ContactEmail,
+        department.OfficeLocation,
+        department.DisplayOrder,
+        department.DepartmentStatus,
+        department.CreatedAt,
+        department.UpdatedAt,
+        department.Groups
+            .Where(group => includeInactive || group.GroupStatus == OrganizationActive)
+            .OrderBy(group => group.DisplayOrder)
+            .ThenBy(group => group.GroupName)
+            .Select(ToGroupRecordDto)
+            .ToArray());
+
+    private static ClubGroupRecordDto ToGroupRecordDto(ClubGroup group) => new(
+        group.GroupId,
+        group.ClubId,
+        group.DepartmentId,
+        group.GroupName,
+        group.GroupCode,
+        group.Description,
+        group.Responsibilities,
+        group.ContactPhone,
+        group.ContactEmail,
+        group.ActivityLocation,
+        group.DisplayOrder,
+        group.GroupStatus,
+        group.CreatedAt,
+        group.UpdatedAt);
+
     private static ClubMemberRecordDto ToMemberRecordDto(ClubMember member) => new(
         member.MemberId,
         member.ClubId,
@@ -2426,6 +2769,32 @@ public class ClubsController : ControllerBase
     {
         if (TextTooLong(departmentName)) return "部门名称不能超过 255 个字符。";
         if (TextTooLong(groupName)) return "小组名称不能超过 255 个字符。";
+        return null;
+    }
+
+    private static string? ValidateDepartmentRequest(CreateClubDepartmentRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.DepartmentName)) return "部门名称不能为空。";
+        if (TextTooLong(req.DepartmentName)) return "部门名称不能超过 255 个字符。";
+        if (TextTooLong(req.DepartmentCode, 100)) return "部门编码不能超过 100 个字符。";
+        if (TextTooLong(req.ContactPhone)) return "部门联系电话不能超过 255 个字符。";
+        if (TextTooLong(req.ContactEmail)) return "部门联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(req.OfficeLocation)) return "部门办公地点不能超过 255 个字符。";
+        if (req.DisplayOrder is < 0) return "部门排序不能为负数。";
+        if (NormalizeOrganizationStatus(req.DepartmentStatus) is null) return "部门状态只能是 active 或 inactive。";
+        return null;
+    }
+
+    private static string? ValidateGroupRequest(CreateClubGroupRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.GroupName)) return "小组名称不能为空。";
+        if (TextTooLong(req.GroupName)) return "小组名称不能超过 255 个字符。";
+        if (TextTooLong(req.GroupCode, 100)) return "小组编码不能超过 100 个字符。";
+        if (TextTooLong(req.ContactPhone)) return "小组联系电话不能超过 255 个字符。";
+        if (TextTooLong(req.ContactEmail)) return "小组联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(req.ActivityLocation)) return "小组活动地点不能超过 255 个字符。";
+        if (req.DisplayOrder is < 0) return "小组排序不能为负数。";
+        if (NormalizeOrganizationStatus(req.GroupStatus) is null) return "小组状态只能是 active 或 inactive。";
         return null;
     }
 
@@ -3290,7 +3659,10 @@ public class ClubsController : ControllerBase
     };
 
     private static bool TextTooLong(string? value) =>
-        !string.IsNullOrWhiteSpace(value) && value.Trim().Length > ClubMemberTextMaxLength;
+        TextTooLong(value, ClubMemberTextMaxLength);
+
+    private static bool TextTooLong(string? value, int maxLength) =>
+        !string.IsNullOrWhiteSpace(value) && value.Trim().Length > maxLength;
 
     private static DateTime BusinessToday() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
@@ -3363,6 +3735,18 @@ public class ClubsController : ControllerBase
             "active" or "normal" or "enabled" or "在任" or "正常" => MemberActive,
             "ended" or "left" or "finished" or "离任" or "已结束" => MemberEnded,
             "suspended" or "paused" or "disabled" or "暂停" or "停用" => MemberSuspended,
+            _ => null
+        };
+    }
+
+    private static string? NormalizeOrganizationStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return OrganizationActive;
+
+        return status.Trim().ToLowerInvariant() switch
+        {
+            "active" or "enabled" or "启用" or "正常" => OrganizationActive,
+            "inactive" or "disabled" or "停用" => OrganizationInactive,
             _ => null
         };
     }
@@ -3535,6 +3919,72 @@ public record ClubMemberRecordDto(
     DateTime? JoinAt,
     decimal? ContributionScore,
     bool IsCurrent);
+
+public record ClubGroupRecordDto(
+    int GroupId,
+    int ClubId,
+    int DepartmentId,
+    string GroupName,
+    string? GroupCode,
+    string? Description,
+    string? Responsibilities,
+    string? ContactPhone,
+    string? ContactEmail,
+    string? ActivityLocation,
+    int DisplayOrder,
+    string GroupStatus,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+public record ClubDepartmentRecordDto(
+    int DepartmentId,
+    int ClubId,
+    string DepartmentName,
+    string? DepartmentCode,
+    string? Description,
+    string? Responsibilities,
+    string? ContactPhone,
+    string? ContactEmail,
+    string? OfficeLocation,
+    int DisplayOrder,
+    string DepartmentStatus,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    IReadOnlyCollection<ClubGroupRecordDto> Groups);
+
+public class CreateClubDepartmentRequest
+{
+    public string DepartmentName { get; set; } = string.Empty;
+    public string? DepartmentCode { get; set; }
+    public string? Description { get; set; }
+    public string? Responsibilities { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? OfficeLocation { get; set; }
+    public int? DisplayOrder { get; set; }
+    public string? DepartmentStatus { get; set; } = "active";
+}
+
+public class UpdateClubDepartmentRequest : CreateClubDepartmentRequest
+{
+}
+
+public class CreateClubGroupRequest
+{
+    public string GroupName { get; set; } = string.Empty;
+    public string? GroupCode { get; set; }
+    public string? Description { get; set; }
+    public string? Responsibilities { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ActivityLocation { get; set; }
+    public int? DisplayOrder { get; set; }
+    public string? GroupStatus { get; set; } = "active";
+}
+
+public class UpdateClubGroupRequest : CreateClubGroupRequest
+{
+}
 
 public class CreateClubMemberTermRequest
 {
