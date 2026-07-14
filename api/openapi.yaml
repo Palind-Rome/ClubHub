@@ -4388,41 +4388,69 @@ components:
       properties:
         groupId:
           type: integer
+          description: 小组 ID。
+          example: 2001
         clubId:
           type: integer
+          description: 所属社团 ID。
+          example: 1
         departmentId:
           type: integer
+          description: 所属部门 ID。
+          example: 1001
         groupName:
           type: string
+          description: 小组名称，同一部门下唯一。
+          example: 开发组
         groupCode:
           type: string
           nullable: true
+          description: 小组内部编码，可用于后端或导入识别。
+          example: DEV
         description:
           type: string
           nullable: true
+          description: 小组简介。
+          example: 负责协会项目开发与代码维护。
         responsibilities:
           type: string
           nullable: true
+          description: 小组职责范围。
+          example: 维护社团官网、组织技术分享和项目协作。
         contactPhone:
           type: string
           nullable: true
+          description: 小组联系电话。
+          example: "13800000000"
         contactEmail:
           type: string
           nullable: true
+          description: 小组联系邮箱。
+          example: dev@clubhub.example
         activityLocation:
           type: string
           nullable: true
+          description: 小组常用活动地点。
+          example: 嘉定校区创新实验室
         displayOrder:
           type: integer
+          description: 小组展示顺序，数值越小越靠前。
+          example: 10
         groupStatus:
           type: string
           enum: [active, inactive]
+          description: 小组状态，active 表示启用，inactive 表示停用。
+          example: active
         createdAt:
           type: string
           format: date-time
+          description: 小组创建时间。
+          example: "2026-07-14T08:00:00Z"
         updatedAt:
           type: string
           format: date-time
+          description: 小组最后更新时间。
+          example: "2026-07-14T08:30:00Z"
       required:
         - groupId
         - clubId
@@ -4439,41 +4467,68 @@ components:
       properties:
         departmentId:
           type: integer
+          description: 部门 ID。
+          example: 1001
         clubId:
           type: integer
+          description: 所属社团 ID。
+          example: 1
         departmentName:
           type: string
+          description: 部门名称，同一社团下唯一。
+          example: 技术部
         departmentCode:
           type: string
           nullable: true
+          description: 部门内部编码，可用于后端或导入识别。
+          example: TECH
         description:
           type: string
           nullable: true
+          description: 部门简介。
+          example: 负责协会技术建设和项目孵化。
         responsibilities:
           type: string
           nullable: true
+          description: 部门职责范围。
+          example: 统筹技术培训、项目协作和竞赛支持。
         contactPhone:
           type: string
           nullable: true
+          description: 部门联系电话。
+          example: "13800000000"
         contactEmail:
           type: string
           nullable: true
+          description: 部门联系邮箱。
+          example: tech@clubhub.example
         officeLocation:
           type: string
           nullable: true
+          description: 部门常用办公或活动地点。
+          example: 嘉定校区学生创新中心 301
         displayOrder:
           type: integer
+          description: 部门展示顺序，数值越小越靠前。
+          example: 10
         departmentStatus:
           type: string
           enum: [active, inactive]
+          description: 部门状态，active 表示启用，inactive 表示停用。
+          example: active
         createdAt:
           type: string
           format: date-time
+          description: 部门创建时间。
+          example: "2026-07-14T08:00:00Z"
         updatedAt:
           type: string
           format: date-time
+          description: 部门最后更新时间。
+          example: "2026-07-14T08:30:00Z"
         groups:
           type: array
+          description: 部门下属小组列表。
           items:
             $ref: "#/components/schemas/ClubGroupRecord"
       required:
@@ -4488,79 +4543,119 @@ components:
 
     CreateClubDepartmentRequest:
       type: object
+      description: 创建社团部门的请求体。
       properties:
         departmentName:
           type: string
           minLength: 1
+          description: 部门名称，同一社团下唯一。
+          example: 技术部
         departmentCode:
           type: string
           nullable: true
+          description: 部门内部编码，可用于后端或导入识别。
+          example: TECH
         description:
           type: string
           nullable: true
+          description: 部门简介。
+          example: 负责协会技术建设和项目孵化。
         responsibilities:
           type: string
           nullable: true
+          description: 部门职责范围。
+          example: 统筹技术培训、项目协作和竞赛支持。
         contactPhone:
           type: string
           nullable: true
+          description: 部门联系电话。
+          example: "13800000000"
         contactEmail:
           type: string
           nullable: true
+          description: 部门联系邮箱。
+          example: tech@clubhub.example
         officeLocation:
           type: string
           nullable: true
+          description: 部门常用办公或活动地点。
+          example: 嘉定校区学生创新中心 301
         displayOrder:
           type: integer
           minimum: 0
           default: 0
+          description: 部门展示顺序，数值越小越靠前。
+          example: 10
         departmentStatus:
           type: string
           enum: [active, inactive]
           default: active
+          description: 部门状态，active 表示启用，inactive 表示停用。
+          example: active
       required:
         - departmentName
 
     UpdateClubDepartmentRequest:
+      description: 更新社团部门的请求体，字段含义与创建部门一致。
       allOf:
         - $ref: "#/components/schemas/CreateClubDepartmentRequest"
 
     CreateClubGroupRequest:
       type: object
+      description: 创建社团小组的请求体。
       properties:
         groupName:
           type: string
           minLength: 1
+          description: 小组名称，同一部门下唯一。
+          example: 开发组
         groupCode:
           type: string
           nullable: true
+          description: 小组内部编码，可用于后端或导入识别。
+          example: DEV
         description:
           type: string
           nullable: true
+          description: 小组简介。
+          example: 负责协会项目开发与代码维护。
         responsibilities:
           type: string
           nullable: true
+          description: 小组职责范围。
+          example: 维护社团官网、组织技术分享和项目协作。
         contactPhone:
           type: string
           nullable: true
+          description: 小组联系电话。
+          example: "13800000000"
         contactEmail:
           type: string
           nullable: true
+          description: 小组联系邮箱。
+          example: dev@clubhub.example
         activityLocation:
           type: string
           nullable: true
+          description: 小组常用活动地点。
+          example: 嘉定校区创新实验室
         displayOrder:
           type: integer
           minimum: 0
           default: 0
+          description: 小组展示顺序，数值越小越靠前。
+          example: 10
         groupStatus:
           type: string
           enum: [active, inactive]
           default: active
+          description: 小组状态，active 表示启用，inactive 表示停用。
+          example: active
       required:
         - groupName
 
     UpdateClubGroupRequest:
+      description: 更新社团小组的请求体，字段含义与创建小组一致。
       allOf:
         - $ref: "#/components/schemas/CreateClubGroupRequest"
 
@@ -4583,12 +4678,16 @@ components:
         departmentId:
           type: integer
           nullable: true
+          description: 成员当前归属部门 ID；为空表示未归属部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
         groupId:
           type: integer
           nullable: true
+          description: 成员当前归属小组 ID；为空表示未归属小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
@@ -4642,6 +4741,8 @@ components:
           type: integer
           nullable: true
           minimum: 1
+          description: 新成员任期归属部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
@@ -4650,6 +4751,8 @@ components:
           type: integer
           nullable: true
           minimum: 1
+          description: 新成员任期归属小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
@@ -4696,6 +4799,8 @@ components:
           type: integer
           nullable: true
           minimum: 1
+          description: 成员任期调整后的部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
@@ -4704,6 +4809,8 @@ components:
           type: integer
           nullable: true
           minimum: 1
+          description: 成员任期调整后的小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
