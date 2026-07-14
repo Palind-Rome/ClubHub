@@ -81,17 +81,17 @@ WHEN NOT MATCHED THEN
 
 MERGE INTO CLUB_GROUPS target
 USING (
-  SELECT raw.group_id,
-         raw.club_id,
+  SELECT group_seed.group_id,
+         group_seed.club_id,
          department.department_id,
-         raw.group_name,
-         raw.group_code,
-         raw.responsibilities,
-         raw.contact_phone,
-         raw.contact_email,
-         raw.activity_location,
-         raw.display_order,
-         raw.group_status
+         group_seed.group_name,
+         group_seed.group_code,
+         group_seed.responsibilities,
+         group_seed.contact_phone,
+         group_seed.contact_email,
+         group_seed.activity_location,
+         group_seed.display_order,
+         group_seed.group_status
   FROM (
   SELECT 20101 AS group_id, 1 AS club_id, '主席团' AS department_name, '负责人组' AS group_name,
          'COMP-PRES-LEAD' AS group_code, '处理协会日常决策、对外沟通和审批确认' AS responsibilities,
@@ -159,10 +159,10 @@ USING (
   SELECT 20305, 3, '宣传部', '赛讯组', 'BADM-MEDIA-NEWS', '负责赛讯推送、赛后战报和招新宣传',
          '021-6598-3341', 'news@badminton.club', '嘉定校区体育馆 104', 10, 'active'
   FROM dual
-  ) raw
+  ) group_seed
   JOIN CLUB_DEPARTMENTS department
-    ON department.club_id = raw.club_id
-   AND department.department_name = raw.department_name
+    ON department.club_id = group_seed.club_id
+   AND department.department_name = group_seed.department_name
 ) source
 ON (
   target.club_id = source.club_id
