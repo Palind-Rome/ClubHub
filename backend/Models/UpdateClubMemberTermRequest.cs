@@ -33,14 +33,28 @@ namespace Org.OpenAPITools.Models
         public int? CurrentUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentName
+        /// Gets or Sets DepartmentId
         /// </summary>
+        [DataMember(Name="departmentId", EmitDefaultValue=true)]
+        public int? DepartmentId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程优先使用 departmentId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程优先使用 departmentId。</value>
         [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
-        /// Gets or Sets GroupName
+        /// Gets or Sets GroupId
         /// </summary>
+        [DataMember(Name="groupId", EmitDefaultValue=true)]
+        public int? GroupId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程优先使用 groupId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程优先使用 groupId。</value>
         [DataMember(Name="groupName", EmitDefaultValue=true)]
         public string? GroupName { get; set; }
 

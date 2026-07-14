@@ -29,12 +29,24 @@ export interface UpdateClubMemberTermRequest {
   currentUserId?: number;
   /**
    *
+   * @type {number}
+   * @memberof UpdateClubMemberTermRequest
+   */
+  departmentId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 departmentId。
    * @type {string}
    * @memberof UpdateClubMemberTermRequest
    */
   departmentName?: string | null;
   /**
    *
+   * @type {number}
+   * @memberof UpdateClubMemberTermRequest
+   */
+  groupId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 groupId。
    * @type {string}
    * @memberof UpdateClubMemberTermRequest
    */
@@ -110,7 +122,9 @@ export function UpdateClubMemberTermRequestFromJSONTyped(
   }
   return {
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
+    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
     departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
+    groupId: json["groupId"] == null ? undefined : json["groupId"],
     groupName: json["groupName"] == null ? undefined : json["groupName"],
     positionName: json["positionName"] == null ? undefined : json["positionName"],
     termName: json["termName"] == null ? undefined : json["termName"],
@@ -135,7 +149,9 @@ export function UpdateClubMemberTermRequestToJSONTyped(
 
   return {
     currentUserId: value["currentUserId"],
+    departmentId: value["departmentId"],
     departmentName: value["departmentName"],
+    groupId: value["groupId"],
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],

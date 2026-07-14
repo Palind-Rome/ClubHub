@@ -58,10 +58,22 @@ export interface ClubMemberRecord {
   studentNo?: string | null;
   /**
    *
+   * @type {number}
+   * @memberof ClubMemberRecord
+   */
+  departmentId?: number | null;
+  /**
+   *
    * @type {string}
    * @memberof ClubMemberRecord
    */
   departmentName?: string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof ClubMemberRecord
+   */
+  groupId?: number | null;
   /**
    *
    * @type {string}
@@ -149,7 +161,9 @@ export function ClubMemberRecordFromJSONTyped(
     userId: json["userId"],
     userName: json["userName"],
     studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
+    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
     departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
+    groupId: json["groupId"] == null ? undefined : json["groupId"],
     groupName: json["groupName"] == null ? undefined : json["groupName"],
     positionName: json["positionName"] == null ? undefined : json["positionName"],
     termName: json["termName"] == null ? undefined : json["termName"],
@@ -181,7 +195,9 @@ export function ClubMemberRecordToJSONTyped(
     userId: value["userId"],
     userName: value["userName"],
     studentNo: value["studentNo"],
+    departmentId: value["departmentId"],
     departmentName: value["departmentName"],
+    groupId: value["groupId"],
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],

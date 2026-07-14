@@ -67,10 +67,22 @@ namespace Org.OpenAPITools.Models
         public string? StudentNo { get; set; }
 
         /// <summary>
+        /// Gets or Sets DepartmentId
+        /// </summary>
+        [DataMember(Name="departmentId", EmitDefaultValue=true)]
+        public int? DepartmentId { get; set; }
+
+        /// <summary>
         /// Gets or Sets DepartmentName
         /// </summary>
         [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
+
+        /// <summary>
+        /// Gets or Sets GroupId
+        /// </summary>
+        [DataMember(Name="groupId", EmitDefaultValue=true)]
+        public int? GroupId { get; set; }
 
         /// <summary>
         /// Gets or Sets GroupName
