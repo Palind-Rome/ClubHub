@@ -666,13 +666,25 @@ const groupCreateDepartmentOptions = computed(() =>
       ),
 );
 const memberGroupingGroupOptions = computed(() =>
-  groupOptionsForDepartmentId(memberGroupingForm.departmentId),
+  groupOptionsForDepartmentId(memberGroupingForm.departmentId, memberGroupingForm.groupId),
 );
 const memberBatchGroupingGroupOptions = computed(() =>
-  groupOptionsForDepartmentId(memberBatchGroupingForm.departmentId),
+  groupOptionsForDepartmentId(
+    memberBatchGroupingForm.departmentId,
+    memberBatchGroupingForm.groupId,
+  ),
 );
 const memberTermGroupOptions = computed(() =>
-  groupOptionsForDepartmentId(memberTermForm.departmentId),
+  groupOptionsForDepartmentId(memberTermForm.departmentId, memberTermForm.groupId),
+);
+const memberGroupingDepartmentOptions = computed(() =>
+  departmentOptionsForSelection(memberGroupingForm.departmentId),
+);
+const memberBatchGroupingDepartmentOptions = computed(() =>
+  departmentOptionsForSelection(memberBatchGroupingForm.departmentId),
+);
+const memberTermDepartmentOptions = computed(() =>
+  departmentOptionsForSelection(memberTermForm.departmentId),
 );
 const memberPositionOptions = computed(() =>
   uniqueTextOptions([
@@ -2460,10 +2472,35 @@ function groupByName(
   );
 }
 
-function groupOptionsForDepartmentId(departmentId: number | null | undefined) {
-  return activeClubGroups.value.filter(
-    (group) => !departmentId || group.departmentId === departmentId,
+function departmentOptionsForSelection(departmentId: number | null | undefined) {
+  return clubDepartments.value.filter(
+    (department) =>
+      department.departmentStatus === "active" || department.departmentId === departmentId,
   );
+}
+
+function groupOptionsForDepartmentId(
+  departmentId: number | null | undefined,
+  currentGroupId: number | null | undefined = undefined,
+) {
+  return clubDepartments.value.flatMap((department) =>
+    department.groups.filter((group) => {
+      if (departmentId && group.departmentId !== departmentId) return false;
+
+      const isActive = department.departmentStatus === "active" && group.groupStatus === "active";
+      return isActive || group.groupId === currentGroupId;
+    }),
+  );
+}
+
+function departmentOptionLabel(department: ClubDepartmentRecord) {
+  return department.departmentStatus === "active"
+    ? department.departmentName
+    : `${department.departmentName}（已停用）`;
+}
+
+function groupOptionLabel(group: ClubGroupRecord) {
+  return group.groupStatus === "active" ? group.groupName : `${group.groupName}（已停用）`;
 }
 
 function applyDepartmentSelection(form: OrganizationSelectionForm) {
@@ -4634,9 +4671,9 @@ onUnmounted(() => {
             @change="handleMemberGroupingDepartmentChange"
           >
             <el-option
-              v-for="department in activeClubDepartments"
+              v-for="department in memberGroupingDepartmentOptions"
               :key="department.departmentId"
-              :label="department.departmentName"
+              :label="departmentOptionLabel(department)"
               :value="department.departmentId"
             />
           </el-select>
@@ -4653,7 +4690,7 @@ onUnmounted(() => {
             <el-option
               v-for="group in memberGroupingGroupOptions"
               :key="group.groupId"
-              :label="group.groupName"
+              :label="groupOptionLabel(group)"
               :value="group.groupId"
             />
           </el-select>
@@ -4684,9 +4721,9 @@ onUnmounted(() => {
             @change="handleMemberBatchDepartmentChange"
           >
             <el-option
-              v-for="department in activeClubDepartments"
+              v-for="department in memberBatchGroupingDepartmentOptions"
               :key="department.departmentId"
-              :label="department.departmentName"
+              :label="departmentOptionLabel(department)"
               :value="department.departmentId"
             />
           </el-select>
@@ -4702,7 +4739,7 @@ onUnmounted(() => {
             <el-option
               v-for="group in memberBatchGroupingGroupOptions"
               :key="group.groupId"
-              :label="group.groupName"
+              :label="groupOptionLabel(group)"
               :value="group.groupId"
             />
           </el-select>
@@ -4800,9 +4837,9 @@ onUnmounted(() => {
             @change="handleMemberTermDepartmentChange"
           >
             <el-option
-              v-for="department in activeClubDepartments"
+              v-for="department in memberTermDepartmentOptions"
               :key="department.departmentId"
-              :label="department.departmentName"
+              :label="departmentOptionLabel(department)"
               :value="department.departmentId"
             />
           </el-select>
@@ -4818,7 +4855,7 @@ onUnmounted(() => {
             <el-option
               v-for="group in memberTermGroupOptions"
               :key="group.groupId"
-              :label="group.groupName"
+              :label="groupOptionLabel(group)"
               :value="group.groupId"
             />
           </el-select>
