@@ -282,8 +282,16 @@ const evaluationFormTotal = computed(() =>
 );
 const evaluationFormGrade = computed(() => evaluationGrade(evaluationFormTotal.value));
 
-function defaultTermName() {
-  return `${new Date().getFullYear()} 学年春季学期`;
+function defaultTermName(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+
+  if (month >= 2 && month <= 7) {
+    return `${year - 1}-${year}学年春季`;
+  }
+
+  const fallStartYear = month === 1 ? year - 1 : year;
+  return `${fallStartYear}-${fallStartYear + 1}学年秋季`;
 }
 
 function uniqueSorted(values: Array<string | null | undefined>) {
