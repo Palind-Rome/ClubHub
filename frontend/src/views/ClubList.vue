@@ -609,7 +609,8 @@ const canCreateMemberDepartment = computed(
 );
 const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
-  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
+  () =>
+    memberWorkspaceMode.value === "organization" && groupCreateDepartmentOptions.value.length > 0,
 );
 const canReorderDepartments = computed(
   () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
@@ -1083,8 +1084,11 @@ function canMaintainDepartment(_department: ClubDepartmentRecord) {
   return canManageSelectedClub.value;
 }
 
-function canMaintainDepartmentGroups(_department: ClubDepartmentRecord) {
-  return canManageSelectedClub.value;
+function canMaintainDepartmentGroups(department: ClubDepartmentRecord) {
+  if (canManageSelectedClub.value) return true;
+  return selectedDepartmentManagerScopes.value.some((scope) =>
+    organizationNameMatches(scope.departmentName, department.departmentName),
+  );
 }
 
 function canMaintainGroup(group: ClubGroupRecord) {
@@ -1098,6 +1102,15 @@ function canShowGroupOperationColumn(department: ClubDepartmentRecord) {
 
 function canReorderDepartmentGroups(department: ClubDepartmentRecord) {
   return canMaintainDepartmentGroups(department);
+}
+
+function organizationNameMatches(
+  left: string | null | undefined,
+  right: string | null | undefined,
+) {
+  const normalizedLeft = left?.trim().toLowerCase();
+  const normalizedRight = right?.trim().toLowerCase();
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
 }
 
 function roleNameInClub(role: UserRoleSummary, clubName: string) {
@@ -3370,11 +3383,25 @@ onUnmounted(() => {
         </div>
 
         <div v-if="memberWorkspaceMode === 'organization'" class="organization-panel">
-          <div v-if="canManageSelectedClub" class="organization-toolbar">
-            <el-button type="primary" :icon="Plus" @click="openCreateDepartmentDialog">
+          <div
+            v-if="canCreateMemberDepartment || canCreateMemberGroup"
+            class="organization-toolbar"
+          >
+            <el-button
+              v-if="canCreateMemberDepartment"
+              type="primary"
+              :icon="Plus"
+              @click="openCreateDepartmentDialog"
+            >
               新增部门
             </el-button>
-            <el-button type="primary" plain :icon="Plus" @click="openCreateGroupDialog()">
+            <el-button
+              v-if="canCreateMemberGroup"
+              type="primary"
+              plain
+              :icon="Plus"
+              @click="openCreateGroupDialog()"
+            >
               新增小组
             </el-button>
           </div>

@@ -844,21 +844,11 @@ public class ClubsController : ControllerBase
         if (currentUserId is null)
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        var access = await EnsureCanMaintainDepartmentGroupsAsync(
+            clubId,
+            departmentId,
+            currentUserId.Value);
         if (access.Result is not null) return access.Result;
-
-        var club = access.Club!;
-        if (!IsMaintainableClub(club))
-        {
-            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" });
-        }
-
-        var department = await _db.ClubDepartments
-            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
-        if (department is null)
-        {
-            return NotFound(new { message = "社团部门不存在。" });
-        }
 
         var validationError = ValidateGroupRequest(req);
         if (validationError is not null)
@@ -916,26 +906,23 @@ public class ClubsController : ControllerBase
         if (currentUserId is null)
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
-        if (access.Result is not null) return access.Result;
-
-        var club = access.Club!;
-        if (!IsMaintainableClub(club))
-        {
-            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" });
-        }
-
-        var validationError = ValidateGroupRequest(req);
-        if (validationError is not null)
-        {
-            return BadRequest(new { message = validationError });
-        }
-
         var group = await _db.ClubGroups
             .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == groupId);
         if (group is null)
         {
             return NotFound(new { message = "社团小组不存在。" });
+        }
+
+        var access = await EnsureCanMaintainDepartmentGroupsAsync(
+            clubId,
+            group.DepartmentId,
+            currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var validationError = ValidateGroupRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
         }
 
         var name = req.GroupName.Trim();
@@ -1842,6 +1829,69 @@ public class ClubsController : ControllerBase
         }
 
         return (null, club, viewer);
+    }
+
+    private async Task<(IActionResult? Result, Club? Club, User? Viewer, ClubDepartment? Department)>
+        EnsureCanMaintainDepartmentGroupsAsync(
+            int clubId,
+            int departmentId,
+            int currentUserId)
+    {
+        if (currentUserId <= 0)
+        {
+            return (BadRequest(new { message = "请选择当前操作用户。" }), null, null, null);
+        }
+
+        var viewer = await LoadUserAsync(currentUserId);
+        if (viewer is null)
+        {
+            return (NotFound(new { message = "当前用户不存在。" }), null, null, null);
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return (BadRequest(new { message = "当前用户账号不可用，不能维护小组。" }), null, viewer, null);
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return (NotFound(new { message = "社团不存在。" }), null, viewer, null);
+        }
+
+        if (!IsMaintainableClub(club))
+        {
+            return (Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" }), club, viewer, null);
+        }
+
+        var department = await _db.ClubDepartments
+            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
+        if (department is null)
+        {
+            return (NotFound(new { message = "社团部门不存在。" }), club, viewer, null);
+        }
+
+        if (UsersController.IsSystemAdmin(viewer) ||
+            IsClubPrincipal(viewer, club) ||
+            IsClubAdvisor(viewer, clubId))
+        {
+            return (null, club, viewer, department);
+        }
+
+        var canMaintainDepartment = GetCadreGroupingScopes(viewer, clubId)
+            .Any(scope =>
+                string.IsNullOrWhiteSpace(scope.GroupName) &&
+                GroupingMatchesScope(
+                    department.DepartmentName,
+                    null,
+                    scope.DepartmentName,
+                    scope.GroupName));
+        if (!canMaintainDepartment)
+        {
+            return (StatusCode(403, new { message = "部长只能维护自己部门下的小组。" }), club, viewer, department);
+        }
+
+        return (null, club, viewer, department);
     }
 
     private async Task<(IActionResult? Result, Club? Club, User? Viewer, ClubMember? Member)>
