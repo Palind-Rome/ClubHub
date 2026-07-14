@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface GenerateClubEvaluationsRequest {
   /**
-   * 需要生成考核记录的学期或任期名称。
+   * 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季，无法解析会返回 400。
    * @type {string}
    * @memberof GenerateClubEvaluationsRequest
    */

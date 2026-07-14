@@ -162,7 +162,7 @@ namespace Org.OpenAPITools.Models
         /// 考核或评奖所属学期。
         /// </summary>
         /// <value>考核或评奖所属学期。</value>
-        /* <example>2026 学年春季学期</example> */
+        /* <example>2026-2027学年春季</example> */
         [Required]
         [DataMember(Name="termName", EmitDefaultValue=false)]
         public string TermName { get; set; }

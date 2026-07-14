@@ -26,9 +26,9 @@ namespace Org.OpenAPITools.Models
     public partial class GenerateClubEvaluationsRequest 
     {
         /// <summary>
-        /// 需要生成考核记录的学期或任期名称。
+        /// 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季，无法解析会返回 400。
         /// </summary>
-        /// <value>需要生成考核记录的学期或任期名称。</value>
+        /// <value>需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季，无法解析会返回 400。</value>
         /* <example>2026-2027学年</example> */
         [Required]
         [MinLength(1)]

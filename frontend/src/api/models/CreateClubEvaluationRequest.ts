@@ -40,7 +40,7 @@ export interface CreateClubEvaluationRequest {
    */
   userId: number;
   /**
-   * 考核或评奖所属学期。
+   * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
