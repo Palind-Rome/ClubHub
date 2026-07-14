@@ -7,6 +7,7 @@ import {
   Close,
   Delete as DeleteIcon,
   Edit,
+  Minus,
   Plus,
   Rank,
   Refresh,
@@ -279,6 +280,10 @@ const organizationLoading = ref(false);
 const organizationSaving = ref(false);
 const draggingDepartmentId = ref<number | null>(null);
 const draggingGroup = ref<{ departmentId: number; groupId: number } | null>(null);
+const dragOverDepartmentId = ref<number | null>(null);
+const dragOverGroupId = ref<number | null>(null);
+const organizationTreeCollapsed = ref(false);
+const collapsedOrganizationDepartmentIds = ref<Set<number>>(new Set());
 const departmentDialogVisible = ref(false);
 const groupDialogVisible = ref(false);
 const dissolvingClubId = ref<number | null>(null);
@@ -2034,14 +2039,41 @@ function moveItem<T>(items: readonly T[], sourceIndex: number, targetIndex: numb
   return next;
 }
 
+function isOrganizationDepartmentCollapsed(department: ClubDepartmentRecord) {
+  return collapsedOrganizationDepartmentIds.value.has(department.departmentId);
+}
+
+function toggleOrganizationTreeRoot() {
+  organizationTreeCollapsed.value = !organizationTreeCollapsed.value;
+}
+
+function toggleOrganizationDepartment(department: ClubDepartmentRecord) {
+  if (department.groups.length === 0) return;
+
+  const next = new Set(collapsedOrganizationDepartmentIds.value);
+  if (next.has(department.departmentId)) {
+    next.delete(department.departmentId);
+  } else {
+    next.add(department.departmentId);
+  }
+  collapsedOrganizationDepartmentIds.value = next;
+}
+
 function startDepartmentDrag(row: ClubDepartmentRecord) {
   if (!canReorderDepartments.value || organizationSaving.value) return;
   draggingDepartmentId.value = row.departmentId;
+  dragOverDepartmentId.value = null;
+}
+
+function markDepartmentDropTarget(row: ClubDepartmentRecord) {
+  if (!draggingDepartmentId.value || draggingDepartmentId.value === row.departmentId) return;
+  dragOverDepartmentId.value = row.departmentId;
 }
 
 async function dropDepartment(row: ClubDepartmentRecord) {
   const sourceId = draggingDepartmentId.value;
   draggingDepartmentId.value = null;
+  dragOverDepartmentId.value = null;
   if (!sourceId || sourceId === row.departmentId || !selectedClubId.value) return;
 
   const sourceIndex = clubDepartments.value.findIndex(
@@ -2090,11 +2122,21 @@ function startGroupDrag(group: ClubGroupRecord) {
     departmentId: group.departmentId,
     groupId: group.groupId,
   };
+  dragOverGroupId.value = null;
+}
+
+function markGroupDropTarget(group: ClubGroupRecord) {
+  const source = draggingGroup.value;
+  if (!source || source.groupId === group.groupId || source.departmentId !== group.departmentId) {
+    return;
+  }
+  dragOverGroupId.value = group.groupId;
 }
 
 async function dropGroup(target: ClubGroupRecord) {
   const source = draggingGroup.value;
   draggingGroup.value = null;
+  dragOverGroupId.value = null;
   if (
     !source ||
     source.groupId === target.groupId ||
@@ -2142,6 +2184,8 @@ async function persistGroupOrder(reordered: ClubGroupRecord[]) {
 function endOrganizationDrag() {
   draggingDepartmentId.value = null;
   draggingGroup.value = null;
+  dragOverDepartmentId.value = null;
+  dragOverGroupId.value = null;
 }
 
 function resetDepartmentForm() {
@@ -2798,6 +2842,9 @@ watch(selectedClubId, () => {
   memberFilters.unassignedOnly = false;
   resetDepartmentForm();
   resetGroupForm();
+  organizationTreeCollapsed.value = false;
+  collapsedOrganizationDepartmentIds.value = new Set();
+  endOrganizationDrag();
   void loadDepartments();
 });
 
@@ -3422,12 +3469,16 @@ onUnmounted(() => {
                       <template #default="{ row: group }">
                         <button
                           class="drag-handle"
+                          :class="{
+                            'is-dragging': draggingGroup?.groupId === group.groupId,
+                            'is-drop-target': dragOverGroupId === group.groupId,
+                          }"
                           type="button"
                           draggable="true"
                           :disabled="organizationSaving"
                           @dragstart="startGroupDrag(group)"
                           @dragover.prevent
-                          @dragenter.prevent
+                          @dragenter.prevent="markGroupDropTarget(group)"
                           @drop.prevent="dropGroup(group)"
                           @dragend="endOrganizationDrag"
                         >
@@ -3474,12 +3525,16 @@ onUnmounted(() => {
                 <template #default="{ row }">
                   <button
                     class="drag-handle"
+                    :class="{
+                      'is-dragging': draggingDepartmentId === row.departmentId,
+                      'is-drop-target': dragOverDepartmentId === row.departmentId,
+                    }"
                     type="button"
                     draggable="true"
                     :disabled="organizationSaving"
                     @dragstart="startDepartmentDrag(row)"
                     @dragover.prevent
-                    @dragenter.prevent
+                    @dragenter.prevent="markDepartmentDropTarget(row)"
                     @drop.prevent="dropDepartment(row)"
                     @dragend="endOrganizationDrag"
                   >
@@ -3528,6 +3583,114 @@ onUnmounted(() => {
                 </template>
               </el-table-column>
             </el-table>
+
+            <section v-if="selectedClub" class="organization-map" aria-labelledby="org-map-title">
+              <div class="organization-map-head">
+                <h3 id="org-map-title">架构树</h3>
+                <el-tag effect="plain">{{ selectedClub.name }}</el-tag>
+              </div>
+
+              <div class="organization-tree">
+                <div class="tree-root-line">
+                  <button
+                    class="tree-toggle"
+                    type="button"
+                    :aria-label="organizationTreeCollapsed ? '展开社团架构' : '收起社团架构'"
+                    :title="organizationTreeCollapsed ? '展开社团架构' : '收起社团架构'"
+                    @click="toggleOrganizationTreeRoot"
+                  >
+                    <el-icon>
+                      <Minus v-if="organizationTreeCollapsed" />
+                      <Plus v-else />
+                    </el-icon>
+                  </button>
+                  <div class="tree-node tree-node-root">
+                    <strong>{{ selectedClub.name }}</strong>
+                    <span>{{ selectedClub.category || "社团" }}</span>
+                  </div>
+                </div>
+
+                <div v-if="!organizationTreeCollapsed" class="tree-department-list">
+                  <div
+                    v-for="department in clubDepartments"
+                    :key="department.departmentId"
+                    class="tree-department-branch"
+                    :class="{ 'is-collapsed': isOrganizationDepartmentCollapsed(department) }"
+                  >
+                    <div class="tree-department-line">
+                      <button
+                        class="tree-toggle"
+                        type="button"
+                        :disabled="department.groups.length === 0"
+                        :aria-label="
+                          isOrganizationDepartmentCollapsed(department)
+                            ? '展开部门小组'
+                            : '收起部门小组'
+                        "
+                        :title="
+                          isOrganizationDepartmentCollapsed(department)
+                            ? '展开部门小组'
+                            : '收起部门小组'
+                        "
+                        @click="toggleOrganizationDepartment(department)"
+                      >
+                        <el-icon>
+                          <Minus v-if="isOrganizationDepartmentCollapsed(department)" />
+                          <Plus v-else />
+                        </el-icon>
+                      </button>
+                      <div class="tree-node tree-node-department">
+                        <div>
+                          <strong>{{ department.departmentName }}</strong>
+                          <span>{{ department.responsibilities || "暂无职责" }}</span>
+                        </div>
+                        <el-tag
+                          size="small"
+                          :type="department.departmentStatus === 'active' ? 'success' : 'info'"
+                          effect="plain"
+                        >
+                          {{ department.departmentStatus === "active" ? "启用" : "停用" }}
+                        </el-tag>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="
+                        !isOrganizationDepartmentCollapsed(department) &&
+                        department.groups.length > 0
+                      "
+                      class="tree-group-list"
+                    >
+                      <div
+                        v-for="group in department.groups"
+                        :key="group.groupId"
+                        class="tree-group-line"
+                      >
+                        <div class="tree-node tree-node-group">
+                          <div>
+                            <strong>{{ group.groupName }}</strong>
+                            <span>{{ group.responsibilities || "暂无职责" }}</span>
+                          </div>
+                          <el-tag
+                            size="small"
+                            :type="group.groupStatus === 'active' ? 'success' : 'info'"
+                            effect="plain"
+                          >
+                            {{ group.groupStatus === "active" ? "启用" : "停用" }}
+                          </el-tag>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <el-empty
+                    v-if="clubDepartments.length === 0"
+                    description="暂无部门"
+                    :image-size="80"
+                  />
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </el-tab-pane>
@@ -4737,18 +4900,199 @@ onUnmounted(() => {
   width: 30px;
   height: 30px;
   border: 1px solid var(--el-border-color);
+  border-radius: 6px;
   color: #66727f;
   background: #fff;
   cursor: grab;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.drag-handle:hover:not(:disabled),
+.drag-handle.is-dragging {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  transform: translateY(-1px);
+}
+
+.drag-handle.is-drop-target {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-8);
+  box-shadow: 0 0 0 3px rgb(64 158 255 / 16%);
 }
 
 .drag-handle:active {
   cursor: grabbing;
+  transform: scale(0.96);
 }
 
 .drag-handle:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.organization-map {
+  margin-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+}
+
+.organization-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.organization-map-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.organization-tree {
+  overflow-x: auto;
+  padding: 6px 2px 10px;
+}
+
+.tree-root-line,
+.tree-department-line,
+.tree-group-line {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: max-content;
+}
+
+.tree-department-list {
+  position: relative;
+  margin-left: 46px;
+  padding: 16px 0 0 24px;
+  border-left: 2px solid #d7e2ee;
+}
+
+.tree-department-branch {
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.tree-department-branch::before,
+.tree-group-line::before {
+  content: "";
+  position: absolute;
+  width: 24px;
+  border-top: 2px solid #d7e2ee;
+}
+
+.tree-department-branch::before {
+  top: 18px;
+  left: -24px;
+}
+
+.tree-group-list {
+  position: relative;
+  margin-left: 58px;
+  padding: 12px 0 0 22px;
+  border-left: 2px solid #e4edf6;
+}
+
+.tree-group-line {
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.tree-group-line::before {
+  top: 17px;
+  left: -22px;
+  width: 22px;
+  border-color: #e4edf6;
+}
+
+.tree-toggle {
+  flex: 0 0 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #bfcedc;
+  border-radius: 50%;
+  color: #455a6f;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.tree-toggle:hover:not(:disabled) {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  transform: translateY(-1px);
+}
+
+.tree-toggle:disabled {
+  color: #a6b2bf;
+  cursor: default;
+  background: #f7fafc;
+}
+
+.tree-node {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #d7e2ee;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(31 41 55 / 6%);
+}
+
+.tree-node strong,
+.tree-node span {
+  display: block;
+}
+
+.tree-node strong {
+  color: #1f2d3d;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.tree-node span {
+  margin-top: 3px;
+  color: #66727f;
+  font-size: 12px;
+}
+
+.tree-node-root {
+  min-width: 230px;
+  padding: 12px 16px;
+  border-color: #9ac1ea;
+  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+}
+
+.tree-node-department {
+  min-width: 260px;
+  padding: 10px 12px 10px 14px;
+}
+
+.tree-node-group {
+  min-width: 230px;
+  padding: 9px 12px;
+  border-color: #dce7d5;
+  background: #fbfdf9;
 }
 
 .transition-toolbar {
