@@ -1048,7 +1048,14 @@ public class ClubsController : ControllerBase
         var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, userId);
         if (access.Result is not null) return access.Result;
 
-        var scores = await CalculateSemesterEvaluationScoresAsync(clubId, userId, termName.Trim());
+        var normalizedTermName = termName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(normalizedTermName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
+        var scores = await CalculateSemesterEvaluationScoresAsync(clubId, userId, normalizedTermName);
         var totalScore = CalculateEvaluationTotal(
             scores.ActivityScore,
             scores.TaskScore,
@@ -1111,6 +1118,12 @@ public class ClubsController : ControllerBase
         }
 
         var termName = req.TermName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(termName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
         var today = BusinessToday();
         var members = await _db.ClubMembers
             .Include(cm => cm.User)
@@ -2374,6 +2387,12 @@ public class ClubsController : ControllerBase
         if (normalizedType is null) return "评价类型只能是 semester 或 award。";
         if (string.IsNullOrWhiteSpace(termName)) return "考核学期不能为空。";
         if (TextTooLong(termName)) return "考核学期不能超过 255 个字符。";
+        if (normalizedType == EvaluationSemester)
+        {
+            var termValidationError = ValidateSemesterEvaluationTermName(termName.Trim());
+            if (termValidationError is not null) return termValidationError;
+        }
+
         if (TextTooLong(awardTitle)) return "奖项标题不能超过 255 个字符。";
         if (TextTooLong(awardLevel)) return "奖项等级不能超过 255 个字符。";
         if (TextTooLong(awardReason)) return "获奖原因不能超过 255 个字符。";
@@ -2613,7 +2632,8 @@ public class ClubsController : ControllerBase
         string termName,
         int? ignoredEvaluationId = null)
     {
-        var termWindow = ResolveEvaluationTermWindow(termName);
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
         var activityScore = await CalculateSemesterActivityScoreAsync(clubId, userId, termWindow);
         var taskScore = await CalculateSemesterTaskScoreAsync(clubId, userId, termWindow);
         var learningScore = await CalculateSemesterLearningScoreAsync(clubId, userId, termWindow);
@@ -2637,7 +2657,8 @@ public class ClubsController : ControllerBase
             return new Dictionary<int, EvaluationScoreSnapshot>();
         }
 
-        var termWindow = ResolveEvaluationTermWindow(termName);
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
         var activityScores = await CalculateSemesterActivityScoresAsync(clubId, ids, termWindow);
         var taskScores = await CalculateSemesterTaskScoresAsync(clubId, ids, termWindow);
         var learningScores = await CalculateSemesterLearningScoresAsync(clubId, ids, termWindow);
@@ -3122,16 +3143,49 @@ public class ClubsController : ControllerBase
     private static decimal ClampEvaluationScore(decimal score) =>
         decimal.Round(Math.Clamp(score, 0, MaxEvaluationScore), 1, MidpointRounding.AwayFromZero);
 
+    private static string? ValidateSemesterEvaluationTermName(string termName) =>
+        ResolveEvaluationTermWindow(termName) is null
+            ? "考核学期格式无法识别，请填写如 2026-2027学年、2026秋季或 2027春季。"
+            : null;
+
     private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
     {
         var normalized = termName.Trim();
+        var hasSpring = normalized.Contains("春", StringComparison.Ordinal);
+        var hasFall = normalized.Contains("秋", StringComparison.Ordinal);
+        var hasAcademicYear = normalized.Contains("学年", StringComparison.Ordinal);
+
+        if (hasSpring && hasFall)
+        {
+            return null;
+        }
+
         var yearRange = Regex.Match(normalized, @"(?<start>20\d{2})\s*[-—~至]\s*(?<end>20\d{2})");
         if (yearRange.Success &&
             int.TryParse(yearRange.Groups["start"].Value, out var startYear) &&
             int.TryParse(yearRange.Groups["end"].Value, out var endYear))
         {
+            if (endYear < startYear)
+            {
+                return null;
+            }
+
+            if (hasSpring)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(endYear, 2, 1),
+                    EndOfDay(new DateTime(endYear, 7, 31)));
+            }
+
+            if (hasFall)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(startYear, 9, 1),
+                    EndOfDay(new DateTime(startYear + 1, 1, 31)));
+            }
+
             return new EvaluationTermWindow(
-                new DateTime(startYear, 7, 1),
+                new DateTime(startYear, 9, 1),
                 EndOfDay(new DateTime(endYear, 6, 30)));
         }
 
@@ -3141,21 +3195,22 @@ public class ClubsController : ControllerBase
             return null;
         }
 
-        if (normalized.Contains("春", StringComparison.Ordinal))
+        if (hasSpring)
         {
+            var springYear = hasAcademicYear ? year + 1 : year;
             return new EvaluationTermWindow(
-                new DateTime(year, 2, 1),
-                EndOfDay(new DateTime(year, 7, 31)));
+                new DateTime(springYear, 2, 1),
+                EndOfDay(new DateTime(springYear, 7, 31)));
         }
 
-        if (normalized.Contains("秋", StringComparison.Ordinal))
+        if (hasFall)
         {
             return new EvaluationTermWindow(
                 new DateTime(year, 9, 1),
                 EndOfDay(new DateTime(year + 1, 1, 31)));
         }
 
-        if (normalized.Contains("学年", StringComparison.Ordinal))
+        if (hasAcademicYear)
         {
             return new EvaluationTermWindow(
                 new DateTime(year, 9, 1),

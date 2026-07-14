@@ -995,7 +995,7 @@ paths:
           schema:
             type: string
             minLength: 1
-          description: 考核学期；后端会用该学期匹配活动、任务、学习和评优记录。
+          description: 考核学期；后端会解析为时间窗口并匹配活动、任务、学习和评优记录，支持 2026-2027学年、2026秋季、2027春季，无法解析会返回 400。
       responses:
         "200":
           description: 系统生成的成员考核分预览
@@ -4408,7 +4408,7 @@ components:
         termName:
           type: string
           description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          example: 2026-2027学年春季
         awardTitle:
           type: string
           nullable: true
@@ -4539,7 +4539,7 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 需要生成考核记录的学期或任期名称。
+          description: 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季，无法解析会返回 400。
           example: 2026-2027学年
         overwriteDrafts:
           type: boolean
@@ -4609,8 +4609,8 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。
+          example: 2026-2027学年春季
         awardTitle:
           type: string
           nullable: true
@@ -4692,7 +4692,7 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2026-2027学年、2026秋季、2027春季。
           example: 2026 学年春季学期
         awardTitle:
           type: string
