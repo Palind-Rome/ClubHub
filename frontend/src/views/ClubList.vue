@@ -612,6 +612,15 @@ const activeClubGroups = computed(() =>
     department.groups.filter((group) => group.groupStatus === "active"),
   ),
 );
+const groupLookupById = computed(() => {
+  const map = new Map<number, ClubGroupRecord>();
+  clubDepartments.value.forEach((department) => {
+    department.groups.forEach((group) => {
+      map.set(group.groupId, group);
+    });
+  });
+  return map;
+});
 const memberGroupOptions = computed(() => groupOptionsForDepartmentId(memberFilters.departmentId));
 const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const user = currentUser.value;
@@ -2437,9 +2446,7 @@ function departmentByName(departmentName: string | null | undefined) {
 
 function groupById(groupId: number | null | undefined) {
   if (!groupId) return undefined;
-  return clubDepartments.value
-    .flatMap((department) => department.groups)
-    .find((group) => group.groupId === groupId);
+  return groupLookupById.value.get(groupId);
 }
 
 function groupByName(
