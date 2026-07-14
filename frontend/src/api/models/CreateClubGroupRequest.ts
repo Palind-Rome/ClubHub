@@ -15,61 +15,61 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 创建社团小组的请求体。
  * @export
  * @interface CreateClubGroupRequest
  */
 export interface CreateClubGroupRequest {
   /**
-   *
+   * 小组名称，同一部门下唯一。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   groupName: string;
   /**
-   *
+   * 小组内部编码，可用于后端或导入识别。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   groupCode?: string | null;
   /**
-   *
+   * 小组简介。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   description?: string | null;
   /**
-   *
+   * 小组职责范围。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   responsibilities?: string | null;
   /**
-   *
+   * 小组联系电话。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   contactPhone?: string | null;
   /**
-   *
+   * 小组联系邮箱。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   contactEmail?: string | null;
   /**
-   *
+   * 小组常用活动地点。
    * @type {string}
    * @memberof CreateClubGroupRequest
    */
   activityLocation?: string | null;
   /**
-   *
+   * 小组展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof CreateClubGroupRequest
    */
   displayOrder?: number;
   /**
-   *
+   * 小组状态，active 表示启用，inactive 表示停用。
    * @type {CreateClubGroupRequestGroupStatusEnum}
    * @memberof CreateClubGroupRequest
    */

@@ -26,73 +26,94 @@ namespace Org.OpenAPITools.Models
     public partial class ClubDepartmentRecord 
     {
         /// <summary>
-        /// Gets or Sets DepartmentId
+        /// 部门 ID。
         /// </summary>
+        /// <value>部门 ID。</value>
+        /* <example>1001</example> */
         [Required]
         [DataMember(Name="departmentId", EmitDefaultValue=true)]
         public int DepartmentId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentName
+        /// 部门名称，同一社团下唯一。
         /// </summary>
+        /// <value>部门名称，同一社团下唯一。</value>
+        /* <example>技术部</example> */
         [Required]
         [DataMember(Name="departmentName", EmitDefaultValue=false)]
         public string DepartmentName { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentCode
+        /// 部门内部编码，可用于后端或导入识别。
         /// </summary>
+        /// <value>部门内部编码，可用于后端或导入识别。</value>
+        /* <example>TECH</example> */
         [DataMember(Name="departmentCode", EmitDefaultValue=true)]
         public string? DepartmentCode { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 部门简介。
         /// </summary>
+        /// <value>部门简介。</value>
+        /* <example>负责协会技术建设和项目孵化。</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets Responsibilities
+        /// 部门职责范围。
         /// </summary>
+        /// <value>部门职责范围。</value>
+        /* <example>统筹技术培训、项目协作和竞赛支持。</example> */
         [DataMember(Name="responsibilities", EmitDefaultValue=true)]
         public string? Responsibilities { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactPhone
+        /// 部门联系电话。
         /// </summary>
+        /// <value>部门联系电话。</value>
+        /* <example>13800000000</example> */
         [DataMember(Name="contactPhone", EmitDefaultValue=true)]
         public string? ContactPhone { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactEmail
+        /// 部门联系邮箱。
         /// </summary>
+        /// <value>部门联系邮箱。</value>
+        /* <example>tech@clubhub.example</example> */
         [DataMember(Name="contactEmail", EmitDefaultValue=true)]
         public string? ContactEmail { get; set; }
 
         /// <summary>
-        /// Gets or Sets OfficeLocation
+        /// 部门常用办公或活动地点。
         /// </summary>
+        /// <value>部门常用办公或活动地点。</value>
+        /* <example>嘉定校区学生创新中心 301</example> */
         [DataMember(Name="officeLocation", EmitDefaultValue=true)]
         public string? OfficeLocation { get; set; }
 
         /// <summary>
-        /// Gets or Sets DisplayOrder
+        /// 部门展示顺序，数值越小越靠前。
         /// </summary>
+        /// <value>部门展示顺序，数值越小越靠前。</value>
+        /* <example>10</example> */
         [Required]
         [DataMember(Name="displayOrder", EmitDefaultValue=true)]
         public int DisplayOrder { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets DepartmentStatus
+        /// 部门状态，active 表示启用，inactive 表示停用。
         /// </summary>
+        /// <value>部门状态，active 表示启用，inactive 表示停用。</value>
         
         public enum DepartmentStatusEnum
         {
@@ -111,29 +132,36 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets DepartmentStatus
+        /// 部门状态，active 表示启用，inactive 表示停用。
         /// </summary>
+        /// <value>部门状态，active 表示启用，inactive 表示停用。</value>
+        /* <example>active</example> */
         [Required]
         [DataMember(Name="departmentStatus", EmitDefaultValue=true)]
         public DepartmentStatusEnum DepartmentStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 部门创建时间。
         /// </summary>
+        /// <value>部门创建时间。</value>
+        /* <example>2026-07-14T08:00Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 部门最后更新时间。
         /// </summary>
+        /// <value>部门最后更新时间。</value>
+        /* <example>2026-07-14T08:30Z</example> */
         [Required]
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets Groups
+        /// 部门下属小组列表。
         /// </summary>
+        /// <value>部门下属小组列表。</value>
         [Required]
         [DataMember(Name="groups", EmitDefaultValue=false)]
         public List<ClubGroupRecord> Groups { get; set; }

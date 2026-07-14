@@ -28,7 +28,7 @@ export interface UpdateClubMemberTermRequest {
    */
   currentUserId?: number;
   /**
-   *
+   * 成员任期调整后的部门 ID；传 null 表示不归属任何部门。
    * @type {number}
    * @memberof UpdateClubMemberTermRequest
    */
@@ -40,7 +40,7 @@ export interface UpdateClubMemberTermRequest {
    */
   departmentName?: string | null;
   /**
-   *
+   * 成员任期调整后的小组 ID；传 null 表示不归属任何小组。
    * @type {number}
    * @memberof UpdateClubMemberTermRequest
    */

@@ -57,7 +57,7 @@ export interface ClubMemberRecord {
    */
   studentNo?: string | null;
   /**
-   *
+   * 成员当前归属部门 ID；为空表示未归属部门。
    * @type {number}
    * @memberof ClubMemberRecord
    */
@@ -69,7 +69,7 @@ export interface ClubMemberRecord {
    */
   departmentName?: string | null;
   /**
-   *
+   * 成员当前归属小组 ID；为空表示未归属小组。
    * @type {number}
    * @memberof ClubMemberRecord
    */

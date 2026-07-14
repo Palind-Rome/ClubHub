@@ -21,85 +21,85 @@ import { mapValues } from "../runtime";
  */
 export interface ClubGroupRecord {
   /**
-   *
+   * 小组 ID。
    * @type {number}
    * @memberof ClubGroupRecord
    */
   groupId: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof ClubGroupRecord
    */
   clubId: number;
   /**
-   *
+   * 所属部门 ID。
    * @type {number}
    * @memberof ClubGroupRecord
    */
   departmentId: number;
   /**
-   *
+   * 小组名称，同一部门下唯一。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   groupName: string;
   /**
-   *
+   * 小组内部编码，可用于后端或导入识别。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   groupCode?: string | null;
   /**
-   *
+   * 小组简介。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   description?: string | null;
   /**
-   *
+   * 小组职责范围。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   responsibilities?: string | null;
   /**
-   *
+   * 小组联系电话。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   contactPhone?: string | null;
   /**
-   *
+   * 小组联系邮箱。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   contactEmail?: string | null;
   /**
-   *
+   * 小组常用活动地点。
    * @type {string}
    * @memberof ClubGroupRecord
    */
   activityLocation?: string | null;
   /**
-   *
+   * 小组展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof ClubGroupRecord
    */
   displayOrder: number;
   /**
-   *
+   * 小组状态，active 表示启用，inactive 表示停用。
    * @type {ClubGroupRecordGroupStatusEnum}
    * @memberof ClubGroupRecord
    */
   groupStatus: ClubGroupRecordGroupStatusEnum;
   /**
-   *
+   * 小组创建时间。
    * @type {Date}
    * @memberof ClubGroupRecord
    */
   createdAt: Date;
   /**
-   *
+   * 小组最后更新时间。
    * @type {Date}
    * @memberof ClubGroupRecord
    */

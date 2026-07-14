@@ -33,8 +33,10 @@ namespace Org.OpenAPITools.Models
         public int? CurrentUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentId
+        /// 成员任期调整后的部门 ID；传 null 表示不归属任何部门。
         /// </summary>
+        /// <value>成员任期调整后的部门 ID；传 null 表示不归属任何部门。</value>
+        /* <example>1001</example> */
         [DataMember(Name="departmentId", EmitDefaultValue=true)]
         public int? DepartmentId { get; set; }
 
@@ -46,8 +48,10 @@ namespace Org.OpenAPITools.Models
         public string? DepartmentName { get; set; }
 
         /// <summary>
-        /// Gets or Sets GroupId
+        /// 成员任期调整后的小组 ID；传 null 表示不归属任何小组。
         /// </summary>
+        /// <value>成员任期调整后的小组 ID；传 null 表示不归属任何小组。</value>
+        /* <example>2001</example> */
         [DataMember(Name="groupId", EmitDefaultValue=true)]
         public int? GroupId { get; set; }
 

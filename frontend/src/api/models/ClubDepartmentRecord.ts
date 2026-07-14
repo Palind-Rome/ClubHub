@@ -29,85 +29,85 @@ import {
  */
 export interface ClubDepartmentRecord {
   /**
-   *
+   * 部门 ID。
    * @type {number}
    * @memberof ClubDepartmentRecord
    */
   departmentId: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof ClubDepartmentRecord
    */
   clubId: number;
   /**
-   *
+   * 部门名称，同一社团下唯一。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   departmentName: string;
   /**
-   *
+   * 部门内部编码，可用于后端或导入识别。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   departmentCode?: string | null;
   /**
-   *
+   * 部门简介。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   description?: string | null;
   /**
-   *
+   * 部门职责范围。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   responsibilities?: string | null;
   /**
-   *
+   * 部门联系电话。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   contactPhone?: string | null;
   /**
-   *
+   * 部门联系邮箱。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   contactEmail?: string | null;
   /**
-   *
+   * 部门常用办公或活动地点。
    * @type {string}
    * @memberof ClubDepartmentRecord
    */
   officeLocation?: string | null;
   /**
-   *
+   * 部门展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof ClubDepartmentRecord
    */
   displayOrder: number;
   /**
-   *
+   * 部门状态，active 表示启用，inactive 表示停用。
    * @type {ClubDepartmentRecordDepartmentStatusEnum}
    * @memberof ClubDepartmentRecord
    */
   departmentStatus: ClubDepartmentRecordDepartmentStatusEnum;
   /**
-   *
+   * 部门创建时间。
    * @type {Date}
    * @memberof ClubDepartmentRecord
    */
   createdAt: Date;
   /**
-   *
+   * 部门最后更新时间。
    * @type {Date}
    * @memberof ClubDepartmentRecord
    */
   updatedAt: Date;
   /**
-   *
+   * 部门下属小组列表。
    * @type {Array<ClubGroupRecord>}
    * @memberof ClubDepartmentRecord
    */

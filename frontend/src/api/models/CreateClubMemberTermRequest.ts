@@ -34,7 +34,7 @@ export interface CreateClubMemberTermRequest {
    */
   userId: number;
   /**
-   *
+   * 新成员任期归属部门 ID；传 null 表示不归属任何部门。
    * @type {number}
    * @memberof CreateClubMemberTermRequest
    */
@@ -46,7 +46,7 @@ export interface CreateClubMemberTermRequest {
    */
   departmentName?: string | null;
   /**
-   *
+   * 新成员任期归属小组 ID；传 null 表示不归属任何小组。
    * @type {number}
    * @memberof CreateClubMemberTermRequest
    */

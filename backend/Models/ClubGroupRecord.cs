@@ -26,80 +26,103 @@ namespace Org.OpenAPITools.Models
     public partial class ClubGroupRecord 
     {
         /// <summary>
-        /// Gets or Sets GroupId
+        /// 小组 ID。
         /// </summary>
+        /// <value>小组 ID。</value>
+        /* <example>2001</example> */
         [Required]
         [DataMember(Name="groupId", EmitDefaultValue=true)]
         public int GroupId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets DepartmentId
+        /// 所属部门 ID。
         /// </summary>
+        /// <value>所属部门 ID。</value>
+        /* <example>1001</example> */
         [Required]
         [DataMember(Name="departmentId", EmitDefaultValue=true)]
         public int DepartmentId { get; set; }
 
         /// <summary>
-        /// Gets or Sets GroupName
+        /// 小组名称，同一部门下唯一。
         /// </summary>
+        /// <value>小组名称，同一部门下唯一。</value>
+        /* <example>开发组</example> */
         [Required]
         [DataMember(Name="groupName", EmitDefaultValue=false)]
         public string GroupName { get; set; }
 
         /// <summary>
-        /// Gets or Sets GroupCode
+        /// 小组内部编码，可用于后端或导入识别。
         /// </summary>
+        /// <value>小组内部编码，可用于后端或导入识别。</value>
+        /* <example>DEV</example> */
         [DataMember(Name="groupCode", EmitDefaultValue=true)]
         public string? GroupCode { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 小组简介。
         /// </summary>
+        /// <value>小组简介。</value>
+        /* <example>负责协会项目开发与代码维护。</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets Responsibilities
+        /// 小组职责范围。
         /// </summary>
+        /// <value>小组职责范围。</value>
+        /* <example>维护社团官网、组织技术分享和项目协作。</example> */
         [DataMember(Name="responsibilities", EmitDefaultValue=true)]
         public string? Responsibilities { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactPhone
+        /// 小组联系电话。
         /// </summary>
+        /// <value>小组联系电话。</value>
+        /* <example>13800000000</example> */
         [DataMember(Name="contactPhone", EmitDefaultValue=true)]
         public string? ContactPhone { get; set; }
 
         /// <summary>
-        /// Gets or Sets ContactEmail
+        /// 小组联系邮箱。
         /// </summary>
+        /// <value>小组联系邮箱。</value>
+        /* <example>dev@clubhub.example</example> */
         [DataMember(Name="contactEmail", EmitDefaultValue=true)]
         public string? ContactEmail { get; set; }
 
         /// <summary>
-        /// Gets or Sets ActivityLocation
+        /// 小组常用活动地点。
         /// </summary>
+        /// <value>小组常用活动地点。</value>
+        /* <example>嘉定校区创新实验室</example> */
         [DataMember(Name="activityLocation", EmitDefaultValue=true)]
         public string? ActivityLocation { get; set; }
 
         /// <summary>
-        /// Gets or Sets DisplayOrder
+        /// 小组展示顺序，数值越小越靠前。
         /// </summary>
+        /// <value>小组展示顺序，数值越小越靠前。</value>
+        /* <example>10</example> */
         [Required]
         [DataMember(Name="displayOrder", EmitDefaultValue=true)]
         public int DisplayOrder { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets GroupStatus
+        /// 小组状态，active 表示启用，inactive 表示停用。
         /// </summary>
+        /// <value>小组状态，active 表示启用，inactive 表示停用。</value>
         
         public enum GroupStatusEnum
         {
@@ -118,22 +141,28 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets GroupStatus
+        /// 小组状态，active 表示启用，inactive 表示停用。
         /// </summary>
+        /// <value>小组状态，active 表示启用，inactive 表示停用。</value>
+        /* <example>active</example> */
         [Required]
         [DataMember(Name="groupStatus", EmitDefaultValue=true)]
         public GroupStatusEnum GroupStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 小组创建时间。
         /// </summary>
+        /// <value>小组创建时间。</value>
+        /* <example>2026-07-14T08:00Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 小组最后更新时间。
         /// </summary>
+        /// <value>小组最后更新时间。</value>
+        /* <example>2026-07-14T08:30Z</example> */
         [Required]
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }

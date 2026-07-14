@@ -15,61 +15,61 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 更新社团小组的请求体，字段含义与创建小组一致。
  * @export
  * @interface UpdateClubGroupRequest
  */
 export interface UpdateClubGroupRequest {
   /**
-   *
+   * 小组名称，同一部门下唯一。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   groupName: string;
   /**
-   *
+   * 小组内部编码，可用于后端或导入识别。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   groupCode?: string | null;
   /**
-   *
+   * 小组简介。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   description?: string | null;
   /**
-   *
+   * 小组职责范围。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   responsibilities?: string | null;
   /**
-   *
+   * 小组联系电话。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   contactPhone?: string | null;
   /**
-   *
+   * 小组联系邮箱。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   contactEmail?: string | null;
   /**
-   *
+   * 小组常用活动地点。
    * @type {string}
    * @memberof UpdateClubGroupRequest
    */
   activityLocation?: string | null;
   /**
-   *
+   * 小组展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof UpdateClubGroupRequest
    */
   displayOrder?: number;
   /**
-   *
+   * 小组状态，active 表示启用，inactive 表示停用。
    * @type {UpdateClubGroupRequestGroupStatusEnum}
    * @memberof UpdateClubGroupRequest
    */

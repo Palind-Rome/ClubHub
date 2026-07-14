@@ -15,61 +15,61 @@
 
 import { mapValues } from "../runtime";
 /**
- *
+ * 创建社团部门的请求体。
  * @export
  * @interface CreateClubDepartmentRequest
  */
 export interface CreateClubDepartmentRequest {
   /**
-   *
+   * 部门名称，同一社团下唯一。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   departmentName: string;
   /**
-   *
+   * 部门内部编码，可用于后端或导入识别。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   departmentCode?: string | null;
   /**
-   *
+   * 部门简介。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   description?: string | null;
   /**
-   *
+   * 部门职责范围。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   responsibilities?: string | null;
   /**
-   *
+   * 部门联系电话。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   contactPhone?: string | null;
   /**
-   *
+   * 部门联系邮箱。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   contactEmail?: string | null;
   /**
-   *
+   * 部门常用办公或活动地点。
    * @type {string}
    * @memberof CreateClubDepartmentRequest
    */
   officeLocation?: string | null;
   /**
-   *
+   * 部门展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof CreateClubDepartmentRequest
    */
   displayOrder?: number;
   /**
-   *
+   * 部门状态，active 表示启用，inactive 表示停用。
    * @type {CreateClubDepartmentRequestDepartmentStatusEnum}
    * @memberof CreateClubDepartmentRequest
    */
