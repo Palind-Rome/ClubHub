@@ -899,8 +899,11 @@ public class AuthService
         return $"{roleDef.Description} 基础权限：{string.Join("、", names)}。";
     }
 
-    private static bool IsNormalAccount(User user) =>
-        string.Equals(user.AccountStatus, NormalStatus, StringComparison.OrdinalIgnoreCase);
+    private static bool IsNormalAccount(User user)
+    {
+        var normalized = NormalizeText(user.AccountStatus).ToLowerInvariant();
+        return normalized is "active" or NormalStatus or "enabled" or "在任" or "正常";
+    }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
     {

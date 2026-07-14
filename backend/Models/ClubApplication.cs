@@ -64,6 +64,20 @@ namespace Org.OpenAPITools.Models
         public string? ApplicantName { get; set; }
 
         /// <summary>
+        /// 拟邀请的指导老师用户 ID。
+        /// </summary>
+        /// <value>拟邀请的指导老师用户 ID。</value>
+        [DataMember(Name="advisorUserId", EmitDefaultValue=true)]
+        public int? AdvisorUserId { get; set; }
+
+        /// <summary>
+        /// 拟邀请的指导老师姓名。
+        /// </summary>
+        /// <value>拟邀请的指导老师姓名。</value>
+        [DataMember(Name="advisorName", EmitDefaultValue=true)]
+        public string? AdvisorName { get; set; }
+
+        /// <summary>
         /// Gets or Sets ApplyReason
         /// </summary>
         [Required]
@@ -135,6 +149,14 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+        /// </summary>
+        /// <value>申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。</value>
+        /* <example>13800000000</example> */
+        [DataMember(Name="contactPhone", EmitDefaultValue=true)]
+        public string? ContactPhone { get; set; }
 
         /// <summary>
         /// Gets or Sets ClubStatus

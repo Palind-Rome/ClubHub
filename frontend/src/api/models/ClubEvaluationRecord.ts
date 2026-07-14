@@ -123,25 +123,25 @@ export interface ClubEvaluationRecord {
    */
   awardReason?: string | null;
   /**
-   * 活动参与得分，取值范围 0-100。
+   * 活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。
    * @type {number}
    * @memberof ClubEvaluationRecord
    */
   activityScore: number;
   /**
-   * 项目任务得分，取值范围 0-100。
+   * 项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。
    * @type {number}
    * @memberof ClubEvaluationRecord
    */
   taskScore: number;
   /**
-   * 学习记录得分，取值范围 0-100。
+   * 学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。
    * @type {number}
    * @memberof ClubEvaluationRecord
    */
   learningScore: number;
   /**
-   * 奖项或附加贡献得分，取值范围 0-100。
+   * 奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。
    * @type {number}
    * @memberof ClubEvaluationRecord
    */

@@ -57,7 +57,12 @@ const canAccessVenueReservations = computed(() => {
 });
 
 function refreshSession() {
-  auth.value = readAuth();
+  const nextAuth = readAuth();
+  auth.value = nextAuth;
+
+  if (!nextAuth && route.path !== "/auth") {
+    router.replace({ path: "/auth", query: { redirect: route.fullPath } });
+  }
 }
 
 async function checkHealth() {

@@ -73,6 +73,11 @@ import {
   ClubEvaluationRecordToJSON,
 } from "../models/ClubEvaluationRecord";
 import {
+  type ClubEvaluationScorePreview,
+  ClubEvaluationScorePreviewFromJSON,
+  ClubEvaluationScorePreviewToJSON,
+} from "../models/ClubEvaluationScorePreview";
+import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
   ClubMemberRecordToJSON,
@@ -157,6 +162,16 @@ import {
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
 } from "../models/ExitClubMemberRequest";
+import {
+  type GenerateClubEvaluationsRequest,
+  GenerateClubEvaluationsRequestFromJSON,
+  GenerateClubEvaluationsRequestToJSON,
+} from "../models/GenerateClubEvaluationsRequest";
+import {
+  type GenerateClubEvaluationsResult,
+  GenerateClubEvaluationsResultFromJSON,
+  GenerateClubEvaluationsResultToJSON,
+} from "../models/GenerateClubEvaluationsResult";
 import {
   type HealthStatus,
   HealthStatusFromJSON,
@@ -505,6 +520,11 @@ export interface ExitCurrentClubMemberRequest {
   exitClubMemberRequest: ExitClubMemberRequest;
 }
 
+export interface GenerateClubEvaluationsOperationRequest {
+  clubId: number;
+  generateClubEvaluationsRequest: GenerateClubEvaluationsRequest;
+}
+
 export interface GetActivitiesRequest {
   currentUserId?: number;
 }
@@ -520,6 +540,9 @@ export interface GetActivityParticipationsRequest {
 
 export interface GetClubApplicationsRequest {
   auditStatus?: GetClubApplicationsAuditStatusEnum;
+  keyword?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface GetClubByIdRequest {
@@ -646,6 +669,12 @@ export interface MarkNoticeReadOperationRequest {
   markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
+export interface PreviewClubEvaluationScoresRequest {
+  clubId: number;
+  userId: number;
+  termName: string;
+}
+
 export interface RegisterActivityRequest {
   activityId: number;
 }
@@ -663,6 +692,11 @@ export interface RemoveClubMemberRequest {
 export interface RemoveProjectMemberRequest {
   projectId: number;
   projectMemberId: number;
+}
+
+export interface ResubmitClubApplicationRequest {
+  clubId: number;
+  createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
 export interface ReviewActivityOperationRequest {
@@ -2824,6 +2858,74 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for generateClubEvaluations without sending the request
+   */
+  async generateClubEvaluationsRequestOpts(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    if (requestParameters["generateClubEvaluationsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "generateClubEvaluationsRequest",
+        'Required parameter "generateClubEvaluationsRequest" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/generate`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: GenerateClubEvaluationsRequestToJSON(
+        requestParameters["generateClubEvaluationsRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluationsRaw(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<GenerateClubEvaluationsResult>> {
+    const requestOptions = await this.generateClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      GenerateClubEvaluationsResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluations(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<GenerateClubEvaluationsResult> {
+    const response = await this.generateClubEvaluationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getActivities without sending the request
    */
   async getActivitiesRequestOpts(
@@ -2999,6 +3101,50 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubAdvisorCandidates without sending the request
+   */
+  async getClubAdvisorCandidatesRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/advisor-candidates`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidatesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
+    const requestOptions = await this.getClubAdvisorCandidatesRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningTeacherCandidateFromJSON),
+    );
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidates(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningTeacherCandidate>> {
+    const response = await this.getClubAdvisorCandidatesRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubApplications without sending the request
    */
   async getClubApplicationsRequestOpts(
@@ -3008,6 +3154,22 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    if (requestParameters["startDate"] != null) {
+      queryParameters["startDate"] = (requestParameters["startDate"] as any)
+        .toISOString()
+        .substring(0, 10);
+    }
+
+    if (requestParameters["endDate"] != null) {
+      queryParameters["endDate"] = (requestParameters["endDate"] as any)
+        .toISOString()
+        .substring(0, 10);
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -4814,6 +4976,84 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for previewClubEvaluationScores without sending the request
+   */
+  async previewClubEvaluationScoresRequestOpts(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["termName"] == null) {
+      throw new runtime.RequiredError(
+        "termName",
+        'Required parameter "termName" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["userId"] != null) {
+      queryParameters["userId"] = requestParameters["userId"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/score-preview`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScoresRaw(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationScorePreview>> {
+    const requestOptions = await this.previewClubEvaluationScoresRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationScorePreviewFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScores(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationScorePreview> {
+    const response = await this.previewClubEvaluationScoresRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for refreshAuthSession without sending the request
    */
   async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
@@ -5134,6 +5374,70 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.removeProjectMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for resubmitClubApplication without sending the request
+   */
+  async resubmitClubApplicationRequestOpts(
+    requestParameters: ResubmitClubApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    if (requestParameters["createClubApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubApplicationRequest",
+        'Required parameter "createClubApplicationRequest" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/applications/{clubId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubApplicationRequestToJSON(requestParameters["createClubApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplicationRaw(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubApplication>> {
+    const requestOptions = await this.resubmitClubApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplication(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubApplication> {
+    const response = await this.resubmitClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**
@@ -5955,7 +6259,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluationRaw(
@@ -5971,7 +6275,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluation(

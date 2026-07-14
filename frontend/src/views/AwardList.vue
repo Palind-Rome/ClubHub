@@ -87,9 +87,21 @@ const filters = reactive({
   publicStatus: "" as "" | PublicStatus,
 });
 
+function defaultTermName(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+
+  if (month >= 2 && month <= 7) {
+    return `${year - 1}-${year}学年春季`;
+  }
+
+  const fallStartYear = month === 1 ? year - 1 : year;
+  return `${fallStartYear}-${fallStartYear + 1}学年秋季`;
+}
+
 const awardForm = reactive({
   userId: undefined as number | undefined,
-  termName: `${new Date().getFullYear()} 学年春季学期`,
+  termName: defaultTermName(),
   awardTitle: "",
   awardLevel: "",
   awardReason: "",
@@ -275,7 +287,7 @@ async function reloadAll() {
 
 function resetAwardForm() {
   awardForm.userId = memberOptions.value[0]?.userId;
-  awardForm.termName = `${new Date().getFullYear()} 学年春季学期`;
+  awardForm.termName = defaultTermName();
   awardForm.awardTitle = "";
   awardForm.awardLevel = "";
   awardForm.awardReason = "";
@@ -448,7 +460,7 @@ onUnmounted(() => {
     <div class="page-head">
       <div>
         <h2>评奖评优</h2>
-        <div class="subtitle">录入评奖评优结果，维护奖项信息和公示状态。</div>
+        <div class="subtitle">录入评奖评优结果，公示后作为成员考核“奖项分”的来源。</div>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -479,6 +491,21 @@ onUnmounted(() => {
       <div>
         <span>当前社团</span>
         <strong>{{ selectedClub?.name || "-" }}</strong>
+      </div>
+    </div>
+
+    <div class="process-strip">
+      <div>
+        <span>1. 录入草稿</span>
+        <strong>登记奖项、等级、原因和奖项分</strong>
+      </div>
+      <div>
+        <span>2. 确认公示</span>
+        <strong>确认无误后切换为已公示</strong>
+      </div>
+      <div>
+        <span>3. 联动考核</span>
+        <strong>已公示奖项按学期汇入奖项分</strong>
       </div>
     </div>
 
@@ -597,6 +624,14 @@ onUnmounted(() => {
       width="720px"
     >
       <el-form ref="awardFormRef" :model="awardForm" :rules="awardRules" label-width="100px">
+        <el-alert
+          class="workflow-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          title="公示状态说明"
+          description="未公示记录仅维护人员可见；切换为已公示后，普通成员可查看，并会作为同学期成员考核的奖项分来源。"
+        />
         <el-form-item label="社团">
           <el-input :model-value="selectedClub?.name" disabled />
         </el-form-item>
@@ -727,6 +762,38 @@ onUnmounted(() => {
   font-size: 26px;
 }
 
+.process-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid #dce3ec;
+  background: #fff;
+}
+
+.process-strip div {
+  min-height: 72px;
+  border-right: 1px solid #e6ebf2;
+  padding: 14px 18px;
+}
+
+.process-strip div:last-child {
+  border-right: none;
+}
+
+.process-strip span {
+  display: block;
+  color: #66727f;
+  font-size: 13px;
+}
+
+.process-strip strong {
+  display: block;
+  margin-top: 8px;
+  color: #20262e;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .toolbar {
   flex-wrap: wrap;
   border: 1px solid #dce3ec;
@@ -797,13 +864,18 @@ onUnmounted(() => {
   flex: 0 0 auto;
 }
 
+.workflow-alert {
+  margin-bottom: 16px;
+}
+
 @media (max-width: 900px) {
   .page-head,
   .award-card {
     flex-direction: column;
   }
 
-  .summary-strip {
+  .summary-strip,
+  .process-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

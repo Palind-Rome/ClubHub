@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+ * 更新社团成员评价考核或评优评奖结果记录；学期考核可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
  * @export
  * @interface UpdateClubEvaluationRequest
  */
@@ -34,7 +34,7 @@ export interface UpdateClubEvaluationRequest {
    */
   evaluationType?: UpdateClubEvaluationRequestEvaluationTypeEnum;
   /**
-   * 考核或评奖所属学期。
+   * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
    * @type {string}
    * @memberof UpdateClubEvaluationRequest
    */
@@ -58,29 +58,29 @@ export interface UpdateClubEvaluationRequest {
    */
   awardReason?: string | null;
   /**
-   * 活动参与得分。
+   * 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  activityScore?: number;
+  activityScore?: number | null;
   /**
-   * 项目任务得分。
+   * 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  taskScore?: number;
+  taskScore?: number | null;
   /**
-   * 学习记录得分。
+   * 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  learningScore?: number;
+  learningScore?: number | null;
   /**
-   * 奖项或附加贡献得分。
+   * 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
    * @type {number}
    * @memberof UpdateClubEvaluationRequest
    */
-  awardScore?: number;
+  awardScore?: number | null;
   /**
    * 公示状态；draft 为草稿，published 为已公示。
    * @type {UpdateClubEvaluationRequestPublicStatusEnum}

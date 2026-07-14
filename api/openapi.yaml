@@ -408,6 +408,27 @@ paths:
         "409":
           description: 社团名称已存在或已有有效注册申请
 
+  /api/clubs/advisor-candidates:
+    get:
+      summary: 查询社团注册可选指导老师
+      description: 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+      operationId: getClubAdvisorCandidates
+      responses:
+        "200":
+          description: 可选指导老师列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: 当前用户账号不可用
+        "401":
+          description: 登录状态已失效
+        "404":
+          description: 当前用户不存在
+
   /api/clubs/applications:
     get:
       summary: 按当前用户权限查询社团注册申请
@@ -419,6 +440,30 @@ paths:
           schema:
             type: string
             enum: [pending, approved, rejected]
+          example: pending
+        - name: keyword
+          in: query
+          required: false
+          description: 按社团名称、申请人姓名、用户名或学号模糊搜索。
+          schema:
+            type: string
+          example: 计算机协会
+        - name: startDate
+          in: query
+          required: false
+          description: 申请提交开始日期，按业务时区当天 00:00 起过滤。
+          schema:
+            type: string
+            format: date
+          example: "2026-07-01"
+        - name: endDate
+          in: query
+          required: false
+          description: 申请提交结束日期，按业务时区包含当天。
+          schema:
+            type: string
+            format: date
+          example: "2026-07-13"
       responses:
         "200":
           description: 社团注册申请列表
@@ -457,6 +502,39 @@ paths:
           description: 当前用户不是学生申请人或无权提交申请
         "409":
           description: 社团名称已存在或已有待审核申请
+
+  /api/clubs/applications/{clubId}:
+    patch:
+      summary: 修改退回的社团注册申请并重新提交
+      description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+      operationId: resubmitClubApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubApplicationRequest"
+      responses:
+        "200":
+          description: 社团注册申请已重新提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户不是原申请人或无权提交申请
+        "404":
+          description: 当前用户或申请不存在
+        "409":
+          description: 当前申请状态不允许重新提交，或社团名称已被占用
 
   /api/clubs/applications/{clubId}/review:
     patch:
@@ -893,10 +971,84 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/clubs/{clubId}/evaluations/score-preview:
+    get:
+      summary: 预览成员考核系统生成分
+      description: 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+      operationId: previewClubEvaluationScores
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: 被考核成员用户 ID。
+        - name: termName
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: 考核学期；后端会解析为时间窗口并匹配活动、任务、学习和评优记录，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
+      responses:
+        "200":
+          description: 系统生成的成员考核分预览
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationScorePreview"
+        "400":
+          description: 请求参数不符合业务规则
+        "403":
+          description: 当前用户没有预览该成员考核分的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/evaluations/generate:
+    post:
+      summary: 批量生成成员考核草稿
+      description: 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+      operationId: generateClubEvaluations
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateClubEvaluationsRequest"
+      responses:
+        "200":
+          description: 成员考核草稿生成结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateClubEvaluationsResult"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有批量生成该社团考核的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
       summary: 更新社团成员评价考核或评优评奖结果
-      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
       operationId: updateClubEvaluation
       parameters:
         - name: clubId
@@ -3905,6 +4057,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
         auditStatus:
           type: string
           nullable: true
@@ -4012,6 +4166,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
       required:
         - name
         - category
@@ -4252,7 +4408,7 @@ components:
         termName:
           type: string
           description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -4271,22 +4427,22 @@ components:
         activityScore:
           type: number
           format: decimal
-          description: 活动参与得分，取值范围 0-100。
+          description: 活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。
           example: 92
         taskScore:
           type: number
           format: decimal
-          description: 项目任务得分，取值范围 0-100。
+          description: 项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。
           example: 88
         learningScore:
           type: number
           format: decimal
-          description: 学习记录得分，取值范围 0-100。
+          description: 学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。
           example: 95
         awardScore:
           type: number
           format: decimal
-          description: 奖项或附加贡献得分，取值范围 0-100。
+          description: 奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。
           example: 80
         totalScore:
           type: number
@@ -4335,9 +4491,104 @@ components:
         - publicStatus
         - publicStatusText
 
+    ClubEvaluationScorePreview:
+      type: object
+      description: 成员学期考核系统生成分预览；维护人可在系统生成分基础上微调后保存。
+      properties:
+        activityScore:
+          type: number
+          format: decimal
+          description: 根据活动签到、签退和参与记录生成的活动分。
+          example: 80
+        taskScore:
+          type: number
+          format: decimal
+          description: 根据项目任务进度、完成状态和成果审核生成的任务分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          description: 根据课程学习记录和进度生成的学习分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          description: 根据同社团、同成员、同学期评优评奖记录汇总生成的奖项分。
+          example: 60
+        totalScore:
+          type: number
+          format: decimal
+          description: 四项系统生成分合计。
+          example: 323
+        grade:
+          type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
+      required:
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
+
+    GenerateClubEvaluationsRequest:
+      type: object
+      description: 批量生成成员考核草稿的请求。
+      properties:
+        termName:
+          type: string
+          minLength: 1
+          description: 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
+          example: 2025-2026学年春季
+        overwriteDrafts:
+          type: boolean
+          default: true
+          description: 是否刷新已存在的草稿记录；已公示记录始终不会覆盖。
+          example: true
+      required:
+        - termName
+
+    GenerateClubEvaluationsResult:
+      type: object
+      description: 批量生成成员考核草稿的结果统计。
+      properties:
+        termName:
+          type: string
+          description: 本次生成的考核学期。
+          example: 2025-2026学年春季
+        totalMembers:
+          type: integer
+          description: 本次纳入生成范围的当前有效成员数。
+          example: 36
+        createdCount:
+          type: integer
+          description: 新创建的草稿记录数。
+          example: 28
+        refreshedCount:
+          type: integer
+          description: 已存在草稿并被刷新系统生成分的记录数。
+          example: 6
+        skippedPublishedCount:
+          type: integer
+          description: 已公示而未覆盖的记录数。
+          example: 2
+        records:
+          type: array
+          description: 生成后该学期的考核记录。
+          items:
+            $ref: "#/components/schemas/ClubEvaluationRecord"
+      required:
+        - termName
+        - totalMembers
+        - createdCount
+        - refreshedCount
+        - skippedPublishedCount
+        - records
+
     CreateClubEvaluationRequest:
       type: object
-      description: 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+      description: 创建社团成员评价考核或评优评奖结果记录；学期考核通常先由批量生成接口生成草稿，维护人可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
       properties:
         currentUserId:
           type: integer
@@ -4358,8 +4609,8 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -4378,30 +4629,34 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 活动参与得分。
+          description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 92
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 项目任务得分。
+          description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 88
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 学习记录得分。
+          description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 95
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 奖项或附加贡献得分。
+          description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
           example: 80
         publicStatus:
           type: string
@@ -4418,14 +4673,10 @@ components:
         - evaluationType
         - userId
         - termName
-        - activityScore
-        - taskScore
-        - learningScore
-        - awardScore
 
     UpdateClubEvaluationRequest:
       type: object
-      description: 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+      description: 更新社团成员评价考核或评优评奖结果记录；学期考核可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
       properties:
         currentUserId:
           type: integer
@@ -4441,8 +4692,8 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -4461,30 +4712,34 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 活动参与得分。
+          description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 92
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 项目任务得分。
+          description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 88
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 学习记录得分。
+          description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 95
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 奖项或附加贡献得分。
+          description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
           example: 80
         publicStatus:
           type: string
@@ -4515,6 +4770,14 @@ components:
         applicantName:
           type: string
           nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 拟邀请的指导老师用户 ID。
+        advisorName:
+          type: string
+          nullable: true
+          description: 拟邀请的指导老师姓名。
         applyReason:
           type: string
         materialUrl:
@@ -4533,6 +4796,11 @@ components:
         reviewComment:
           type: string
           nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
         clubStatus:
           type: string
           nullable: true
@@ -4594,6 +4862,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
       required:
         - name
         - category

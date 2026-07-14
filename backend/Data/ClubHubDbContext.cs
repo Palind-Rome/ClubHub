@@ -229,7 +229,7 @@ public class ClubHubDbContext : DbContext
             e.Property(t => t.DeliverableStatus).HasMaxLength(255);
             e.Property(t => t.ReviewComment).HasMaxLength(255);
             e.HasOne(t => t.Project)
-             .WithMany()
+             .WithMany(p => p.Tasks)
              .HasForeignKey(t => t.ProjectId)
              .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(t => t.AssigneeUser)

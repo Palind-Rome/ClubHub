@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
+using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -38,6 +40,10 @@ public class ClubsController : ControllerBase
     private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
     private const string EvaluationPublished = "published";
+    private const decimal MaxEvaluationScore = 100m;
+    private const decimal ActivityCheckedOutScore = 10m;
+    private const decimal ActivityCheckedInScore = 8m;
+    private const decimal ActivityAcceptedScore = 5m;
 
     private readonly ClubHubDbContext _db;
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
@@ -78,6 +84,60 @@ public class ClubsController : ControllerBase
 
     public ClubsController(ClubHubDbContext db) => _db = db;
 
+    [HttpGet("advisor-candidates")]
+    public async Task<IActionResult> GetAdvisorCandidates()
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var viewer = await LoadUserAsync(currentUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能选择指导老师。" });
+        }
+
+        var candidates = await _db.Users
+            .AsNoTracking()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(u =>
+                u.AccountStatus == null ||
+                u.AccountStatus == string.Empty ||
+                u.AccountStatus.ToLower() == "active" ||
+                u.AccountStatus.ToLower() == "normal" ||
+                u.AccountStatus.ToLower() == "enabled")
+            .Where(u =>
+                (u.StudentNo != null && u.StudentNo.Length == 5) ||
+                u.UserRoles.Any(ur =>
+                    ur.Role != null &&
+                    ((ur.Role.RoleCode != null &&
+                      (ur.Role.RoleCode.ToUpper() == "TEACHER" ||
+                       ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode)) ||
+                     (ur.Role.RoleName != null &&
+                      (ur.Role.RoleName.Contains("教师") ||
+                       ur.Role.RoleName.Contains("老师"))))))
+            .OrderBy(u => u.RealName)
+            .ThenBy(u => u.StudentNo)
+            .ThenBy(u => u.UserId)
+            .ToListAsync();
+
+        return Ok(candidates
+            .Where(IsTeacherCandidate)
+            .Select(user => new ApiLearningTeacherCandidate
+            {
+                Id = user.UserId,
+                RealName = user.RealName,
+                StudentNo = user.StudentNo,
+                DisplayName = AdvisorCandidateDisplayName(user)
+            }));
+    }
+
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> GetAll()
@@ -106,7 +166,10 @@ public class ClubsController : ControllerBase
 
     [HttpGet("applications")]
     public async Task<IActionResult> GetApplications(
-        [FromQuery] string? auditStatus)
+        [FromQuery] string? auditStatus,
+        [FromQuery] string? keyword,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -132,6 +195,34 @@ public class ClubsController : ControllerBase
             }
 
             query = query.Where(c => c.AuditStatus == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var normalizedKeyword = keyword.Trim().ToUpperInvariant();
+            query = query.Where(c =>
+                c.ClubName.ToUpper().Contains(normalizedKeyword) ||
+                (c.Applicant != null &&
+                 ((c.Applicant.RealName ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.Username ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.StudentNo ?? string.Empty).ToUpper().Contains(normalizedKeyword))));
+        }
+
+        if (startDate is not null && endDate is not null && startDate.Value.Date > endDate.Value.Date)
+        {
+            return BadRequest(new { message = "提交开始日期不能晚于结束日期。" });
+        }
+
+        if (startDate is not null)
+        {
+            var start = BusinessDateBoundaryUtc(startDate.Value.Date);
+            query = query.Where(c => c.CreatedAt >= start);
+        }
+
+        if (endDate is not null)
+        {
+            var endExclusive = BusinessDateBoundaryUtc(endDate.Value.Date.AddDays(1));
+            query = query.Where(c => c.CreatedAt < endExclusive);
         }
 
         var applications = await query
@@ -233,6 +324,109 @@ public class ClubsController : ControllerBase
         }
 
         return CreatedAtAction(nameof(GetById), new { clubId = club.ClubId }, ToApplicationDto(club));
+    }
+
+    [HttpPatch("applications/{clubId:int}")]
+    public async Task<IActionResult> ResubmitApplication(int clubId, [FromBody] CreateClubApplicationRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var validationError = ValidateApplicationRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var applicant = await LoadUserAsync(currentUserId.Value);
+        if (applicant is null)
+        {
+            return NotFound(new { message = "当前用户不存在，请先选择有效的学生用户。" });
+        }
+
+        if (!UsersController.IsActive(applicant.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能重新提交社团注册申请。" });
+        }
+
+        if (UsersController.IsPlatformAdmin(applicant) || !UsersController.IsStudent(applicant))
+        {
+            return StatusCode(403, new { message = "只有原学生申请人可以修改后重新提交社团注册申请。" });
+        }
+
+        var club = await _db.Clubs
+            .Include(c => c.Applicant)
+            .Include(c => c.Reviewer)
+            .FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null || club.ApplicantUserId is null || club.AuditStatus is null)
+        {
+            return NotFound(new { message = "社团注册申请不存在。" });
+        }
+
+        if (club.ApplicantUserId != applicant.UserId)
+        {
+            return StatusCode(403, new { message = "只能修改并重新提交自己的社团注册申请。" });
+        }
+
+        if (club.AuditStatus != AuditRejected)
+        {
+            return Conflict(new { message = "只有已退回的社团注册申请可以修改后重新提交。" });
+        }
+
+        var name = req.Name.Trim();
+        var category = req.Category.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.Clubs.AnyAsync(c =>
+            c.ClubId != clubId &&
+            c.ClubName.ToUpper() == normalizedName &&
+            (c.AuditStatus == null || c.AuditStatus != AuditRejected) &&
+            (c.ClubStatus == null || c.ClubStatus != ClubRejected));
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团名称已存在，或已有待审核/已通过的注册申请。" });
+        }
+
+        var advisor = await ValidateAdvisorAsync(req.AdvisorUserId);
+        if (advisor.Result is not null) return advisor.Result;
+
+        var now = DateTime.UtcNow;
+        club.ClubName = name;
+        club.Category = category;
+        club.Description = EmptyToNull(req.Description);
+        club.AdvisorName = advisor.User is null ? null : DisplayUser(advisor.User);
+        club.ContactPhone = EmptyToNull(req.ContactPhone);
+        club.ApplyReason = req.ApplyReason.Trim();
+        club.MaterialUrl = req.MaterialUrl.Trim();
+        club.AuditStatus = AuditPending;
+        club.ClubStatus = ClubPending;
+        club.PresidentUserId = null;
+        club.FoundedAt = null;
+        club.UpdatedAt = now;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            if (advisor.User is not null)
+            {
+                await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+            }
+            else
+            {
+                await RemoveClubAdvisorRolesExceptAsync(club.ClubId, null);
+            }
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        var updated = await ClubQuery().FirstAsync(c => c.ClubId == club.ClubId);
+        return Ok(ToApplicationDto(updated));
     }
 
     [HttpPatch("applications/{clubId:int}/review")]
@@ -831,6 +1025,215 @@ public class ClubsController : ControllerBase
         return Ok(visible);
     }
 
+    [HttpGet("{clubId:int}/evaluations/score-preview")]
+    public async Task<IActionResult> PreviewEvaluationScores(
+        int clubId,
+        [FromQuery] int userId,
+        [FromQuery] string termName)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        if (userId <= 0)
+        {
+            return BadRequest(new { message = "请选择被考核成员。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(termName))
+        {
+            return BadRequest(new { message = "考核学期不能为空。" });
+        }
+
+        var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, userId);
+        if (access.Result is not null) return access.Result;
+
+        var normalizedTermName = termName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(normalizedTermName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
+        var scores = await CalculateSemesterEvaluationScoresAsync(clubId, userId, normalizedTermName);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
+
+        return Ok(new ClubEvaluationScorePreviewDto(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore,
+            totalScore,
+            EvaluationGrade(totalScore)));
+    }
+
+    [HttpPost("{clubId:int}/evaluations/generate")]
+    public async Task<IActionResult> GenerateEvaluations(
+        int clubId,
+        [FromBody] GenerateClubEvaluationsRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        if (string.IsNullOrWhiteSpace(req.TermName))
+        {
+            return BadRequest(new { message = "考核学期不能为空。" });
+        }
+
+        if (TextTooLong(req.TermName))
+        {
+            return BadRequest(new { message = "考核学期不能超过 255 个字符。" });
+        }
+
+        var viewer = await LoadUserAsync(currentUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能生成成员考核。" });
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return NotFound(new { message = "社团不存在。" });
+        }
+
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以生成成员考核。" });
+        }
+
+        if (!IsClubEvaluationPrincipal(viewer, clubId))
+        {
+            return StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以批量生成成员考核。" });
+        }
+
+        var termName = req.TermName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(termName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
+        var today = BusinessToday();
+        var members = await _db.ClubMembers
+            .Include(cm => cm.User)
+            .Where(cm => cm.ClubId == clubId)
+            .Where(cm => cm.TermStart == null || cm.TermStart <= today)
+            .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
+            .OrderByDescending(cm => cm.TermStart)
+            .ThenByDescending(cm => cm.JoinAt)
+            .ToListAsync();
+        members = members
+            .Where(IsCurrentMemberTerm)
+            .GroupBy(cm => cm.UserId)
+            .Select(group => group.First())
+            .ToList();
+
+        var existingEvaluations = await _db.Evaluations
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                ev.EvaluationType == EvaluationSemester &&
+                ev.TermName == termName)
+            .OrderByDescending(ev => ev.CreatedAt)
+            .ToListAsync();
+        var existingByUser = existingEvaluations
+            .GroupBy(ev => ev.UserId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var now = DateTime.UtcNow;
+        var createdCount = 0;
+        var refreshedCount = 0;
+        var skippedPublishedCount = 0;
+        var scoreByUser = await CalculateSemesterEvaluationScoresForUsersAsync(
+            clubId,
+            members.Select(member => member.UserId).ToList(),
+            termName);
+
+        foreach (var member in members)
+        {
+            var scores = scoreByUser[member.UserId];
+            var totalScore = CalculateEvaluationTotal(
+                scores.ActivityScore,
+                scores.TaskScore,
+                scores.LearningScore,
+                scores.AwardScore);
+
+            if (existingByUser.TryGetValue(member.UserId, out var existing))
+            {
+                if (NormalizeEvaluationPublicStatus(existing.PublicStatus) == EvaluationPublished)
+                {
+                    skippedPublishedCount++;
+                    continue;
+                }
+
+                if (!req.OverwriteDrafts)
+                {
+                    continue;
+                }
+
+                existing.ActivityScore = scores.ActivityScore;
+                existing.TaskScore = scores.TaskScore;
+                existing.LearningScore = scores.LearningScore;
+                existing.AwardScore = scores.AwardScore;
+                existing.TotalScore = totalScore;
+                existing.Grade = EvaluationGrade(totalScore);
+                existing.PublicStatus = EvaluationDraft;
+                existing.EvaluatorUserId = currentUserId.Value;
+                existing.CommentText = EmptyToNull(existing.CommentText) ?? "系统自动生成，待负责人或指导老师确认。";
+                refreshedCount++;
+                continue;
+            }
+
+            _db.Evaluations.Add(new Evaluation
+            {
+                EvaluationType = EvaluationSemester,
+                ClubId = clubId,
+                UserId = member.UserId,
+                EvaluatorUserId = currentUserId.Value,
+                TermName = termName,
+                ActivityScore = scores.ActivityScore,
+                TaskScore = scores.TaskScore,
+                LearningScore = scores.LearningScore,
+                AwardScore = scores.AwardScore,
+                TotalScore = totalScore,
+                Grade = EvaluationGrade(totalScore),
+                PublicStatus = EvaluationDraft,
+                CommentText = "系统自动生成，待负责人或指导老师确认。",
+                CreatedAt = now
+            });
+            createdCount++;
+        }
+
+        await _db.SaveChangesAsync();
+
+        var records = await EvaluationQuery()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                ev.EvaluationType == EvaluationSemester &&
+                ev.TermName == termName)
+            .OrderBy(ev => ev.User!.RealName ?? ev.User!.Username)
+            .ThenBy(ev => ev.UserId)
+            .ToListAsync();
+
+        return Ok(new GenerateClubEvaluationsResultDto(
+            termName,
+            members.Count,
+            createdCount,
+            refreshedCount,
+            skippedPublishedCount,
+            records.Select(ToEvaluationRecordDto).ToList()));
+    }
+
     [HttpPost("{clubId:int}/evaluations")]
     public async Task<IActionResult> CreateEvaluation(
         int clubId,
@@ -863,25 +1266,36 @@ public class ClubsController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var activityScore = req.ActivityScore!.Value;
-        var taskScore = req.TaskScore!.Value;
-        var learningScore = req.LearningScore!.Value;
-        var awardScore = req.AwardScore!.Value;
-        var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
+        var normalizedType = NormalizeEvaluationType(req.EvaluationType)!;
+        var termName = req.TermName.Trim();
+        var scores = await ResolveEvaluationScoresAsync(
+            clubId,
+            req.UserId,
+            termName,
+            normalizedType,
+            req.ActivityScore,
+            req.TaskScore,
+            req.LearningScore,
+            req.AwardScore);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
         var evaluation = new Evaluation
         {
-            EvaluationType = NormalizeEvaluationType(req.EvaluationType)!,
+            EvaluationType = normalizedType,
             ClubId = clubId,
             UserId = req.UserId,
             EvaluatorUserId = currentUserId.Value,
-            TermName = req.TermName.Trim(),
+            TermName = termName,
             AwardTitle = EmptyToNull(req.AwardTitle),
             AwardLevel = EmptyToNull(req.AwardLevel),
             AwardReason = EmptyToNull(req.AwardReason),
-            ActivityScore = activityScore,
-            TaskScore = taskScore,
-            LearningScore = learningScore,
-            AwardScore = awardScore,
+            ActivityScore = scores.ActivityScore,
+            TaskScore = scores.TaskScore,
+            LearningScore = scores.LearningScore,
+            AwardScore = scores.AwardScore,
             TotalScore = totalScore,
             Grade = EvaluationGrade(totalScore),
             PublicStatus = NormalizeEvaluationPublicStatus(req.PublicStatus) ?? EvaluationDraft,
@@ -920,13 +1334,19 @@ public class ClubsController : ControllerBase
 
         var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
         var nextTermName = req.TermName ?? evaluation.TermName;
-        var nextAwardTitle = req.AwardTitle ?? evaluation.AwardTitle;
-        var nextAwardLevel = req.AwardLevel ?? evaluation.AwardLevel;
-        var nextAwardReason = req.AwardReason ?? evaluation.AwardReason;
-        var nextActivityScore = req.ActivityScore ?? evaluation.ActivityScore;
-        var nextTaskScore = req.TaskScore ?? evaluation.TaskScore;
-        var nextLearningScore = req.LearningScore ?? evaluation.LearningScore;
-        var nextAwardScore = req.AwardScore ?? evaluation.AwardScore;
+        var existingEvaluationType = NormalizeEvaluationType(evaluation.EvaluationType) ?? EvaluationSemester;
+        var normalizedNextEvaluationType = NormalizeEvaluationType(nextEvaluationType);
+        var isEvaluationTypeChanged =
+            normalizedNextEvaluationType is not null &&
+            !string.Equals(existingEvaluationType, normalizedNextEvaluationType, StringComparison.Ordinal);
+
+        var nextAwardTitle = isEvaluationTypeChanged ? req.AwardTitle : req.AwardTitle ?? evaluation.AwardTitle;
+        var nextAwardLevel = isEvaluationTypeChanged ? req.AwardLevel : req.AwardLevel ?? evaluation.AwardLevel;
+        var nextAwardReason = isEvaluationTypeChanged ? req.AwardReason : req.AwardReason ?? evaluation.AwardReason;
+        var nextActivityScore = isEvaluationTypeChanged ? req.ActivityScore : req.ActivityScore ?? evaluation.ActivityScore;
+        var nextTaskScore = isEvaluationTypeChanged ? req.TaskScore : req.TaskScore ?? evaluation.TaskScore;
+        var nextLearningScore = isEvaluationTypeChanged ? req.LearningScore : req.LearningScore ?? evaluation.LearningScore;
+        var nextAwardScore = isEvaluationTypeChanged ? req.AwardScore : req.AwardScore ?? evaluation.AwardScore;
         var nextPublicStatus = req.PublicStatus ?? evaluation.PublicStatus;
         var nextCommentText = req.CommentText ?? evaluation.CommentText;
 
@@ -949,21 +1369,33 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = validationError });
         }
 
-        var activityScore = nextActivityScore!.Value;
-        var taskScore = nextTaskScore!.Value;
-        var learningScore = nextLearningScore!.Value;
-        var awardScore = nextAwardScore!.Value;
-        var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
+        var normalizedType = normalizedNextEvaluationType!;
+        var termName = nextTermName!.Trim();
+        var scores = await ResolveEvaluationScoresAsync(
+            clubId,
+            evaluation.UserId,
+            termName,
+            normalizedType,
+            nextActivityScore,
+            nextTaskScore,
+            nextLearningScore,
+            nextAwardScore,
+            evaluationId);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
 
-        evaluation.EvaluationType = NormalizeEvaluationType(nextEvaluationType)!;
-        evaluation.TermName = nextTermName!.Trim();
+        evaluation.EvaluationType = normalizedType;
+        evaluation.TermName = termName;
         evaluation.AwardTitle = EmptyToNull(nextAwardTitle);
         evaluation.AwardLevel = EmptyToNull(nextAwardLevel);
         evaluation.AwardReason = EmptyToNull(nextAwardReason);
-        evaluation.ActivityScore = activityScore;
-        evaluation.TaskScore = taskScore;
-        evaluation.LearningScore = learningScore;
-        evaluation.AwardScore = awardScore;
+        evaluation.ActivityScore = scores.ActivityScore;
+        evaluation.TaskScore = scores.TaskScore;
+        evaluation.LearningScore = scores.LearningScore;
+        evaluation.AwardScore = scores.AwardScore;
         evaluation.TotalScore = totalScore;
         evaluation.Grade = EvaluationGrade(totalScore);
         evaluation.PublicStatus = NormalizeEvaluationPublicStatus(nextPublicStatus) ?? EvaluationDraft;
@@ -1809,25 +2241,33 @@ public class ClubsController : ControllerBase
             club.UpdatedAt);
     }
 
-    private static ClubApplicationDto ToApplicationDto(Club club) => new(
-        club.ClubId,
-        club.ClubName,
-        club.Category,
-        club.Description,
-        club.ApplicantUserId,
-        DisplayUser(club.Applicant),
-        club.ApplyReason ?? string.Empty,
-        club.MaterialUrl ?? string.Empty,
-        club.AuditStatus ?? AuditPending,
-        AuditStatusText(club.AuditStatus),
-        club.ReviewerUserId,
-        DisplayUser(club.Reviewer),
-        club.ReviewComment,
-        club.ClubStatus,
-        ClubStatusText(club.ClubStatus),
-        club.FoundedAt,
-        club.CreatedAt,
-        club.UpdatedAt);
+    private static ClubApplicationDto ToApplicationDto(Club club)
+    {
+        var advisor = CurrentAdvisorAssignment(club);
+
+        return new ClubApplicationDto(
+            club.ClubId,
+            club.ClubName,
+            club.Category,
+            club.Description,
+            club.ApplicantUserId,
+            DisplayUser(club.Applicant),
+            advisor?.UserId,
+            advisor is null ? club.AdvisorName : DisplayUser(advisor.User),
+            club.ApplyReason ?? string.Empty,
+            club.MaterialUrl ?? string.Empty,
+            club.AuditStatus ?? AuditPending,
+            AuditStatusText(club.AuditStatus),
+            club.ReviewerUserId,
+            DisplayUser(club.Reviewer),
+            club.ReviewComment,
+            club.ContactPhone,
+            club.ClubStatus,
+            ClubStatusText(club.ClubStatus),
+            club.FoundedAt,
+            club.CreatedAt,
+            club.UpdatedAt);
+    }
 
     private static string? ValidateApplicationRequest(CreateClubApplicationRequest req)
     {
@@ -1947,6 +2387,12 @@ public class ClubsController : ControllerBase
         if (normalizedType is null) return "评价类型只能是 semester 或 award。";
         if (string.IsNullOrWhiteSpace(termName)) return "考核学期不能为空。";
         if (TextTooLong(termName)) return "考核学期不能超过 255 个字符。";
+        if (normalizedType == EvaluationSemester)
+        {
+            var termValidationError = ValidateSemesterEvaluationTermName(termName.Trim());
+            if (termValidationError is not null) return termValidationError;
+        }
+
         if (TextTooLong(awardTitle)) return "奖项标题不能超过 255 个字符。";
         if (TextTooLong(awardLevel)) return "奖项等级不能超过 255 个字符。";
         if (TextTooLong(awardReason)) return "获奖原因不能超过 255 个字符。";
@@ -1964,18 +2410,16 @@ public class ClubsController : ControllerBase
 
         if (requireScores)
         {
-            if (activityScore is null) return "活动分不能为空。";
-            if (taskScore is null) return "任务分不能为空。";
-            if (learningScore is null) return "学习分不能为空。";
-            if (awardScore is null) return "奖项分不能为空。";
+            if (normalizedType == EvaluationAward && awardScore is null)
+            {
+                return "奖项分不能为空。";
+            }
         }
 
-        var scoreError =
-            ValidateEvaluationScore(activityScore, "活动分") ??
-            ValidateEvaluationScore(taskScore, "任务分") ??
-            ValidateEvaluationScore(learningScore, "学习分") ??
-            ValidateEvaluationScore(awardScore, "奖项分");
-        return scoreError;
+        return ValidateEvaluationScore(activityScore, "参与分") ??
+               ValidateEvaluationScore(taskScore, "任务分") ??
+               ValidateEvaluationScore(learningScore, "学习分") ??
+               ValidateEvaluationScore(awardScore, "奖项分");
     }
 
     private static string? ValidateMemberGroupingRequest(string? departmentName, string? groupName)
@@ -2120,6 +2564,12 @@ public class ClubsController : ControllerBase
         club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
 
     private sealed record GroupingScope(string? DepartmentName, string? GroupName);
+    private sealed record EvaluationScoreSnapshot(
+        decimal ActivityScore,
+        decimal TaskScore,
+        decimal LearningScore,
+        decimal AwardScore);
+    private sealed record EvaluationTermWindow(DateTime Start, DateTime End);
 
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships
@@ -2136,6 +2586,651 @@ public class ClubsController : ControllerBase
         decimal awardScore) =>
         activityScore + taskScore + learningScore + awardScore;
 
+    private async Task<EvaluationScoreSnapshot> ResolveEvaluationScoresAsync(
+        int clubId,
+        int userId,
+        string termName,
+        string normalizedType,
+        decimal? activityScore,
+        decimal? taskScore,
+        decimal? learningScore,
+        decimal? awardScore,
+        int? ignoredEvaluationId = null)
+    {
+        if (normalizedType == EvaluationAward)
+        {
+            return new EvaluationScoreSnapshot(
+                ClampEvaluationScore(activityScore ?? 0),
+                ClampEvaluationScore(taskScore ?? 0),
+                ClampEvaluationScore(learningScore ?? 0),
+                ClampEvaluationScore(awardScore ?? 0));
+        }
+
+        if (activityScore is not null &&
+            taskScore is not null &&
+            learningScore is not null &&
+            awardScore is not null)
+        {
+            return new EvaluationScoreSnapshot(
+                ClampEvaluationScore(activityScore.Value),
+                ClampEvaluationScore(taskScore.Value),
+                ClampEvaluationScore(learningScore.Value),
+                ClampEvaluationScore(awardScore.Value));
+        }
+
+        var generated = await CalculateSemesterEvaluationScoresAsync(clubId, userId, termName, ignoredEvaluationId);
+        return new EvaluationScoreSnapshot(
+            ClampEvaluationScore(activityScore ?? generated.ActivityScore),
+            ClampEvaluationScore(taskScore ?? generated.TaskScore),
+            ClampEvaluationScore(learningScore ?? generated.LearningScore),
+            ClampEvaluationScore(awardScore ?? generated.AwardScore));
+    }
+
+    private async Task<EvaluationScoreSnapshot> CalculateSemesterEvaluationScoresAsync(
+        int clubId,
+        int userId,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
+        var activityScore = await CalculateSemesterActivityScoreAsync(clubId, userId, termWindow);
+        var taskScore = await CalculateSemesterTaskScoreAsync(clubId, userId, termWindow);
+        var learningScore = await CalculateSemesterLearningScoreAsync(clubId, userId, termWindow);
+        var awardScore = await CalculateSemesterAwardScoreAsync(
+            clubId,
+            userId,
+            termName,
+            ignoredEvaluationId);
+
+        return new EvaluationScoreSnapshot(activityScore, taskScore, learningScore, awardScore);
+    }
+
+    private async Task<Dictionary<int, EvaluationScoreSnapshot>> CalculateSemesterEvaluationScoresForUsersAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, EvaluationScoreSnapshot>();
+        }
+
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
+        var activityScores = await CalculateSemesterActivityScoresAsync(clubId, ids, termWindow);
+        var taskScores = await CalculateSemesterTaskScoresAsync(clubId, ids, termWindow);
+        var learningScores = await CalculateSemesterLearningScoresAsync(clubId, ids, termWindow);
+        var awardScores = await CalculateSemesterAwardScoresAsync(clubId, ids, termName);
+
+        return ids.ToDictionary(
+            userId => userId,
+            userId => new EvaluationScoreSnapshot(
+                activityScores.GetValueOrDefault(userId),
+                taskScores.GetValueOrDefault(userId),
+                learningScores.GetValueOrDefault(userId),
+                awardScores.GetValueOrDefault(userId)));
+    }
+
+    private async Task<decimal> CalculateSemesterActivityScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from participation in _db.ActivityParticipations.AsNoTracking()
+            join activity in _db.Activities.AsNoTracking()
+                on participation.ActivityId equals activity.ActivityId
+            where activity.ClubId == clubId && participation.UserId == userId
+            select new
+            {
+                activity.StartAt,
+                activity.EndAt,
+                activity.CreatedAt,
+                participation.RegisterStatus,
+                participation.SignStatus,
+                participation.CheckinAt,
+                participation.CheckoutAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row =>
+                (row.StartAt ?? row.CreatedAt) <= termWindow.End &&
+                (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
+        }
+
+        var participations = await query.ToListAsync();
+        return ClampEvaluationScore(participations.Sum(row => ActivityParticipationScore(
+            row.RegisterStatus,
+            row.SignStatus,
+            row.CheckinAt,
+            row.CheckoutAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterActivityScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from participation in _db.ActivityParticipations.AsNoTracking()
+            join activity in _db.Activities.AsNoTracking()
+                on participation.ActivityId equals activity.ActivityId
+            where activity.ClubId == clubId && userIds.Contains(participation.UserId)
+            select new
+            {
+                participation.UserId,
+                activity.StartAt,
+                activity.EndAt,
+                activity.CreatedAt,
+                participation.RegisterStatus,
+                participation.SignStatus,
+                participation.CheckinAt,
+                participation.CheckoutAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row =>
+                (row.StartAt ?? row.CreatedAt) <= termWindow.End &&
+                (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
+        }
+
+        var participations = await query.ToListAsync();
+        return participations
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => ClampEvaluationScore(group.Sum(row => ActivityParticipationScore(
+                    row.RegisterStatus,
+                    row.SignStatus,
+                    row.CheckinAt,
+                    row.CheckoutAt))));
+    }
+
+    private async Task<decimal> CalculateSemesterTaskScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  (task.AssigneeUserId == userId ||
+                   task.DeliverableSubmitterId == userId ||
+                   _db.ProjectTaskAssignees
+                       .AsNoTracking()
+                       .Any(assignee => assignee.TaskId == task.TaskId && assignee.UserId == userId))
+            select new
+            {
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var taskScores = await query
+            .Select(row => new
+            {
+                row.TaskStatus,
+                row.DeliverableStatus,
+                row.Progress,
+                row.FinishDate,
+                row.DeliverableSubmittedAt
+            })
+            .ToListAsync();
+
+        return AverageEvaluationScore(taskScores.Select(row => ProjectTaskScore(
+            row.TaskStatus,
+            row.DeliverableStatus,
+            row.Progress,
+            row.FinishDate,
+            row.DeliverableSubmittedAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterTaskScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var assigneeTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.AssigneeUserId != null &&
+                  userIds.Contains(task.AssigneeUserId.Value)
+            select new
+            {
+                UserId = task.AssigneeUserId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var deliverableTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.DeliverableSubmitterId != null &&
+                  userIds.Contains(task.DeliverableSubmitterId.Value)
+            select new
+            {
+                UserId = task.DeliverableSubmitterId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var extraAssigneeTaskQuery =
+            from assignee in _db.ProjectTaskAssignees.AsNoTracking()
+            join task in _db.ProjectTasks.AsNoTracking()
+                on assignee.TaskId equals task.TaskId
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId && userIds.Contains(assignee.UserId)
+            select new
+            {
+                assignee.UserId,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var query = assigneeTaskQuery
+            .Concat(deliverableTaskQuery)
+            .Concat(extraAssigneeTaskQuery);
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var taskScores = await query.ToListAsync();
+        return taskScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group
+                    .GroupBy(row => row.TaskId)
+                    .Select(taskGroup =>
+                    {
+                        var row = taskGroup.First();
+                        return ProjectTaskScore(
+                            row.TaskStatus,
+                            row.DeliverableStatus,
+                            row.Progress,
+                            row.FinishDate,
+                            row.DeliverableSubmittedAt);
+                    })));
+    }
+
+    private async Task<decimal> CalculateSemesterLearningScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from record in _db.LearningRecords.AsNoTracking()
+            join item in _db.LearningItems.AsNoTracking()
+                on record.ItemId equals item.ItemId
+            where item.ClubId == clubId && record.UserId == userId
+            select new
+            {
+                StartAt = item.StartAt ?? record.EnrolledAt ?? item.CreatedAt,
+                EndAt = item.EndAt ??
+                    record.CompletedAt ??
+                    record.LastLearnAt ??
+                    record.EnrolledAt ??
+                    item.StartAt ??
+                    item.CreatedAt,
+                record.EnrollStatus,
+                record.Progress,
+                record.CompletedAt,
+                record.DownloadedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var recordScores = await query
+            .Select(row => new
+            {
+                row.EnrollStatus,
+                row.Progress,
+                row.CompletedAt,
+                row.DownloadedAt
+            })
+            .ToListAsync();
+
+        return AverageEvaluationScore(recordScores.Select(row => LearningRecordScore(
+            row.EnrollStatus,
+            row.Progress,
+            row.CompletedAt,
+            row.DownloadedAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterLearningScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from record in _db.LearningRecords.AsNoTracking()
+            join item in _db.LearningItems.AsNoTracking()
+                on record.ItemId equals item.ItemId
+            where item.ClubId == clubId && userIds.Contains(record.UserId)
+            select new
+            {
+                record.UserId,
+                StartAt = item.StartAt ?? record.EnrolledAt ?? item.CreatedAt,
+                EndAt = item.EndAt ??
+                    record.CompletedAt ??
+                    record.LastLearnAt ??
+                    record.EnrolledAt ??
+                    item.StartAt ??
+                    item.CreatedAt,
+                record.EnrollStatus,
+                record.Progress,
+                record.CompletedAt,
+                record.DownloadedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var recordScores = await query.ToListAsync();
+        return recordScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group.Select(row => LearningRecordScore(
+                    row.EnrollStatus,
+                    row.Progress,
+                    row.CompletedAt,
+                    row.DownloadedAt))));
+    }
+
+    private async Task<decimal> CalculateSemesterAwardScoreAsync(
+        int clubId,
+        int userId,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var normalizedTerm = termName.Trim();
+        var query = _db.Evaluations
+            .AsNoTracking()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                ev.UserId == userId &&
+                ev.EvaluationType == EvaluationAward &&
+                ev.TermName == normalizedTerm &&
+                ev.PublicStatus == EvaluationPublished);
+
+        if (ignoredEvaluationId is not null)
+        {
+            query = query.Where(ev => ev.EvaluationId != ignoredEvaluationId.Value);
+        }
+
+        var total = await query.SumAsync(ev => ev.AwardScore ?? 0);
+        return ClampEvaluationScore(total);
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterAwardScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName)
+    {
+        var normalizedTerm = termName.Trim();
+        var awardScores = await _db.Evaluations
+            .AsNoTracking()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                userIds.Contains(ev.UserId) &&
+                ev.EvaluationType == EvaluationAward &&
+                ev.TermName == normalizedTerm &&
+                ev.PublicStatus == EvaluationPublished)
+            .GroupBy(ev => ev.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Score = group.Sum(ev => ev.AwardScore ?? 0)
+            })
+            .ToListAsync();
+
+        return awardScores.ToDictionary(
+            row => row.UserId,
+            row => ClampEvaluationScore(row.Score));
+    }
+
+    private static decimal ActivityParticipationScore(
+        string? registerStatus,
+        string? signStatus,
+        DateTime? checkinAt,
+        DateTime? checkoutAt)
+    {
+        var normalizedSignStatus = NormalizeScoreStatus(signStatus);
+        var normalizedRegisterStatus = NormalizeScoreStatus(registerStatus);
+
+        if (checkoutAt is not null || normalizedSignStatus is "checked_out" or "checkout" or "signed_out")
+        {
+            return ActivityCheckedOutScore;
+        }
+
+        if (checkinAt is not null ||
+            normalizedSignStatus is "checked_in" or "checkin" or "signed_in" or "onsite" ||
+            normalizedRegisterStatus == "onsite")
+        {
+            return ActivityCheckedInScore;
+        }
+
+        return normalizedRegisterStatus is "accepted" or "approved"
+            ? ActivityAcceptedScore
+            : 0;
+    }
+
+    private static decimal ProjectTaskScore(
+        string? taskStatus,
+        string? deliverableStatus,
+        decimal? progress,
+        DateTime? finishDate,
+        DateTime? deliverableSubmittedAt)
+    {
+        var normalizedTaskStatus = NormalizeScoreStatus(taskStatus);
+        var normalizedDeliverableStatus = NormalizeScoreStatus(deliverableStatus);
+
+        if (finishDate is not null ||
+            normalizedTaskStatus is "finished" or "completed" or "done" or "closed" ||
+            normalizedDeliverableStatus is "approved" or "accepted" or "passed")
+        {
+            return MaxEvaluationScore;
+        }
+
+        if (progress is not null)
+        {
+            return ClampEvaluationScore(progress.Value);
+        }
+
+        if (deliverableSubmittedAt is not null ||
+            normalizedDeliverableStatus is "submitted" or "pending" or "reviewing")
+        {
+            return 80m;
+        }
+
+        return normalizedTaskStatus is "running" or "ongoing" or "in_progress" ? 50m : 0;
+    }
+
+    private static decimal LearningRecordScore(
+        string? enrollStatus,
+        decimal? progress,
+        DateTime? completedAt,
+        DateTime? downloadedAt)
+    {
+        var normalizedStatus = LearningWorkflow.NormalizeRecordStatus(enrollStatus);
+        if (completedAt is not null || normalizedStatus == LearningWorkflow.RecordStatusCompleted)
+        {
+            return MaxEvaluationScore;
+        }
+
+        if (progress is not null)
+        {
+            return ClampEvaluationScore(progress.Value);
+        }
+
+        if (downloadedAt is not null)
+        {
+            return 10m;
+        }
+
+        return 0;
+    }
+
+    private static decimal AverageEvaluationScore(IEnumerable<decimal> scores)
+    {
+        var materialized = scores.ToList();
+        if (materialized.Count == 0) return 0;
+        return ClampEvaluationScore(materialized.Average());
+    }
+
+    private static decimal ClampEvaluationScore(decimal score) =>
+        decimal.Round(Math.Clamp(score, 0, MaxEvaluationScore), 1, MidpointRounding.AwayFromZero);
+
+    private static string? ValidateSemesterEvaluationTermName(string termName) =>
+        ResolveEvaluationTermWindow(termName) is null
+            ? "考核学期格式无法识别，请填写如 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间必须为相邻学年。"
+            : null;
+
+    private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
+    {
+        var normalized = termName.Trim();
+        var hasSpring = normalized.Contains("春", StringComparison.Ordinal);
+        var hasFall = normalized.Contains("秋", StringComparison.Ordinal);
+        var hasAcademicYear = normalized.Contains("学年", StringComparison.Ordinal);
+
+        if (hasSpring && hasFall)
+        {
+            return null;
+        }
+
+        var yearRange = Regex.Match(normalized, @"(?<start>20\d{2})\s*[-—~至]\s*(?<end>20\d{2})");
+        if (!yearRange.Success && hasAcademicYear && (hasSpring || hasFall))
+        {
+            return null;
+        }
+
+        if (yearRange.Success &&
+            int.TryParse(yearRange.Groups["start"].Value, out var startYear) &&
+            int.TryParse(yearRange.Groups["end"].Value, out var endYear))
+        {
+            if (endYear != startYear + 1)
+            {
+                return null;
+            }
+
+            if (hasSpring)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(endYear, 2, 1),
+                    EndOfDay(new DateTime(endYear, 7, 31)));
+            }
+
+            if (hasFall)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(startYear, 9, 1),
+                    EndOfDay(new DateTime(endYear, 1, 31)));
+            }
+
+            return new EvaluationTermWindow(
+                new DateTime(startYear, 9, 1),
+                EndOfDay(new DateTime(endYear, 6, 30)));
+        }
+
+        var yearMatch = Regex.Match(normalized, @"20\d{2}");
+        if (!yearMatch.Success || !int.TryParse(yearMatch.Value, out var year))
+        {
+            return null;
+        }
+
+        if (hasSpring)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 2, 1),
+                EndOfDay(new DateTime(year, 7, 31)));
+        }
+
+        if (hasFall)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 9, 1),
+                EndOfDay(new DateTime(year + 1, 1, 31)));
+        }
+
+        if (hasAcademicYear)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 9, 1),
+                EndOfDay(new DateTime(year + 1, 6, 30)));
+        }
+
+        return new EvaluationTermWindow(
+            new DateTime(year, 1, 1),
+            EndOfDay(new DateTime(year, 12, 31)));
+    }
+
+    private static DateTime EndOfDay(DateTime date) => date.Date.AddDays(1).AddTicks(-1);
+
+    private static string NormalizeScoreStatus(string? status) =>
+        (status ?? string.Empty).Trim().ToLowerInvariant();
+
     private static string EvaluationGrade(decimal totalScore)
     {
         if (totalScore >= 320) return "优秀";
@@ -2148,7 +3243,7 @@ public class ClubsController : ControllerBase
     {
         if (score is null) return null;
         if (score < 0) return $"{fieldName}不能为负数。";
-        if (score > 100) return $"{fieldName}不能超过 100。";
+        if (score > MaxEvaluationScore) return $"{fieldName}不能超过 100。";
         return null;
     }
 
@@ -2209,6 +3304,12 @@ public class ClubsController : ControllerBase
             ? utcDateTime
             : DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
         return TimeZoneInfo.ConvertTimeFromUtc(utc, BusinessTimeZone).Date;
+    }
+
+    private static DateTime BusinessDateBoundaryUtc(DateTime businessDate)
+    {
+        var localBoundary = DateTime.SpecifyKind(businessDate.Date, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localBoundary, BusinessTimeZone);
     }
 
     private static TimeZoneInfo ResolveBusinessTimeZone()
@@ -2294,6 +3395,13 @@ public class ClubsController : ControllerBase
         return $"用户 {user.UserId}";
     }
 
+    private static string AdvisorCandidateDisplayName(User user)
+    {
+        var name = DisplayUser(user) ?? $"用户 {user.UserId}";
+        var staffNumber = user.StudentNo?.Trim();
+        return string.IsNullOrWhiteSpace(staffNumber) ? name : $"{name}（{staffNumber}）";
+    }
+
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -2355,6 +3463,8 @@ public record ClubApplicationDto(
     string? Description,
     int? ApplicantUserId,
     string? ApplicantName,
+    int? AdvisorUserId,
+    string? AdvisorName,
     string ApplyReason,
     string MaterialUrl,
     string AuditStatus,
@@ -2362,6 +3472,7 @@ public record ClubApplicationDto(
     int? ReviewerUserId,
     string? ReviewerName,
     string? ReviewComment,
+    string? ContactPhone,
     string? ClubStatus,
     string ClubStatusText,
     DateTime? FoundedAt,
@@ -2481,6 +3592,28 @@ public record ClubEvaluationRecordDto(
     string PublicStatusText,
     string? CommentText,
     DateTime? CreatedAt);
+
+public record ClubEvaluationScorePreviewDto(
+    decimal ActivityScore,
+    decimal TaskScore,
+    decimal LearningScore,
+    decimal AwardScore,
+    decimal TotalScore,
+    string Grade);
+
+public class GenerateClubEvaluationsRequest
+{
+    public string TermName { get; set; } = string.Empty;
+    public bool OverwriteDrafts { get; set; } = true;
+}
+
+public record GenerateClubEvaluationsResultDto(
+    string TermName,
+    int TotalMembers,
+    int CreatedCount,
+    int RefreshedCount,
+    int SkippedPublishedCount,
+    List<ClubEvaluationRecordDto> Records);
 
 public class CreateClubEvaluationRequest
 {
