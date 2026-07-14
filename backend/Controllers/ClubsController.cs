@@ -1038,14 +1038,10 @@ public class ClubsController : ControllerBase
                 (cm.TermEnd == null || cm.TermEnd >= today));
         }
 
-        if (departmentId is <= 0)
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null)
         {
-            return BadRequest(new { message = "部门 ID 不合法。" });
-        }
-
-        if (groupId is <= 0)
-        {
-            return BadRequest(new { message = "小组 ID 不合法。" });
+            return BadRequest(new { message = organizationIdError });
         }
 
         if (departmentId is not null)
@@ -2820,14 +2816,10 @@ public class ClubsController : ControllerBase
         int? preservedGroupId = null,
         string? preservedGroupName = null)
     {
-        if (departmentId is <= 0)
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null)
         {
-            return (BadRequest(new { message = "部门 ID 不合法。" }), MemberOrganizationSelection.Empty);
-        }
-
-        if (groupId is <= 0)
-        {
-            return (BadRequest(new { message = "小组 ID 不合法。" }), MemberOrganizationSelection.Empty);
+            return (BadRequest(new { message = organizationIdError }), MemberOrganizationSelection.Empty);
         }
 
         var requestedDepartmentName = EmptyToNull(departmentName);
@@ -3111,14 +3103,21 @@ public class ClubsController : ControllerBase
                ValidateEvaluationScore(awardScore, "奖项分");
     }
 
+    private static string? ValidateOrganizationIds(int? departmentId, int? groupId)
+    {
+        if (departmentId is <= 0) return "部门 ID 不合法。";
+        if (groupId is <= 0) return "小组 ID 不合法。";
+        return null;
+    }
+
     private static string? ValidateMemberGroupingRequest(
         int? departmentId,
         int? groupId,
         string? departmentName,
         string? groupName)
     {
-        if (departmentId is <= 0) return "部门 ID 不合法。";
-        if (groupId is <= 0) return "小组 ID 不合法。";
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null) return organizationIdError;
         if (TextTooLong(departmentName)) return "部门名称不能超过 255 个字符。";
         if (TextTooLong(groupName)) return "小组名称不能超过 255 个字符。";
         return null;
