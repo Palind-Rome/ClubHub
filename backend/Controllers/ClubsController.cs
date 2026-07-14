@@ -1111,7 +1111,7 @@ public class ClubsController : ControllerBase
         }
 
         var termName = req.TermName.Trim();
-        var today = DateTime.UtcNow.Date;
+        var today = BusinessToday();
         var members = await _db.ClubMembers
             .Include(cm => cm.User)
             .Where(cm => cm.ClubId == clubId)
