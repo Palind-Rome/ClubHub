@@ -1321,13 +1321,19 @@ public class ClubsController : ControllerBase
 
         var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
         var nextTermName = req.TermName ?? evaluation.TermName;
-        var nextAwardTitle = req.AwardTitle ?? evaluation.AwardTitle;
-        var nextAwardLevel = req.AwardLevel ?? evaluation.AwardLevel;
-        var nextAwardReason = req.AwardReason ?? evaluation.AwardReason;
-        var nextActivityScore = req.ActivityScore ?? evaluation.ActivityScore;
-        var nextTaskScore = req.TaskScore ?? evaluation.TaskScore;
-        var nextLearningScore = req.LearningScore ?? evaluation.LearningScore;
-        var nextAwardScore = req.AwardScore ?? evaluation.AwardScore;
+        var existingEvaluationType = NormalizeEvaluationType(evaluation.EvaluationType) ?? EvaluationSemester;
+        var normalizedNextEvaluationType = NormalizeEvaluationType(nextEvaluationType);
+        var isEvaluationTypeChanged =
+            normalizedNextEvaluationType is not null &&
+            !string.Equals(existingEvaluationType, normalizedNextEvaluationType, StringComparison.Ordinal);
+
+        var nextAwardTitle = isEvaluationTypeChanged ? req.AwardTitle : req.AwardTitle ?? evaluation.AwardTitle;
+        var nextAwardLevel = isEvaluationTypeChanged ? req.AwardLevel : req.AwardLevel ?? evaluation.AwardLevel;
+        var nextAwardReason = isEvaluationTypeChanged ? req.AwardReason : req.AwardReason ?? evaluation.AwardReason;
+        var nextActivityScore = isEvaluationTypeChanged ? req.ActivityScore : req.ActivityScore ?? evaluation.ActivityScore;
+        var nextTaskScore = isEvaluationTypeChanged ? req.TaskScore : req.TaskScore ?? evaluation.TaskScore;
+        var nextLearningScore = isEvaluationTypeChanged ? req.LearningScore : req.LearningScore ?? evaluation.LearningScore;
+        var nextAwardScore = isEvaluationTypeChanged ? req.AwardScore : req.AwardScore ?? evaluation.AwardScore;
         var nextPublicStatus = req.PublicStatus ?? evaluation.PublicStatus;
         var nextCommentText = req.CommentText ?? evaluation.CommentText;
 
@@ -1350,7 +1356,7 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = validationError });
         }
 
-        var normalizedType = NormalizeEvaluationType(nextEvaluationType)!;
+        var normalizedType = normalizedNextEvaluationType!;
         var termName = nextTermName!.Trim();
         var scores = await ResolveEvaluationScoresAsync(
             clubId,
