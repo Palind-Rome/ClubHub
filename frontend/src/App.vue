@@ -101,6 +101,7 @@ onUnmounted(() => {
       <el-menu mode="horizontal" router :default-active="activeMenu" :ellipsis="false" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">我的社团</el-menu-item>
+        <el-menu-item index="/club-organization">社团架构</el-menu-item>
         <el-menu-item index="/club-members">成员管理</el-menu-item>
         <el-menu-item v-if="canAccessClubRegistration" index="/club-registration">
           社团注册

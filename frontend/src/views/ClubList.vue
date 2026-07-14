@@ -199,8 +199,8 @@ interface OrganizationSelectionForm {
   groupName: string;
 }
 
-type ClubWorkspace = "club" | "members" | "registration";
-type MemberWorkspaceMode = "current" | "history" | "transition" | "organization";
+type ClubWorkspace = "club" | "members" | "registration" | "organization";
+type MemberWorkspaceMode = "current" | "history" | "transition";
 type MemberSortMode = "organization" | "studentNo" | "term";
 
 interface AcademicTermOption {
@@ -288,6 +288,7 @@ const error = ref("");
 const isClubWorkspace = computed(() => props.workspace === "club");
 const isMemberWorkspace = computed(() => props.workspace === "members");
 const isRegistrationWorkspace = computed(() => props.workspace === "registration");
+const isOrganizationWorkspace = computed(() => props.workspace === "organization");
 const activeTab = ref(defaultActiveTab(props.workspace));
 const routeClubId = Number(route.query.clubId);
 const selectedClubId = ref<number | undefined>(
@@ -440,6 +441,7 @@ const memberTermRules: FormRules = {
 };
 
 function defaultActiveTab(workspace: ClubWorkspace) {
+  if (workspace === "organization") return "organization";
   if (workspace === "members") return "members";
   if (workspace === "registration") return "workspace";
   return "profile";
@@ -616,15 +618,14 @@ const selectedDepartmentManagerScopes = computed(() =>
   ),
 );
 const canCreateMemberDepartment = computed(
-  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
+  () => isOrganizationWorkspace.value && canManageSelectedClub.value,
 );
 const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
-  () =>
-    memberWorkspaceMode.value === "organization" && groupCreateDepartmentOptions.value.length > 0,
+  () => isOrganizationWorkspace.value && groupCreateDepartmentOptions.value.length > 0,
 );
 const canReorderDepartments = computed(
-  () => memberWorkspaceMode.value === "organization" && canManageSelectedClub.value,
+  () => isOrganizationWorkspace.value && canManageSelectedClub.value,
 );
 const canShowOrganizationOperationColumn = computed(
   () => canManageSelectedClub.value || canCreateMemberGroup.value,
@@ -751,17 +752,31 @@ const memberGroupSummary = computed(() => {
     unassigned: rows.filter(isMemberUnassigned).length,
   };
 });
+const organizationSummary = computed(() => {
+  const departments = clubDepartments.value;
+  const groups = departments.flatMap((department) => department.groups);
+
+  return {
+    departments: departments.length,
+    activeDepartments: activeClubDepartments.value.length,
+    groups: groups.length,
+    activeGroups: activeClubGroups.value.length,
+  };
+});
 const workspaceTitle = computed(() => {
+  if (isOrganizationWorkspace.value) return "社团架构";
   if (isMemberWorkspace.value) return "成员管理";
   if (isRegistrationWorkspace.value) return "社团注册";
   return "我的社团";
 });
 const workspaceSubtitle = computed(() => {
+  if (isOrganizationWorkspace.value) return "独立维护社团部门、小组和内部组织架构";
   if (isMemberWorkspace.value) return "成员名册、任期维护、干部换届与成员退出";
   if (isRegistrationWorkspace.value) return "社团注册申请、我的申请进度与负责人审核";
   return "社团基本信息与我的社团身份";
 });
 const workspaceEmptyDescription = computed(() => {
+  if (isOrganizationWorkspace.value) return "当前账号暂无可查看的社团架构";
   if (isMemberWorkspace.value) return "当前账号暂无成员管理相关任务";
   if (isRegistrationWorkspace.value) return "当前账号暂无社团注册相关任务";
   return "当前账号暂无社团身份或可查看的社团信息";
@@ -780,6 +795,11 @@ const visibleTabs = computed(() => {
 
   if (isMemberWorkspace.value) {
     if (memberViewClubs.value.length > 0) tabs.push("members");
+    return tabs;
+  }
+
+  if (isOrganizationWorkspace.value) {
+    if (memberViewClubs.value.length > 0) tabs.push("organization");
     return tabs;
   }
 
@@ -2816,6 +2836,7 @@ watch(
   () => props.workspace,
   () => {
     activeTab.value = defaultActiveTab(props.workspace);
+    memberWorkspaceMode.value = "current";
     applications.value = [];
     clubs.value = [];
     clubMembers.value = [];
@@ -2923,6 +2944,9 @@ onUnmounted(() => {
           </el-tag>
           <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
             可查看成员任期
+          </el-tag>
+          <el-tag v-if="isOrganizationWorkspace && memberViewClubs.length > 0" effect="plain">
+            可查看社团架构
           </el-tag>
           <el-tag v-if="isClubWorkspace && identityRows.length > 0" effect="plain">
             我的社团身份
@@ -3316,6 +3340,199 @@ onUnmounted(() => {
       </el-tab-pane>
 
       <el-tab-pane
+        v-if="isOrganizationWorkspace && memberViewClubs.length > 0"
+        label="社团架构"
+        name="organization"
+      >
+        <el-empty v-if="memberViewClubs.length === 0" description="当前账号暂无可查看的社团架构" />
+
+        <div v-else>
+          <div class="member-head">
+            <div class="member-controls">
+              <el-select
+                v-model="selectedClubId"
+                class="club-selector"
+                placeholder="选择社团"
+                filterable
+              >
+                <el-option
+                  v-for="club in memberViewClubs"
+                  :key="club.id"
+                  :label="club.name"
+                  :value="club.id"
+                />
+              </el-select>
+            </div>
+            <div
+              v-if="canCreateMemberDepartment || canCreateMemberGroup"
+              class="organization-toolbar"
+            >
+              <el-button
+                v-if="canCreateMemberDepartment"
+                type="primary"
+                :icon="Plus"
+                @click="openCreateDepartmentDialog"
+              >
+                新增部门
+              </el-button>
+              <el-button
+                v-if="canCreateMemberGroup"
+                type="primary"
+                plain
+                :icon="Plus"
+                @click="openCreateGroupDialog()"
+              >
+                新增小组
+              </el-button>
+            </div>
+          </div>
+
+          <div class="member-summary">
+            <span>部门 {{ organizationSummary.departments }} 个</span>
+            <span>启用部门 {{ organizationSummary.activeDepartments }} 个</span>
+            <span>小组 {{ organizationSummary.groups }} 个</span>
+            <span>启用小组 {{ organizationSummary.activeGroups }} 个</span>
+          </div>
+
+          <div class="organization-panel">
+            <el-table
+              v-loading="organizationLoading"
+              :data="clubDepartments"
+              border
+              stripe
+              row-key="departmentId"
+              empty-text="暂无部门"
+            >
+              <el-table-column type="expand">
+                <template #default="{ row }">
+                  <el-table
+                    class="nested-table"
+                    :data="row.groups"
+                    border
+                    stripe
+                    empty-text="暂无小组"
+                    row-key="groupId"
+                  >
+                    <el-table-column
+                      v-if="canReorderDepartmentGroups(row)"
+                      label=""
+                      width="64"
+                      align="center"
+                    >
+                      <template #default="{ row: group }">
+                        <button
+                          class="drag-handle"
+                          type="button"
+                          draggable="true"
+                          :disabled="organizationSaving"
+                          @dragstart="startGroupDrag(group)"
+                          @dragover.prevent
+                          @dragenter.prevent
+                          @drop.prevent="dropGroup(group)"
+                          @dragend="endOrganizationDrag"
+                        >
+                          <el-icon><Rank /></el-icon>
+                        </button>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="groupName" label="小组" min-width="140" />
+                    <el-table-column prop="responsibilities" label="职责" min-width="180" />
+                    <el-table-column prop="contactPhone" label="电话" width="130" />
+                    <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
+                    <el-table-column prop="activityLocation" label="地点" width="140" />
+                    <el-table-column label="状态" width="100">
+                      <template #default="{ row: group }">
+                        <el-tag
+                          :type="group.groupStatus === 'active' ? 'success' : 'info'"
+                          effect="plain"
+                        >
+                          {{ group.groupStatus === "active" ? "启用" : "停用" }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column
+                      v-if="canShowGroupOperationColumn(row)"
+                      label="操作"
+                      width="100"
+                    >
+                      <template #default="{ row: group }">
+                        <el-button
+                          v-if="canMaintainGroup(group)"
+                          type="primary"
+                          plain
+                          :icon="Edit"
+                          @click="editGroup(group)"
+                        >
+                          编辑
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canReorderDepartments" label="" width="64" align="center">
+                <template #default="{ row }">
+                  <button
+                    class="drag-handle"
+                    type="button"
+                    draggable="true"
+                    :disabled="organizationSaving"
+                    @dragstart="startDepartmentDrag(row)"
+                    @dragover.prevent
+                    @dragenter.prevent
+                    @drop.prevent="dropDepartment(row)"
+                    @dragend="endOrganizationDrag"
+                  >
+                    <el-icon><Rank /></el-icon>
+                  </button>
+                </template>
+              </el-table-column>
+              <el-table-column prop="departmentName" label="部门" min-width="150" />
+              <el-table-column prop="responsibilities" label="职责" min-width="180" />
+              <el-table-column prop="contactPhone" label="电话" width="130" />
+              <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
+              <el-table-column prop="officeLocation" label="地点" width="140" />
+              <el-table-column label="小组数" width="90">
+                <template #default="{ row }">{{ row.groups.length }}</template>
+              </el-table-column>
+              <el-table-column label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag
+                    :type="row.departmentStatus === 'active' ? 'success' : 'info'"
+                    effect="plain"
+                  >
+                    {{ row.departmentStatus === "active" ? "启用" : "停用" }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canShowOrganizationOperationColumn" label="操作" width="190">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="canMaintainDepartment(row)"
+                    type="primary"
+                    plain
+                    :icon="Edit"
+                    @click="editDepartment(row)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    v-if="canMaintainDepartmentGroups(row)"
+                    type="primary"
+                    plain
+                    :icon="Plus"
+                    @click="openCreateGroupDialog(row.departmentId)"
+                  >
+                    小组
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane
         v-if="isMemberWorkspace && memberViewClubs.length > 0"
         label="成员分组与任期"
         name="members"
@@ -3344,7 +3561,6 @@ onUnmounted(() => {
                   { label: '当前名册', value: 'current' },
                   { label: '任期历史', value: 'history' },
                   { label: '换届管理', value: 'transition' },
-                  { label: '部门小组', value: 'organization' },
                 ]"
               />
             </div>
@@ -3358,7 +3574,7 @@ onUnmounted(() => {
             </el-button>
           </div>
 
-          <div v-if="memberWorkspaceMode !== 'organization'" class="member-filter-row">
+          <div class="member-filter-row">
             <el-select
               v-if="memberWorkspaceMode === 'history'"
               v-model="memberFilters.termName"
@@ -3445,10 +3661,7 @@ onUnmounted(() => {
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
             <span>待补资料 {{ memberGroupSummary.unassigned }} 条</span>
-            <div
-              v-if="canCreateAcademicTerm && memberWorkspaceMode !== 'organization'"
-              class="taxonomy-add term-add"
-            >
+            <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
               <el-input-number
                 v-model="newAcademicTermStartYear"
                 size="small"
@@ -3471,163 +3684,8 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div v-if="memberWorkspaceMode === 'organization'" class="organization-panel">
-          <div
-            v-if="canCreateMemberDepartment || canCreateMemberGroup"
-            class="organization-toolbar"
-          >
-            <el-button
-              v-if="canCreateMemberDepartment"
-              type="primary"
-              :icon="Plus"
-              @click="openCreateDepartmentDialog"
-            >
-              新增部门
-            </el-button>
-            <el-button
-              v-if="canCreateMemberGroup"
-              type="primary"
-              plain
-              :icon="Plus"
-              @click="openCreateGroupDialog()"
-            >
-              新增小组
-            </el-button>
-          </div>
-
-          <el-table
-            v-loading="organizationLoading"
-            :data="clubDepartments"
-            border
-            stripe
-            row-key="departmentId"
-            empty-text="暂无部门"
-          >
-            <el-table-column type="expand">
-              <template #default="{ row }">
-                <el-table
-                  class="nested-table"
-                  :data="row.groups"
-                  border
-                  stripe
-                  empty-text="暂无小组"
-                  row-key="groupId"
-                >
-                  <el-table-column
-                    v-if="canReorderDepartmentGroups(row)"
-                    label=""
-                    width="64"
-                    align="center"
-                  >
-                    <template #default="{ row: group }">
-                      <button
-                        class="drag-handle"
-                        type="button"
-                        draggable="true"
-                        :disabled="organizationSaving"
-                        @dragstart="startGroupDrag(group)"
-                        @dragover.prevent
-                        @dragenter.prevent
-                        @drop.prevent="dropGroup(group)"
-                        @dragend="endOrganizationDrag"
-                      >
-                        <el-icon><Rank /></el-icon>
-                      </button>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="groupName" label="小组" min-width="140" />
-                  <el-table-column prop="responsibilities" label="职责" min-width="180" />
-                  <el-table-column prop="contactPhone" label="电话" width="130" />
-                  <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
-                  <el-table-column prop="activityLocation" label="地点" width="140" />
-                  <el-table-column label="状态" width="100">
-                    <template #default="{ row: group }">
-                      <el-tag
-                        :type="group.groupStatus === 'active' ? 'success' : 'info'"
-                        effect="plain"
-                      >
-                        {{ group.groupStatus === "active" ? "启用" : "停用" }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column v-if="canShowGroupOperationColumn(row)" label="操作" width="100">
-                    <template #default="{ row: group }">
-                      <el-button
-                        v-if="canMaintainGroup(group)"
-                        type="primary"
-                        plain
-                        :icon="Edit"
-                        @click="editGroup(group)"
-                      >
-                        编辑
-                      </el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="canReorderDepartments" label="" width="64" align="center">
-              <template #default="{ row }">
-                <button
-                  class="drag-handle"
-                  type="button"
-                  draggable="true"
-                  :disabled="organizationSaving"
-                  @dragstart="startDepartmentDrag(row)"
-                  @dragover.prevent
-                  @dragenter.prevent
-                  @drop.prevent="dropDepartment(row)"
-                  @dragend="endOrganizationDrag"
-                >
-                  <el-icon><Rank /></el-icon>
-                </button>
-              </template>
-            </el-table-column>
-            <el-table-column prop="departmentName" label="部门" min-width="150" />
-            <el-table-column prop="responsibilities" label="职责" min-width="180" />
-            <el-table-column prop="contactPhone" label="电话" width="130" />
-            <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
-            <el-table-column prop="officeLocation" label="地点" width="140" />
-            <el-table-column label="小组数" width="90">
-              <template #default="{ row }">{{ row.groups.length }}</template>
-            </el-table-column>
-            <el-table-column label="状态" width="100">
-              <template #default="{ row }">
-                <el-tag
-                  :type="row.departmentStatus === 'active' ? 'success' : 'info'"
-                  effect="plain"
-                >
-                  {{ row.departmentStatus === "active" ? "启用" : "停用" }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="canShowOrganizationOperationColumn" label="操作" width="190">
-              <template #default="{ row }">
-                <el-button
-                  v-if="canMaintainDepartment(row)"
-                  type="primary"
-                  plain
-                  :icon="Edit"
-                  @click="editDepartment(row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  v-if="canMaintainDepartmentGroups(row)"
-                  type="primary"
-                  plain
-                  :icon="Plus"
-                  @click="openCreateGroupDialog(row.departmentId)"
-                >
-                  小组
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
         <el-table
-          v-else-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
+          v-if="memberViewClubs.length > 0 && memberWorkspaceMode !== 'transition'"
           v-loading="memberLoading"
           :data="memberTableRows"
           border
