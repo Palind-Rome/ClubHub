@@ -468,6 +468,10 @@ public class ProjectTasksController : ControllerBase
         var userId = User.GetUserId();
         if (userId is null) return AuthenticationRequired();
         if (request is null) return Error(400, "project_task_deliverable_review_required", "请选择任务成果审核结果。");
+        if (!request.Approved && string.IsNullOrWhiteSpace(request.ReviewComment))
+        {
+            return Error(400, "project_task_deliverable_reject_comment_required", "驳回任务成果时必须填写审核意见。");
+        }
 
         var reviewerAccess = await EnsureActiveUserAsync(userId.Value);
         if (reviewerAccess.Result is not null) return reviewerAccess.Result;
