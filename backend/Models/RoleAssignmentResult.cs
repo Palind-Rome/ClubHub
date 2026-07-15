@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -46,6 +47,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>该角色分配是否原本已存在。</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="alreadyExists", EmitDefaultValue=true)]
         public bool AlreadyExists { get; set; }

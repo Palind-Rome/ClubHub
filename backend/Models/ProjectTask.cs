@@ -195,5 +195,126 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="delayReason", EmitDefaultValue=true)]
         public string? DelayReason { get; set; }
 
+        /// <summary>
+        /// 已提交成果标题。
+        /// </summary>
+        /// <value>已提交成果标题。</value>
+        /* <example>阶段成果报告</example> */
+        [DataMember(Name="deliverableTitle", EmitDefaultValue=true)]
+        public string? DeliverableTitle { get; set; }
+
+        /// <summary>
+        /// 已提交成果说明。
+        /// </summary>
+        /// <value>已提交成果说明。</value>
+        [DataMember(Name="deliverableDesc", EmitDefaultValue=true)]
+        public string? DeliverableDesc { get; set; }
+
+        /// <summary>
+        /// 已提交成果链接，仅允许 HTTP 或 HTTPS 地址。
+        /// </summary>
+        /// <value>已提交成果链接，仅允许 HTTP 或 HTTPS 地址。</value>
+        /* <example>https://example.com/report.pdf</example> */
+        [RegularExpression("^https?://.+")]
+        [MaxLength(255)]
+        [DataMember(Name="deliverableUrl", EmitDefaultValue=true)]
+        public string? DeliverableUrl { get; set; }
+
+
+        /// <summary>
+        /// 成果审核状态。
+        /// </summary>
+        /// <value>成果审核状态。</value>
+        
+        public enum DeliverableStatusEnum
+        {
+            
+            /// <summary>
+            /// Enum NotSubmittedEnum for not_submitted
+            /// </summary>
+            [EnumMember(Value = "not_submitted")]
+            NotSubmittedEnum = 1,
+            
+            /// <summary>
+            /// Enum PendingEnum for pending
+            /// </summary>
+            [EnumMember(Value = "pending")]
+            PendingEnum = 2,
+            
+            /// <summary>
+            /// Enum ApprovedEnum for approved
+            /// </summary>
+            [EnumMember(Value = "approved")]
+            ApprovedEnum = 3,
+            
+            /// <summary>
+            /// Enum RejectedEnum for rejected
+            /// </summary>
+            [EnumMember(Value = "rejected")]
+            RejectedEnum = 4
+        }
+
+        /// <summary>
+        /// 成果审核状态。
+        /// </summary>
+        /// <value>成果审核状态。</value>
+        /* <example>pending</example> */
+        [Required]
+        [DataMember(Name="deliverableStatus", EmitDefaultValue=true)]
+        public DeliverableStatusEnum DeliverableStatus { get; set; }
+
+        /// <summary>
+        /// 审核人用户 ID。
+        /// </summary>
+        /// <value>审核人用户 ID。</value>
+        /* <example>3</example> */
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
+        public int? ReviewerUserId { get; set; }
+
+        /// <summary>
+        /// 审核人姓名和学号/工号展示。
+        /// </summary>
+        /// <value>审核人姓名和学号/工号展示。</value>
+        /* <example>李老师（05001）</example> */
+        [DataMember(Name="reviewerDisplayName", EmitDefaultValue=true)]
+        public string? ReviewerDisplayName { get; set; }
+
+        /// <summary>
+        /// 审核意见。
+        /// </summary>
+        /// <value>审核意见。</value>
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
+        public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// 成果提交人用户 ID。
+        /// </summary>
+        /// <value>成果提交人用户 ID。</value>
+        /* <example>12</example> */
+        [DataMember(Name="deliverableSubmitterId", EmitDefaultValue=true)]
+        public int? DeliverableSubmitterId { get; set; }
+
+        /// <summary>
+        /// 成果提交人姓名和学号/工号展示。
+        /// </summary>
+        /// <value>成果提交人姓名和学号/工号展示。</value>
+        /* <example>王同学（2450004）</example> */
+        [DataMember(Name="deliverableSubmitterDisplayName", EmitDefaultValue=true)]
+        public string? DeliverableSubmitterDisplayName { get; set; }
+
+        /// <summary>
+        /// 成果提交时间。
+        /// </summary>
+        /// <value>成果提交时间。</value>
+        [DataMember(Name="deliverableSubmittedAt", EmitDefaultValue=true)]
+        public DateTime? DeliverableSubmittedAt { get; set; }
+
+        /// <summary>
+        /// 成果审核时间。
+        /// </summary>
+        /// <value>成果审核时间。</value>
+        [DataMember(Name="deliverableReviewedAt", EmitDefaultValue=true)]
+        public DateTime? DeliverableReviewedAt { get; set; }
+
     }
 }

@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -256,6 +257,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否已报名；未传 currentUserId 时为 false
         /// </summary>
         /// <value>当前用户是否已报名；未传 currentUserId 时为 false</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="isRegistered", EmitDefaultValue=true)]
         public bool IsRegistered { get; set; }

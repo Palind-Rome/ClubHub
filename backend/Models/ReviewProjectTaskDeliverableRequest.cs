@@ -21,22 +21,26 @@ using System.Text.Json.Serialization;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 
+    /// 审核项目任务成果的请求；审核人由服务端从 Bearer 令牌解析。
     /// </summary>
     [DataContract]
-    public partial class ReviewVenueReservationRequest 
+    public partial class ReviewProjectTaskDeliverableRequest 
     {
         /// <summary>
-        /// Gets or Sets Approved
+        /// 是否审核通过。
         /// </summary>
+        /// <value>是否审核通过。</value>
+        /* <example>true</example> */
         [JsonRequired]
         [Required]
         [DataMember(Name="approved", EmitDefaultValue=true)]
         public bool Approved { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewComment
+        /// 审核意见。
         /// </summary>
+        /// <value>审核意见。</value>
+        /* <example>成果完整，同意通过。</example> */
         [MaxLength(255)]
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }

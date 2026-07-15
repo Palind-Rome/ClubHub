@@ -100,6 +100,72 @@ export interface ProjectTask {
    * @memberof ProjectTask
    */
   delayReason?: string | null;
+  /**
+   * 已提交成果标题。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  deliverableTitle?: string | null;
+  /**
+   * 已提交成果说明。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  deliverableDesc?: string | null;
+  /**
+   * 已提交成果链接，仅允许 HTTP 或 HTTPS 地址。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  deliverableUrl?: string | null;
+  /**
+   * 成果审核状态。
+   * @type {ProjectTaskDeliverableStatusEnum}
+   * @memberof ProjectTask
+   */
+  deliverableStatus: ProjectTaskDeliverableStatusEnum;
+  /**
+   * 审核人用户 ID。
+   * @type {number}
+   * @memberof ProjectTask
+   */
+  reviewerUserId?: number | null;
+  /**
+   * 审核人姓名和学号/工号展示。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  reviewerDisplayName?: string | null;
+  /**
+   * 审核意见。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  reviewComment?: string | null;
+  /**
+   * 成果提交人用户 ID。
+   * @type {number}
+   * @memberof ProjectTask
+   */
+  deliverableSubmitterId?: number | null;
+  /**
+   * 成果提交人姓名和学号/工号展示。
+   * @type {string}
+   * @memberof ProjectTask
+   */
+  deliverableSubmitterDisplayName?: string | null;
+  /**
+   * 成果提交时间。
+   * @type {Date}
+   * @memberof ProjectTask
+   */
+  deliverableSubmittedAt?: Date | null;
+  /**
+   * 成果审核时间。
+   * @type {Date}
+   * @memberof ProjectTask
+   */
+  deliverableReviewedAt?: Date | null;
 }
 
 /**
@@ -127,6 +193,18 @@ export type ProjectTaskTaskStatusEnum =
   (typeof ProjectTaskTaskStatusEnum)[keyof typeof ProjectTaskTaskStatusEnum];
 
 /**
+ * @export
+ */
+export const ProjectTaskDeliverableStatusEnum = {
+  NotSubmitted: "not_submitted",
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+} as const;
+export type ProjectTaskDeliverableStatusEnum =
+  (typeof ProjectTaskDeliverableStatusEnum)[keyof typeof ProjectTaskDeliverableStatusEnum];
+
+/**
  * Check if a given object implements the ProjectTask interface.
  */
 export function instanceOfProjectTask(value: object): value is ProjectTask {
@@ -139,6 +217,7 @@ export function instanceOfProjectTask(value: object): value is ProjectTask {
   if (!("dueDate" in value) || value["dueDate"] === undefined) return false;
   if (!("progress" in value) || value["progress"] === undefined) return false;
   if (!("taskStatus" in value) || value["taskStatus"] === undefined) return false;
+  if (!("deliverableStatus" in value) || value["deliverableStatus"] === undefined) return false;
   return true;
 }
 
@@ -163,6 +242,24 @@ export function ProjectTaskFromJSONTyped(json: any, ignoreDiscriminator: boolean
     progress: json["progress"],
     taskStatus: json["taskStatus"],
     delayReason: json["delayReason"] == null ? undefined : json["delayReason"],
+    deliverableTitle: json["deliverableTitle"] == null ? undefined : json["deliverableTitle"],
+    deliverableDesc: json["deliverableDesc"] == null ? undefined : json["deliverableDesc"],
+    deliverableUrl: json["deliverableUrl"] == null ? undefined : json["deliverableUrl"],
+    deliverableStatus: json["deliverableStatus"],
+    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
+    reviewerDisplayName:
+      json["reviewerDisplayName"] == null ? undefined : json["reviewerDisplayName"],
+    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    deliverableSubmitterId:
+      json["deliverableSubmitterId"] == null ? undefined : json["deliverableSubmitterId"],
+    deliverableSubmitterDisplayName:
+      json["deliverableSubmitterDisplayName"] == null
+        ? undefined
+        : json["deliverableSubmitterDisplayName"],
+    deliverableSubmittedAt:
+      json["deliverableSubmittedAt"] == null ? undefined : new Date(json["deliverableSubmittedAt"]),
+    deliverableReviewedAt:
+      json["deliverableReviewedAt"] == null ? undefined : new Date(json["deliverableReviewedAt"]),
   };
 }
 
@@ -192,5 +289,22 @@ export function ProjectTaskToJSONTyped(
     progress: value["progress"],
     taskStatus: value["taskStatus"],
     delayReason: value["delayReason"],
+    deliverableTitle: value["deliverableTitle"],
+    deliverableDesc: value["deliverableDesc"],
+    deliverableUrl: value["deliverableUrl"],
+    deliverableStatus: value["deliverableStatus"],
+    reviewerUserId: value["reviewerUserId"],
+    reviewerDisplayName: value["reviewerDisplayName"],
+    reviewComment: value["reviewComment"],
+    deliverableSubmitterId: value["deliverableSubmitterId"],
+    deliverableSubmitterDisplayName: value["deliverableSubmitterDisplayName"],
+    deliverableSubmittedAt:
+      value["deliverableSubmittedAt"] == null
+        ? value["deliverableSubmittedAt"]
+        : value["deliverableSubmittedAt"].toISOString(),
+    deliverableReviewedAt:
+      value["deliverableReviewedAt"] == null
+        ? value["deliverableReviewedAt"]
+        : value["deliverableReviewedAt"].toISOString(),
   };
 }

@@ -302,6 +302,11 @@ import {
   ReviewProjectRequestToJSON,
 } from "../models/ReviewProjectRequest";
 import {
+  type ReviewProjectTaskDeliverableRequest,
+  ReviewProjectTaskDeliverableRequestFromJSON,
+  ReviewProjectTaskDeliverableRequestToJSON,
+} from "../models/ReviewProjectTaskDeliverableRequest";
+import {
   type ReviewRecruitmentApplicationRequest,
   ReviewRecruitmentApplicationRequestFromJSON,
   ReviewRecruitmentApplicationRequestToJSON,
@@ -326,6 +331,11 @@ import {
   RoleDefinitionFromJSON,
   RoleDefinitionToJSON,
 } from "../models/RoleDefinition";
+import {
+  type SubmitProjectTaskDeliverableRequest,
+  SubmitProjectTaskDeliverableRequestFromJSON,
+  SubmitProjectTaskDeliverableRequestToJSON,
+} from "../models/SubmitProjectTaskDeliverableRequest";
 import {
   type UpdateCheckinSettingsRequest,
   UpdateCheckinSettingsRequestFromJSON,
@@ -772,6 +782,12 @@ export interface ReviewProjectOperationRequest {
   reviewProjectRequest: ReviewProjectRequest;
 }
 
+export interface ReviewProjectTaskDeliverableOperationRequest {
+  projectId: number;
+  taskId: number;
+  reviewProjectTaskDeliverableRequest: ReviewProjectTaskDeliverableRequest;
+}
+
 export interface ReviewRecruitmentOperationRequest {
   recruitId: number;
   reviewRecruitmentRequest: ReviewRecruitmentRequest;
@@ -789,6 +805,12 @@ export interface ReviewVenueReservationOperationRequest {
 
 export interface StartLearningItemRequest {
   itemId: number;
+}
+
+export interface SubmitProjectTaskDeliverableOperationRequest {
+  projectId: number;
+  taskId: number;
+  submitProjectTaskDeliverableRequest: SubmitProjectTaskDeliverableRequest;
 }
 
 export interface UpdateActivityCheckinSettingsRequest {
@@ -6064,6 +6086,92 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewProjectTaskDeliverable without sending the request
+   */
+  async reviewProjectTaskDeliverableRequestOpts(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["reviewProjectTaskDeliverableRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewProjectTaskDeliverableRequest",
+        'Required parameter "reviewProjectTaskDeliverableRequest" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable/review`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewProjectTaskDeliverableRequestToJSON(
+        requestParameters["reviewProjectTaskDeliverableRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+   * 审核项目任务成果
+   */
+  async reviewProjectTaskDeliverableRaw(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.reviewProjectTaskDeliverableRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+   * 审核项目任务成果
+   */
+  async reviewProjectTaskDeliverable(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.reviewProjectTaskDeliverableRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewRecruitment without sending the request
    */
   async reviewRecruitmentRequestOpts(
@@ -6337,6 +6445,92 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningRecord> {
     const response = await this.startLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for submitProjectTaskDeliverable without sending the request
+   */
+  async submitProjectTaskDeliverableRequestOpts(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["submitProjectTaskDeliverableRequest"] == null) {
+      throw new runtime.RequiredError(
+        "submitProjectTaskDeliverableRequest",
+        'Required parameter "submitProjectTaskDeliverableRequest" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: SubmitProjectTaskDeliverableRequestToJSON(
+        requestParameters["submitProjectTaskDeliverableRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+   * 提交项目任务成果
+   */
+  async submitProjectTaskDeliverableRaw(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.submitProjectTaskDeliverableRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+   * 提交项目任务成果
+   */
+  async submitProjectTaskDeliverable(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.submitProjectTaskDeliverableRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

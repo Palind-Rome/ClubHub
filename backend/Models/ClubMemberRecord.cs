@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -139,6 +140,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets IsCurrent
         /// </summary>
+        [JsonRequired]
         [Required]
         [DataMember(Name="isCurrent", EmitDefaultValue=true)]
         public bool IsCurrent { get; set; }

@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -215,6 +216,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="currentUserIsMember", EmitDefaultValue=true)]
         public bool CurrentUserIsMember { get; set; }
@@ -224,6 +226,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。</value>
         /* <example>true</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="isOwnProposal", EmitDefaultValue=true)]
         public bool IsOwnProposal { get; set; }
@@ -233,6 +236,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否可以管理该纳新和其报名。</value>
         /* <example>true</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="canManage", EmitDefaultValue=true)]
         public bool CanManage { get; set; }
@@ -242,6 +246,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否可以编辑该纳新草稿。</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="canEdit", EmitDefaultValue=true)]
         public bool CanEdit { get; set; }
@@ -251,6 +256,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否可以删除该纳新草稿。</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="canDelete", EmitDefaultValue=true)]
         public bool CanDelete { get; set; }
@@ -260,6 +266,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>当前查看用户是否可以审核该纳新。</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="canReview", EmitDefaultValue=true)]
         public bool CanReview { get; set; }

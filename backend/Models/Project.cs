@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -149,6 +150,16 @@ namespace Org.OpenAPITools.Models
         /* <example>立项材料完整，同意执行。</example> */
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
+
+        /// <summary>
+        /// 当前登录用户是否可以进入该项目的任务空间。
+        /// </summary>
+        /// <value>当前登录用户是否可以进入该项目的任务空间。</value>
+        /* <example>true</example> */
+        [JsonRequired]
+        [Required]
+        [DataMember(Name="canViewTasks", EmitDefaultValue=true)]
+        public bool CanViewTasks { get; set; }
 
         /// <summary>
         /// Project application creation time.
