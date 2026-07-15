@@ -3924,6 +3924,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/material-borrows:
     get:
@@ -4049,7 +4055,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MaterialBorrow"
         "400":
-          description: Borrow record is not in borrowed status.
+          description: Borrow record is not in borrowed status (`borrow_status_not_borrowed`).
           content:
             application/json:
               schema:
@@ -4105,7 +4111,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MaterialBorrow"
         "400":
-          description: Invalid damage payload or borrow status.
+          description: Invalid damage payload (`damage_description_required`, `compensation_amount_invalid`).
           content:
             application/json:
               schema:

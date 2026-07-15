@@ -173,12 +173,6 @@ public class MaterialBorrowsController : ControllerBase
         var currentUserId = GetAuthenticatedUserId();
         if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
 
-        var material = await MaterialQuery().FirstOrDefaultAsync(m => m.MaterialId == materialId);
-        if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
-
-        var permission = await RequireClubPermissionAsync(currentUserId.Value, InventoryManagePermission, material.ClubId);
-        if (permission is not null) return permission;
-
         var name = NormalizeText(req.Name);
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -195,33 +189,45 @@ public class MaterialBorrowsController : ControllerBase
             return BadRequest(Error("material_available_quantity_invalid", "可用数量必须在 0 到总数量之间。"));
         }
 
-        var borrowedQuantity = Math.Max(0, (material.TotalQty ?? 0) - (material.AvailableQty ?? 0));
-        if (req.TotalQuantity < borrowedQuantity)
-        {
-            return BadRequest(Error("material_total_quantity_invalid", "总数量不能小于当前借出数量。"));
-        }
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var material = await MaterialQuery().FirstOrDefaultAsync(m => m.MaterialId == materialId);
+                if (material is null) return NotFound(Error("material_not_found", "物资不存在。"));
 
-        if (req.AvailableQuantity > req.TotalQuantity - borrowedQuantity)
-        {
-            return BadRequest(Error("material_available_quantity_invalid", "可用数量不能超过扣除当前借出数量后的库存余量。"));
-        }
+                var permission = await RequireClubPermissionAsync(currentUserId.Value, InventoryManagePermission, material.ClubId);
+                if (permission is not null) return permission;
 
-        var normalizedStatus = NormalizeMaterialStatus(req.Status);
-        if (normalizedStatus is null)
-        {
-            return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
-        }
+                var borrowedQuantity = Math.Max(0, (material.TotalQty ?? 0) - (material.AvailableQty ?? 0));
+                if (req.TotalQuantity < borrowedQuantity)
+                {
+                    return BadRequest(Error("material_total_quantity_invalid", "总数量不能小于当前借出数量。"));
+                }
 
-        material.MaterialName = name;
-        material.Specification = NullIfBlank(req.Specification);
-        material.TotalQty = req.TotalQuantity;
-        material.AvailableQty = req.AvailableQuantity;
-        material.StorageLocation = NullIfBlank(req.StorageLocation);
-        material.MaterialStatus = normalizedStatus;
+                if (req.AvailableQuantity > req.TotalQuantity - borrowedQuantity)
+                {
+                    return BadRequest(Error("material_available_quantity_invalid", "可用数量不能超过扣除当前借出数量后的库存余量。"));
+                }
 
-        await _db.SaveChangesAsync();
+                var normalizedStatus = NormalizeMaterialStatus(req.Status);
+                if (normalizedStatus is null)
+                {
+                    return BadRequest(Error("material_status_invalid", "物资状态参数不合法。"));
+                }
 
-        return Ok(ToDto(material));
+                material.MaterialName = name;
+                material.Specification = NullIfBlank(req.Specification);
+                material.TotalQty = req.TotalQuantity;
+                material.AvailableQty = req.AvailableQuantity;
+                material.StorageLocation = NullIfBlank(req.StorageLocation);
+                material.MaterialStatus = normalizedStatus;
+
+                await _db.SaveChangesAsync();
+
+                return Ok(ToDto(material));
+            },
+            "material_write_conflict",
+            "物资正在被其他操作修改，请稍后重试。");
     }
 
     [HttpGet("material-borrows")]

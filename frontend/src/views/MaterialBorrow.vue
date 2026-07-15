@@ -83,8 +83,10 @@ const route = useRoute();
 const clubs = ref<ClubOption[]>([]);
 const materials = ref<Material[]>([]);
 const borrows = ref<MaterialBorrow[]>([]);
+const clubsLoading = ref(false);
 const loading = ref(false);
 const borrowLoading = ref(false);
+const clubsError = ref("");
 const materialsError = ref("");
 const borrowError = ref("");
 const submitting = ref(false);
@@ -341,14 +343,29 @@ function ensureActiveClub() {
 }
 
 async function loadClubs() {
+  clubsError.value = "";
   const userId = auth.value?.user.id;
   if (!userId) {
     clubs.value = [];
-    return;
+    return false;
   }
 
-  clubs.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
-  ensureActiveClub();
+  clubsLoading.value = true;
+  try {
+    clubs.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
+    ensureActiveClub();
+    return true;
+  } catch (e) {
+    clubsError.value = e instanceof Error ? e.message : "加载社团列表失败";
+    ElMessage.error(clubsError.value);
+    clubs.value = [];
+    materials.value = [];
+    borrows.value = [];
+    activeClubId.value = undefined;
+    return false;
+  } finally {
+    clubsLoading.value = false;
+  }
 }
 
 async function loadMaterials() {
@@ -396,6 +413,11 @@ async function loadBorrows() {
 
 async function refreshData() {
   await Promise.all([loadMaterials(), loadBorrows()]);
+}
+
+async function refreshAllData() {
+  if (!(await loadClubs())) return;
+  await refreshData();
 }
 
 function openCreateMaterial() {
@@ -668,9 +690,7 @@ async function changeBorrowStatus() {
 
 onMounted(async () => {
   if (!canAccessMaterials.value) return;
-  await loadClubs();
-  ensureActiveClub();
-  await refreshData();
+  await refreshAllData();
 });
 </script>
 
@@ -685,6 +705,7 @@ onMounted(async () => {
         <el-select
           v-model="activeClubId"
           class="club-select"
+          :loading="clubsLoading"
           placeholder="选择社团"
           @change="changeClub"
         >
@@ -703,7 +724,10 @@ onMounted(async () => {
         >
           新增物资
         </el-button>
-        <el-button :icon="Refresh" :loading="loading || borrowLoading" @click="refreshData"
+        <el-button
+          :icon="Refresh"
+          :loading="clubsLoading || loading || borrowLoading"
+          @click="refreshAllData"
           >刷新</el-button
         >
       </div>
@@ -717,7 +741,15 @@ onMounted(async () => {
       class="notice"
     />
 
-    <div v-else-if="canAccessMaterials" class="stats">
+    <el-alert
+      v-if="canAccessMaterials && clubsError"
+      :title="clubsError"
+      type="error"
+      show-icon
+      class="notice"
+    />
+
+    <div v-if="canAccessMaterials" class="stats">
       <div class="stat-item">
         <span class="stat-label">库存</span>
         <strong>{{ materialSummary }}</strong>
