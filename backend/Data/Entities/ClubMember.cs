@@ -14,6 +14,12 @@ public class ClubMember
     [Column("USER_ID")]
     public int UserId { get; set; }
 
+    [Column("DEPARTMENT_ID")]
+    public int? DepartmentId { get; set; }
+
+    [Column("GROUP_ID")]
+    public int? GroupId { get; set; }
+
     [Column("DEPARTMENT_NAME")]
     public string? DepartmentName { get; set; }
 
@@ -46,4 +52,8 @@ public class ClubMember
 
     [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
+
+    public ClubDepartment? Department { get; set; }
+
+    public ClubGroup? Group { get; set; }
 }

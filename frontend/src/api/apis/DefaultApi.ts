@@ -68,6 +68,11 @@ import {
   ClubApplicationToJSON,
 } from "../models/ClubApplication";
 import {
+  type ClubDepartmentRecord,
+  ClubDepartmentRecordFromJSON,
+  ClubDepartmentRecordToJSON,
+} from "../models/ClubDepartmentRecord";
+import {
   type ClubEvaluationRecord,
   ClubEvaluationRecordFromJSON,
   ClubEvaluationRecordToJSON,
@@ -77,6 +82,11 @@ import {
   ClubEvaluationScorePreviewFromJSON,
   ClubEvaluationScorePreviewToJSON,
 } from "../models/ClubEvaluationScorePreview";
+import {
+  type ClubGroupRecord,
+  ClubGroupRecordFromJSON,
+  ClubGroupRecordToJSON,
+} from "../models/ClubGroupRecord";
 import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
@@ -93,10 +103,20 @@ import {
   CreateClubApplicationRequestToJSON,
 } from "../models/CreateClubApplicationRequest";
 import {
+  type CreateClubDepartmentRequest,
+  CreateClubDepartmentRequestFromJSON,
+  CreateClubDepartmentRequestToJSON,
+} from "../models/CreateClubDepartmentRequest";
+import {
   type CreateClubEvaluationRequest,
   CreateClubEvaluationRequestFromJSON,
   CreateClubEvaluationRequestToJSON,
 } from "../models/CreateClubEvaluationRequest";
+import {
+  type CreateClubGroupRequest,
+  CreateClubGroupRequestFromJSON,
+  CreateClubGroupRequestToJSON,
+} from "../models/CreateClubGroupRequest";
 import {
   type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
@@ -312,10 +332,20 @@ import {
   UpdateCheckinSettingsRequestToJSON,
 } from "../models/UpdateCheckinSettingsRequest";
 import {
+  type UpdateClubDepartmentRequest,
+  UpdateClubDepartmentRequestFromJSON,
+  UpdateClubDepartmentRequestToJSON,
+} from "../models/UpdateClubDepartmentRequest";
+import {
   type UpdateClubEvaluationRequest,
   UpdateClubEvaluationRequestFromJSON,
   UpdateClubEvaluationRequestToJSON,
 } from "../models/UpdateClubEvaluationRequest";
+import {
+  type UpdateClubGroupRequest,
+  UpdateClubGroupRequestFromJSON,
+  UpdateClubGroupRequestToJSON,
+} from "../models/UpdateClubGroupRequest";
 import {
   type UpdateClubMemberGroupingRequest,
   UpdateClubMemberGroupingRequestFromJSON,
@@ -435,9 +465,20 @@ export interface CreateClubApplicationOperationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
+export interface CreateClubDepartmentOperationRequest {
+  clubId: number;
+  createClubDepartmentRequest: CreateClubDepartmentRequest;
+}
+
 export interface CreateClubEvaluationOperationRequest {
   clubId: number;
   createClubEvaluationRequest: CreateClubEvaluationRequest;
+}
+
+export interface CreateClubGroupOperationRequest {
+  clubId: number;
+  departmentId: number;
+  createClubGroupRequest: CreateClubGroupRequest;
 }
 
 export interface CreateClubMemberTermOperationRequest {
@@ -549,6 +590,11 @@ export interface GetClubByIdRequest {
   clubId: number;
 }
 
+export interface GetClubDepartmentsRequest {
+  clubId: number;
+  includeInactive?: boolean;
+}
+
 export interface GetClubEvaluationsRequest {
   clubId: number;
   termName?: string;
@@ -558,6 +604,8 @@ export interface GetClubEvaluationsRequest {
 export interface GetClubMembersRequest {
   clubId: number;
   includeHistory?: boolean;
+  departmentId?: number;
+  groupId?: number;
   departmentName?: string;
   groupName?: string;
   termName?: string;
@@ -753,10 +801,22 @@ export interface UpdateClubOperationRequest {
   updateClubRequest: UpdateClubRequest;
 }
 
+export interface UpdateClubDepartmentOperationRequest {
+  clubId: number;
+  departmentId: number;
+  updateClubDepartmentRequest: UpdateClubDepartmentRequest;
+}
+
 export interface UpdateClubEvaluationOperationRequest {
   clubId: number;
   evaluationId: number;
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
+}
+
+export interface UpdateClubGroupOperationRequest {
+  clubId: number;
+  groupId: number;
+  updateClubGroupRequest: UpdateClubGroupRequest;
 }
 
 export interface UpdateClubMemberGroupingOperationRequest {
@@ -1637,6 +1697,72 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createClubDepartment without sending the request
+   */
+  async createClubDepartmentRequestOpts(
+    requestParameters: CreateClubDepartmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubDepartment().',
+      );
+    }
+
+    if (requestParameters["createClubDepartmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubDepartmentRequest",
+        'Required parameter "createClubDepartmentRequest" was null or undefined when calling createClubDepartment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubDepartmentRequestToJSON(requestParameters["createClubDepartmentRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+   * 新增社团部门
+   */
+  async createClubDepartmentRaw(
+    requestParameters: CreateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubDepartmentRecord>> {
+    const requestOptions = await this.createClubDepartmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubDepartmentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+   * 新增社团部门
+   */
+  async createClubDepartment(
+    requestParameters: CreateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubDepartmentRecord> {
+    const response = await this.createClubDepartmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClubEvaluation without sending the request
    */
   async createClubEvaluationRequestOpts(
@@ -1699,6 +1825,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubGroup without sending the request
+   */
+  async createClubGroupRequestOpts(
+    requestParameters: CreateClubGroupOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    if (requestParameters["departmentId"] == null) {
+      throw new runtime.RequiredError(
+        "departmentId",
+        'Required parameter "departmentId" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    if (requestParameters["createClubGroupRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubGroupRequest",
+        'Required parameter "createClubGroupRequest" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}/groups`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{departmentId}",
+      encodeURIComponent(String(requestParameters["departmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubGroupRequestToJSON(requestParameters["createClubGroupRequest"]),
+    };
+  }
+
+  /**
+   * 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+   * 新增社团小组
+   */
+  async createClubGroupRaw(
+    requestParameters: CreateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubGroupRecord>> {
+    const requestOptions = await this.createClubGroupRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubGroupRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+   * 新增社团小组
+   */
+  async createClubGroup(
+    requestParameters: CreateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubGroupRecord> {
+    const response = await this.createClubGroupRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -3263,6 +3464,66 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubDepartments without sending the request
+   */
+  async getClubDepartmentsRequestOpts(
+    requestParameters: GetClubDepartmentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubDepartments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["includeInactive"] != null) {
+      queryParameters["includeInactive"] = requestParameters["includeInactive"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/departments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+   * 查询社团部门和小组
+   */
+  async getClubDepartmentsRaw(
+    requestParameters: GetClubDepartmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubDepartmentRecord>>> {
+    const requestOptions = await this.getClubDepartmentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ClubDepartmentRecordFromJSON),
+    );
+  }
+
+  /**
+   * 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+   * 查询社团部门和小组
+   */
+  async getClubDepartments(
+    requestParameters: GetClubDepartmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ClubDepartmentRecord>> {
+    const response = await this.getClubDepartmentsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubEvaluations without sending the request
    */
   async getClubEvaluationsRequestOpts(
@@ -3343,6 +3604,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["includeHistory"] != null) {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
+    }
+
+    if (requestParameters["departmentId"] != null) {
+      queryParameters["departmentId"] = requestParameters["departmentId"];
+    }
+
+    if (requestParameters["groupId"] != null) {
+      queryParameters["groupId"] = requestParameters["groupId"];
     }
 
     if (requestParameters["departmentName"] != null) {
@@ -6210,6 +6479,83 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubDepartment without sending the request
+   */
+  async updateClubDepartmentRequestOpts(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    if (requestParameters["departmentId"] == null) {
+      throw new runtime.RequiredError(
+        "departmentId",
+        'Required parameter "departmentId" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    if (requestParameters["updateClubDepartmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubDepartmentRequest",
+        'Required parameter "updateClubDepartmentRequest" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{departmentId}",
+      encodeURIComponent(String(requestParameters["departmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubDepartmentRequestToJSON(requestParameters["updateClubDepartmentRequest"]),
+    };
+  }
+
+  /**
+   * 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+   * 更新社团部门
+   */
+  async updateClubDepartmentRaw(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubDepartmentRecord>> {
+    const requestOptions = await this.updateClubDepartmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubDepartmentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+   * 更新社团部门
+   */
+  async updateClubDepartment(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubDepartmentRecord> {
+    const response = await this.updateClubDepartmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubEvaluation without sending the request
    */
   async updateClubEvaluationRequestOpts(
@@ -6283,6 +6629,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubGroup without sending the request
+   */
+  async updateClubGroupRequestOpts(
+    requestParameters: UpdateClubGroupOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    if (requestParameters["groupId"] == null) {
+      throw new runtime.RequiredError(
+        "groupId",
+        'Required parameter "groupId" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    if (requestParameters["updateClubGroupRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubGroupRequest",
+        'Required parameter "updateClubGroupRequest" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/groups/{groupId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{groupId}",
+      encodeURIComponent(String(requestParameters["groupId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubGroupRequestToJSON(requestParameters["updateClubGroupRequest"]),
+    };
+  }
+
+  /**
+   * 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+   * 更新社团小组
+   */
+  async updateClubGroupRaw(
+    requestParameters: UpdateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubGroupRecord>> {
+    const requestOptions = await this.updateClubGroupRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubGroupRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+   * 更新社团小组
+   */
+  async updateClubGroup(
+    requestParameters: UpdateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubGroupRecord> {
+    const response = await this.updateClubGroupRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

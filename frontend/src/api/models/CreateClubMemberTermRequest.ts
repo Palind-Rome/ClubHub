@@ -34,13 +34,25 @@ export interface CreateClubMemberTermRequest {
    */
   userId: number;
   /**
-   *
+   * 新成员任期归属部门 ID；传 null 表示不归属任何部门。
+   * @type {number}
+   * @memberof CreateClubMemberTermRequest
+   */
+  departmentId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 departmentId。
    * @type {string}
    * @memberof CreateClubMemberTermRequest
    */
   departmentName?: string | null;
   /**
-   *
+   * 新成员任期归属小组 ID；传 null 表示不归属任何小组。
+   * @type {number}
+   * @memberof CreateClubMemberTermRequest
+   */
+  groupId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 groupId。
    * @type {string}
    * @memberof CreateClubMemberTermRequest
    */
@@ -127,7 +139,9 @@ export function CreateClubMemberTermRequestFromJSONTyped(
   return {
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     userId: json["userId"],
+    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
     departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
+    groupId: json["groupId"] == null ? undefined : json["groupId"],
     groupName: json["groupName"] == null ? undefined : json["groupName"],
     positionName: json["positionName"],
     termName: json["termName"],
@@ -154,7 +168,9 @@ export function CreateClubMemberTermRequestToJSONTyped(
   return {
     currentUserId: value["currentUserId"],
     userId: value["userId"],
+    departmentId: value["departmentId"],
     departmentName: value["departmentName"],
+    groupId: value["groupId"],
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],

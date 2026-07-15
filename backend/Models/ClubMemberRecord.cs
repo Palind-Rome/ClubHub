@@ -67,10 +67,26 @@ namespace Org.OpenAPITools.Models
         public string? StudentNo { get; set; }
 
         /// <summary>
+        /// 成员当前归属部门 ID；为空表示未归属部门。
+        /// </summary>
+        /// <value>成员当前归属部门 ID；为空表示未归属部门。</value>
+        /* <example>1001</example> */
+        [DataMember(Name="departmentId", EmitDefaultValue=true)]
+        public int? DepartmentId { get; set; }
+
+        /// <summary>
         /// Gets or Sets DepartmentName
         /// </summary>
         [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
+
+        /// <summary>
+        /// 成员当前归属小组 ID；为空表示未归属小组。
+        /// </summary>
+        /// <value>成员当前归属小组 ID；为空表示未归属小组。</value>
+        /* <example>2001</example> */
+        [DataMember(Name="groupId", EmitDefaultValue=true)]
+        public int? GroupId { get; set; }
 
         /// <summary>
         /// Gets or Sets GroupName
