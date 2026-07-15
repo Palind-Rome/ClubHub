@@ -96,10 +96,12 @@ public class ProjectsController : ControllerBase
             .ThenBy(p => p.ProjectId)
             .Skip((int)skip)
             .Take(pageSize)
-            .Select(p => ToProjectDto(p))
             .ToListAsync();
+        var access = await BuildProjectTaskAccessContextAsync(projects);
 
-        return Ok(projects);
+        return Ok(projects
+            .Select(project => ToProjectDto(project, CanViewProjectTasks(project, access.User, access.ActiveMemberProjectIds)))
+            .ToList());
     }
 
     /// <summary>
@@ -111,10 +113,11 @@ public class ProjectsController : ControllerBase
         var project = await _db.Projects
             .AsNoTracking()
             .Where(p => p.ProjectId == projectId)
-            .Select(p => ToProjectDto(p))
             .FirstOrDefaultAsync();
+        if (project is null) return NotFound("Project does not exist.");
 
-        return project is null ? NotFound("Project does not exist.") : Ok(project);
+        var access = await BuildProjectTaskAccessContextAsync([project]);
+        return Ok(ToProjectDto(project, CanViewProjectTasks(project, access.User, access.ActiveMemberProjectIds)));
     }
 
     /// <summary>
@@ -514,7 +517,7 @@ public class ProjectsController : ControllerBase
         UsersController.IsSystemAdmin(user) || IsPlatformClubAdmin(user);
 
     private static bool IsPlatformClubAdmin(User user) =>
-        user.UserRoles.Any(ur => IsPlatformClubAdminRole(ur.Role));
+        user.UserRoles.Any(ur => ur.ClubId is null && IsPlatformClubAdminRole(ur.Role));
 
     private static bool IsPlatformClubAdminRole(Role? role)
     {
@@ -522,12 +525,52 @@ public class ProjectsController : ControllerBase
 
         var code = NormalizeRoleCode(role.RoleCode);
         if (code is "system_admin" or "sysadmin") return false;
+        if (!IsSystemScope(role)) return false;
         if (PlatformClubAdminRoleCodes.Contains(code)) return true;
 
         return (role.RoleName ?? string.Empty).Contains("社团管理员", StringComparison.Ordinal) &&
-               ((role.RoleScope ?? string.Empty).Contains("平台", StringComparison.Ordinal) ||
-                (role.PermissionDesc ?? string.Empty).Contains("审核", StringComparison.Ordinal));
+               (role.PermissionDesc ?? string.Empty).Contains("审核", StringComparison.Ordinal);
     }
+
+    private async Task<ProjectTaskAccessContext> BuildProjectTaskAccessContextAsync(IReadOnlyCollection<DbProject> projects)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null || projects.Count == 0) return new(null, []);
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null || !UsersController.IsActive(user.AccountStatus)) return new(null, []);
+
+        var projectIds = projects.Select(project => project.ProjectId).ToList();
+        var activeMemberProjectIds = await _db.ProjectMembers
+            .AsNoTracking()
+            .Where(member =>
+                member.UserId == currentUserId.Value &&
+                projectIds.Contains(member.ProjectId) &&
+                member.MemberStatus == ProjectMembershipService.ActiveStatus)
+            .Select(member => member.ProjectId)
+            .ToListAsync();
+
+        return new(user, activeMemberProjectIds.ToHashSet());
+    }
+
+    private static bool CanViewProjectTasks(
+        DbProject project,
+        User? user,
+        IReadOnlySet<int> activeMemberProjectIds)
+    {
+        if (user is null) return false;
+
+        var status = NormalizeProjectStatus(project.ProjectStatus);
+        if (status is not (RunningStatus or DelayedStatus or FinishedStatus)) return false;
+        if (project.LeaderUserId == user.UserId) return true;
+        if (activeMemberProjectIds.Contains(project.ProjectId)) return true;
+
+        return IsPlatformClubAdmin(user) || HasClubRole(user, project.ClubId, AdvisorRoleCodes);
+    }
+
+    private static bool IsSystemScope(Role role) =>
+        string.Equals(role.RoleScope?.Trim(), "system", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(role.RoleScope?.Trim(), "平台", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsTeacherRole(Role role)
     {
@@ -602,7 +645,7 @@ public class ProjectsController : ControllerBase
     private static string NormalizeRoleCode(string? roleCode) =>
         (roleCode ?? string.Empty).Trim().ToLowerInvariant();
 
-    private static ApiProject ToProjectDto(DbProject project)
+    private static ApiProject ToProjectDto(DbProject project, bool canViewTasks = false)
     {
         if (project.StartDate is null)
         {
@@ -621,7 +664,8 @@ public class ProjectsController : ControllerBase
             ProjectStatus = ToProjectStatusEnum(project.ProjectStatus),
             ReviewerUserId = project.ReviewerUserId,
             ReviewComment = project.ReviewComment,
-            CreatedAt = project.CreatedAt
+            CreatedAt = project.CreatedAt,
+            CanViewTasks = canViewTasks
         };
     }
 
@@ -647,4 +691,6 @@ public class ProjectsController : ControllerBase
             _ => ApiProject.ProjectStatusEnum.PendingEnum
         };
     }
+
+    private sealed record ProjectTaskAccessContext(User? User, HashSet<int> ActiveMemberProjectIds);
 }

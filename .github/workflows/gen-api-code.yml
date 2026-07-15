@@ -142,6 +142,40 @@ jobs:
             -e '/\[TypeConverter(typeof(CustomEnumConverter<.*>))\]/d' \
             {} +
 
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          function walk(dir) {
+            return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+              const fullPath = path.join(dir, entry.name);
+              return entry.isDirectory() ? walk(fullPath) : [fullPath];
+            });
+          }
+
+          for (const file of walk("backend/Models").filter((item) => item.endsWith(".cs"))) {
+            let text = fs.readFileSync(file, "utf8");
+            const next = text.replace(
+              /(\n\s*)\[Required\](\r?\n\s*\[DataMember\([^\)]*\)\]\r?\n\s*public bool\s+\w+\s*\{\s*get;\s*set;\s*\})/g,
+              (match, indent, tail, offset, source) => {
+                const prefix = source.slice(Math.max(0, offset - 80), offset);
+                return prefix.includes("[JsonRequired]")
+                  ? match
+                  : `${indent}[JsonRequired]${indent}[Required]${tail}`;
+              },
+            );
+
+            if (next === text) continue;
+            text = next.includes("using System.Text.Json.Serialization;")
+              ? next
+              : next.replace(
+                  "using System.Text.Json;\n",
+                  "using System.Text.Json;\nusing System.Text.Json.Serialization;\n",
+                );
+            fs.writeFileSync(file, text);
+          }
+          NODE
+
           # 生成模型依赖 Newtonsoft.Json。项目文件不在自动提交范围内，
           # 缺依赖时直接失败，提醒开发者用独立提交修复。
           if ! grep -q 'Newtonsoft\.Json' backend/ClubHub.Api.csproj; then

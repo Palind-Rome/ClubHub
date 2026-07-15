@@ -113,6 +113,61 @@ public class ProjectMembershipService
              UsersController.IsClubOfficer(user, project.ClubId));
     }
 
+    public async Task<bool> EnsureLeaderMembershipAsync(Project project)
+    {
+        if (project.ProjectId <= 0 || project.LeaderUserId is null) return false;
+
+        var leaderUserId = project.LeaderUserId.Value;
+        if (!await IsActiveUserAsync(leaderUserId) ||
+            !await IsActiveClubMemberAsync(project.ClubId, leaderUserId))
+        {
+            return false;
+        }
+
+        var hasActiveLeaderMembership = await _db.ProjectMembers
+            .AsNoTracking()
+            .AnyAsync(member =>
+                member.ProjectId == project.ProjectId &&
+                member.UserId == leaderUserId &&
+                member.MemberRole == LeaderRole &&
+                member.MemberStatus == ActiveStatus);
+        if (hasActiveLeaderMembership) return true;
+
+        for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var currentProject = await _db.Projects.FirstOrDefaultAsync(candidate =>
+                    candidate.ProjectId == project.ProjectId);
+                if (currentProject?.LeaderUserId is null)
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var now = DateTime.UtcNow;
+                await SynchronizeLeaderAsync(
+                    currentProject,
+                    currentProject.LeaderUserId,
+                    currentProject.LeaderUserId.Value,
+                    now);
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxWriteRetries) break;
+            }
+        }
+
+        return false;
+    }
+
     public Task<List<User>> GetCandidateUsersAsync(Project project)
     {
         var businessDate = DateTime.UtcNow.Date;
@@ -353,15 +408,30 @@ public class ProjectMembershipService
 
     private static void ActivateAs(ProjectMember member, string role, DateTime now)
     {
+        var changed = false;
         if (member.MemberStatus != ActiveStatus)
         {
             member.JoinedAt = now;
+            member.MemberStatus = ActiveStatus;
+            changed = true;
         }
 
-        member.MemberRole = role;
-        member.MemberStatus = ActiveStatus;
-        member.LeftAt = null;
-        member.UpdatedAt = now;
+        if (member.MemberRole != role)
+        {
+            member.MemberRole = role;
+            changed = true;
+        }
+
+        if (member.LeftAt is not null)
+        {
+            member.LeftAt = null;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            member.UpdatedAt = now;
+        }
     }
 
     private static string? NormalizeOptionalText(string? value) =>

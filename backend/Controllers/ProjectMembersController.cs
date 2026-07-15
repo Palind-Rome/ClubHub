@@ -55,6 +55,8 @@ public class ProjectMembersController : ControllerBase
             return Error(403, "project_member_view_forbidden", "只有正在参与该项目的成员可以查看当前成员列表。");
         }
 
+        await _membershipService.EnsureLeaderMembershipAsync(project);
+
         var query = _db.ProjectMembers
             .AsNoTracking()
             .Include(member => member.User)
@@ -89,6 +91,8 @@ public class ProjectMembersController : ControllerBase
         {
             return Error(403, "project_member_manage_forbidden", "当前用户无权维护该项目成员。");
         }
+
+        await _membershipService.EnsureLeaderMembershipAsync(project);
 
         var candidates = await _membershipService.GetCandidateUsersAsync(project);
         return Ok(candidates.Select(ToCandidateDto).ToList());

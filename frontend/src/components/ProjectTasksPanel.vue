@@ -18,11 +18,26 @@ import { readAuth } from "../authSession";
 
 const props = defineProps<{
   projectId: number;
+  clubId: number;
   leaderUserId?: number | null;
   projectStatus?: ProjectProjectStatusEnum | null;
 }>();
 
-const tasks = ref<ProjectTask[]>([]);
+type ProjectTaskWithDeliverable = ProjectTask & {
+  deliverableTitle?: string | null;
+  deliverableDesc?: string | null;
+  deliverableUrl?: string | null;
+  deliverableStatus?: string | null;
+  reviewerDisplayName?: string | null;
+  reviewComment?: string | null;
+  deliverableSubmitterDisplayName?: string | null;
+  deliverableSubmittedAt?: Date | null;
+  deliverableReviewedAt?: Date | null;
+};
+
+const apiBasePath = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+const platformAdminRoleCodes = new Set(["platform_admin", "club_admin", "admin", "club_reviewer"]);
+const tasks = ref<ProjectTaskWithDeliverable[]>([]);
 const members = ref<ProjectMember[]>([]);
 const loading = ref(false);
 const showingCompleted = ref(false);
@@ -30,13 +45,17 @@ const saving = ref(false);
 const loadError = ref("");
 const createVisible = ref(false);
 const updateVisible = ref(false);
+const deliverableVisible = ref(false);
+const reviewVisible = ref(false);
 const reportsVisible = ref(false);
 const reportsLoading = ref(false);
 const reportsError = ref("");
 const progressReports = ref<ProjectTaskProgressReport[]>([]);
 const createFormRef = ref<FormInstance>();
 const updateFormRef = ref<FormInstance>();
-const selectedTask = ref<ProjectTask | null>(null);
+const deliverableFormRef = ref<FormInstance>();
+const reviewFormRef = ref<FormInstance>();
+const selectedTask = ref<ProjectTaskWithDeliverable | null>(null);
 let requestVersion = 0;
 let reportsRequestVersion = 0;
 
@@ -48,6 +67,25 @@ const isLeader = computed(
 const canCreate = computed(
   () => isLeader.value && props.projectStatus === ProjectProjectStatusEnum.Running,
 );
+const canReviewDeliverables = computed(() => {
+  return (auth.value?.roles ?? []).some((role) => {
+    const rolePermissions = role.permissions ?? [];
+    if (!rolePermissions.includes("*") && !rolePermissions.includes("project:review")) return false;
+
+    const code = normalizeRoleText(role.code);
+    const scope = normalizeRoleText(role.scope);
+    if (
+      scope === "system" &&
+      role.clubId == null &&
+      (role.clubIds ?? []).length === 0 &&
+      platformAdminRoleCodes.has(code)
+    ) {
+      return true;
+    }
+
+    return role.clubId === props.clubId || Boolean(role.clubIds?.includes(props.clubId));
+  });
+});
 const activeMembers = computed(() =>
   members.value.filter((member) => member.memberStatus === ProjectMemberMemberStatusEnum.Active),
 );
@@ -70,6 +108,15 @@ const updateForm = reactive<{
   delayReason: "",
   reportContent: "",
 });
+const deliverableForm = reactive({
+  deliverableTitle: "",
+  deliverableDesc: "",
+  deliverableUrl: "",
+});
+const reviewForm = reactive({
+  approved: true,
+  reviewComment: "",
+});
 const createRules: FormRules = {
   assigneeUserIds: [{ required: true, message: "请至少选择一名任务执行人", trigger: "change" }],
   title: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
@@ -87,6 +134,45 @@ const createRules: FormRules = {
     },
   ],
 };
+const deliverableRules: FormRules = {
+  deliverableTitle: [
+    { required: true, message: "请输入成果标题", trigger: "blur" },
+    { max: 100, message: "成果标题不能超过 100 个字符", trigger: "blur" },
+  ],
+  deliverableDesc: [{ max: 4000, message: "成果说明不能超过 4000 个字符", trigger: "blur" }],
+  deliverableUrl: [
+    { max: 255, message: "成果链接不能超过 255 个字符", trigger: "blur" },
+    {
+      validator: (_rule, value: string, callback) => {
+        if (value && !/^https?:\/\/.+/i.test(value.trim())) {
+          callback(new Error("成果链接必须是 http 或 https 地址"));
+          return;
+        }
+        callback();
+      },
+      trigger: "blur",
+    },
+  ],
+};
+const reviewRules: FormRules = {
+  reviewComment: [
+    { max: 255, message: "审核意见不能超过 255 个字符", trigger: "blur" },
+    {
+      validator: (_rule, value: string, callback) => {
+        if (reviewForm.approved === false && (!value || value.trim().length === 0)) {
+          callback(new Error("驳回成果时必须填写审核意见"));
+          return;
+        }
+        callback();
+      },
+      trigger: "blur",
+    },
+  ],
+};
+
+function normalizeRoleText(value?: string | null) {
+  return (value ?? "").trim().toLowerCase();
+}
 
 const priorityLabel: Record<string, string> = {
   low: "低",
@@ -106,6 +192,18 @@ const statusType: Record<string, "info" | "primary" | "success" | "danger"> = {
   completed: "success",
   delayed: "danger",
 };
+const deliverableStatusLabel: Record<string, string> = {
+  not_submitted: "未提交",
+  pending: "待成果审核",
+  approved: "成果通过",
+  rejected: "成果驳回",
+};
+const deliverableStatusType: Record<string, "info" | "warning" | "success" | "danger"> = {
+  not_submitted: "info",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
+};
 
 async function loadTasks() {
   const version = ++requestVersion;
@@ -119,7 +217,7 @@ async function loadTasks() {
         : Promise.resolve([]),
     ]);
     if (version !== requestVersion) return;
-    tasks.value = nextTasks;
+    tasks.value = nextTasks as ProjectTaskWithDeliverable[];
     members.value = nextMembers;
   } catch (error) {
     if (version !== requestVersion) return;
@@ -178,7 +276,7 @@ async function createTask() {
   }
 }
 
-function openUpdate(task: ProjectTask) {
+function openUpdate(task: ProjectTaskWithDeliverable) {
   selectedTask.value = task;
   updateForm.progress = task.progress;
   updateForm.taskStatus = task.taskStatus as UpdateProjectTaskProgressRequestTaskStatusEnum;
@@ -187,7 +285,7 @@ function openUpdate(task: ProjectTask) {
   updateVisible.value = true;
 }
 
-async function openReports(task: ProjectTask) {
+async function openReports(task: ProjectTaskWithDeliverable) {
   const version = ++reportsRequestVersion;
   selectedTask.value = task;
   reportsVisible.value = true;
@@ -250,7 +348,87 @@ async function updateTask() {
   }
 }
 
-async function deleteTask(task: ProjectTask) {
+function openDeliverable(task: ProjectTaskWithDeliverable) {
+  if (!canSubmitDeliverable(task)) {
+    ElMessage.warning("只有项目负责人或任务执行人可以提交待审核成果。");
+    return;
+  }
+  selectedTask.value = task;
+  deliverableForm.deliverableTitle = task.deliverableTitle ?? task.title;
+  deliverableForm.deliverableDesc = task.deliverableDesc ?? "";
+  deliverableForm.deliverableUrl = task.deliverableUrl ?? "";
+  deliverableVisible.value = true;
+}
+
+async function submitDeliverable() {
+  const task = selectedTask.value;
+  if (!task) return;
+  const valid = await deliverableFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+
+  saving.value = true;
+  try {
+    await projectTaskRequest<ProjectTaskWithDeliverable>(
+      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          deliverableTitle: deliverableForm.deliverableTitle.trim(),
+          deliverableDesc: optional(deliverableForm.deliverableDesc),
+          deliverableUrl: optional(deliverableForm.deliverableUrl),
+        }),
+      },
+    );
+    ElMessage.success("任务成果已提交，等待审核");
+    deliverableVisible.value = false;
+    await loadTasks();
+  } catch (error) {
+    ElMessage.error(await toErrorMessage(error, "任务成果提交失败"));
+  } finally {
+    saving.value = false;
+  }
+}
+
+function openDeliverableReview(task: ProjectTaskWithDeliverable) {
+  if (!canReviewDeliverable(task)) {
+    ElMessage.warning("只有本社团指导老师或校级社团管理员可以审核待审核成果。");
+    return;
+  }
+  selectedTask.value = task;
+  reviewForm.approved = true;
+  reviewForm.reviewComment = "";
+  reviewVisible.value = true;
+}
+
+async function reviewDeliverable() {
+  const task = selectedTask.value;
+  if (!task) return;
+  const valid = await reviewFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+
+  saving.value = true;
+  try {
+    await projectTaskRequest<ProjectTaskWithDeliverable>(
+      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable/review`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          approved: reviewForm.approved,
+          reviewComment: optional(reviewForm.reviewComment),
+        }),
+      },
+    );
+    ElMessage.success("任务成果审核结果已保存");
+    reviewVisible.value = false;
+    await loadTasks();
+  } catch (error) {
+    ElMessage.error(await toErrorMessage(error, "任务成果审核失败"));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function deleteTask(task: ProjectTaskWithDeliverable) {
   try {
     await ElMessageBox.confirm(
       `确定删除“${task.title}”吗？关联的进度记录也会一并删除，且无法恢复。`,
@@ -270,10 +448,35 @@ async function deleteTask(task: ProjectTask) {
   }
 }
 
-function canUpdate(task: ProjectTask) {
+function canUpdate(task: ProjectTaskWithDeliverable) {
   return task.assignees.some((assignee) => assignee.userId === currentUserId.value);
 }
-function assigneeNames(task: ProjectTask) {
+function canSubmitDeliverable(task: ProjectTaskWithDeliverable) {
+  if (
+    !isActiveExecutionProject() ||
+    ["pending", "approved"].includes(taskDeliverableStatus(task))
+  ) {
+    return false;
+  }
+  return isLeader.value || canUpdate(task);
+}
+function canReviewDeliverable(task: ProjectTaskWithDeliverable) {
+  return (
+    isActiveExecutionProject() &&
+    taskDeliverableStatus(task) === "pending" &&
+    canReviewDeliverables.value
+  );
+}
+function isActiveExecutionProject() {
+  return (
+    props.projectStatus === ProjectProjectStatusEnum.Running ||
+    props.projectStatus === ProjectProjectStatusEnum.Delayed
+  );
+}
+function taskDeliverableStatus(task: ProjectTaskWithDeliverable) {
+  return (task.deliverableStatus ?? "not_submitted").trim().toLowerCase();
+}
+function assigneeNames(task: ProjectTaskWithDeliverable) {
   return task.assignees.map((assignee) => assignee.displayName).join("、");
 }
 function memberText(member: ProjectMember) {
@@ -306,7 +509,31 @@ async function toErrorMessage(error: unknown, fallback: string) {
       return `${fallback}（HTTP ${error.response.status}）`;
     }
   }
+  if (error instanceof Error && error.message) return `${fallback}：${error.message}`;
   return fallback;
+}
+
+async function projectTaskRequest<T>(path: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  const token = readAuth()?.token;
+  headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${apiBasePath}${path}`, { ...init, headers });
+  if (!response.ok) {
+    throw new Error(await readApiError(response));
+  }
+
+  return (await response.json()) as T;
+}
+
+async function readApiError(response: Response) {
+  try {
+    const body = (await response.clone().json()) as { message?: string };
+    return body.message || `HTTP ${response.status}`;
+  } catch {
+    return (await response.text()) || `HTTP ${response.status}`;
+  }
 }
 
 watch(
@@ -376,9 +603,27 @@ onMounted(() => void loadTasks());
               statusLabel[row.taskStatus] || row.taskStatus
             }}</el-tag></template
           ></el-table-column
+        ><el-table-column label="成果" min-width="170"
+          ><template #default="{ row }"
+            ><div class="deliverable-cell">
+              <el-tag :type="deliverableStatusType[taskDeliverableStatus(row)]" effect="plain">{{
+                deliverableStatusLabel[taskDeliverableStatus(row)] || taskDeliverableStatus(row)
+              }}</el-tag>
+              <a
+                v-if="row.deliverableUrl"
+                class="deliverable-link"
+                :href="row.deliverableUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ row.deliverableTitle || "查看成果" }}</a
+              ><span v-else class="deliverable-title">{{
+                row.deliverableTitle || "暂未提交成果"
+              }}</span>
+            </div></template
+          ></el-table-column
         ><el-table-column label="截止时间" min-width="145"
           ><template #default="{ row }">{{ formatDate(row.dueDate) }}</template></el-table-column
-        ><el-table-column label="操作" width="132" fixed="right"
+        ><el-table-column label="操作" width="150" fixed="right"
           ><template #default="{ row }"
             ><div class="task-actions">
               <el-button
@@ -387,6 +632,18 @@ onMounted(() => void loadTasks());
                 type="primary"
                 @click="openUpdate(row)"
                 >更新进度</el-button
+              ><el-button
+                v-if="canSubmitDeliverable(row)"
+                link
+                type="success"
+                @click="openDeliverable(row)"
+                >提交成果</el-button
+              ><el-button
+                v-if="canReviewDeliverable(row)"
+                link
+                type="warning"
+                @click="openDeliverableReview(row)"
+                >审核成果</el-button
               ><el-button link @click="openReports(row)">进度记录</el-button
               ><el-button
                 v-if="isLeader"
@@ -493,6 +750,76 @@ onMounted(() => void loadTasks());
         ><el-button type="primary" :loading="saving" @click="updateTask">保存</el-button></template
       ></el-dialog
     >
+    <el-dialog v-model="deliverableVisible" title="提交任务成果" width="min(560px, 92vw)"
+      ><el-form
+        ref="deliverableFormRef"
+        :model="deliverableForm"
+        :rules="deliverableRules"
+        label-width="96px"
+        ><el-form-item label="任务"
+          ><span>{{ selectedTask?.title }}</span></el-form-item
+        ><el-form-item label="成果标题" prop="deliverableTitle"
+          ><el-input
+            v-model="deliverableForm.deliverableTitle"
+            maxlength="100"
+            show-word-limit /></el-form-item
+        ><el-form-item label="成果说明" prop="deliverableDesc"
+          ><el-input
+            v-model="deliverableForm.deliverableDesc"
+            type="textarea"
+            :rows="3"
+            maxlength="4000"
+            show-word-limit /></el-form-item
+        ><el-form-item label="成果链接" prop="deliverableUrl"
+          ><el-input
+            v-model="deliverableForm.deliverableUrl"
+            maxlength="255"
+            placeholder="可填写网盘、文档或仓库链接"
+            show-word-limit /></el-form-item></el-form
+      ><template #footer
+        ><el-button @click="deliverableVisible = false">取消</el-button
+        ><el-button type="primary" :loading="saving" @click="submitDeliverable"
+          >提交成果</el-button
+        ></template
+      ></el-dialog
+    >
+    <el-dialog v-model="reviewVisible" title="审核任务成果" width="min(560px, 92vw)"
+      ><div v-if="selectedTask" class="deliverable-review-summary">
+        <strong>{{ selectedTask.deliverableTitle || selectedTask.title }}</strong>
+        <p>
+          提交人：{{ selectedTask.deliverableSubmitterDisplayName || "未记录" }} · 提交时间：{{
+            formatDate(selectedTask.deliverableSubmittedAt)
+          }}
+        </p>
+        <p v-if="selectedTask.deliverableDesc">{{ selectedTask.deliverableDesc }}</p>
+        <a
+          v-if="selectedTask.deliverableUrl"
+          :href="selectedTask.deliverableUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          >打开成果链接</a
+        >
+      </div>
+      <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="96px"
+        ><el-form-item label="审核结果"
+          ><el-radio-group v-model="reviewForm.approved"
+            ><el-radio-button :label="true">通过</el-radio-button
+            ><el-radio-button :label="false">驳回</el-radio-button></el-radio-group
+          ></el-form-item
+        ><el-form-item label="审核意见" prop="reviewComment"
+          ><el-input
+            v-model="reviewForm.reviewComment"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            show-word-limit /></el-form-item></el-form
+      ><template #footer
+        ><el-button @click="reviewVisible = false">取消</el-button
+        ><el-button type="primary" :loading="saving" @click="reviewDeliverable"
+          >保存审核结果</el-button
+        ></template
+      ></el-dialog
+    >
     <el-drawer
       v-model="reportsVisible"
       :title="`${selectedTask?.title || '任务'} · 进度记录`"
@@ -575,6 +902,22 @@ onMounted(() => void loadTasks());
   font-size: 12px;
   line-height: 1.45;
 }
+.deliverable-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.deliverable-link,
+.deliverable-title {
+  color: var(--el-text-color-regular);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.deliverable-link {
+  color: var(--el-color-primary);
+}
 .tasks-panel :deep(.el-progress) {
   min-width: 110px;
 }
@@ -586,6 +929,23 @@ onMounted(() => void loadTasks());
 }
 .task-actions .el-button {
   margin-left: 0;
+}
+.deliverable-review-summary {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+}
+.deliverable-review-summary p {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.deliverable-review-summary a {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--el-color-primary);
 }
 .reports-drawer {
   min-height: 180px;
