@@ -1533,7 +1533,7 @@ paths:
   /api/clubs/{clubId}/award-applications/{awardApplicationId}/review:
     post:
       summary: 审核评奖评优申请
-      description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；每次动作都会写入审核记录。
+      description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
       operationId: reviewClubAwardApplication
       parameters:
         - name: clubId

@@ -11,7 +11,13 @@ import {
   hasWholeClubMaintainRole,
   type MemberGroupingScope,
 } from "../composables/useClubEvaluationScope";
-import { collectManageableClubIds, collectScopedClubIds } from "../composables/useManageableClubs";
+import {
+  collectManageableClubIds,
+  collectScopedClubIds,
+  hasScopedRole,
+  normalizedRoleCodeOf,
+  type ScopedClubRole,
+} from "../composables/useManageableClubs";
 
 type AwardCategory = "honor" | "scholarship" | "competition" | "service" | "other";
 type SchemeStatus = "draft" | "open" | "reviewing" | "publicizing" | "archived" | "closed";
@@ -197,6 +203,31 @@ interface EditableAwardLevel {
 }
 
 const awardWorkflowPermission = "evaluation:draft";
+const systemAdminRoleCodes = new Set(["system_admin", "sysadmin"]);
+const platformAdminRoleCodes = new Set([
+  "platform_admin",
+  "club_admin",
+  "system_admin",
+  "admin",
+  "club_reviewer",
+]);
+const clubPrincipalRoleCodes = new Set([
+  "club_president",
+  "club_leader",
+  "club_manager",
+  "president",
+]);
+const clubAdvisorRoleCodes = new Set(["advisor", "club_advisor", "teacher_advisor"]);
+const principalPositionNames = new Set([
+  "负责人",
+  "会长",
+  "社长",
+  "社团负责人",
+  "president",
+  "leader",
+  "club president",
+  "club leader",
+]);
 const auth = ref<AuthResponse | null>(readAuth());
 const clubs = ref<Club[]>([]);
 const members = ref<ClubMemberRecord[]>([]);
@@ -304,18 +335,25 @@ const publicityRules: FormRules = {
 };
 
 const currentUserId = computed(() => auth.value?.user.id);
+const currentRoles = computed(() => auth.value?.roles ?? []);
 const permissions = computed(() => auth.value?.permissions ?? []);
 const hasAllPermissions = computed(
   () =>
     permissions.value.includes("*") ||
-    (auth.value?.roles ?? []).some((role) => role.permissions?.includes("*")),
+    currentRoles.value.some((role) => role.permissions?.includes("*")),
+);
+const hasSystemAdminRole = computed(
+  () => hasAllPermissions.value || hasAnyRoleCode(currentRoles.value, systemAdminRoleCodes),
+);
+const hasPlatformAwardReviewRole = computed(
+  () => hasSystemAdminRole.value || hasAnyRoleCode(currentRoles.value, platformAdminRoleCodes),
 );
 const manageableClubIds = computed(() =>
-  collectManageableClubIds(auth.value?.roles ?? [], awardWorkflowPermission),
+  collectManageableClubIds(currentRoles.value, awardWorkflowPermission),
 );
-const scopedClubIds = computed(() => collectScopedClubIds(auth.value?.roles ?? []));
+const scopedClubIds = computed(() => collectScopedClubIds(currentRoles.value));
 const canViewAllClubs = computed(
-  () => hasAllPermissions.value || hasGlobalClubViewRole(auth.value?.roles ?? []),
+  () => hasAllPermissions.value || hasGlobalClubViewRole(currentRoles.value),
 );
 const accessibleClubs = computed(() =>
   canViewAllClubs.value
@@ -335,13 +373,13 @@ const canMaintainWholeClub = computed(() => {
   const clubId = selectedClubId.value;
   if (!clubId || !canMaintainSelectedClub.value) return false;
   if (hasAllPermissions.value) return true;
-  return hasWholeClubMaintainRole(auth.value?.roles ?? [], clubId);
+  return hasWholeClubMaintainRole(currentRoles.value, clubId);
 });
 const selectedCadreGroupingScopes = computed<MemberGroupingScope[]>(() => {
   const clubId = selectedClubId.value;
   const userId = currentUserId.value;
   if (!clubId || !userId || !canMaintainSelectedClub.value || canMaintainWholeClub.value) return [];
-  return collectCadreScopesFromMembers(members.value, auth.value?.roles ?? [], clubId, userId);
+  return collectCadreScopesFromMembers(members.value, currentRoles.value, clubId, userId);
 });
 const currentMembers = computed(() => members.value.filter((member) => member.isCurrent));
 const applicantOptions = computed(() =>
@@ -896,6 +934,11 @@ async function publishPublicity(row: AwardPublicityBatchRecord) {
 
 async function archivePublicity(row: AwardPublicityBatchRecord) {
   if (!selectedClubId.value) return;
+  if (!canArchivePublicity(row)) {
+    ElMessage.warning("公示期结束后才能归档");
+    return;
+  }
+
   await confirmAction(`归档公示批次“${row.title}”？`);
   saving.value = true;
   try {
@@ -936,15 +979,62 @@ function canEditApplication(row: AwardApplicationRecord) {
   );
 }
 
-function canReviewApplication(row: AwardApplicationRecord) {
+function hasAnyRoleCode(roles: readonly ScopedClubRole[], roleCodes: ReadonlySet<string>) {
+  return roles.some((role) => roleCodes.has(normalizedRoleCodeOf(role)));
+}
+
+function isCurrentPrincipalMember(clubId: number) {
+  const userId = currentUserId.value;
+  if (!userId) return false;
+
+  return currentMembers.value.some((member) => {
+    const position = (member.positionName ?? "").trim();
+    return (
+      member.clubId === clubId &&
+      member.userId === userId &&
+      position.length > 0 &&
+      !position.startsWith("副") &&
+      principalPositionNames.has(position.toLowerCase())
+    );
+  });
+}
+
+function canReviewClubStep(clubId: number) {
   return (
-    canMaintainSelectedClub.value &&
-    ["club_review", "advisor_review", "school_review"].includes(row.applicationStatus)
+    hasSystemAdminRole.value ||
+    hasScopedRole(currentRoles.value, clubId, clubPrincipalRoleCodes) ||
+    isCurrentPrincipalMember(clubId)
   );
+}
+
+function canReviewAdvisorStep(clubId: number) {
+  return (
+    hasSystemAdminRole.value || hasScopedRole(currentRoles.value, clubId, clubAdvisorRoleCodes)
+  );
+}
+
+function canReviewApplication(row: AwardApplicationRecord) {
+  if (!["club_review", "advisor_review", "school_review"].includes(row.applicationStatus)) {
+    return false;
+  }
+
+  if (row.currentStep === "club_review") return canReviewClubStep(row.clubId);
+  if (row.currentStep === "advisor_review") return canReviewAdvisorStep(row.clubId);
+  if (row.currentStep === "school_review") return hasPlatformAwardReviewRole.value;
+  return false;
 }
 
 function canSubmitApplication(row: AwardApplicationRecord) {
   return ["draft", "returned"].includes(row.applicationStatus) && canEditApplication(row);
+}
+
+function canArchivePublicity(row: AwardPublicityBatchRecord) {
+  if (!canMaintainSelectedClub.value) return false;
+  if (!["publicizing", "closed"].includes(row.publicityStatus)) return false;
+  if (!row.publicityEndAt) return false;
+
+  const endAt = new Date(row.publicityEndAt);
+  return !Number.isNaN(endAt.getTime()) && endAt.getTime() <= Date.now();
 }
 
 function validateAwardLevels() {
@@ -1365,10 +1455,7 @@ onUnmounted(() => {
                 发布
               </el-button>
               <el-button
-                v-if="
-                  canMaintainSelectedClub &&
-                  (row.publicityStatus === 'publicizing' || row.publicityStatus === 'closed')
-                "
+                v-if="canArchivePublicity(row)"
                 type="success"
                 @click="archivePublicity(row)"
               >

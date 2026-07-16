@@ -501,10 +501,16 @@ public class AwardWorkflowController : ControllerBase
         var permissionError = ValidateAwardReviewPermission(viewer, club, application, reviewResult);
         if (permissionError is not null) return permissionError;
 
+        var now = BusinessNow();
         var transition = ResolveAwardReviewTransition(application, reviewResult);
         if (transition.Error is not null) return transition.Error;
+        if (reviewResult == AwardReviewArchive)
+        {
+            var publicityError =
+                await EnsureAwardApplicationPublicityEndedAsync(clubId, awardApplicationId, now);
+            if (publicityError is not null) return publicityError;
+        }
 
-        var now = BusinessNow();
         var fromStatus = application.ApplicationStatus;
         var fromStep = application.CurrentStep;
         application.ApplicationStatus = transition.Status!;
@@ -717,6 +723,11 @@ public class AwardWorkflowController : ControllerBase
         }
 
         var now = BusinessNow();
+        if (batch.PublicityEndAt is null)
+            return Conflict(new { message = "公示结束时间未设置，不能归档。" });
+        if (batch.PublicityEndAt > now)
+            return Conflict(new { message = "公示期尚未结束，不能提前归档。" });
+
         batch.PublicityStatus = AwardPublicityArchived;
         batch.UpdatedAt = now;
         foreach (var item in batch.Items)
@@ -1070,6 +1081,30 @@ public class AwardWorkflowController : ControllerBase
                (scheme.ApplicationEndAt is null || scheme.ApplicationEndAt >= now);
     }
 
+    private async Task<IActionResult?> EnsureAwardApplicationPublicityEndedAsync(
+        int clubId,
+        int awardApplicationId,
+        DateTime now)
+    {
+        var batch = await _db.AwardPublicityBatches
+            .AsNoTracking()
+            .Where(b => b.ClubId == clubId &&
+                        b.Items.Any(i => i.AwardApplicationId == awardApplicationId))
+            .OrderByDescending(b => b.PublicityEndAt)
+            .ThenByDescending(b => b.PublicityBatchId)
+            .FirstOrDefaultAsync();
+        if (batch is null)
+            return Conflict(new { message = "请先创建并发布公示批次后再归档。" });
+        if (batch.PublicityStatus == AwardPublicityDraft)
+            return Conflict(new { message = "公示批次尚未发布，不能归档。" });
+        if (batch.PublicityEndAt is null)
+            return Conflict(new { message = "公示结束时间未设置，不能归档。" });
+        if (batch.PublicityEndAt > now)
+            return Conflict(new { message = "公示期尚未结束，不能提前归档。" });
+
+        return null;
+    }
+
     private IActionResult? ValidateAwardReviewPermission(
         User viewer,
         Club club,
@@ -1126,9 +1161,9 @@ public class AwardWorkflowController : ControllerBase
 
         if (reviewResult == AwardReviewArchive)
         {
-            return application.ApplicationStatus is AwardStatusPublicizing or AwardStatusApproved
+            return application.ApplicationStatus == AwardStatusPublicizing
                 ? (AwardStatusArchived, AwardStepArchived, AwardPublicized, null)
-                : (null, null, null, Conflict(new { message = "只有已公示或已通过的申请可以归档。" }));
+                : (null, null, null, Conflict(new { message = "只有公示中且公示期已结束的申请可以归档。" }));
         }
 
         if (reviewResult != AwardReviewApprove)
