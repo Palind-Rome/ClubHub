@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 奖项等级配置输入；不分等级的奖项也应保留一个默认等级，作为奖项分、金额和名额的规则来源。
     /// </summary>
     [DataContract]
-    public partial class AwardLevelInput
+    public partial class AwardLevelInput 
     {
         /// <summary>
         /// 已有等级 ID；新增等级时为空。
         /// </summary>
         /// <value>已有等级 ID；新增等级时为空。</value>
         /* <example>10001</example> */
-        [DataMember(Name = "awardLevelId", EmitDefaultValue = true)]
+        [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int? AwardLevelId { get; set; }
 
         /// <summary>
@@ -39,8 +39,8 @@ namespace Org.OpenAPITools.Models
         /// <value>等级名称。</value>
         /* <example>一等奖</example> */
         [Required]
-        [StringLength(255, MinimumLength = 1)]
-        [DataMember(Name = "levelName", EmitDefaultValue = false)]
+        [StringLength(255, MinimumLength=1)]
+        [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Org.OpenAPITools.Models
         /* <example>20</example> */
         [Required]
         [Range(0, 100)]
-        [DataMember(Name = "awardScore", EmitDefaultValue = true)]
+        [DataMember(Name="awardScore", EmitDefaultValue=true)]
         public decimal AwardScore { get; set; }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>奖励金额；非经费类荣誉可为空。</value>
         /* <example>500</example> */
-        [DataMember(Name = "amount", EmitDefaultValue = true)]
+        [DataMember(Name="amount", EmitDefaultValue=true)]
         public decimal? Amount { get; set; }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>名额；不限名额时为空。</value>
         /* <example>3</example> */
-        [DataMember(Name = "quota", EmitDefaultValue = true)]
+        [DataMember(Name="quota", EmitDefaultValue=true)]
         public int? Quota { get; set; }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>等级展示顺序。</value>
         /* <example>1</example> */
-        [DataMember(Name = "displayOrder", EmitDefaultValue = true)]
+        [DataMember(Name="displayOrder", EmitDefaultValue=true)]
         public int? DisplayOrder { get; set; } = 0;
 
 
@@ -82,16 +82,16 @@ namespace Org.OpenAPITools.Models
         /// 等级状态。
         /// </summary>
         /// <value>等级状态。</value>
-
+        
         public enum LevelStatusEnum
         {
-
+            
             /// <summary>
             /// Enum ActiveEnum for active
             /// </summary>
             [EnumMember(Value = "active")]
             ActiveEnum = 1,
-
+            
             /// <summary>
             /// Enum InactiveEnum for inactive
             /// </summary>
@@ -104,7 +104,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>等级状态。</value>
         /* <example>active</example> */
-        [DataMember(Name = "levelStatus", EmitDefaultValue = true)]
+        [DataMember(Name="levelStatus", EmitDefaultValue=true)]
         public LevelStatusEnum LevelStatus { get; set; } = LevelStatusEnum.ActiveEnum;
 
     }

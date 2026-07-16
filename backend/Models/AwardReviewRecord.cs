@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 评奖评优申请审批记录。
     /// </summary>
     [DataContract]
-    public partial class AwardReviewRecord
+    public partial class AwardReviewRecord 
     {
         /// <summary>
         /// Gets or Sets ReviewId
         /// </summary>
         /* <example>80001</example> */
         [Required]
-        [DataMember(Name = "reviewId", EmitDefaultValue = true)]
+        [DataMember(Name="reviewId", EmitDefaultValue=true)]
         public int ReviewId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>70001</example> */
         [Required]
-        [DataMember(Name = "awardApplicationId", EmitDefaultValue = true)]
+        [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
@@ -46,47 +46,47 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "reviewRound", EmitDefaultValue = true)]
+        [DataMember(Name="reviewRound", EmitDefaultValue=true)]
         public int ReviewRound { get; set; }
 
 
         /// <summary>
         /// Gets or Sets ReviewStep
         /// </summary>
-
+        
         public enum ReviewStepEnum
         {
-
+            
             /// <summary>
             /// Enum StudentSubmitEnum for student_submit
             /// </summary>
             [EnumMember(Value = "student_submit")]
             StudentSubmitEnum = 1,
-
+            
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 2,
-
+            
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 3,
-
+            
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 4,
-
+            
             /// <summary>
             /// Enum PublicityEnum for publicity
             /// </summary>
             [EnumMember(Value = "publicity")]
             PublicityEnum = 5,
-
+            
             /// <summary>
             /// Enum ArchiveEnum for archive
             /// </summary>
@@ -99,53 +99,53 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>club_review</example> */
         [Required]
-        [DataMember(Name = "reviewStep", EmitDefaultValue = true)]
+        [DataMember(Name="reviewStep", EmitDefaultValue=true)]
         public ReviewStepEnum ReviewStep { get; set; }
 
 
         /// <summary>
         /// Gets or Sets ReviewResult
         /// </summary>
-
+        
         public enum ReviewResultEnum
         {
-
+            
             /// <summary>
             /// Enum SubmitEnum for submit
             /// </summary>
             [EnumMember(Value = "submit")]
             SubmitEnum = 1,
-
+            
             /// <summary>
             /// Enum ApproveEnum for approve
             /// </summary>
             [EnumMember(Value = "approve")]
             ApproveEnum = 2,
-
+            
             /// <summary>
             /// Enum RejectEnum for reject
             /// </summary>
             [EnumMember(Value = "reject")]
             RejectEnum = 3,
-
+            
             /// <summary>
             /// Enum ReturnEnum for return
             /// </summary>
             [EnumMember(Value = "return")]
             ReturnEnum = 4,
-
+            
             /// <summary>
             /// Enum PublishEnum for publish
             /// </summary>
             [EnumMember(Value = "publish")]
             PublishEnum = 5,
-
+            
             /// <summary>
             /// Enum ArchiveEnum for archive
             /// </summary>
             [EnumMember(Value = "archive")]
             ArchiveEnum = 6,
-
+            
             /// <summary>
             /// Enum WithdrawEnum for withdraw
             /// </summary>
@@ -158,49 +158,49 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>approve</example> */
         [Required]
-        [DataMember(Name = "reviewResult", EmitDefaultValue = true)]
+        [DataMember(Name="reviewResult", EmitDefaultValue=true)]
         public ReviewResultEnum ReviewResult { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewerUserId
         /// </summary>
         /* <example>3</example> */
-        [DataMember(Name = "reviewerUserId", EmitDefaultValue = true)]
+        [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
         public int? ReviewerUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewerName
         /// </summary>
         /* <example>王社长</example> */
-        [DataMember(Name = "reviewerName", EmitDefaultValue = true)]
+        [DataMember(Name="reviewerName", EmitDefaultValue=true)]
         public string? ReviewerName { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewComment
         /// </summary>
         /* <example>材料完整，同意进入指导老师审核。</example> */
-        [DataMember(Name = "reviewComment", EmitDefaultValue = true)]
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
 
         /// <summary>
         /// Gets or Sets FromStatus
         /// </summary>
         /* <example>club_review</example> */
-        [DataMember(Name = "fromStatus", EmitDefaultValue = true)]
+        [DataMember(Name="fromStatus", EmitDefaultValue=true)]
         public string? FromStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets ToStatus
         /// </summary>
         /* <example>advisor_review</example> */
-        [DataMember(Name = "toStatus", EmitDefaultValue = true)]
+        [DataMember(Name="toStatus", EmitDefaultValue=true)]
         public string? ToStatus { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "reviewedAt", EmitDefaultValue = true)]
+        [DataMember(Name="reviewedAt", EmitDefaultValue=true)]
         public DateTime ReviewedAt { get; set; }
 
     }

@@ -18,52 +18,52 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 评奖评优审核动作；后端根据当前步骤和审核结果推进下一状态。
     /// </summary>
     [DataContract]
-    public partial class ReviewAwardApplicationRequest
+    public partial class ReviewAwardApplicationRequest 
     {
 
         /// <summary>
         /// 审核动作。
         /// </summary>
         /// <value>审核动作。</value>
-
+        
         public enum ReviewResultEnum
         {
-
+            
             /// <summary>
             /// Enum ApproveEnum for approve
             /// </summary>
             [EnumMember(Value = "approve")]
             ApproveEnum = 1,
-
+            
             /// <summary>
             /// Enum RejectEnum for reject
             /// </summary>
             [EnumMember(Value = "reject")]
             RejectEnum = 2,
-
+            
             /// <summary>
             /// Enum ReturnEnum for return
             /// </summary>
             [EnumMember(Value = "return")]
             ReturnEnum = 3,
-
+            
             /// <summary>
             /// Enum PublishEnum for publish
             /// </summary>
             [EnumMember(Value = "publish")]
             PublishEnum = 4,
-
+            
             /// <summary>
             /// Enum ArchiveEnum for archive
             /// </summary>
             [EnumMember(Value = "archive")]
             ArchiveEnum = 5,
-
+            
             /// <summary>
             /// Enum WithdrawEnum for withdraw
             /// </summary>
@@ -77,14 +77,14 @@ namespace Org.OpenAPITools.Models
         /// <value>审核动作。</value>
         /* <example>approve</example> */
         [Required]
-        [DataMember(Name = "reviewResult", EmitDefaultValue = true)]
+        [DataMember(Name="reviewResult", EmitDefaultValue=true)]
         public ReviewResultEnum ReviewResult { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewComment
         /// </summary>
         /* <example>材料完整，同意进入下一环节。</example> */
-        [DataMember(Name = "reviewComment", EmitDefaultValue = true)]
+        [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Org.OpenAPITools.Models
         /// <value>校级终审可确认最终奖项分；为空时使用等级配置分。</value>
         /* <example>20</example> */
         [Range(0, 100)]
-        [DataMember(Name = "finalAwardScore", EmitDefaultValue = true)]
+        [DataMember(Name="finalAwardScore", EmitDefaultValue=true)]
         public decimal? FinalAwardScore { get; set; }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>校级终审可确认最终金额；为空时使用等级配置金额。</value>
         /* <example>500</example> */
-        [DataMember(Name = "finalAmount", EmitDefaultValue = true)]
+        [DataMember(Name="finalAmount", EmitDefaultValue=true)]
         public decimal? FinalAmount { get; set; }
 
     }

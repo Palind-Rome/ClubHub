@@ -18,54 +18,54 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 创建评奖评优奖项配置的请求。
     /// </summary>
     [DataContract]
-    public partial class CreateAwardSchemeRequest
+    public partial class CreateAwardSchemeRequest 
     {
         /// <summary>
         /// Gets or Sets AwardName
         /// </summary>
         /* <example>优秀社团干部</example> */
         [Required]
-        [StringLength(255, MinimumLength = 1)]
-        [DataMember(Name = "awardName", EmitDefaultValue = false)]
+        [StringLength(255, MinimumLength=1)]
+        [DataMember(Name="awardName", EmitDefaultValue=false)]
         public string AwardName { get; set; }
 
 
         /// <summary>
         /// Gets or Sets AwardCategory
         /// </summary>
-
+        
         public enum AwardCategoryEnum
         {
-
+            
             /// <summary>
             /// Enum HonorEnum for honor
             /// </summary>
             [EnumMember(Value = "honor")]
             HonorEnum = 1,
-
+            
             /// <summary>
             /// Enum ScholarshipEnum for scholarship
             /// </summary>
             [EnumMember(Value = "scholarship")]
             ScholarshipEnum = 2,
-
+            
             /// <summary>
             /// Enum CompetitionEnum for competition
             /// </summary>
             [EnumMember(Value = "competition")]
             CompetitionEnum = 3,
-
+            
             /// <summary>
             /// Enum ServiceEnum for service
             /// </summary>
             [EnumMember(Value = "service")]
             ServiceEnum = 4,
-
+            
             /// <summary>
             /// Enum OtherEnum for other
             /// </summary>
@@ -78,7 +78,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>honor</example> */
         [Required]
-        [DataMember(Name = "awardCategory", EmitDefaultValue = true)]
+        [DataMember(Name="awardCategory", EmitDefaultValue=true)]
         public AwardCategoryEnum AwardCategory { get; set; } = AwardCategoryEnum.HonorEnum;
 
         /// <summary>
@@ -86,8 +86,8 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>2025-2026学年</example> */
         [Required]
-        [StringLength(50, MinimumLength = 1)]
-        [DataMember(Name = "academicYear", EmitDefaultValue = false)]
+        [StringLength(50, MinimumLength=1)]
+        [DataMember(Name="academicYear", EmitDefaultValue=false)]
         public string AcademicYear { get; set; }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>春季</example> */
         [MaxLength(80)]
-        [DataMember(Name = "termName", EmitDefaultValue = true)]
+        [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>同济大学团委</example> */
         [MaxLength(255)]
-        [DataMember(Name = "sponsorUnit", EmitDefaultValue = true)]
+        [DataMember(Name="sponsorUnit", EmitDefaultValue=true)]
         public string? SponsorUnit { get; set; }
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>校级</example> */
         [MaxLength(100)]
-        [DataMember(Name = "rewardLevel", EmitDefaultValue = true)]
+        [DataMember(Name="rewardLevel", EmitDefaultValue=true)]
         public string? RewardLevel { get; set; }
 
         /// <summary>
@@ -119,95 +119,95 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>社团专项经费</example> */
         [MaxLength(255)]
-        [DataMember(Name = "fundingSource", EmitDefaultValue = true)]
+        [DataMember(Name="fundingSource", EmitDefaultValue=true)]
         public string? FundingSource { get; set; }
 
         /// <summary>
         /// Gets or Sets IsRanked
         /// </summary>
-        [DataMember(Name = "isRanked", EmitDefaultValue = true)]
+        [DataMember(Name="isRanked", EmitDefaultValue=true)]
         public bool? IsRanked { get; set; } = true;
 
         /// <summary>
         /// Gets or Sets IsFixedAmount
         /// </summary>
-        [DataMember(Name = "isFixedAmount", EmitDefaultValue = true)]
+        [DataMember(Name="isFixedAmount", EmitDefaultValue=true)]
         public bool? IsFixedAmount { get; set; } = true;
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name = "description", EmitDefaultValue = true)]
+        [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialDescription
         /// </summary>
-        [DataMember(Name = "materialDescription", EmitDefaultValue = true)]
+        [DataMember(Name="materialDescription", EmitDefaultValue=true)]
         public string? MaterialDescription { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicationStartAt
         /// </summary>
-        [DataMember(Name = "applicationStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="applicationStartAt", EmitDefaultValue=true)]
         public DateTime? ApplicationStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicationEndAt
         /// </summary>
-        [DataMember(Name = "applicationEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="applicationEndAt", EmitDefaultValue=true)]
         public DateTime? ApplicationEndAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityStartAt
         /// </summary>
-        [DataMember(Name = "publicityStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityEndAt
         /// </summary>
-        [DataMember(Name = "publicityEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
 
         /// <summary>
         /// Gets or Sets SchemeStatus
         /// </summary>
-
+        
         public enum SchemeStatusEnum
         {
-
+            
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-
+            
             /// <summary>
             /// Enum OpenEnum for open
             /// </summary>
             [EnumMember(Value = "open")]
             OpenEnum = 2,
-
+            
             /// <summary>
             /// Enum ReviewingEnum for reviewing
             /// </summary>
             [EnumMember(Value = "reviewing")]
             ReviewingEnum = 3,
-
+            
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 4,
-
+            
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
             [EnumMember(Value = "archived")]
             ArchivedEnum = 5,
-
+            
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>
@@ -218,14 +218,14 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets SchemeStatus
         /// </summary>
-        [DataMember(Name = "schemeStatus", EmitDefaultValue = true)]
+        [DataMember(Name="schemeStatus", EmitDefaultValue=true)]
         public SchemeStatusEnum SchemeStatus { get; set; } = SchemeStatusEnum.DraftEnum;
 
         /// <summary>
         /// Gets or Sets Levels
         /// </summary>
         [Required]
-        [DataMember(Name = "levels", EmitDefaultValue = false)]
+        [DataMember(Name="levels", EmitDefaultValue=false)]
         public List<AwardLevelInput> Levels { get; set; }
 
     }

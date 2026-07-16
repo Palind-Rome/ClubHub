@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 公示批次中的单条获奖申请。
     /// </summary>
     [DataContract]
-    public partial class AwardPublicityItemRecord
+    public partial class AwardPublicityItemRecord 
     {
         /// <summary>
         /// Gets or Sets PublicityItemId
         /// </summary>
         /* <example>50001</example> */
         [Required]
-        [DataMember(Name = "publicityItemId", EmitDefaultValue = true)]
+        [DataMember(Name="publicityItemId", EmitDefaultValue=true)]
         public int PublicityItemId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>40001</example> */
         [Required]
-        [DataMember(Name = "publicityBatchId", EmitDefaultValue = true)]
+        [DataMember(Name="publicityBatchId", EmitDefaultValue=true)]
         public int PublicityBatchId { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>70001</example> */
         [Required]
-        [DataMember(Name = "awardApplicationId", EmitDefaultValue = true)]
+        [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>12</example> */
         [Required]
-        [DataMember(Name = "applicantUserId", EmitDefaultValue = true)]
+        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
         public int ApplicantUserId { get; set; }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>张三</example> */
         [Required]
-        [DataMember(Name = "applicantName", EmitDefaultValue = false)]
+        [DataMember(Name="applicantName", EmitDefaultValue=false)]
         public string ApplicantName { get; set; }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>优秀社团干部</example> */
         [Required]
-        [DataMember(Name = "awardName", EmitDefaultValue = false)]
+        [DataMember(Name="awardName", EmitDefaultValue=false)]
         public string AwardName { get; set; }
 
         /// <summary>
@@ -78,21 +78,21 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>一等奖</example> */
         [Required]
-        [DataMember(Name = "levelName", EmitDefaultValue = false)]
+        [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
         /// Gets or Sets FinalAwardScore
         /// </summary>
         /* <example>20</example> */
-        [DataMember(Name = "finalAwardScore", EmitDefaultValue = true)]
+        [DataMember(Name="finalAwardScore", EmitDefaultValue=true)]
         public decimal? FinalAwardScore { get; set; }
 
         /// <summary>
         /// Gets or Sets FinalAmount
         /// </summary>
         /* <example>500</example> */
-        [DataMember(Name = "finalAmount", EmitDefaultValue = true)]
+        [DataMember(Name="finalAmount", EmitDefaultValue=true)]
         public decimal? FinalAmount { get; set; }
 
         /// <summary>
@@ -100,29 +100,29 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "displayOrder", EmitDefaultValue = true)]
+        [DataMember(Name="displayOrder", EmitDefaultValue=true)]
         public int DisplayOrder { get; set; }
 
 
         /// <summary>
         /// Gets or Sets PublicityResult
         /// </summary>
-
+        
         public enum PublicityResultEnum
         {
-
+            
             /// <summary>
             /// Enum NormalEnum for normal
             /// </summary>
             [EnumMember(Value = "normal")]
             NormalEnum = 1,
-
+            
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>
             [EnumMember(Value = "withdrawn")]
             WithdrawnEnum = 2,
-
+            
             /// <summary>
             /// Enum CorrectedEnum for corrected
             /// </summary>
@@ -135,14 +135,14 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>normal</example> */
         [Required]
-        [DataMember(Name = "publicityResult", EmitDefaultValue = true)]
+        [DataMember(Name="publicityResult", EmitDefaultValue=true)]
         public PublicityResultEnum PublicityResult { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "createdAt", EmitDefaultValue = true)]
+        [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
     }

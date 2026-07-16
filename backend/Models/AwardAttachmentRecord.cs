@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 评奖评优申请材料附件。
     /// </summary>
     [DataContract]
-    public partial class AwardAttachmentRecord
+    public partial class AwardAttachmentRecord 
     {
         /// <summary>
         /// Gets or Sets AttachmentId
         /// </summary>
         /* <example>60001</example> */
         [Required]
-        [DataMember(Name = "attachmentId", EmitDefaultValue = true)]
+        [DataMember(Name="attachmentId", EmitDefaultValue=true)]
         public int AttachmentId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>70001</example> */
         [Required]
-        [DataMember(Name = "awardApplicationId", EmitDefaultValue = true)]
+        [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>个人总结.pdf</example> */
         [Required]
-        [DataMember(Name = "attachmentName", EmitDefaultValue = false)]
+        [DataMember(Name="attachmentName", EmitDefaultValue=false)]
         public string AttachmentName { get; set; }
 
         /// <summary>
@@ -54,14 +54,14 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>/uploads/awards/summary.pdf</example> */
         [Required]
-        [DataMember(Name = "attachmentUrl", EmitDefaultValue = false)]
+        [DataMember(Name="attachmentUrl", EmitDefaultValue=false)]
         public string AttachmentUrl { get; set; }
 
         /// <summary>
         /// Gets or Sets AttachmentType
         /// </summary>
         /* <example>pdf</example> */
-        [DataMember(Name = "attachmentType", EmitDefaultValue = true)]
+        [DataMember(Name="attachmentType", EmitDefaultValue=true)]
         public string? AttachmentType { get; set; }
 
         /// <summary>
@@ -69,21 +69,21 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>12</example> */
         [Required]
-        [DataMember(Name = "uploadedByUserId", EmitDefaultValue = true)]
+        [DataMember(Name="uploadedByUserId", EmitDefaultValue=true)]
         public int UploadedByUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets UploadedByName
         /// </summary>
         /* <example>张三</example> */
-        [DataMember(Name = "uploadedByName", EmitDefaultValue = true)]
+        [DataMember(Name="uploadedByName", EmitDefaultValue=true)]
         public string? UploadedByName { get; set; }
 
         /// <summary>
         /// Gets or Sets UploadedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "uploadedAt", EmitDefaultValue = true)]
+        [DataMember(Name="uploadedAt", EmitDefaultValue=true)]
         public DateTime UploadedAt { get; set; }
 
     }

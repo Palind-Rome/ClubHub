@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 社团评奖评优奖项等级配置。
     /// </summary>
     [DataContract]
-    public partial class AwardLevelRecord
+    public partial class AwardLevelRecord 
     {
         /// <summary>
         /// Gets or Sets AwardLevelId
         /// </summary>
         /* <example>10001</example> */
         [Required]
-        [DataMember(Name = "awardLevelId", EmitDefaultValue = true)]
+        [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>9001</example> */
         [Required]
-        [DataMember(Name = "awardSchemeId", EmitDefaultValue = true)]
+        [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>一等奖</example> */
         [Required]
-        [DataMember(Name = "levelName", EmitDefaultValue = false)]
+        [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
@@ -54,21 +54,21 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>20</example> */
         [Required]
-        [DataMember(Name = "awardScore", EmitDefaultValue = true)]
+        [DataMember(Name="awardScore", EmitDefaultValue=true)]
         public decimal AwardScore { get; set; }
 
         /// <summary>
         /// Gets or Sets Amount
         /// </summary>
         /* <example>500</example> */
-        [DataMember(Name = "amount", EmitDefaultValue = true)]
+        [DataMember(Name="amount", EmitDefaultValue=true)]
         public decimal? Amount { get; set; }
 
         /// <summary>
         /// Gets or Sets Quota
         /// </summary>
         /* <example>3</example> */
-        [DataMember(Name = "quota", EmitDefaultValue = true)]
+        [DataMember(Name="quota", EmitDefaultValue=true)]
         public int? Quota { get; set; }
 
         /// <summary>
@@ -76,23 +76,23 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "displayOrder", EmitDefaultValue = true)]
+        [DataMember(Name="displayOrder", EmitDefaultValue=true)]
         public int DisplayOrder { get; set; }
 
 
         /// <summary>
         /// Gets or Sets LevelStatus
         /// </summary>
-
+        
         public enum LevelStatusEnum
         {
-
+            
             /// <summary>
             /// Enum ActiveEnum for active
             /// </summary>
             [EnumMember(Value = "active")]
             ActiveEnum = 1,
-
+            
             /// <summary>
             /// Enum InactiveEnum for inactive
             /// </summary>
@@ -105,7 +105,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>active</example> */
         [Required]
-        [DataMember(Name = "levelStatus", EmitDefaultValue = true)]
+        [DataMember(Name="levelStatus", EmitDefaultValue=true)]
         public LevelStatusEnum LevelStatus { get; set; }
 
     }

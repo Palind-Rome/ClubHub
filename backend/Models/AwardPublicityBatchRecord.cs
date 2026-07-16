@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 评奖评优公示批次。
     /// </summary>
     [DataContract]
-    public partial class AwardPublicityBatchRecord
+    public partial class AwardPublicityBatchRecord 
     {
         /// <summary>
         /// Gets or Sets PublicityBatchId
         /// </summary>
         /* <example>40001</example> */
         [Required]
-        [DataMember(Name = "publicityBatchId", EmitDefaultValue = true)]
+        [DataMember(Name="publicityBatchId", EmitDefaultValue=true)]
         public int PublicityBatchId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>计算机协会</example> */
         [Required]
-        [DataMember(Name = "clubName", EmitDefaultValue = false)]
+        [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
@@ -54,53 +54,53 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>2025-2026学年春季优秀社团干部拟获奖名单公示</example> */
         [Required]
-        [DataMember(Name = "title", EmitDefaultValue = false)]
+        [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name = "description", EmitDefaultValue = true)]
+        [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityStartAt
         /// </summary>
-        [DataMember(Name = "publicityStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityEndAt
         /// </summary>
-        [DataMember(Name = "publicityEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
 
         /// <summary>
         /// Gets or Sets PublicityStatus
         /// </summary>
-
+        
         public enum PublicityStatusEnum
         {
-
+            
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-
+            
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 2,
-
+            
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>
             [EnumMember(Value = "closed")]
             ClosedEnum = 3,
-
+            
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
@@ -113,7 +113,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>publicizing</example> */
         [Required]
-        [DataMember(Name = "publicityStatus", EmitDefaultValue = true)]
+        [DataMember(Name="publicityStatus", EmitDefaultValue=true)]
         public PublicityStatusEnum PublicityStatus { get; set; }
 
         /// <summary>
@@ -121,41 +121,41 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>公示中</example> */
         [Required]
-        [DataMember(Name = "publicityStatusText", EmitDefaultValue = false)]
+        [DataMember(Name="publicityStatusText", EmitDefaultValue=false)]
         public string PublicityStatusText { get; set; }
 
         /// <summary>
         /// Gets or Sets PublisherUserId
         /// </summary>
-        [DataMember(Name = "publisherUserId", EmitDefaultValue = true)]
+        [DataMember(Name="publisherUserId", EmitDefaultValue=true)]
         public int? PublisherUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets PublisherName
         /// </summary>
         /* <example>王社长</example> */
-        [DataMember(Name = "publisherName", EmitDefaultValue = true)]
+        [DataMember(Name="publisherName", EmitDefaultValue=true)]
         public string? PublisherName { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "createdAt", EmitDefaultValue = true)]
+        [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets UpdatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "updatedAt", EmitDefaultValue = true)]
+        [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets Items
         /// </summary>
         [Required]
-        [DataMember(Name = "items", EmitDefaultValue = false)]
+        [DataMember(Name="items", EmitDefaultValue=false)]
         public List<AwardPublicityItemRecord> Items { get; set; }
 
     }

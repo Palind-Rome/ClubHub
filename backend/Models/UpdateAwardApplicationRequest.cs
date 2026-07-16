@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 更新评奖评优申请草稿或退回记录。
     /// </summary>
     [DataContract]
-    public partial class UpdateAwardApplicationRequest
+    public partial class UpdateAwardApplicationRequest 
     {
         /// <summary>
         /// Gets or Sets AwardLevelId
         /// </summary>
         /* <example>10001</example> */
         [Required]
-        [DataMember(Name = "awardLevelId", EmitDefaultValue = true)]
+        [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
@@ -39,14 +39,14 @@ namespace Org.OpenAPITools.Models
         /* <example>已补充新的活动组织证明。</example> */
         [Required]
         [MinLength(1)]
-        [DataMember(Name = "applicationReason", EmitDefaultValue = false)]
+        [DataMember(Name="applicationReason", EmitDefaultValue=false)]
         public string ApplicationReason { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialUrl
         /// </summary>
         /* <example>/uploads/awards/summary-v2.pdf</example> */
-        [DataMember(Name = "materialUrl", EmitDefaultValue = true)]
+        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
         public string? MaterialUrl { get; set; }
 
     }

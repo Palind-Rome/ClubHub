@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 评奖评优申请记录，承载成员自荐、负责人推荐、分级审批、公示和归档状态。
     /// </summary>
     [DataContract]
-    public partial class AwardApplicationRecord
+    public partial class AwardApplicationRecord 
     {
         /// <summary>
         /// Gets or Sets AwardApplicationId
         /// </summary>
         /* <example>70001</example> */
         [Required]
-        [DataMember(Name = "awardApplicationId", EmitDefaultValue = true)]
+        [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>计算机协会</example> */
         [Required]
-        [DataMember(Name = "clubName", EmitDefaultValue = false)]
+        [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>9001</example> */
         [Required]
-        [DataMember(Name = "awardSchemeId", EmitDefaultValue = true)]
+        [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
@@ -62,41 +62,41 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>优秀社团干部</example> */
         [Required]
-        [DataMember(Name = "awardName", EmitDefaultValue = false)]
+        [DataMember(Name="awardName", EmitDefaultValue=false)]
         public string AwardName { get; set; }
 
 
         /// <summary>
         /// Gets or Sets AwardCategory
         /// </summary>
-
+        
         public enum AwardCategoryEnum
         {
-
+            
             /// <summary>
             /// Enum HonorEnum for honor
             /// </summary>
             [EnumMember(Value = "honor")]
             HonorEnum = 1,
-
+            
             /// <summary>
             /// Enum ScholarshipEnum for scholarship
             /// </summary>
             [EnumMember(Value = "scholarship")]
             ScholarshipEnum = 2,
-
+            
             /// <summary>
             /// Enum CompetitionEnum for competition
             /// </summary>
             [EnumMember(Value = "competition")]
             CompetitionEnum = 3,
-
+            
             /// <summary>
             /// Enum ServiceEnum for service
             /// </summary>
             [EnumMember(Value = "service")]
             ServiceEnum = 4,
-
+            
             /// <summary>
             /// Enum OtherEnum for other
             /// </summary>
@@ -109,7 +109,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>honor</example> */
         [Required]
-        [DataMember(Name = "awardCategory", EmitDefaultValue = true)]
+        [DataMember(Name="awardCategory", EmitDefaultValue=true)]
         public AwardCategoryEnum AwardCategory { get; set; }
 
         /// <summary>
@@ -117,14 +117,14 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>2025-2026学年</example> */
         [Required]
-        [DataMember(Name = "academicYear", EmitDefaultValue = false)]
+        [DataMember(Name="academicYear", EmitDefaultValue=false)]
         public string AcademicYear { get; set; }
 
         /// <summary>
         /// Gets or Sets TermName
         /// </summary>
         /* <example>春季</example> */
-        [DataMember(Name = "termName", EmitDefaultValue = true)]
+        [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>10001</example> */
         [Required]
-        [DataMember(Name = "awardLevelId", EmitDefaultValue = true)]
+        [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>一等奖</example> */
         [Required]
-        [DataMember(Name = "levelName", EmitDefaultValue = false)]
+        [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>12</example> */
         [Required]
-        [DataMember(Name = "applicantUserId", EmitDefaultValue = true)]
+        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
         public int ApplicantUserId { get; set; }
 
         /// <summary>
@@ -156,26 +156,26 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>张三</example> */
         [Required]
-        [DataMember(Name = "applicantName", EmitDefaultValue = false)]
+        [DataMember(Name="applicantName", EmitDefaultValue=false)]
         public string ApplicantName { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicantStudentNo
         /// </summary>
         /* <example>2450001</example> */
-        [DataMember(Name = "applicantStudentNo", EmitDefaultValue = true)]
+        [DataMember(Name="applicantStudentNo", EmitDefaultValue=true)]
         public string? ApplicantStudentNo { get; set; }
 
         /// <summary>
         /// Gets or Sets RecommenderUserId
         /// </summary>
-        [DataMember(Name = "recommenderUserId", EmitDefaultValue = true)]
+        [DataMember(Name="recommenderUserId", EmitDefaultValue=true)]
         public int? RecommenderUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets RecommenderName
         /// </summary>
-        [DataMember(Name = "recommenderName", EmitDefaultValue = true)]
+        [DataMember(Name="recommenderName", EmitDefaultValue=true)]
         public string? RecommenderName { get; set; }
 
         /// <summary>
@@ -183,30 +183,30 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>12</example> */
         [Required]
-        [DataMember(Name = "submitterUserId", EmitDefaultValue = true)]
+        [DataMember(Name="submitterUserId", EmitDefaultValue=true)]
         public int SubmitterUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets SubmitterName
         /// </summary>
         /* <example>张三</example> */
-        [DataMember(Name = "submitterName", EmitDefaultValue = true)]
+        [DataMember(Name="submitterName", EmitDefaultValue=true)]
         public string? SubmitterName { get; set; }
 
 
         /// <summary>
         /// Gets or Sets ApplicationType
         /// </summary>
-
+        
         public enum ApplicationTypeEnum
         {
-
+            
             /// <summary>
             /// Enum SelfEnum for self
             /// </summary>
             [EnumMember(Value = "self")]
             SelfEnum = 1,
-
+            
             /// <summary>
             /// Enum RecommendationEnum for recommendation
             /// </summary>
@@ -219,59 +219,59 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>self</example> */
         [Required]
-        [DataMember(Name = "applicationType", EmitDefaultValue = true)]
+        [DataMember(Name="applicationType", EmitDefaultValue=true)]
         public ApplicationTypeEnum ApplicationType { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicationReason
         /// </summary>
-        [DataMember(Name = "applicationReason", EmitDefaultValue = true)]
+        [DataMember(Name="applicationReason", EmitDefaultValue=true)]
         public string? ApplicationReason { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialUrl
         /// </summary>
-        [DataMember(Name = "materialUrl", EmitDefaultValue = true)]
+        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
         public string? MaterialUrl { get; set; }
 
 
         /// <summary>
         /// Gets or Sets CurrentStep
         /// </summary>
-
+        
         public enum CurrentStepEnum
         {
-
+            
             /// <summary>
             /// Enum StudentSubmitEnum for student_submit
             /// </summary>
             [EnumMember(Value = "student_submit")]
             StudentSubmitEnum = 1,
-
+            
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 2,
-
+            
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 3,
-
+            
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 4,
-
+            
             /// <summary>
             /// Enum PublicityEnum for publicity
             /// </summary>
             [EnumMember(Value = "publicity")]
             PublicityEnum = 5,
-
+            
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
@@ -284,7 +284,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>advisor_review</example> */
         [Required]
-        [DataMember(Name = "currentStep", EmitDefaultValue = true)]
+        [DataMember(Name="currentStep", EmitDefaultValue=true)]
         public CurrentStepEnum CurrentStep { get; set; }
 
         /// <summary>
@@ -292,83 +292,83 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>待指导老师审核</example> */
         [Required]
-        [DataMember(Name = "currentStepText", EmitDefaultValue = false)]
+        [DataMember(Name="currentStepText", EmitDefaultValue=false)]
         public string CurrentStepText { get; set; }
 
 
         /// <summary>
         /// Gets or Sets ApplicationStatus
         /// </summary>
-
+        
         public enum ApplicationStatusEnum
         {
-
+            
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-
+            
             /// <summary>
             /// Enum SubmittedEnum for submitted
             /// </summary>
             [EnumMember(Value = "submitted")]
             SubmittedEnum = 2,
-
+            
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 3,
-
+            
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 4,
-
+            
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 5,
-
+            
             /// <summary>
             /// Enum ReturnedEnum for returned
             /// </summary>
             [EnumMember(Value = "returned")]
             ReturnedEnum = 6,
-
+            
             /// <summary>
             /// Enum RejectedEnum for rejected
             /// </summary>
             [EnumMember(Value = "rejected")]
             RejectedEnum = 7,
-
+            
             /// <summary>
             /// Enum ApprovedEnum for approved
             /// </summary>
             [EnumMember(Value = "approved")]
             ApprovedEnum = 8,
-
+            
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 9,
-
+            
             /// <summary>
             /// Enum PublicizedEnum for publicized
             /// </summary>
             [EnumMember(Value = "publicized")]
             PublicizedEnum = 10,
-
+            
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
             [EnumMember(Value = "archived")]
             ArchivedEnum = 11,
-
+            
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>
@@ -381,7 +381,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>advisor_review</example> */
         [Required]
-        [DataMember(Name = "applicationStatus", EmitDefaultValue = true)]
+        [DataMember(Name="applicationStatus", EmitDefaultValue=true)]
         public ApplicationStatusEnum ApplicationStatus { get; set; }
 
         /// <summary>
@@ -389,35 +389,35 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>审核中</example> */
         [Required]
-        [DataMember(Name = "applicationStatusText", EmitDefaultValue = false)]
+        [DataMember(Name="applicationStatusText", EmitDefaultValue=false)]
         public string ApplicationStatusText { get; set; }
 
 
         /// <summary>
         /// Gets or Sets PublicStatus
         /// </summary>
-
+        
         public enum PublicStatusEnum
         {
-
+            
             /// <summary>
             /// Enum NoneEnum for none
             /// </summary>
             [EnumMember(Value = "none")]
             NoneEnum = 1,
-
+            
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 2,
-
+            
             /// <summary>
             /// Enum PublicizedEnum for publicized
             /// </summary>
             [EnumMember(Value = "publicized")]
             PublicizedEnum = 3,
-
+            
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>
@@ -430,7 +430,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>none</example> */
         [Required]
-        [DataMember(Name = "publicStatus", EmitDefaultValue = true)]
+        [DataMember(Name="publicStatus", EmitDefaultValue=true)]
         public PublicStatusEnum PublicStatus { get; set; }
 
         /// <summary>
@@ -438,73 +438,73 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "reviewRound", EmitDefaultValue = true)]
+        [DataMember(Name="reviewRound", EmitDefaultValue=true)]
         public int ReviewRound { get; set; }
 
         /// <summary>
         /// Gets or Sets FinalAwardScore
         /// </summary>
         /* <example>20</example> */
-        [DataMember(Name = "finalAwardScore", EmitDefaultValue = true)]
+        [DataMember(Name="finalAwardScore", EmitDefaultValue=true)]
         public decimal? FinalAwardScore { get; set; }
 
         /// <summary>
         /// Gets or Sets FinalAmount
         /// </summary>
         /* <example>500</example> */
-        [DataMember(Name = "finalAmount", EmitDefaultValue = true)]
+        [DataMember(Name="finalAmount", EmitDefaultValue=true)]
         public decimal? FinalAmount { get; set; }
 
         /// <summary>
         /// Gets or Sets SubmittedAt
         /// </summary>
-        [DataMember(Name = "submittedAt", EmitDefaultValue = true)]
+        [DataMember(Name="submittedAt", EmitDefaultValue=true)]
         public DateTime? SubmittedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ApprovedAt
         /// </summary>
-        [DataMember(Name = "approvedAt", EmitDefaultValue = true)]
+        [DataMember(Name="approvedAt", EmitDefaultValue=true)]
         public DateTime? ApprovedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicizedAt
         /// </summary>
-        [DataMember(Name = "publicizedAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicizedAt", EmitDefaultValue=true)]
         public DateTime? PublicizedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ArchivedAt
         /// </summary>
-        [DataMember(Name = "archivedAt", EmitDefaultValue = true)]
+        [DataMember(Name="archivedAt", EmitDefaultValue=true)]
         public DateTime? ArchivedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "createdAt", EmitDefaultValue = true)]
+        [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets UpdatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "updatedAt", EmitDefaultValue = true)]
+        [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ReviewRecords
         /// </summary>
         [Required]
-        [DataMember(Name = "reviewRecords", EmitDefaultValue = false)]
+        [DataMember(Name="reviewRecords", EmitDefaultValue=false)]
         public List<AwardReviewRecord> ReviewRecords { get; set; }
 
         /// <summary>
         /// Gets or Sets Attachments
         /// </summary>
         [Required]
-        [DataMember(Name = "attachments", EmitDefaultValue = false)]
+        [DataMember(Name="attachments", EmitDefaultValue=false)]
         public List<AwardAttachmentRecord> Attachments { get; set; }
 
     }

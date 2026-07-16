@@ -19,19 +19,19 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 社团评奖评优奖项配置，对应学校奖学金系统里的奖种详情，但按社团维度管理。
     /// </summary>
     [DataContract]
-    public partial class AwardSchemeRecord
+    public partial class AwardSchemeRecord 
     {
         /// <summary>
         /// Gets or Sets AwardSchemeId
         /// </summary>
         /* <example>9001</example> */
         [Required]
-        [DataMember(Name = "awardSchemeId", EmitDefaultValue = true)]
+        [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>1</example> */
         [Required]
-        [DataMember(Name = "clubId", EmitDefaultValue = true)]
+        [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>计算机协会</example> */
         [Required]
-        [DataMember(Name = "clubName", EmitDefaultValue = false)]
+        [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
@@ -55,41 +55,41 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>优秀社团干部</example> */
         [Required]
-        [DataMember(Name = "awardName", EmitDefaultValue = false)]
+        [DataMember(Name="awardName", EmitDefaultValue=false)]
         public string AwardName { get; set; }
 
 
         /// <summary>
         /// Gets or Sets AwardCategory
         /// </summary>
-
+        
         public enum AwardCategoryEnum
         {
-
+            
             /// <summary>
             /// Enum HonorEnum for honor
             /// </summary>
             [EnumMember(Value = "honor")]
             HonorEnum = 1,
-
+            
             /// <summary>
             /// Enum ScholarshipEnum for scholarship
             /// </summary>
             [EnumMember(Value = "scholarship")]
             ScholarshipEnum = 2,
-
+            
             /// <summary>
             /// Enum CompetitionEnum for competition
             /// </summary>
             [EnumMember(Value = "competition")]
             CompetitionEnum = 3,
-
+            
             /// <summary>
             /// Enum ServiceEnum for service
             /// </summary>
             [EnumMember(Value = "service")]
             ServiceEnum = 4,
-
+            
             /// <summary>
             /// Enum OtherEnum for other
             /// </summary>
@@ -102,7 +102,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>honor</example> */
         [Required]
-        [DataMember(Name = "awardCategory", EmitDefaultValue = true)]
+        [DataMember(Name="awardCategory", EmitDefaultValue=true)]
         public AwardCategoryEnum AwardCategory { get; set; }
 
         /// <summary>
@@ -110,35 +110,35 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>2025-2026学年</example> */
         [Required]
-        [DataMember(Name = "academicYear", EmitDefaultValue = false)]
+        [DataMember(Name="academicYear", EmitDefaultValue=false)]
         public string AcademicYear { get; set; }
 
         /// <summary>
         /// Gets or Sets TermName
         /// </summary>
         /* <example>春季</example> */
-        [DataMember(Name = "termName", EmitDefaultValue = true)]
+        [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
         /// Gets or Sets SponsorUnit
         /// </summary>
         /* <example>同济大学团委</example> */
-        [DataMember(Name = "sponsorUnit", EmitDefaultValue = true)]
+        [DataMember(Name="sponsorUnit", EmitDefaultValue=true)]
         public string? SponsorUnit { get; set; }
 
         /// <summary>
         /// Gets or Sets RewardLevel
         /// </summary>
         /* <example>校级</example> */
-        [DataMember(Name = "rewardLevel", EmitDefaultValue = true)]
+        [DataMember(Name="rewardLevel", EmitDefaultValue=true)]
         public string? RewardLevel { get; set; }
 
         /// <summary>
         /// Gets or Sets FundingSource
         /// </summary>
         /* <example>社团专项经费</example> */
-        [DataMember(Name = "fundingSource", EmitDefaultValue = true)]
+        [DataMember(Name="fundingSource", EmitDefaultValue=true)]
         public string? FundingSource { get; set; }
 
         /// <summary>
@@ -147,7 +147,7 @@ namespace Org.OpenAPITools.Models
         /* <example>true</example> */
         [JsonRequired]
         [Required]
-        [DataMember(Name = "isRanked", EmitDefaultValue = true)]
+        [DataMember(Name="isRanked", EmitDefaultValue=true)]
         public bool IsRanked { get; set; }
 
         /// <summary>
@@ -156,85 +156,85 @@ namespace Org.OpenAPITools.Models
         /* <example>true</example> */
         [JsonRequired]
         [Required]
-        [DataMember(Name = "isFixedAmount", EmitDefaultValue = true)]
+        [DataMember(Name="isFixedAmount", EmitDefaultValue=true)]
         public bool IsFixedAmount { get; set; }
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
         /* <example>面向本学期在社团运营中表现突出的成员。</example> */
-        [DataMember(Name = "description", EmitDefaultValue = true)]
+        [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets MaterialDescription
         /// </summary>
         /* <example>需提交个人总结、活动组织证明和负责人推荐意见。</example> */
-        [DataMember(Name = "materialDescription", EmitDefaultValue = true)]
+        [DataMember(Name="materialDescription", EmitDefaultValue=true)]
         public string? MaterialDescription { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicationStartAt
         /// </summary>
-        [DataMember(Name = "applicationStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="applicationStartAt", EmitDefaultValue=true)]
         public DateTime? ApplicationStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets ApplicationEndAt
         /// </summary>
-        [DataMember(Name = "applicationEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="applicationEndAt", EmitDefaultValue=true)]
         public DateTime? ApplicationEndAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityStartAt
         /// </summary>
-        [DataMember(Name = "publicityStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityEndAt
         /// </summary>
-        [DataMember(Name = "publicityEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
 
         /// <summary>
         /// Gets or Sets SchemeStatus
         /// </summary>
-
+        
         public enum SchemeStatusEnum
         {
-
+            
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-
+            
             /// <summary>
             /// Enum OpenEnum for open
             /// </summary>
             [EnumMember(Value = "open")]
             OpenEnum = 2,
-
+            
             /// <summary>
             /// Enum ReviewingEnum for reviewing
             /// </summary>
             [EnumMember(Value = "reviewing")]
             ReviewingEnum = 3,
-
+            
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 4,
-
+            
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
             [EnumMember(Value = "archived")]
             ArchivedEnum = 5,
-
+            
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>
@@ -247,7 +247,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>open</example> */
         [Required]
-        [DataMember(Name = "schemeStatus", EmitDefaultValue = true)]
+        [DataMember(Name="schemeStatus", EmitDefaultValue=true)]
         public SchemeStatusEnum SchemeStatus { get; set; }
 
         /// <summary>
@@ -255,41 +255,41 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>开放申请</example> */
         [Required]
-        [DataMember(Name = "schemeStatusText", EmitDefaultValue = false)]
+        [DataMember(Name="schemeStatusText", EmitDefaultValue=false)]
         public string SchemeStatusText { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedByUserId
         /// </summary>
-        [DataMember(Name = "createdByUserId", EmitDefaultValue = true)]
+        [DataMember(Name="createdByUserId", EmitDefaultValue=true)]
         public int? CreatedByUserId { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedByName
         /// </summary>
         /* <example>王社长</example> */
-        [DataMember(Name = "createdByName", EmitDefaultValue = true)]
+        [DataMember(Name="createdByName", EmitDefaultValue=true)]
         public string? CreatedByName { get; set; }
 
         /// <summary>
         /// Gets or Sets CreatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "createdAt", EmitDefaultValue = true)]
+        [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets UpdatedAt
         /// </summary>
         [Required]
-        [DataMember(Name = "updatedAt", EmitDefaultValue = true)]
+        [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
         /// Gets or Sets Levels
         /// </summary>
         [Required]
-        [DataMember(Name = "levels", EmitDefaultValue = false)]
+        [DataMember(Name="levels", EmitDefaultValue=false)]
         public List<AwardLevelRecord> Levels { get; set; }
 
     }

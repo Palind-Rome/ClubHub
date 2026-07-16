@@ -18,38 +18,38 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 创建评奖评优公示批次。
     /// </summary>
     [DataContract]
-    public partial class CreateAwardPublicityBatchRequest
+    public partial class CreateAwardPublicityBatchRequest 
     {
         /// <summary>
         /// Gets or Sets Title
         /// </summary>
         /* <example>2025-2026学年春季优秀社团干部拟获奖名单公示</example> */
         [Required]
-        [StringLength(255, MinimumLength = 1)]
-        [DataMember(Name = "title", EmitDefaultValue = false)]
+        [StringLength(255, MinimumLength=1)]
+        [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
-        [DataMember(Name = "description", EmitDefaultValue = true)]
+        [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityStartAt
         /// </summary>
-        [DataMember(Name = "publicityStartAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
         /// Gets or Sets PublicityEndAt
         /// </summary>
-        [DataMember(Name = "publicityEndAt", EmitDefaultValue = true)]
+        [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Org.OpenAPITools.Models
         /// <value>纳入公示的已通过申请 ID。</value>
         /* <example>[70001,70002]</example> */
         [Required]
-        [DataMember(Name = "awardApplicationIds", EmitDefaultValue = false)]
+        [DataMember(Name="awardApplicationIds", EmitDefaultValue=false)]
         public List<int> AwardApplicationIds { get; set; }
 
     }

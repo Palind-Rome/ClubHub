@@ -18,19 +18,19 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{
+{ 
     /// <summary>
     /// 创建评奖评优申请或负责人推荐。
     /// </summary>
     [DataContract]
-    public partial class CreateAwardApplicationRequest
+    public partial class CreateAwardApplicationRequest 
     {
         /// <summary>
         /// Gets or Sets AwardSchemeId
         /// </summary>
         /* <example>9001</example> */
         [Required]
-        [DataMember(Name = "awardSchemeId", EmitDefaultValue = true)]
+        [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>10001</example> */
         [Required]
-        [DataMember(Name = "awardLevelId", EmitDefaultValue = true)]
+        [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
@@ -47,23 +47,23 @@ namespace Org.OpenAPITools.Models
         /// <value>被推荐或申请的社团成员用户 ID。</value>
         /* <example>12</example> */
         [Required]
-        [DataMember(Name = "applicantUserId", EmitDefaultValue = true)]
+        [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
         public int ApplicantUserId { get; set; }
 
 
         /// <summary>
         /// Gets or Sets ApplicationType
         /// </summary>
-
+        
         public enum ApplicationTypeEnum
         {
-
+            
             /// <summary>
             /// Enum SelfEnum for self
             /// </summary>
             [EnumMember(Value = "self")]
             SelfEnum = 1,
-
+            
             /// <summary>
             /// Enum RecommendationEnum for recommendation
             /// </summary>
@@ -76,7 +76,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /* <example>self</example> */
         [Required]
-        [DataMember(Name = "applicationType", EmitDefaultValue = true)]
+        [DataMember(Name="applicationType", EmitDefaultValue=true)]
         public ApplicationTypeEnum ApplicationType { get; set; } = ApplicationTypeEnum.SelfEnum;
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace Org.OpenAPITools.Models
         /* <example>本学期组织多次技术分享并负责核心项目推进。</example> */
         [Required]
         [MinLength(1)]
-        [DataMember(Name = "applicationReason", EmitDefaultValue = false)]
+        [DataMember(Name="applicationReason", EmitDefaultValue=false)]
         public string ApplicationReason { get; set; }
 
         /// <summary>
@@ -94,14 +94,14 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>申请材料入口；后续可拆为附件表多条记录。</value>
         /* <example>/uploads/awards/summary.pdf</example> */
-        [DataMember(Name = "materialUrl", EmitDefaultValue = true)]
+        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
         public string? MaterialUrl { get; set; }
 
         /// <summary>
         /// 是否创建后立即提交到负责人初审。
         /// </summary>
         /// <value>是否创建后立即提交到负责人初审。</value>
-        [DataMember(Name = "submitNow", EmitDefaultValue = true)]
+        [DataMember(Name="submitNow", EmitDefaultValue=true)]
         public bool? SubmitNow { get; set; } = false;
 
     }
