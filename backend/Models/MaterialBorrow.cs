@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -188,6 +189,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>Whether an active borrow is past its expected return time.</value>
         /* <example>false</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="overdue", EmitDefaultValue=true)]
         public bool Overdue { get; set; }
