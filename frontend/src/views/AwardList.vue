@@ -1482,16 +1482,62 @@ onUnmounted(() => {
             <strong>奖项等级</strong>
             <el-button size="small" :icon="Plus" @click="addAwardLevel">新增等级</el-button>
           </div>
-          <div v-for="(level, index) in schemeForm.levels" :key="index" class="level-row">
-            <el-input v-model="level.levelName" placeholder="等级名称" />
-            <el-input-number v-model="level.awardScore" :min="0" :max="100" :precision="1" />
-            <el-input-number v-model="level.amount" :min="0" :precision="2" placeholder="金额" />
-            <el-input-number v-model="level.quota" :min="0" :precision="0" placeholder="名额" />
-            <el-select v-model="level.levelStatus">
-              <el-option label="启用" value="active" />
-              <el-option label="停用" value="inactive" />
-            </el-select>
-            <el-button :icon="Close" @click="removeAwardLevel(index)" />
+          <div class="level-list">
+            <div v-for="(level, index) in schemeForm.levels" :key="index" class="level-card">
+              <div class="level-card-head">
+                <span class="level-card-title">等级 {{ index + 1 }}</span>
+                <el-button
+                  text
+                  type="danger"
+                  :icon="Close"
+                  :disabled="schemeForm.levels.length <= 1"
+                  @click="removeAwardLevel(index)"
+                />
+              </div>
+              <div class="level-fields">
+                <div class="field-block level-name-field">
+                  <span class="field-label">等级名称</span>
+                  <el-input v-model="level.levelName" placeholder="如：一等奖" />
+                </div>
+                <div class="field-block">
+                  <span class="field-label">奖项分</span>
+                  <el-input-number
+                    v-model="level.awardScore"
+                    controls-position="right"
+                    :min="0"
+                    :max="100"
+                    :precision="1"
+                  />
+                </div>
+                <div class="field-block">
+                  <span class="field-label">奖励金额</span>
+                  <el-input-number
+                    v-model="level.amount"
+                    controls-position="right"
+                    :min="0"
+                    :precision="2"
+                    placeholder="金额"
+                  />
+                </div>
+                <div class="field-block">
+                  <span class="field-label">名额</span>
+                  <el-input-number
+                    v-model="level.quota"
+                    controls-position="right"
+                    :min="0"
+                    :precision="0"
+                    placeholder="名额"
+                  />
+                </div>
+                <div class="field-block">
+                  <span class="field-label">状态</span>
+                  <el-select v-model="level.levelStatus">
+                    <el-option label="启用" value="active" />
+                    <el-option label="停用" value="inactive" />
+                  </el-select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1863,11 +1909,57 @@ onUnmounted(() => {
   margin-bottom: 8px;
 }
 
-.level-row {
+.level-list {
   display: grid;
-  grid-template-columns: 1.2fr 120px 120px 120px 100px 42px;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.level-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 12px;
+}
+
+.level-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.level-card-title {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.level-fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.35fr) repeat(3, minmax(118px, 0.8fr)) minmax(
+      110px,
+      0.65fr
+    );
+  gap: 10px 12px;
+}
+
+.field-block {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.field-block :deep(.el-input-number),
+.field-block :deep(.el-select) {
+  width: 100%;
 }
 
 .review-timeline {
@@ -1884,7 +1976,7 @@ onUnmounted(() => {
 
   .summary-strip,
   .form-grid,
-  .level-row {
+  .level-fields {
     grid-template-columns: 1fr;
   }
 
