@@ -1,0 +1,9 @@
+export const MATERIAL_BORROW_USE_PERMISSION = "material:borrow:use";
+export const MATERIAL_BORROW_RECORD_PERMISSION = "material:borrow:record";
+export const MATERIAL_INVENTORY_MANAGE_PERMISSION = "material:inventory:manage";
+
+export const MATERIAL_ACCESS_PERMISSIONS = [
+  MATERIAL_BORROW_USE_PERMISSION,
+  MATERIAL_BORROW_RECORD_PERMISSION,
+  MATERIAL_INVENTORY_MANAGE_PERMISSION,
+] as const;

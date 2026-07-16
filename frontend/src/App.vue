@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
+import { MATERIAL_ACCESS_PERMISSIONS } from "./materialPermissions";
 
 const healthOk = ref(false);
 const healthChecking = ref(false);
@@ -53,6 +54,13 @@ const canAccessVenueReservations = computed(() => {
     permissions.includes("*") ||
     permissions.includes("venue:reserve") ||
     permissions.includes("venue:review")
+  );
+});
+const canAccessMaterialBorrows = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    MATERIAL_ACCESS_PERMISSIONS.some((permission) => permissions.includes(permission))
   );
 });
 
@@ -117,6 +125,7 @@ onUnmounted(() => {
           场地预约
         </el-menu-item>
         <el-menu-item index="/learning">学习中心</el-menu-item>
+        <el-menu-item v-if="canAccessMaterialBorrows" index="/materials"> 物资借还 </el-menu-item>
       </el-menu>
       <div class="header-actions">
         <div class="session">

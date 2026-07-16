@@ -57,6 +57,11 @@ import {
   AuthResponseToJSON,
 } from "../models/AuthResponse";
 import {
+  type BorrowMaterialRequest,
+  BorrowMaterialRequestFromJSON,
+  BorrowMaterialRequestToJSON,
+} from "../models/BorrowMaterialRequest";
+import {
   type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
@@ -132,6 +137,11 @@ import {
   CreateLearningItemRequestFromJSON,
   CreateLearningItemRequestToJSON,
 } from "../models/CreateLearningItemRequest";
+import {
+  type CreateMaterialRequest,
+  CreateMaterialRequestFromJSON,
+  CreateMaterialRequestToJSON,
+} from "../models/CreateMaterialRequest";
 import {
   type CreateNoticeRequest,
   CreateNoticeRequestFromJSON,
@@ -232,6 +242,12 @@ import {
   MarkNoticeReadRequestFromJSON,
   MarkNoticeReadRequestToJSON,
 } from "../models/MarkNoticeReadRequest";
+import { type Material, MaterialFromJSON, MaterialToJSON } from "../models/Material";
+import {
+  type MaterialBorrow,
+  MaterialBorrowFromJSON,
+  MaterialBorrowToJSON,
+} from "../models/MaterialBorrow";
 import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
 import {
   type NoticeReadResult,
@@ -271,6 +287,11 @@ import {
   RecruitmentApplicationFromJSON,
   RecruitmentApplicationToJSON,
 } from "../models/RecruitmentApplication";
+import {
+  type RegisterMaterialDamageRequest,
+  RegisterMaterialDamageRequestFromJSON,
+  RegisterMaterialDamageRequestToJSON,
+} from "../models/RegisterMaterialDamageRequest";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -387,6 +408,11 @@ import {
   UpdateLearningProgressRequestToJSON,
 } from "../models/UpdateLearningProgressRequest";
 import {
+  type UpdateMaterialRequest,
+  UpdateMaterialRequestFromJSON,
+  UpdateMaterialRequestToJSON,
+} from "../models/UpdateMaterialRequest";
+import {
   type UpdateProjectTaskProgressRequest,
   UpdateProjectTaskProgressRequestFromJSON,
   UpdateProjectTaskProgressRequestToJSON,
@@ -436,6 +462,10 @@ export interface AssignProjectLeaderOperationRequest {
 
 export interface AssignUserRoleRequest {
   assignRoleRequest: AssignRoleRequest;
+}
+
+export interface BorrowMaterialOperationRequest {
+  borrowMaterialRequest: BorrowMaterialRequest;
 }
 
 export interface CancelLearningEnrollmentRequest {
@@ -500,6 +530,10 @@ export interface CreateLearningItemOperationRequest {
   createLearningItemRequest: CreateLearningItemRequest;
 }
 
+export interface CreateMaterialOperationRequest {
+  createMaterialRequest: CreateMaterialRequest;
+}
+
 export interface CreateNoticeOperationRequest {
   createNoticeRequest: CreateNoticeRequest;
 }
@@ -528,6 +562,11 @@ export interface CreateVenueOperationRequest {
 
 export interface CreateVenueReservationOperationRequest {
   createVenueReservationRequest: CreateVenueReservationRequest;
+}
+
+export interface DamageMaterialBorrowRequest {
+  borrowId: number;
+  registerMaterialDamageRequest: RegisterMaterialDamageRequest;
 }
 
 export interface DeleteLearningResourceRequest {
@@ -640,6 +679,18 @@ export interface GetLearningRecordsRequest {
 
 export interface GetLearningResourceFileRequest {
   itemId: number;
+}
+
+export interface GetMaterialBorrowsRequest {
+  clubId?: number;
+  materialId?: number;
+  borrowerUserId?: number;
+  status?: GetMaterialBorrowsStatusEnum;
+}
+
+export interface GetMaterialsRequest {
+  clubId?: number;
+  status?: GetMaterialsStatusEnum;
 }
 
 export interface GetNoticesRequest {
@@ -757,6 +808,10 @@ export interface ResubmitClubApplicationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
+export interface ReturnMaterialBorrowRequest {
+  borrowId: number;
+}
+
 export interface ReviewActivityOperationRequest {
   activityId: number;
   reviewActivityRequest: ReviewActivityRequest;
@@ -866,6 +921,11 @@ export interface UpdateLearningItemOperationRequest {
 export interface UpdateLearningProgressOperationRequest {
   recordId: number;
   updateLearningProgressRequest: UpdateLearningProgressRequest;
+}
+
+export interface UpdateMaterialOperationRequest {
+  materialId: number;
+  updateMaterialRequest: UpdateMaterialRequest;
 }
 
 export interface UpdateProjectTaskProgressOperationRequest {
@@ -1173,6 +1233,69 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RoleAssignmentResult> {
     const response = await this.assignUserRoleRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for borrowMaterial without sending the request
+   */
+  async borrowMaterialRequestOpts(
+    requestParameters: BorrowMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "borrowMaterialRequest",
+        'Required parameter "borrowMaterialRequest" was null or undefined when calling borrowMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: BorrowMaterialRequestToJSON(requestParameters["borrowMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Register a material borrow
+   */
+  async borrowMaterialRaw(
+    requestParameters: BorrowMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.borrowMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register a material borrow
+   */
+  async borrowMaterial(
+    requestParameters: BorrowMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.borrowMaterialRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2057,6 +2180,69 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createMaterial without sending the request
+   */
+  async createMaterialRequestOpts(
+    requestParameters: CreateMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createMaterialRequest",
+        'Required parameter "createMaterialRequest" was null or undefined when calling createMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateMaterialRequestToJSON(requestParameters["createMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Create an activity material
+   */
+  async createMaterialRaw(
+    requestParameters: CreateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Material>> {
+    const requestOptions = await this.createMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialFromJSON(jsonValue));
+  }
+
+  /**
+   * Create an activity material
+   */
+  async createMaterial(
+    requestParameters: CreateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Material> {
+    const response = await this.createMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createNotice without sending the request
    */
   async createNoticeRequestOpts(
@@ -2494,6 +2680,80 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<VenueReservation> {
     const response = await this.createVenueReservationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for damageMaterialBorrow without sending the request
+   */
+  async damageMaterialBorrowRequestOpts(
+    requestParameters: DamageMaterialBorrowRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowId"] == null) {
+      throw new runtime.RequiredError(
+        "borrowId",
+        'Required parameter "borrowId" was null or undefined when calling damageMaterialBorrow().',
+      );
+    }
+
+    if (requestParameters["registerMaterialDamageRequest"] == null) {
+      throw new runtime.RequiredError(
+        "registerMaterialDamageRequest",
+        'Required parameter "registerMaterialDamageRequest" was null or undefined when calling damageMaterialBorrow().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows/{borrowId}/damage`;
+    urlPath = urlPath.replace(
+      "{borrowId}",
+      encodeURIComponent(String(requestParameters["borrowId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterMaterialDamageRequestToJSON(requestParameters["registerMaterialDamageRequest"]),
+    };
+  }
+
+  /**
+   * Register material damage
+   */
+  async damageMaterialBorrowRaw(
+    requestParameters: DamageMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.damageMaterialBorrowRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register material damage
+   */
+  async damageMaterialBorrow(
+    requestParameters: DamageMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.damageMaterialBorrowRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4057,6 +4317,138 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Blob> {
     const response = await this.getLearningResourceFileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getMaterialBorrows without sending the request
+   */
+  async getMaterialBorrowsRequestOpts(
+    requestParameters: GetMaterialBorrowsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["materialId"] != null) {
+      queryParameters["materialId"] = requestParameters["materialId"];
+    }
+
+    if (requestParameters["borrowerUserId"] != null) {
+      queryParameters["borrowerUserId"] = requestParameters["borrowerUserId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * List material borrow records
+   */
+  async getMaterialBorrowsRaw(
+    requestParameters: GetMaterialBorrowsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<MaterialBorrow>>> {
+    const requestOptions = await this.getMaterialBorrowsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(MaterialBorrowFromJSON),
+    );
+  }
+
+  /**
+   * List material borrow records
+   */
+  async getMaterialBorrows(
+    requestParameters: GetMaterialBorrowsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<MaterialBorrow>> {
+    const response = await this.getMaterialBorrowsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getMaterials without sending the request
+   */
+  async getMaterialsRequestOpts(
+    requestParameters: GetMaterialsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * List activity materials
+   */
+  async getMaterialsRaw(
+    requestParameters: GetMaterialsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Material>>> {
+    const requestOptions = await this.getMaterialsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MaterialFromJSON));
+  }
+
+  /**
+   * List activity materials
+   */
+  async getMaterials(
+    requestParameters: GetMaterialsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Material>> {
+    const response = await this.getMaterialsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5732,6 +6124,70 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for returnMaterialBorrow without sending the request
+   */
+  async returnMaterialBorrowRequestOpts(
+    requestParameters: ReturnMaterialBorrowRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowId"] == null) {
+      throw new runtime.RequiredError(
+        "borrowId",
+        'Required parameter "borrowId" was null or undefined when calling returnMaterialBorrow().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows/{borrowId}/return`;
+    urlPath = urlPath.replace(
+      "{borrowId}",
+      encodeURIComponent(String(requestParameters["borrowId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * Register material return
+   */
+  async returnMaterialBorrowRaw(
+    requestParameters: ReturnMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.returnMaterialBorrowRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register material return
+   */
+  async returnMaterialBorrow(
+    requestParameters: ReturnMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.returnMaterialBorrowRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewActivity without sending the request
    */
   async reviewActivityRequestOpts(
@@ -7271,6 +7727,80 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateMaterial without sending the request
+   */
+  async updateMaterialRequestOpts(
+    requestParameters: UpdateMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["materialId"] == null) {
+      throw new runtime.RequiredError(
+        "materialId",
+        'Required parameter "materialId" was null or undefined when calling updateMaterial().',
+      );
+    }
+
+    if (requestParameters["updateMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateMaterialRequest",
+        'Required parameter "updateMaterialRequest" was null or undefined when calling updateMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials/{materialId}`;
+    urlPath = urlPath.replace(
+      "{materialId}",
+      encodeURIComponent(String(requestParameters["materialId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateMaterialRequestToJSON(requestParameters["updateMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Update an activity material
+   */
+  async updateMaterialRaw(
+    requestParameters: UpdateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Material>> {
+    const requestOptions = await this.updateMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialFromJSON(jsonValue));
+  }
+
+  /**
+   * Update an activity material
+   */
+  async updateMaterial(
+    requestParameters: UpdateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Material> {
+    const response = await this.updateMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateProjectTaskProgress without sending the request
    */
   async updateProjectTaskProgressRequestOpts(
@@ -7698,6 +8228,25 @@ export const GetClubEvaluationsEvaluationTypeEnum = {
 } as const;
 export type GetClubEvaluationsEvaluationTypeEnum =
   (typeof GetClubEvaluationsEvaluationTypeEnum)[keyof typeof GetClubEvaluationsEvaluationTypeEnum];
+/**
+ * @export
+ */
+export const GetMaterialBorrowsStatusEnum = {
+  Borrowed: "borrowed",
+  Returned: "returned",
+  Damaged: "damaged",
+} as const;
+export type GetMaterialBorrowsStatusEnum =
+  (typeof GetMaterialBorrowsStatusEnum)[keyof typeof GetMaterialBorrowsStatusEnum];
+/**
+ * @export
+ */
+export const GetMaterialsStatusEnum = {
+  Active: "active",
+  Disabled: "disabled",
+} as const;
+export type GetMaterialsStatusEnum =
+  (typeof GetMaterialsStatusEnum)[keyof typeof GetMaterialsStatusEnum];
 /**
  * @export
  */

@@ -3781,6 +3781,366 @@ paths:
           description: 当前用户无权更新该学习记录。
         "404":
           description: 学习记录或当前用户不存在。
+  /api/materials:
+    get:
+      summary: List activity materials
+      operationId: getMaterials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, disabled]
+      responses:
+        "200":
+          description: Materials visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material status (`material_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Create an activity material
+      operationId: createMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMaterialRequest"
+      responses:
+        "201":
+          description: Material created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/materials/{materialId}:
+    put:
+      summary: Update an activity material
+      operationId: updateMaterial
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: materialId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMaterialRequest"
+      responses:
+        "200":
+          description: Material updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material inventory permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows:
+    get:
+      summary: List material borrow records
+      operationId: getMaterialBorrows
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: materialId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: borrowerUserId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [borrowed, returned, damaged]
+      responses:
+        "200":
+          description: Borrow records visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow status (`borrow_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Register a material borrow
+      operationId: borrowMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowMaterialRequest"
+      responses:
+        "201":
+          description: Borrow registered and available quantity reduced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Material or borrower not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Available stock is insufficient (`material_stock_not_enough`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/return:
+    post:
+      summary: Register material return
+      operationId: returnMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Return registered and available quantity restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Borrow record is not in borrowed status (`borrow_status_not_borrowed`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record or material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent borrow write conflict (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/damage:
+    post:
+      summary: Register material damage
+      operationId: damageMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMaterialDamageRequest"
+      responses:
+        "200":
+          description: Damage registered with compensation amount.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid damage payload (`damage_description_required`, `compensation_amount_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Borrow status changed (`borrow_status_changed`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -6587,6 +6947,348 @@ components:
           maxLength: 255
       required:
         - approved
+
+    Material:
+      type: object
+      description: A club-owned material and its current inventory balance.
+      example:
+        id: 101
+        clubId: 1
+        clubName: 摄影社
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 10
+        availableQuantity: 7
+        borrowedQuantity: 3
+        storageLocation: 学生活动中心 A102
+        status: active
+        createdAt: "2026-07-13T02:00:00Z"
+      properties:
+        id:
+          type: integer
+          description: Material identifier in MATERIALS.MATERIAL_ID.
+          example: 101
+        clubId:
+          type: integer
+          description: Club that owns the material.
+          example: 1
+        clubName:
+          type: string
+          description: Display name of the owning club.
+          example: 摄影社
+        name:
+          type: string
+          description: Material name.
+          example: 无线麦克风
+        specification:
+          type: string
+          description: Optional model or specification.
+          example: UHF 双通道
+          nullable: true
+        totalQuantity:
+          type: integer
+          description: Total registered inventory quantity.
+          example: 10
+        availableQuantity:
+          type: integer
+          description: Quantity currently available to borrow.
+          example: 7
+        borrowedQuantity:
+          type: integer
+          description: Quantity currently checked out.
+          example: 3
+        storageLocation:
+          type: string
+          description: Optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+        status:
+          type: string
+          description: Whether the material is available for new borrows.
+          enum: [active, disabled]
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: Material creation time in UTC.
+          example: "2026-07-13T02:00:00Z"
+      required:
+        - id
+        - clubId
+        - clubName
+        - name
+        - totalQuantity
+        - availableQuantity
+        - borrowedQuantity
+        - status
+        - createdAt
+
+    MaterialBorrow:
+      type: object
+      description: A material borrow record, including return or damage outcome.
+      example:
+        id: 501
+        materialId: 101
+        materialName: 无线麦克风
+        clubId: 1
+        clubName: 摄影社
+        borrowerUserId: 2350007
+        borrowerName: 张国雄
+        quantity: 2
+        borrowAt: "2026-07-13T02:00:00Z"
+        expectedReturnAt: "2026-07-20T02:00:00Z"
+        status: borrowed
+        compensationAmount: 0
+        overdue: false
+      properties:
+        id:
+          type: integer
+          description: Borrow record identifier in MATERIAL_BORROWS.BORROW_ID.
+          example: 501
+        materialId:
+          type: integer
+          description: Borrowed material identifier.
+          example: 101
+        materialName:
+          type: string
+          description: Borrowed material display name.
+          example: 无线麦克风
+        specification:
+          type: string
+          description: Material specification captured for display.
+          example: UHF 双通道
+          nullable: true
+        clubId:
+          type: integer
+          description: Club responsible for the borrow record.
+          example: 1
+        clubName:
+          type: string
+          description: Display name of the responsible club.
+          example: 摄影社
+        borrowerUserId:
+          type: integer
+          description: User who borrowed the material.
+          example: 2350007
+        borrowerName:
+          type: string
+          description: Borrower display name.
+          example: 张国雄
+          nullable: true
+        quantity:
+          type: integer
+          description: Borrowed quantity.
+          example: 2
+        borrowAt:
+          type: string
+          format: date-time
+          description: Borrow registration time in UTC.
+          example: "2026-07-13T02:00:00Z"
+        expectedReturnAt:
+          type: string
+          format: date-time
+          description: Expected return time in UTC.
+          example: "2026-07-20T02:00:00Z"
+          nullable: true
+        returnAt:
+          type: string
+          format: date-time
+          description: Actual completion time for a return or damage registration.
+          example: "2026-07-19T08:30:00Z"
+          nullable: true
+        status:
+          type: string
+          description: Current borrow lifecycle status.
+          enum: [borrowed, returned, damaged]
+          example: borrowed
+        damageDescription:
+          type: string
+          description: Damage details when status is damaged.
+          example: 麦克风网罩变形
+          nullable: true
+        compensationAmount:
+          type: number
+          format: double
+          description: Registered compensation amount in CNY.
+          example: 120
+        overdue:
+          type: boolean
+          description: Whether an active borrow is past its expected return time.
+          example: false
+      required:
+        - id
+        - materialId
+        - materialName
+        - clubId
+        - clubName
+        - borrowerUserId
+        - quantity
+        - borrowAt
+        - status
+        - compensationAmount
+        - overdue
+
+    CreateMaterialRequest:
+      type: object
+      description: Request to register a new material in a manageable club inventory.
+      example:
+        clubId: 1
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 10
+        availableQuantity: 10
+        storageLocation: 学生活动中心 A102
+        status: active
+      properties:
+        clubId:
+          type: integer
+          description: Club that will own the new material.
+          example: 1
+        name:
+          type: string
+          description: Material name.
+          example: 无线麦克风
+          minLength: 1
+          maxLength: 255
+        specification:
+          type: string
+          description: Optional model or specification.
+          example: UHF 双通道
+          nullable: true
+          maxLength: 255
+        totalQuantity:
+          type: integer
+          description: Initial total inventory quantity.
+          example: 10
+          minimum: 1
+        availableQuantity:
+          type: integer
+          description: Initial available quantity; defaults to totalQuantity when omitted.
+          example: 10
+          nullable: true
+          minimum: 0
+        storageLocation:
+          type: string
+          description: Optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+          maxLength: 255
+        status:
+          type: string
+          description: Initial material status.
+          enum: [active, disabled]
+          default: active
+          example: active
+      required:
+        - clubId
+        - name
+        - totalQuantity
+
+    BorrowMaterialRequest:
+      type: object
+      description: Request to register a material borrow without an approval step.
+      example:
+        materialId: 101
+        clubId: 1
+        quantity: 2
+        expectedReturnAt: "2026-07-20T02:00:00Z"
+      properties:
+        materialId:
+          type: integer
+          description: Material to borrow.
+          example: 101
+        clubId:
+          type: integer
+          description: Club that owns the material and borrow record.
+          example: 1
+        quantity:
+          type: integer
+          description: Quantity to borrow; must not exceed available inventory.
+          example: 2
+          minimum: 1
+        expectedReturnAt:
+          type: string
+          format: date-time
+          description: Required return deadline, later than the borrow time and no more than 7 days after it.
+          example: "2026-07-20T02:00:00Z"
+      required:
+        - materialId
+        - clubId
+        - quantity
+        - expectedReturnAt
+
+    UpdateMaterialRequest:
+      type: object
+      description: Request to update a material without changing its owning club.
+      example:
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 12
+        availableQuantity: 9
+        storageLocation: 学生活动中心 A102
+        status: active
+      properties:
+        name:
+          type: string
+          description: Updated material name.
+          example: 无线麦克风
+          minLength: 1
+          maxLength: 255
+        specification:
+          type: string
+          description: Updated optional model or specification.
+          example: UHF 双通道
+          nullable: true
+          maxLength: 255
+        totalQuantity:
+          type: integer
+          description: Updated total inventory quantity.
+          example: 12
+          minimum: 1
+        availableQuantity:
+          type: integer
+          description: Updated available quantity after accounting for checked-out items.
+          example: 9
+          minimum: 0
+        storageLocation:
+          type: string
+          description: Updated optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+          maxLength: 255
+        status:
+          type: string
+          description: Updated material status.
+          enum: [active, disabled]
+          example: active
+      required:
+        - name
+        - totalQuantity
+        - availableQuantity
+        - status
+
+    RegisterMaterialDamageRequest:
+      type: object
+      description: Request to complete an active borrow as damaged and record compensation.
+      example:
+        damageDescription: 麦克风网罩变形
+        compensationAmount: 120
+      properties:
+        damageDescription:
+          type: string
+          description: Required description of the observed damage.
+          example: 麦克风网罩变形
+          minLength: 1
+          maxLength: 255
+        compensationAmount:
+          type: number
+          format: double
+          description: Non-negative compensation amount in CNY.
+          example: 120
+          minimum: 0
+      required:
+        - damageDescription
+        - compensationAmount
 
     Project:
       type: object
