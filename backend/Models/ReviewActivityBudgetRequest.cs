@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -30,6 +31,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>经费审批结果，true 为通过，false 为驳回。</value>
         /* <example>true</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="approved", EmitDefaultValue=true)]
         public bool Approved { get; set; }

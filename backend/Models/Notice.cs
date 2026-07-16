@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -209,6 +210,7 @@ namespace Org.OpenAPITools.Models
         /// 当前查看用户是否已读。
         /// </summary>
         /// <value>当前查看用户是否已读。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="isRead", EmitDefaultValue=true)]
         public bool IsRead { get; set; }

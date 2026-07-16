@@ -181,6 +181,7 @@ watch(projectId, loadWorkspace, { immediate: true });
         <el-tab-pane label="项目任务" name="tasks">
           <ProjectTasksPanel
             :project-id="project.id"
+            :club-id="project.clubId"
             :leader-user-id="project.leaderUserId"
             :project-status="normalizedStatus || null"
           />

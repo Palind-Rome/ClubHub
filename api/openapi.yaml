@@ -2586,6 +2586,193 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/projects/{projectId}/tasks/{taskId}/deliverable:
+    post:
+      summary: 提交项目任务成果
+      description: 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+      operationId: submitProjectTaskDeliverable
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitProjectTaskDeliverableRequest"
+            example:
+              deliverableTitle: 阶段成果报告
+              deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+              deliverableUrl: https://example.com/project/stage-report.pdf
+      responses:
+        "200":
+          description: 项目任务成果已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+              example:
+                id: 2001
+                projectId: 1001
+                assignees:
+                  - userId: 12
+                    displayName: 王同学（2450004）
+                title: 完成阶段成果报告
+                content: 汇总项目执行材料并提交审核。
+                priority: high
+                startDate: "2026-07-15T09:00:00Z"
+                dueDate: "2026-07-20T18:00:00Z"
+                finishDate: null
+                progress: 90
+                taskStatus: in_progress
+                delayReason: null
+                deliverableTitle: 阶段成果报告
+                deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+                deliverableUrl: https://example.com/project/stage-report.pdf
+                deliverableStatus: pending
+                reviewerUserId: null
+                reviewerDisplayName: null
+                reviewComment: null
+                deliverableSubmitterId: 12
+                deliverableSubmitterDisplayName: 王同学（2450004）
+                deliverableSubmittedAt: "2026-07-19T10:00:00Z"
+                deliverableReviewedAt: null
+        "400":
+          description: 成果标题、说明或链接不符合要求
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人或该任务执行人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目状态不允许提交、成果已通过或成果正在审核中
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/deliverable/review:
+    post:
+      summary: 审核项目任务成果
+      description: 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+      operationId: reviewProjectTaskDeliverable
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewProjectTaskDeliverableRequest"
+            example:
+              approved: true
+              reviewComment: 成果完整，同意通过。
+      responses:
+        "200":
+          description: 项目任务成果审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+              example:
+                id: 2001
+                projectId: 1001
+                assignees:
+                  - userId: 12
+                    displayName: 王同学（2450004）
+                title: 完成阶段成果报告
+                content: 汇总项目执行材料并提交审核。
+                priority: high
+                startDate: "2026-07-15T09:00:00Z"
+                dueDate: "2026-07-20T18:00:00Z"
+                finishDate: "2026-07-19T12:00:00Z"
+                progress: 100
+                taskStatus: completed
+                delayReason: null
+                deliverableTitle: 阶段成果报告
+                deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+                deliverableUrl: https://example.com/project/stage-report.pdf
+                deliverableStatus: approved
+                reviewerUserId: 3
+                reviewerDisplayName: 李老师（05001）
+                reviewComment: 成果完整，同意通过。
+                deliverableSubmitterId: 12
+                deliverableSubmitterDisplayName: 王同学（2450004）
+                deliverableSubmittedAt: "2026-07-19T10:00:00Z"
+                deliverableReviewedAt: "2026-07-19T12:00:00Z"
+        "400":
+          description: 审核请求无效，或成果不是待审核状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权审核该任务成果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目状态不允许审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/projects/{projectId}/tasks/{taskId}/progress-reports:
     get:
       summary: 获取项目任务进度提交记录
@@ -6453,6 +6640,10 @@ components:
           description: Optional reviewer comment.
           example: 立项材料完整，同意执行。
           nullable: true
+        canViewTasks:
+          type: boolean
+          description: 当前登录用户是否可以进入该项目的任务空间。
+          example: true
         createdAt:
           type: string
           format: date-time
@@ -6464,6 +6655,7 @@ components:
         - projectName
         - startDate
         - projectStatus
+        - canViewTasks
         - createdAt
 
     CreateProjectRequest:
@@ -6725,6 +6917,62 @@ components:
           description: 延期原因；延期或逾期未完成时必填。
           nullable: true
           example: 供应商报价尚未到齐。
+        deliverableTitle:
+          type: string
+          nullable: true
+          description: 已提交成果标题。
+          example: 阶段成果报告
+        deliverableDesc:
+          type: string
+          nullable: true
+          description: 已提交成果说明。
+        deliverableUrl:
+          type: string
+          nullable: true
+          format: uri
+          pattern: "^https?://.+"
+          maxLength: 255
+          description: 已提交成果链接，仅允许 HTTP 或 HTTPS 地址。
+          example: https://example.com/report.pdf
+        deliverableStatus:
+          type: string
+          enum: [not_submitted, pending, approved, rejected]
+          description: 成果审核状态。
+          example: pending
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审核人用户 ID。
+          example: 3
+        reviewerDisplayName:
+          type: string
+          nullable: true
+          description: 审核人姓名和学号/工号展示。
+          example: 李老师（05001）
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审核意见。
+        deliverableSubmitterId:
+          type: integer
+          nullable: true
+          description: 成果提交人用户 ID。
+          example: 12
+        deliverableSubmitterDisplayName:
+          type: string
+          nullable: true
+          description: 成果提交人姓名和学号/工号展示。
+          example: 王同学（2450004）
+        deliverableSubmittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 成果提交时间。
+        deliverableReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 成果审核时间。
       required:
         - id
         - projectId
@@ -6735,6 +6983,7 @@ components:
         - dueDate
         - progress
         - taskStatus
+        - deliverableStatus
 
     CreateProjectTaskRequest:
       type: object
@@ -6803,6 +7052,50 @@ components:
       required:
         - progress
         - taskStatus
+
+    SubmitProjectTaskDeliverableRequest:
+      type: object
+      description: 提交项目任务成果的请求；提交人由服务端从 Bearer 令牌解析。
+      properties:
+        deliverableTitle:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 成果标题。
+          example: 阶段成果报告
+        deliverableDesc:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: 成果说明。
+          example: 已完成活动策划、物资清单和阶段复盘材料。
+        deliverableUrl:
+          type: string
+          nullable: true
+          format: uri
+          pattern: "^https?://.+"
+          maxLength: 255
+          description: 成果链接，仅允许 HTTP 或 HTTPS 地址。
+          example: https://example.com/report.pdf
+      required:
+        - deliverableTitle
+
+    ReviewProjectTaskDeliverableRequest:
+      type: object
+      description: 审核项目任务成果的请求；审核人由服务端从 Bearer 令牌解析。
+      properties:
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        reviewComment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 审核意见。
+          example: 成果完整，同意通过。
+      required:
+        - approved
 
     ProjectTaskAssignee:
       type: object

@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -312,6 +313,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
         /// </summary>
         /// <value>当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canManage", EmitDefaultValue=true)]
         public bool CanManage { get; set; }
@@ -320,6 +322,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否可加入课程；非课程资源恒为 false。
         /// </summary>
         /// <value>当前用户是否可加入课程；非课程资源恒为 false。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canEnroll", EmitDefaultValue=true)]
         public bool CanEnroll { get; set; }
@@ -328,6 +331,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否可退出课程。
         /// </summary>
         /// <value>当前用户是否可退出课程。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canCancelEnrollment", EmitDefaultValue=true)]
         public bool CanCancelEnrollment { get; set; }
@@ -343,6 +347,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否可开始或继续学习非课程资源。
         /// </summary>
         /// <value>当前用户是否可开始或继续学习非课程资源。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canStartLearning", EmitDefaultValue=true)]
         public bool CanStartLearning { get; set; }
@@ -358,6 +363,7 @@ namespace Org.OpenAPITools.Models
         /// 当前用户是否可通过下载接口获取文件地址。
         /// </summary>
         /// <value>当前用户是否可通过下载接口获取文件地址。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canDownload", EmitDefaultValue=true)]
         public bool CanDownload { get; set; }

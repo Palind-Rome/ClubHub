@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -80,6 +81,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets CanSubmitClubApplication
         /// </summary>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canSubmitClubApplication", EmitDefaultValue=true)]
         public bool CanSubmitClubApplication { get; set; }
@@ -87,6 +89,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets CanReviewClubApplication
         /// </summary>
+        [JsonRequired]
         [Required]
         [DataMember(Name="canReviewClubApplication", EmitDefaultValue=true)]
         public bool CanReviewClubApplication { get; set; }

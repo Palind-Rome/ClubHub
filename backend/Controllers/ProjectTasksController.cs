@@ -10,8 +10,13 @@ using ApiProjectTask = Org.OpenAPITools.Models.ProjectTask;
 using ApiProjectTaskAssignee = Org.OpenAPITools.Models.ProjectTaskAssignee;
 using ApiProjectTaskProgressReport = Org.OpenAPITools.Models.ProjectTaskProgressReport;
 using CreateProjectTaskRequest = Org.OpenAPITools.Models.CreateProjectTaskRequest;
+using DbProject = ClubHub.Api.Data.Entities.Project;
 using DbProjectTask = ClubHub.Api.Data.Entities.ProjectTask;
 using DbProjectTaskProgressReport = ClubHub.Api.Data.Entities.ProjectTaskProgressReport;
+using DbRole = ClubHub.Api.Data.Entities.Role;
+using DbUser = ClubHub.Api.Data.Entities.User;
+using ReviewProjectTaskDeliverableRequest = Org.OpenAPITools.Models.ReviewProjectTaskDeliverableRequest;
+using SubmitProjectTaskDeliverableRequest = Org.OpenAPITools.Models.SubmitProjectTaskDeliverableRequest;
 using UpdateProjectTaskProgressRequest = Org.OpenAPITools.Models.UpdateProjectTaskProgressRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -27,7 +32,27 @@ public class ProjectTasksController : ControllerBase
     private const string CompletedStatus = "completed";
     private const string DelayedStatus = "delayed";
     private const string RunningProjectStatus = "running";
+    private const string DelayedProjectStatus = "delayed";
+    private const string FinishedProjectStatus = "finished";
+    private const string DeliverablePendingStatus = "pending";
+    private const string DeliverableApprovedStatus = "approved";
+    private const string DeliverableRejectedStatus = "rejected";
     private const int MaxWriteRetries = 3;
+
+    private static readonly HashSet<string> AdvisorRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "advisor",
+        "club_advisor",
+        "teacher_advisor"
+    };
+
+    private static readonly HashSet<string> PlatformClubAdminRoleCodes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "platform_admin",
+        "club_admin",
+        "admin",
+        "club_reviewer"
+    };
 
     private readonly ClubHubDbContext _db;
     private readonly ProjectMembershipService _membershipService;
@@ -47,8 +72,10 @@ public class ProjectTasksController : ControllerBase
         var project = await _db.Projects.AsNoTracking().FirstOrDefaultAsync(item => item.ProjectId == projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
 
-        var isLeader = project.LeaderUserId == userId.Value;
-        if (!isLeader && !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
+        await _membershipService.EnsureLeaderMembershipAsync(project);
+
+        var canViewAll = await CanViewAllTasksAsync(project, userId.Value);
+        if (!canViewAll && !await _membershipService.IsActiveMemberAsync(projectId, userId.Value))
         {
             return Error(403, "project_task_view_forbidden", "只有正在参与该项目的成员可以查看项目任务。");
         }
@@ -57,10 +84,12 @@ public class ProjectTasksController : ControllerBase
             .AsNoTracking()
             .Include(item => item.Assignees)
                 .ThenInclude(assignee => assignee.User)
+            .Include(item => item.DeliverableSubmitter)
+            .Include(item => item.ReviewerUser)
             .Where(item => item.ProjectId == projectId && (completedOnly
                 ? item.TaskStatus == CompletedStatus
                 : item.TaskStatus != CompletedStatus));
-        if (!isLeader) query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == userId.Value));
+        if (!canViewAll) query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == userId.Value));
 
         var tasks = await query
             .OrderBy(item => item.TaskStatus == CompletedStatus ? 1 : 0)
@@ -127,6 +156,14 @@ public class ProjectTasksController : ControllerBase
         var now = DateTime.UtcNow;
         var dueDate = NormalizeUtc(request.DueDate);
         if (dueDate <= now) return Error(400, "project_task_due_date_invalid", "任务截止时间必须晚于当前时间。");
+
+        var projectForMembership = await _db.Projects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.ProjectId == projectId);
+        if (projectForMembership is not null)
+        {
+            await _membershipService.EnsureLeaderMembershipAsync(projectForMembership);
+        }
 
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
@@ -296,7 +333,7 @@ public class ProjectTasksController : ControllerBase
 
         var project = await _db.Projects.AsNoTracking().FirstOrDefaultAsync(item => item.ProjectId == projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
-        var canViewAll = project.LeaderUserId == userId.Value;
+        var canViewAll = await CanViewAllTasksAsync(project, userId.Value);
         if (!canViewAll && (!task.Assignees.Any(assignee => assignee.UserId == userId.Value)
             || !await _membershipService.IsActiveMemberAsync(projectId, userId.Value)))
         {
@@ -311,6 +348,207 @@ public class ProjectTasksController : ControllerBase
             .ThenByDescending(item => item.TaskProgressReportId)
             .ToListAsync();
         return Ok(reports.Select(ToReportDto).ToList());
+    }
+
+    [HttpPost("{taskId:int}/deliverable")]
+    public async Task<IActionResult> SubmitDeliverable(
+        int projectId,
+        int taskId,
+        [FromBody] SubmitProjectTaskDeliverableRequest? request)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return AuthenticationRequired();
+        if (request is null) return Error(400, "project_task_deliverable_request_required", "请填写任务成果信息。");
+
+        var title = request.DeliverableTitle?.Trim();
+        if (string.IsNullOrWhiteSpace(title) || title.Length > 100)
+        {
+            return Error(400, "project_task_deliverable_title_invalid", "成果标题不能为空且不能超过 100 个字符。");
+        }
+        if (request.DeliverableUrl?.Trim().Length > 255)
+        {
+            return Error(400, "project_task_deliverable_url_invalid", "成果链接不能超过 255 个字符。");
+        }
+        var deliverableUrl = NormalizeOptionalText(request.DeliverableUrl);
+        if (deliverableUrl is not null && !IsAllowedHttpUrl(deliverableUrl))
+        {
+            return Error(400, "project_task_deliverable_url_invalid", "成果链接必须是 http 或 https 地址。");
+        }
+        if (request.DeliverableDesc?.Trim().Length > 4000)
+        {
+            return Error(400, "project_task_deliverable_desc_invalid", "成果说明不能超过 4000 个字符。");
+        }
+
+        for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var task = await _db.ProjectTasks
+                    .Include(item => item.Project)
+                    .Include(item => item.Assignees)
+                        .ThenInclude(assignee => assignee.User)
+                    .Include(item => item.DeliverableSubmitter)
+                    .Include(item => item.ReviewerUser)
+                    .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
+                if (task is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_task_not_found", "项目任务不存在。");
+                }
+                if (task.Project is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_not_found", "项目不存在。");
+                }
+                if (!IsProjectAcceptingDeliverables(task.Project.ProjectStatus))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_task_deliverable_project_status_invalid", "只有执行中或已延期的项目可以提交任务成果。");
+                }
+                if (string.Equals(task.DeliverableStatus, DeliverableApprovedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_task_deliverable_approved", "成果已审核通过，不能重复提交。");
+                }
+                if (string.Equals(task.DeliverableStatus, DeliverablePendingStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_task_deliverable_pending", "成果正在审核中，请等待审核结果后再重新提交。");
+                }
+
+                var isLeader = task.Project.LeaderUserId == userId.Value;
+                var isAssignee = task.Assignees.Any(assignee => assignee.UserId == userId.Value) &&
+                    await _membershipService.IsActiveMemberAsync(projectId, userId.Value);
+                if (!isLeader && !isAssignee)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(403, "project_task_deliverable_submit_forbidden", "只有项目负责人或仍在参与项目的任务执行人可以提交任务成果。");
+                }
+
+                var now = DateTime.UtcNow;
+                task.DeliverableTitle = title;
+                task.DeliverableDescription = NormalizeOptionalText(request.DeliverableDesc);
+                task.DeliverableUrl = deliverableUrl;
+                task.DeliverableStatus = DeliverablePendingStatus;
+                task.DeliverableSubmitterId = userId.Value;
+                task.DeliverableSubmittedAt = now;
+                task.ReviewerUserId = null;
+                task.ReviewComment = null;
+                task.DeliverableReviewedAt = null;
+                task.Progress = Math.Max(task.Progress ?? 0, 90);
+                if (string.Equals(task.TaskStatus, PendingStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    task.TaskStatus = InProgressStatus;
+                }
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                await _db.Entry(task).Reference(item => item.DeliverableSubmitter).LoadAsync();
+                await _db.Entry(task).Reference(item => item.ReviewerUser).LoadAsync();
+                return Ok(ToDto(task));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxWriteRetries) break;
+            }
+        }
+
+        return Error(409, "project_task_deliverable_write_conflict", "任务成果提交发生并发冲突，请稍后重试。");
+    }
+
+    [HttpPost("{taskId:int}/deliverable/review")]
+    public async Task<IActionResult> ReviewDeliverable(
+        int projectId,
+        int taskId,
+        [FromBody] ReviewProjectTaskDeliverableRequest? request)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return AuthenticationRequired();
+        if (request is null) return Error(400, "project_task_deliverable_review_required", "请选择任务成果审核结果。");
+        if (!request.Approved && string.IsNullOrWhiteSpace(request.ReviewComment))
+        {
+            return Error(400, "project_task_deliverable_reject_comment_required", "驳回任务成果时必须填写审核意见。");
+        }
+
+        var reviewerAccess = await EnsureActiveUserAsync(userId.Value);
+        if (reviewerAccess.Result is not null) return reviewerAccess.Result;
+
+        for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var task = await _db.ProjectTasks
+                    .Include(item => item.Project)
+                    .Include(item => item.Assignees)
+                        .ThenInclude(assignee => assignee.User)
+                    .Include(item => item.DeliverableSubmitter)
+                    .Include(item => item.ReviewerUser)
+                    .FirstOrDefaultAsync(item => item.TaskId == taskId && item.ProjectId == projectId);
+                if (task is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_task_not_found", "项目任务不存在。");
+                }
+                if (task.Project is null)
+                {
+                    await transaction.RollbackAsync();
+                    return Error(404, "project_not_found", "项目不存在。");
+                }
+                if (!IsProjectAcceptingDeliverables(task.Project.ProjectStatus))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(409, "project_task_deliverable_review_project_status_invalid", "只有执行中或已延期的项目可以审核任务成果。");
+                }
+                if (!await CanReviewDeliverableAsync(reviewerAccess.User!, task.Project.ClubId))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(403, "project_task_deliverable_review_forbidden", "只有本社团指导老师或校级社团管理员可以审核任务成果。");
+                }
+                if (!string.Equals(task.DeliverableStatus, DeliverablePendingStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    await transaction.RollbackAsync();
+                    return Error(400, "project_task_deliverable_not_pending", "只有待审核的任务成果可以保存审核结果。");
+                }
+
+                var now = DateTime.UtcNow;
+                task.ReviewerUserId = userId.Value;
+                task.ReviewComment = NormalizeOptionalText(request.ReviewComment);
+                task.DeliverableReviewedAt = now;
+                if (request.Approved)
+                {
+                    task.DeliverableStatus = DeliverableApprovedStatus;
+                    task.TaskStatus = CompletedStatus;
+                    task.Progress = 100;
+                    task.FinishDate = now;
+                    task.DelayReason = null;
+                }
+                else
+                {
+                    task.DeliverableStatus = DeliverableRejectedStatus;
+                    task.TaskStatus = InProgressStatus;
+                    task.Progress = Math.Min(task.Progress ?? 0, 90);
+                    task.FinishDate = null;
+                }
+
+                await RefreshProjectStatusFromDeliverablesAsync(task.Project, task, now);
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                await _db.Entry(task).Reference(item => item.ReviewerUser).LoadAsync();
+                return Ok(ToDto(task));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                if (attempt == MaxWriteRetries) break;
+            }
+        }
+
+        return Error(409, "project_task_deliverable_review_write_conflict", "任务成果审核发生并发冲突，请稍后重试。");
     }
 
     private IActionResult? ValidateProgressUpdate(
@@ -367,7 +605,18 @@ public class ProjectTasksController : ControllerBase
         FinishDate = task.FinishDate is null ? null : NormalizeUtc(task.FinishDate.Value),
         Progress = task.Progress ?? 0,
         TaskStatus = ToApiStatus(task.TaskStatus),
-        DelayReason = task.DelayReason
+        DelayReason = task.DelayReason,
+        DeliverableTitle = task.DeliverableTitle,
+        DeliverableDesc = task.DeliverableDescription,
+        DeliverableUrl = task.DeliverableUrl,
+        DeliverableStatus = ToApiDeliverableStatus(task.DeliverableStatus),
+        ReviewerUserId = task.ReviewerUserId,
+        ReviewerDisplayName = DisplayUser(task.ReviewerUser),
+        ReviewComment = task.ReviewComment,
+        DeliverableSubmitterId = task.DeliverableSubmitterId,
+        DeliverableSubmitterDisplayName = DisplayUser(task.DeliverableSubmitter),
+        DeliverableSubmittedAt = task.DeliverableSubmittedAt is null ? null : NormalizeUtc(task.DeliverableSubmittedAt.Value),
+        DeliverableReviewedAt = task.DeliverableReviewedAt is null ? null : NormalizeUtc(task.DeliverableReviewedAt.Value)
     };
 
     private static ApiProjectTaskProgressReport ToReportDto(DbProjectTaskProgressReport report) => new()
@@ -424,6 +673,120 @@ public class ProjectTasksController : ControllerBase
         DelayedStatus => ApiProjectTaskProgressReport.TaskStatusEnum.DelayedEnum,
         _ => ApiProjectTaskProgressReport.TaskStatusEnum.PendingEnum
     };
+
+    private static ApiProjectTask.DeliverableStatusEnum ToApiDeliverableStatus(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        DeliverablePendingStatus => ApiProjectTask.DeliverableStatusEnum.PendingEnum,
+        DeliverableApprovedStatus => ApiProjectTask.DeliverableStatusEnum.ApprovedEnum,
+        DeliverableRejectedStatus => ApiProjectTask.DeliverableStatusEnum.RejectedEnum,
+        _ => ApiProjectTask.DeliverableStatusEnum.NotSubmittedEnum
+    };
+
+    private async Task RefreshProjectStatusFromDeliverablesAsync(DbProject project, DbProjectTask changedTask, DateTime now)
+    {
+        var tasks = await _db.ProjectTasks
+            .AsNoTracking()
+            .Where(item => item.ProjectId == project.ProjectId)
+            .Select(item => new { item.TaskId, item.DueDate, item.DeliverableStatus })
+            .ToListAsync();
+        if (tasks.Count == 0) return;
+
+        if (tasks.All(item => string.Equals(
+            item.TaskId == changedTask.TaskId ? changedTask.DeliverableStatus : item.DeliverableStatus,
+            DeliverableApprovedStatus,
+            StringComparison.OrdinalIgnoreCase)))
+        {
+            project.ProjectStatus = FinishedProjectStatus;
+            return;
+        }
+
+        project.ProjectStatus = tasks.Any(item =>
+            item.DueDate is not null &&
+            NormalizeUtc(item.DueDate.Value) < now &&
+            !string.Equals(
+                item.TaskId == changedTask.TaskId ? changedTask.DeliverableStatus : item.DeliverableStatus,
+                DeliverableApprovedStatus,
+                StringComparison.OrdinalIgnoreCase))
+            ? DelayedProjectStatus
+            : RunningProjectStatus;
+    }
+
+    private async Task<(IActionResult? Result, DbUser? User)> EnsureActiveUserAsync(int userId)
+    {
+        var user = await _db.Users
+            .Include(item => item.UserRoles)
+                .ThenInclude(item => item.Role)
+            .FirstOrDefaultAsync(item => item.UserId == userId);
+        if (user is null) return (Error(404, "current_user_not_found", "当前登录用户不存在。"), null);
+        if (!UsersController.IsActive(user.AccountStatus))
+        {
+            return (Error(400, "current_user_disabled", "当前账号不可用。"), user);
+        }
+
+        return (null, user);
+    }
+
+    private async Task<bool> CanReviewDeliverableAsync(DbUser user, int clubId)
+    {
+        if (UsersController.IsSystemAdmin(user)) return false;
+        if (IsPlatformClubAdmin(user)) return true;
+        return HasClubRole(user, clubId, AdvisorRoleCodes);
+    }
+
+    private async Task<bool> CanViewAllTasksAsync(DbProject project, int userId)
+    {
+        if (project.LeaderUserId == userId) return true;
+
+        var access = await EnsureActiveUserAsync(userId);
+        return access.Result is null &&
+            access.User is not null &&
+            await CanReviewDeliverableAsync(access.User, project.ClubId);
+    }
+
+    private static bool HasClubRole(DbUser user, int clubId, IReadOnlySet<string> roleCodes) =>
+        user.UserRoles.Any(role =>
+            role.ClubId == clubId &&
+            role.Role is not null &&
+            roleCodes.Contains(NormalizeRoleCode(role.Role.RoleCode)));
+
+    private static bool IsPlatformClubAdmin(DbUser user) =>
+        user.UserRoles.Any(role => role.ClubId is null && IsPlatformClubAdminRole(role.Role));
+
+    private static bool IsPlatformClubAdminRole(DbRole? role)
+    {
+        if (role is null) return false;
+
+        var code = NormalizeRoleCode(role.RoleCode);
+        if (code is "system_admin" or "sysadmin") return false;
+        if (!IsSystemScope(role)) return false;
+        if (PlatformClubAdminRoleCodes.Contains(code)) return true;
+
+        return (role.RoleName ?? string.Empty).Contains("社团管理员", StringComparison.Ordinal) &&
+               (role.PermissionDesc ?? string.Empty).Contains("审核", StringComparison.Ordinal);
+    }
+
+    private static bool IsSystemScope(DbRole role) =>
+        string.Equals(role.RoleScope?.Trim(), "system", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(role.RoleScope?.Trim(), "平台", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsProjectAcceptingDeliverables(string? status) =>
+        string.Equals(status, RunningProjectStatus, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, DelayedProjectStatus, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAllowedHttpUrl(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+    private static string? DisplayUser(DbUser? user)
+    {
+        if (user is null) return null;
+
+        var name = !string.IsNullOrWhiteSpace(user.RealName) ? user.RealName.Trim() : user.Username.Trim();
+        return string.IsNullOrWhiteSpace(user.StudentNo) ? name : $"{name}（{user.StudentNo.Trim()}）";
+    }
+
+    private static string NormalizeRoleCode(string? value) =>
+        (value ?? string.Empty).Trim().ToLowerInvariant();
 
     private static DateTime NormalizeUtc(DateTime value) => value.Kind switch
     {

@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -56,6 +57,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>是否允许访问。</value>
         /* <example>true</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="allowed", EmitDefaultValue=true)]
         public bool Allowed { get; set; }
