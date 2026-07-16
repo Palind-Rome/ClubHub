@@ -18,11 +18,33 @@ member evaluations.
 
 ## State Machine Questions
 
-- Who may submit: member self-application, club leader recommendation, or both.
-- Whether rejected applications can be edited and resubmitted.
-- Whether repeated review rounds need an explicit `review_round` field.
-- Whether publicized applications can be withdrawn or corrected.
-- Whether award score is derived from award rules or entered during final review.
+- Who may submit: both member self-application and club leader recommendation.
+- Returned applications keep the same record and advance `review_round` when
+  resubmitted.
+- Rejected or withdrawn applications stop in history; a new application is needed
+  only if the same award scheme is reopened by policy.
+- Publicized applications can be corrected by publicity item status, but archived
+  applications are the normal source for evaluation award scores.
+- Award score and amount are primarily derived from `AWARD_LEVELS`; final review
+  snapshots them into `AWARD_APPLICATIONS.final_award_score` and
+  `final_amount`.
+
+## School Portal Mapping
+
+The Tongji scholarship portal shape maps into ClubHub as follows:
+
+- `奖项申请` -> `AWARD_SCHEMES` plus `AWARD_LEVELS`, scoped by club,
+  academic year and term.
+- `我的申请` -> `AWARD_APPLICATIONS`, filtered by applicant and status chips
+  such as reviewing, approved, returned and rejected.
+- `申请详情` progress bar -> `AWARD_REVIEW_RECORDS` and
+  `AWARD_APPLICATIONS.current_step`.
+- `奖种详情` fields such as sponsor, amount, term and material notes ->
+  `AWARD_SCHEMES` and `AWARD_LEVELS`.
+- `奖学金公示` -> `AWARD_PUBLICITY_BATCHES` and `AWARD_PUBLICITY_ITEMS`.
+- Member evaluation award score -> archived or publicized
+  `AWARD_APPLICATIONS`, with `EVALUATION_AWARD_SOURCES` keeping the score
+  provenance for each generated evaluation.
 
 ## Working Plan
 

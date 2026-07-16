@@ -16,6 +16,13 @@ WHERE sequence_name IN (
   'SEQ_CLUB_MEMBERS',
   'SEQ_CLUB_DEPARTMENTS',
   'SEQ_CLUB_GROUPS',
+  'SEQ_AWARD_SCHEMES',
+  'SEQ_AWARD_LEVELS',
+  'SEQ_AWARD_APPLICATIONS',
+  'SEQ_AWARD_REVIEW_RECORDS',
+  'SEQ_AWARD_ATTACHMENTS',
+  'SEQ_AWARD_PUBLICITY_BATCHES',
+  'SEQ_AWARD_PUBLICITY_ITEMS',
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
   'SEQ_ACTIVITY_PARTICIPATIONS',
@@ -42,6 +49,13 @@ WHERE (table_name, column_name) IN (
   ('CLUB_MEMBERS', 'MEMBER_ID'),
   ('CLUB_DEPARTMENTS', 'DEPARTMENT_ID'),
   ('CLUB_GROUPS', 'GROUP_ID'),
+  ('AWARD_SCHEMES', 'AWARD_SCHEME_ID'),
+  ('AWARD_LEVELS', 'AWARD_LEVEL_ID'),
+  ('AWARD_APPLICATIONS', 'AWARD_APPLICATION_ID'),
+  ('AWARD_REVIEW_RECORDS', 'REVIEW_ID'),
+  ('AWARD_ATTACHMENTS', 'ATTACHMENT_ID'),
+  ('AWARD_PUBLICITY_BATCHES', 'PUBLICITY_BATCH_ID'),
+  ('AWARD_PUBLICITY_ITEMS', 'PUBLICITY_ITEM_ID'),
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
   ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
@@ -49,7 +63,7 @@ WHERE (table_name, column_name) IN (
 )
 ORDER BY table_name, column_name;
 
--- ClubHub 核心表应为 27 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- ClubHub 核心表应为 35 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
@@ -58,7 +72,10 @@ WHERE table_name IN (
   'ACTIVITIES', 'ACTIVITY_PARTICIPATIONS', 'VENUES', 'VENUE_RESERVATIONS',
   'PROJECTS', 'PROJECT_MEMBERS', 'PROJECT_TASKS', 'PROJECT_TASK_ASSIGNEES', 'PROJECT_TASK_PROGRESS_REPORTS',
   'LEARNING_ITEMS', 'LEARNING_RECORDS',
-  'MATERIALS', 'MATERIAL_BORROWS', 'EVALUATIONS',
+  'MATERIALS', 'MATERIAL_BORROWS',
+  'AWARD_SCHEMES', 'AWARD_LEVELS', 'AWARD_APPLICATIONS', 'AWARD_REVIEW_RECORDS',
+  'AWARD_ATTACHMENTS', 'AWARD_PUBLICITY_BATCHES', 'AWARD_PUBLICITY_ITEMS',
+  'EVALUATIONS', 'EVALUATION_AWARD_SOURCES',
   'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS'
 );
 
@@ -213,3 +230,122 @@ WHERE cm.group_id IS NOT NULL
       AND g.department_id = cm.department_id
       AND g.group_id = cm.group_id
   );
+
+SELECT column_id, column_name, data_type, nullable, data_default
+FROM user_tab_columns
+WHERE table_name IN (
+  'AWARD_SCHEMES',
+  'AWARD_LEVELS',
+  'AWARD_APPLICATIONS',
+  'AWARD_REVIEW_RECORDS',
+  'AWARD_ATTACHMENTS',
+  'AWARD_PUBLICITY_BATCHES',
+  'AWARD_PUBLICITY_ITEMS',
+  'EVALUATION_AWARD_SOURCES'
+)
+ORDER BY table_name, column_id;
+
+SELECT constraint_name, table_name, constraint_type, status, deferrable, deferred
+FROM user_constraints
+WHERE constraint_name IN (
+  'UQ_AWARD_SCHEMES_SCOPE',
+  'UQ_AWARD_LEVELS_SCOPE',
+  'UQ_AWARD_LEVELS_NAME',
+  'UQ_AWARD_APPLICATIONS_SCOPE',
+  'UQ_AWARD_APPLICATIONS_APPLICANT',
+  'UQ_AWARD_PUBLICITY_BATCH_SCOPE',
+  'UQ_AWARD_PUBLICITY_ITEMS_APP',
+  'PK_EVALUATION_AWARD_SOURCES',
+  'FK_AWARD_SCHEMES_CLUB',
+  'FK_AWARD_SCHEMES_CREATOR',
+  'FK_AWARD_LEVELS_SCHEME',
+  'FK_AWARD_APPLICATIONS_CLUB',
+  'FK_AWARD_APPLICATIONS_SCHEME',
+  'FK_AWARD_APPLICATIONS_LEVEL',
+  'FK_AWARD_APPLICATIONS_APPLICANT',
+  'FK_AWARD_APPLICATIONS_RECOMMENDER',
+  'FK_AWARD_APPLICATIONS_SUBMITTER',
+  'FK_AWARD_REVIEWS_APPLICATION',
+  'FK_AWARD_REVIEWS_REVIEWER',
+  'FK_AWARD_ATTACHMENTS_APPLICATION',
+  'FK_AWARD_ATTACHMENTS_UPLOADER',
+  'FK_AWARD_PUBLICITY_CLUB',
+  'FK_AWARD_PUBLICITY_PUBLISHER',
+  'FK_AWARD_PUBLICITY_ITEMS_BATCH',
+  'FK_AWARD_PUBLICITY_ITEMS_APP',
+  'FK_EAS_EVALUATION',
+  'FK_EAS_APPLICATION'
+)
+ORDER BY table_name, constraint_type, constraint_name;
+
+SELECT index_name, table_name, uniqueness
+FROM user_indexes
+WHERE index_name IN (
+  'UQ_AWARD_SCHEMES_NAME',
+  'IX_AWARD_SCHEMES_CLUB_STATUS',
+  'IX_AWARD_LEVELS_ORDER',
+  'IX_AWARD_APPLICATIONS_STATUS',
+  'IX_AWARD_APPLICATIONS_USER',
+  'IX_AWARD_REVIEWS_APPLICATION',
+  'IX_AWARD_ATTACHMENTS_APP',
+  'IX_AWARD_PUBLICITY_CLUB',
+  'IX_AWARD_PUBLICITY_ITEMS_ORDER'
+)
+ORDER BY index_name;
+
+-- The following award workflow checks should return 0 rows.
+SELECT award_scheme_id, level_name, COUNT(*) AS duplicate_count
+FROM award_levels
+GROUP BY award_scheme_id, level_name
+HAVING COUNT(*) > 1;
+
+SELECT award_scheme_id, applicant_user_id, COUNT(*) AS duplicate_count
+FROM award_applications
+GROUP BY award_scheme_id, applicant_user_id
+HAVING COUNT(*) > 1;
+
+SELECT application.award_application_id, application.club_id, application.award_scheme_id
+FROM award_applications application
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM award_schemes scheme
+  WHERE scheme.club_id = application.club_id
+    AND scheme.award_scheme_id = application.award_scheme_id
+);
+
+SELECT application.award_application_id, application.award_scheme_id, application.award_level_id
+FROM award_applications application
+WHERE application.award_level_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM award_levels award_level
+    WHERE award_level.award_scheme_id = application.award_scheme_id
+      AND award_level.award_level_id = application.award_level_id
+  );
+
+SELECT item.publicity_item_id, item.club_id, item.publicity_batch_id
+FROM award_publicity_items item
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM award_publicity_batches batch
+  WHERE batch.club_id = item.club_id
+    AND batch.publicity_batch_id = item.publicity_batch_id
+);
+
+SELECT item.publicity_item_id, item.club_id, item.award_application_id
+FROM award_publicity_items item
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM award_applications application
+  WHERE application.club_id = item.club_id
+    AND application.award_application_id = item.award_application_id
+);
+
+SELECT source.evaluation_id, source.award_application_id
+FROM evaluation_award_sources source
+JOIN evaluations evaluation
+  ON evaluation.evaluation_id = source.evaluation_id
+JOIN award_applications application
+  ON application.award_application_id = source.award_application_id
+WHERE evaluation.club_id <> application.club_id
+   OR evaluation.user_id <> application.applicant_user_id;
