@@ -36,6 +36,8 @@ type ApplicationStatus =
   | "withdrawn";
 type ReviewResult = "approve" | "reject" | "return";
 type PublicityStatus = "draft" | "publicizing" | "closed" | "archived";
+type RuleScope = "global" | "club";
+type RuleStatus = "draft" | "published" | "archived";
 
 interface Club {
   id: number;
@@ -94,6 +96,32 @@ interface AwardSchemeRecord {
   createdAt: string;
   updatedAt: string;
   levels: AwardLevelRecord[];
+}
+
+interface AwardRuleDocumentRecord {
+  ruleDocumentId: number;
+  clubId: number | null;
+  clubName: string | null;
+  ruleTitle: string;
+  ruleScope: RuleScope;
+  ruleScopeText: string;
+  academicYear: string;
+  termName: string | null;
+  issuerName: string | null;
+  summary: string | null;
+  contentText: string | null;
+  materialUrl: string | null;
+  materialName: string | null;
+  versionNo: string;
+  ruleStatus: RuleStatus;
+  ruleStatusText: string;
+  effectiveStartAt: string | null;
+  effectiveEndAt: string | null;
+  publishedByUserId: number | null;
+  publishedByName: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AwardReviewRecord {
@@ -232,23 +260,29 @@ const auth = ref<AuthResponse | null>(readAuth());
 const clubs = ref<Club[]>([]);
 const members = ref<ClubMemberRecord[]>([]);
 const schemes = ref<AwardSchemeRecord[]>([]);
+const ruleDocuments = ref<AwardRuleDocumentRecord[]>([]);
 const applications = ref<AwardApplicationRecord[]>([]);
 const publicityBatches = ref<AwardPublicityBatchRecord[]>([]);
 const selectedClubId = ref<number>();
-const activeTab = ref<"schemes" | "applications" | "publicity">("applications");
+const activeTab = ref<"rules" | "schemes" | "applications" | "publicity">("applications");
 const loading = ref(false);
 const memberLoading = ref(false);
 const saving = ref(false);
 const schemeDialogVisible = ref(false);
+const ruleDialogVisible = ref(false);
+const ruleDetailVisible = ref(false);
 const applicationDialogVisible = ref(false);
 const reviewDialogVisible = ref(false);
 const publicityDialogVisible = ref(false);
 const detailVisible = ref(false);
 const schemeFormRef = ref<FormInstance>();
+const ruleFormRef = ref<FormInstance>();
 const applicationFormRef = ref<FormInstance>();
 const reviewFormRef = ref<FormInstance>();
 const publicityFormRef = ref<FormInstance>();
 const schemeTarget = ref<AwardSchemeRecord | null>(null);
+const ruleTarget = ref<AwardRuleDocumentRecord | null>(null);
+const ruleDetailTarget = ref<AwardRuleDocumentRecord | null>(null);
 const applicationTarget = ref<AwardApplicationRecord | null>(null);
 const detailTarget = ref<AwardApplicationRecord | null>(null);
 let stopSessionListener: (() => void) | null = null;
@@ -257,6 +291,7 @@ let memberRequestId = 0;
 
 const filters = reactive({
   keyword: "",
+  ruleStatus: "" as "" | RuleStatus,
   schemeStatus: "" as "" | SchemeStatus,
   applicationStatus: "" as "" | ApplicationStatus,
   publicityStatus: "" as "" | PublicityStatus,
@@ -291,6 +326,22 @@ const schemeForm = reactive({
   ] as EditableAwardLevel[],
 });
 
+const ruleForm = reactive({
+  ruleTitle: "",
+  ruleScope: "club" as RuleScope,
+  academicYear: defaultAcademicYear(),
+  termName: defaultTermName(),
+  issuerName: "",
+  summary: "",
+  contentText: "",
+  materialUrl: "",
+  materialName: "",
+  versionNo: "1.0",
+  ruleStatus: "draft" as RuleStatus,
+  effectiveStartAt: "",
+  effectiveEndAt: "",
+});
+
 const applicationForm = reactive({
   awardSchemeId: undefined as number | undefined,
   awardLevelId: undefined as number | undefined,
@@ -320,6 +371,12 @@ const schemeRules: FormRules = {
   awardName: [{ required: true, message: "请填写奖项名称", trigger: "blur" }],
   academicYear: [{ required: true, message: "请填写评定学年", trigger: "blur" }],
 };
+const ruleRules: FormRules = {
+  ruleTitle: [{ required: true, message: "请填写细则标题", trigger: "blur" }],
+  academicYear: [{ required: true, message: "请填写适用学年", trigger: "blur" }],
+  ruleScope: [{ required: true, message: "请选择细则范围", trigger: "change" }],
+  ruleStatus: [{ required: true, message: "请选择细则状态", trigger: "change" }],
+};
 const applicationRules: FormRules = {
   awardSchemeId: [{ required: true, message: "请选择奖项项目", trigger: "change" }],
   awardLevelId: [{ required: true, message: "请选择奖项等级", trigger: "change" }],
@@ -348,6 +405,7 @@ const hasSystemAdminRole = computed(
 const hasPlatformAwardReviewRole = computed(
   () => hasSystemAdminRole.value || hasAnyRoleCode(currentRoles.value, platformAdminRoleCodes),
 );
+const canManageGlobalRules = computed(() => hasPlatformAwardReviewRole.value);
 const manageableClubIds = computed(() =>
   collectManageableClubIds(currentRoles.value, awardWorkflowPermission),
 );
@@ -368,6 +426,9 @@ const canMaintainSelectedClub = computed(
     Boolean(selectedClub.value && selectedClub.value.status === "active") &&
     (hasAllPermissions.value ||
       (selectedClubId.value !== undefined && manageableClubIds.value.has(selectedClubId.value))),
+);
+const canUploadRuleDocument = computed(
+  () => canMaintainSelectedClub.value || canManageGlobalRules.value,
 );
 const canMaintainWholeClub = computed(() => {
   const clubId = selectedClubId.value;
@@ -396,6 +457,25 @@ const selectedApplicationScheme = computed(() =>
 const selectedApplicationLevels = computed(() =>
   (selectedApplicationScheme.value?.levels ?? []).filter((level) => level.levelStatus === "active"),
 );
+const filteredRuleDocuments = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase();
+  return ruleDocuments.value.filter((document) => {
+    if (filters.ruleStatus && document.ruleStatus !== filters.ruleStatus) return false;
+    if (!keyword) return true;
+    return [
+      document.ruleTitle,
+      document.ruleScopeText,
+      document.academicYear,
+      document.termName,
+      document.issuerName,
+      document.summary,
+      document.clubName,
+      document.materialName,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+});
 const filteredSchemes = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase();
   return schemes.value.filter((scheme) => {
@@ -447,6 +527,7 @@ const approvedApplications = computed(() =>
 );
 const summary = computed(() => ({
   schemes: schemes.value.length,
+  rules: ruleDocuments.value.filter((document) => document.ruleStatus === "published").length,
   reviewing: applications.value.filter((application) =>
     ["club_review", "advisor_review", "school_review"].includes(application.applicationStatus),
   ).length,
@@ -530,6 +611,7 @@ async function loadAwardWorkspace() {
   const clubId = selectedClubId.value;
   if (!currentUserId.value || !clubId) {
     schemes.value = [];
+    ruleDocuments.value = [];
     applications.value = [];
     publicityBatches.value = [];
     return;
@@ -537,18 +619,21 @@ async function loadAwardWorkspace() {
 
   loading.value = true;
   try {
-    const [schemeData, applicationData, publicityData] = await Promise.all([
+    const [schemeData, ruleDocumentData, applicationData, publicityData] = await Promise.all([
       requestJson<AwardSchemeRecord[]>(`/api/clubs/${clubId}/award-schemes`),
+      requestJson<AwardRuleDocumentRecord[]>(`/api/clubs/${clubId}/award-rule-documents`),
       requestJson<AwardApplicationRecord[]>(`/api/clubs/${clubId}/award-applications`),
       requestJson<AwardPublicityBatchRecord[]>(`/api/clubs/${clubId}/award-publicity`),
     ]);
     if (requestId !== loadRequestId) return;
     schemes.value = schemeData;
+    ruleDocuments.value = ruleDocumentData;
     applications.value = applicationData;
     publicityBatches.value = publicityData;
   } catch (error) {
     if (requestId === loadRequestId) {
       schemes.value = [];
+      ruleDocuments.value = [];
       applications.value = [];
       publicityBatches.value = [];
       ElMessage.error(error instanceof Error ? error.message : "评奖评优流程加载失败");
@@ -710,6 +795,123 @@ async function submitScheme() {
     await loadAwardWorkspace();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "奖项项目保存失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+function resetRuleForm() {
+  ruleForm.ruleTitle = "";
+  ruleForm.ruleScope = canMaintainSelectedClub.value ? "club" : "global";
+  ruleForm.academicYear = defaultAcademicYear();
+  ruleForm.termName = defaultTermName();
+  ruleForm.issuerName =
+    ruleForm.ruleScope === "club"
+      ? `${selectedClub.value?.name ?? "社团"}评奖评优工作组`
+      : "学生社团管理部门";
+  ruleForm.summary = "";
+  ruleForm.contentText = "";
+  ruleForm.materialUrl = "";
+  ruleForm.materialName = "";
+  ruleForm.versionNo = "1.0";
+  ruleForm.ruleStatus = "draft";
+  ruleForm.effectiveStartAt = "";
+  ruleForm.effectiveEndAt = "";
+  ruleFormRef.value?.clearValidate();
+}
+
+function openCreateRuleDialog() {
+  if (!canUploadRuleDocument.value) {
+    ElMessage.warning("当前账号没有上传评定细则的权限。");
+    return;
+  }
+  ruleTarget.value = null;
+  resetRuleForm();
+  ruleDialogVisible.value = true;
+}
+
+function openEditRuleDialog(row: AwardRuleDocumentRecord) {
+  if (!canEditRuleDocument(row)) {
+    ElMessage.warning("当前账号没有维护该评定细则的权限。");
+    return;
+  }
+  ruleTarget.value = row;
+  ruleForm.ruleTitle = row.ruleTitle;
+  ruleForm.ruleScope = row.ruleScope;
+  ruleForm.academicYear = row.academicYear;
+  ruleForm.termName = row.termName ?? "";
+  ruleForm.issuerName = row.issuerName ?? "";
+  ruleForm.summary = row.summary ?? "";
+  ruleForm.contentText = row.contentText ?? "";
+  ruleForm.materialUrl = row.materialUrl ?? "";
+  ruleForm.materialName = row.materialName ?? "";
+  ruleForm.versionNo = row.versionNo;
+  ruleForm.ruleStatus = row.ruleStatus;
+  ruleForm.effectiveStartAt = toDateTimeLocal(row.effectiveStartAt);
+  ruleForm.effectiveEndAt = toDateTimeLocal(row.effectiveEndAt);
+  ruleFormRef.value?.clearValidate();
+  ruleDialogVisible.value = true;
+}
+
+async function submitRuleDocument() {
+  if (!selectedClubId.value || !(await validateForm(ruleFormRef.value))) return;
+  if (ruleForm.ruleScope === "global" && !canManageGlobalRules.value) {
+    ElMessage.warning("只有平台或系统管理员可以上传学校级细则。");
+    return;
+  }
+  if (ruleForm.ruleScope === "club" && !canUploadRuleDocument.value) {
+    ElMessage.warning("当前账号没有上传社团细则的权限。");
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const payload = {
+      ruleTitle: ruleForm.ruleTitle.trim(),
+      ruleScope: ruleForm.ruleScope,
+      academicYear: ruleForm.academicYear.trim(),
+      termName: emptyToNull(ruleForm.termName),
+      issuerName: emptyToNull(ruleForm.issuerName),
+      summary: emptyToNull(ruleForm.summary),
+      contentText: emptyToNull(ruleForm.contentText),
+      materialUrl: emptyToNull(ruleForm.materialUrl),
+      materialName: emptyToNull(ruleForm.materialName),
+      versionNo: emptyToNull(ruleForm.versionNo) ?? "1.0",
+      ruleStatus: ruleForm.ruleStatus,
+      effectiveStartAt: fromDateTimeLocal(ruleForm.effectiveStartAt),
+      effectiveEndAt: fromDateTimeLocal(ruleForm.effectiveEndAt),
+    };
+    const url = ruleTarget.value
+      ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value.ruleDocumentId}`
+      : `/api/clubs/${selectedClubId.value}/award-rule-documents`;
+    await requestJson<AwardRuleDocumentRecord>(url, {
+      method: ruleTarget.value ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    ElMessage.success(ruleTarget.value ? "评定细则已更新" : "评定细则已创建");
+    ruleDialogVisible.value = false;
+    await loadAwardWorkspace();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "评定细则保存失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function publishRuleDocument(row: AwardRuleDocumentRecord) {
+  if (!selectedClubId.value || !canEditRuleDocument(row)) return;
+  await confirmAction(`发布评定细则“${row.ruleTitle}”？`);
+  saving.value = true;
+  try {
+    await requestJson<AwardRuleDocumentRecord>(
+      `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/publish`,
+      { method: "POST" },
+    );
+    ElMessage.success("评定细则已发布");
+    await loadAwardWorkspace();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "评定细则发布失败");
   } finally {
     saving.value = false;
   }
@@ -960,6 +1162,19 @@ function openDetail(row: AwardApplicationRecord) {
   detailVisible.value = true;
 }
 
+function openRuleDetail(row: AwardRuleDocumentRecord) {
+  ruleDetailTarget.value = row;
+  ruleDetailVisible.value = true;
+}
+
+function canEditRuleDocument(row: AwardRuleDocumentRecord) {
+  if (row.ruleScope === "global") return canManageGlobalRules.value;
+  return (
+    row.clubId === selectedClubId.value &&
+    (canMaintainSelectedClub.value || canManageGlobalRules.value)
+  );
+}
+
 function canMaintainMember(member: ClubMemberRecord) {
   return canMaintainScopedMember(member, {
     canMaintainSelectedClub: canMaintainSelectedClub.value,
@@ -1053,9 +1268,20 @@ function validateAwardLevels() {
 
 function clearFilters() {
   filters.keyword = "";
+  filters.ruleStatus = "";
   filters.schemeStatus = "";
   filters.applicationStatus = "";
   filters.publicityStatus = "";
+}
+
+function ruleStatusType(status: RuleStatus) {
+  if (status === "published") return "success";
+  if (status === "archived") return "info";
+  return "warning";
+}
+
+function ruleScopeType(scope: RuleScope) {
+  return scope === "global" ? "primary" : "info";
 }
 
 function schemeStatusType(status: SchemeStatus) {
@@ -1187,6 +1413,14 @@ onUnmounted(() => {
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
         <el-button
+          v-if="activeTab === 'rules' && canUploadRuleDocument"
+          type="primary"
+          :icon="Plus"
+          @click="openCreateRuleDialog"
+        >
+          上传细则
+        </el-button>
+        <el-button
           v-if="canMaintainSelectedClub"
           type="primary"
           :icon="Plus"
@@ -1204,6 +1438,10 @@ onUnmounted(() => {
       <div>
         <span>奖项项目</span>
         <strong>{{ summary.schemes }}</strong>
+      </div>
+      <div>
+        <span>已发布细则</span>
+        <strong>{{ summary.rules }}</strong>
       </div>
       <div>
         <span>审核中</span>
@@ -1233,6 +1471,17 @@ onUnmounted(() => {
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
+      <el-select
+        v-if="activeTab === 'rules'"
+        v-model="filters.ruleStatus"
+        class="status-select"
+        clearable
+        placeholder="细则状态"
+      >
+        <el-option label="草稿" value="draft" />
+        <el-option label="已发布" value="published" />
+        <el-option label="已归档" value="archived" />
+      </el-select>
       <el-select
         v-if="activeTab === 'schemes'"
         v-model="filters.schemeStatus"
@@ -1280,6 +1529,7 @@ onUnmounted(() => {
     </div>
 
     <el-tabs v-model="activeTab" class="award-tabs">
+      <el-tab-pane label="评定细则" name="rules" />
       <el-tab-pane label="申请审批" name="applications" />
       <el-tab-pane label="奖项项目" name="schemes" />
       <el-tab-pane label="公示归档" name="publicity" />
@@ -1287,7 +1537,89 @@ onUnmounted(() => {
 
     <div v-loading="loading || memberLoading" class="workspace-panel">
       <el-table
-        v-if="activeTab === 'applications'"
+        v-if="activeTab === 'rules'"
+        :data="filteredRuleDocuments"
+        empty-text="暂无评定细则"
+        row-key="ruleDocumentId"
+      >
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="rule-expand">
+              <div>
+                <strong>摘要</strong>
+                <p>{{ row.summary || "暂无摘要" }}</p>
+              </div>
+              <div>
+                <strong>正文</strong>
+                <p class="rule-content">
+                  {{ row.contentText || "暂无正文，请查看附件或联系发布人。" }}
+                </p>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="细则标题" min-width="260">
+          <template #default="{ row }">
+            <strong>{{ row.ruleTitle }}</strong>
+            <div class="muted">
+              {{ row.academicYear }}{{ row.termName || "" }} · {{ row.versionNo }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="范围" width="120">
+          <template #default="{ row }">
+            <el-tag :type="ruleScopeType(row.ruleScope)" effect="plain">
+              {{ row.ruleScopeText }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="制定单位" min-width="180">
+          <template #default="{ row }">
+            {{ row.issuerName || row.clubName || "学生社团管理部门" }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="ruleStatusType(row.ruleStatus)" effect="plain">
+              {{ row.ruleStatusText }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="附件" min-width="180">
+          <template #default="{ row }">
+            <a v-if="row.materialUrl" :href="row.materialUrl" target="_blank">
+              {{ row.materialName || "查看附件" }}
+            </a>
+            <span v-else class="muted">未上传</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="发布时间" width="170">
+          <template #default="{ row }">{{ formatDate(row.publishedAt || row.updatedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="300" fixed="right">
+          <template #default="{ row }">
+            <el-button :icon="View" @click="openRuleDetail(row)">查看</el-button>
+            <el-button
+              v-if="canEditRuleDocument(row)"
+              type="primary"
+              :icon="Edit"
+              @click="openEditRuleDialog(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="canEditRuleDocument(row) && row.ruleStatus !== 'published'"
+              type="success"
+              @click="publishRuleDocument(row)"
+            >
+              发布
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-table
+        v-else-if="activeTab === 'applications'"
         :data="filteredApplications"
         empty-text="暂无评奖评优申请"
         row-key="awardApplicationId"
@@ -1477,6 +1809,95 @@ onUnmounted(() => {
         </el-table>
       </div>
     </div>
+
+    <el-dialog
+      v-model="ruleDialogVisible"
+      :title="ruleTarget ? '编辑评定细则' : '上传评定细则'"
+      width="820px"
+    >
+      <el-form ref="ruleFormRef" :model="ruleForm" :rules="ruleRules" label-width="110px">
+        <div class="form-grid">
+          <el-form-item label="细则标题" prop="ruleTitle">
+            <el-input v-model="ruleForm.ruleTitle" maxlength="255" show-word-limit />
+          </el-form-item>
+          <el-form-item label="适用范围" prop="ruleScope">
+            <el-select v-model="ruleForm.ruleScope">
+              <el-option label="学校通用" value="global" :disabled="!canManageGlobalRules" />
+              <el-option
+                label="当前社团"
+                value="club"
+                :disabled="!canMaintainSelectedClub && !canManageGlobalRules"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="适用学年" prop="academicYear">
+            <el-input v-model="ruleForm.academicYear" maxlength="50" />
+          </el-form-item>
+          <el-form-item label="适用学期">
+            <el-select v-model="ruleForm.termName" clearable>
+              <el-option label="春季" value="春季" />
+              <el-option label="秋季" value="秋季" />
+              <el-option label="学年" value="学年" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="制定单位">
+            <el-input v-model="ruleForm.issuerName" maxlength="255" />
+          </el-form-item>
+          <el-form-item label="状态" prop="ruleStatus">
+            <el-select v-model="ruleForm.ruleStatus">
+              <el-option label="草稿" value="draft" />
+              <el-option label="已发布" value="published" />
+              <el-option label="已归档" value="archived" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="版本号">
+            <el-input v-model="ruleForm.versionNo" maxlength="50" />
+          </el-form-item>
+          <el-form-item label="附件名称">
+            <el-input v-model="ruleForm.materialName" maxlength="255" />
+          </el-form-item>
+          <el-form-item label="生效开始">
+            <el-date-picker
+              v-model="ruleForm.effectiveStartAt"
+              type="datetime"
+              value-format="YYYY-MM-DDTHH:mm"
+            />
+          </el-form-item>
+          <el-form-item label="生效结束">
+            <el-date-picker
+              v-model="ruleForm.effectiveEndAt"
+              type="datetime"
+              value-format="YYYY-MM-DDTHH:mm"
+            />
+          </el-form-item>
+        </div>
+        <el-form-item label="附件链接">
+          <el-input v-model="ruleForm.materialUrl" maxlength="1000" />
+        </el-form-item>
+        <el-form-item label="摘要">
+          <el-input
+            v-model="ruleForm.summary"
+            type="textarea"
+            :rows="3"
+            maxlength="1000"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="正文">
+          <el-input
+            v-model="ruleForm.contentText"
+            type="textarea"
+            :rows="8"
+            maxlength="5000"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="ruleDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitRuleDocument">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="schemeDialogVisible"
@@ -1814,6 +2235,61 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
+    <el-dialog v-model="ruleDetailVisible" title="评定细则" width="760px">
+      <template v-if="ruleDetailTarget">
+        <div class="rule-reader">
+          <div class="rule-reader-head">
+            <div>
+              <h3>{{ ruleDetailTarget.ruleTitle }}</h3>
+              <div class="muted">
+                {{ ruleDetailTarget.academicYear }}{{ ruleDetailTarget.termName || "" }} ·
+                {{ ruleDetailTarget.versionNo }}
+              </div>
+            </div>
+            <div class="rule-reader-tags">
+              <el-tag :type="ruleScopeType(ruleDetailTarget.ruleScope)" effect="plain">
+                {{ ruleDetailTarget.ruleScopeText }}
+              </el-tag>
+              <el-tag :type="ruleStatusType(ruleDetailTarget.ruleStatus)" effect="plain">
+                {{ ruleDetailTarget.ruleStatusText }}
+              </el-tag>
+            </div>
+          </div>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="制定单位">
+              {{ ruleDetailTarget.issuerName || ruleDetailTarget.clubName || "学生社团管理部门" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="发布人">
+              {{ ruleDetailTarget.publishedByName || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="生效时间">
+              {{ formatDate(ruleDetailTarget.effectiveStartAt) }}
+              至 {{ formatDate(ruleDetailTarget.effectiveEndAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="发布时间">
+              {{ formatDate(ruleDetailTarget.publishedAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="附件" :span="2">
+              <a
+                v-if="ruleDetailTarget.materialUrl"
+                :href="ruleDetailTarget.materialUrl"
+                target="_blank"
+              >
+                {{ ruleDetailTarget.materialName || ruleDetailTarget.materialUrl }}
+              </a>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="摘要" :span="2">
+              {{ ruleDetailTarget.summary || "-" }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <div class="rule-reader-content">
+            {{ ruleDetailTarget.contentText || "暂无正文，请查看附件或联系发布人。" }}
+          </div>
+        </div>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="detailVisible" title="评优申请详情" width="760px">
       <template v-if="detailTarget">
         <el-descriptions :column="2" border>
@@ -1892,7 +2368,7 @@ onUnmounted(() => {
 
 .summary-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
@@ -1950,6 +2426,50 @@ onUnmounted(() => {
 
 .level-tag {
   margin: 2px 6px 2px 0;
+}
+
+.rule-expand {
+  display: grid;
+  gap: 12px;
+  padding: 12px 24px;
+}
+
+.rule-expand p,
+.rule-reader-content {
+  margin: 8px 0 0;
+  color: #374151;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.rule-reader {
+  display: grid;
+  gap: 16px;
+}
+
+.rule-reader-head,
+.rule-reader-tags {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.rule-reader-head h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.rule-reader-tags {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.rule-reader-content {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 14px 16px;
 }
 
 .publicity-pane {
@@ -2085,6 +2605,14 @@ onUnmounted(() => {
   .switch-row,
   .level-editor {
     padding-left: 0;
+  }
+
+  .rule-reader-head {
+    flex-direction: column;
+  }
+
+  .rule-reader-tags {
+    justify-content: flex-start;
   }
 }
 </style>

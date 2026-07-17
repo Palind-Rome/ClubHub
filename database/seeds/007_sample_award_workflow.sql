@@ -50,6 +50,9 @@ WHERE award_level_id BETWEEN 137010 AND 137099
 DELETE FROM AWARD_SCHEMES
 WHERE award_scheme_id BETWEEN 137000 AND 137099;
 
+DELETE FROM AWARD_RULE_DOCUMENTS
+WHERE rule_document_id BETWEEN 137600 AND 137699;
+
 DELETE FROM EVALUATIONS
 WHERE evaluation_id BETWEEN 137500 AND 137599;
 
@@ -129,6 +132,77 @@ INSERT ALL
 SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 2) AS photo_president_id
+FROM dual;
+
+INSERT ALL
+  INTO AWARD_RULE_DOCUMENTS (
+    rule_document_id, club_id, rule_title, rule_scope, academic_year, term_name,
+    issuer_name, summary, content_text, material_url, material_name, version_no,
+    rule_status, effective_start_at, effective_end_at, published_by_user_id,
+    published_at, created_at, updated_at
+  )
+  VALUES (
+    137601, NULL, '同济大学学生社团评奖评优工作细则（2026版）', 'global', '2025-2026', '学年',
+    '学生社团管理部门',
+    '适用于各学生社团开展荣誉评优、服务贡献奖和专项奖学金类项目的申报、审核、公示与归档。',
+    '一、评定坚持公开、公平、公正原则。二、社团应先发布奖项项目和评定细则，再组织成员申请或负责人推荐。三、申请材料经负责人初审、指导老师审核、校级终审后进入公示。四、公示期结束且无异议后归档，归档结果作为成员考核奖项分来源。',
+    '/demo/awards/tongji-club-award-rule-2026.pdf',
+    '同济大学学生社团评奖评优工作细则（2026版）.pdf',
+    '1.0', 'published', DATE '2026-01-01', DATE '2026-12-31',
+    school_reviewer_id, DATE '2026-01-10', SYSDATE, SYSDATE
+  )
+  INTO AWARD_RULE_DOCUMENTS (
+    rule_document_id, club_id, rule_title, rule_scope, academic_year, term_name,
+    issuer_name, summary, content_text, material_url, material_name, version_no,
+    rule_status, effective_start_at, effective_end_at, published_by_user_id,
+    published_at, created_at, updated_at
+  )
+  VALUES (
+    137602, 2, '摄影社校园影像贡献奖评定细则', 'club', '2026', '春季',
+    '摄影社评奖评优工作组',
+    '面向参与校园影像记录、影展策划、后期整理和活动跟拍的成员，重点考察作品质量与服务时长。',
+    '金镜头侧重连续跟拍、影像叙事和社团公共素材沉淀；银镜头侧重活动支持和后期交付；入围作品要求完成作品授权和材料归档。申请人需提交作品集链接、服务排班记录和个人总结。',
+    '/demo/awards/photo-club-rule-2026.pdf',
+    '摄影社校园影像贡献奖评定细则.pdf',
+    '1.0', 'published', DATE '2026-07-01', DATE '2026-08-31',
+    photo_president_id, DATE '2026-07-06', SYSDATE, SYSDATE
+  )
+  INTO AWARD_RULE_DOCUMENTS (
+    rule_document_id, club_id, rule_title, rule_scope, academic_year, term_name,
+    issuer_name, summary, content_text, material_url, material_name, version_no,
+    rule_status, effective_start_at, effective_end_at, published_by_user_id,
+    published_at, created_at, updated_at
+  )
+  VALUES (
+    137603, 1, '计算机协会优秀社员评定细则', 'club', '2025-2026', '春季',
+    '计算机协会技术部',
+    '用于春季训练营、算法周赛、项目协作和新成员帮扶等场景下的优秀社员评定。',
+    '优秀社员评定综合技术贡献、活动服务、项目协作和学习分享表现。一等奖要求承担核心任务且有可验证成果，二等奖要求稳定参与并完成服务记录，优秀社员称号要求参与度和互助表现达到部门推荐标准。',
+    '/demo/awards/computer-club-excellent-member-rule.pdf',
+    '计算机协会优秀社员评定细则.pdf',
+    '1.1', 'published', DATE '2026-02-20', DATE '2026-03-31',
+    comp_president_id, DATE '2026-02-22', SYSDATE, SYSDATE
+  )
+  INTO AWARD_RULE_DOCUMENTS (
+    rule_document_id, club_id, rule_title, rule_scope, academic_year, term_name,
+    issuer_name, summary, content_text, material_url, material_name, version_no,
+    rule_status, effective_start_at, effective_end_at, published_by_user_id,
+    published_at, created_at, updated_at
+  )
+  VALUES (
+    137604, 3, '羽毛球社训练贡献奖评定细则', 'club', '2025-2026', '春季',
+    '羽毛球社竞训组',
+    '用于春季训练、校内联赛服务、新人带训和裁判计分等贡献场景。',
+    '训练贡献奖按出勤、训练组织、赛事服务、带训反馈和材料归档综合评定。卓越贡献要求持续承担训练或赛事核心职责，训练标兵侧重训练质量和出勤，服务之星侧重裁判、计分、场地协调等公共服务。',
+    '/demo/awards/badminton-training-rule-2026.pdf',
+    '羽毛球社训练贡献奖评定细则.pdf',
+    '1.0', 'published', DATE '2026-06-01', DATE '2026-07-31',
+    zhang_id, DATE '2026-06-03', SYSDATE, SYSDATE
+  )
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+       (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
+       (SELECT president_user_id FROM CLUBS WHERE club_id = 2) AS photo_president_id,
+       COALESCE((SELECT MAX(user_id) FROM USERS WHERE username = 'admin_li'), 2) AS school_reviewer_id
 FROM dual;
 
 INSERT ALL
@@ -409,6 +483,7 @@ SELECT 1 FROM dual;
 DECLARE
   v_invalid_award_links NUMBER;
   v_invalid_source_links NUMBER;
+  v_invalid_rule_documents NUMBER;
 BEGIN
   SELECT COUNT(*)
   INTO v_invalid_award_links
@@ -441,6 +516,21 @@ BEGIN
 
   IF v_invalid_source_links > 0 THEN
     RAISE_APPLICATION_ERROR(-20139, 'Sample award workflow seed left invalid evaluation award source links.');
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_invalid_rule_documents
+  FROM AWARD_RULE_DOCUMENTS document
+  WHERE document.rule_document_id BETWEEN 137600 AND 137699
+    AND (
+      document.rule_scope NOT IN ('global', 'club')
+      OR document.rule_status NOT IN ('draft', 'published', 'archived')
+      OR (document.rule_scope = 'global' AND document.club_id IS NOT NULL)
+      OR (document.rule_scope = 'club' AND document.club_id IS NULL)
+    );
+
+  IF v_invalid_rule_documents > 0 THEN
+    RAISE_APPLICATION_ERROR(-20141, 'Sample award workflow seed left invalid award rule documents.');
   END IF;
 END;
 /

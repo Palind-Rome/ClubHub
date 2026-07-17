@@ -20,6 +20,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<AwardAttachment> AwardAttachments => Set<AwardAttachment>();
     public DbSet<AwardPublicityBatch> AwardPublicityBatches => Set<AwardPublicityBatch>();
     public DbSet<AwardPublicityItem> AwardPublicityItems => Set<AwardPublicityItem>();
+    public DbSet<AwardRuleDocument> AwardRuleDocuments => Set<AwardRuleDocument>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
@@ -143,6 +144,10 @@ public class ClubHubDbContext : DbContext
             e.HasMany(c => c.AwardPublicityBatches)
              .WithOne(b => b.Club)
              .HasForeignKey(b => b.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.AwardRuleDocuments)
+             .WithOne(d => d.Club)
+             .HasForeignKey(d => d.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -399,6 +404,35 @@ public class ClubHubDbContext : DbContext
              .WithMany(a => a.PublicityItems)
              .HasForeignKey(i => new { i.ClubId, i.AwardApplicationId })
              .HasPrincipalKey(a => new { a.ClubId, a.AwardApplicationId })
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardRuleDocument>(e =>
+        {
+            e.HasKey(d => d.RuleDocumentId);
+            e.Property(d => d.RuleDocumentId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_RULE_DOCUMENTS.NEXTVAL");
+            e.Property(d => d.RuleTitle).HasMaxLength(255);
+            e.Property(d => d.RuleScope).HasMaxLength(30).HasDefaultValue("club");
+            e.Property(d => d.AcademicYear).HasMaxLength(50);
+            e.Property(d => d.TermName).HasMaxLength(80);
+            e.Property(d => d.IssuerName).HasMaxLength(255);
+            e.Property(d => d.Summary).HasColumnType("CLOB");
+            e.Property(d => d.ContentText).HasColumnType("CLOB");
+            e.Property(d => d.MaterialUrl).HasMaxLength(1000);
+            e.Property(d => d.MaterialName).HasMaxLength(255);
+            e.Property(d => d.VersionNo).HasMaxLength(50).HasDefaultValue("1.0");
+            e.Property(d => d.RuleStatus).HasMaxLength(30).HasDefaultValue("draft");
+            e.Property(d => d.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(d => d.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(d => new { d.ClubId, d.RuleStatus, d.AcademicYear, d.TermName })
+             .HasDatabaseName("IX_AWARD_RULE_DOCS_SCOPE");
+            e.HasIndex(d => new { d.RuleScope, d.RuleStatus, d.EffectiveStartAt })
+             .HasDatabaseName("IX_AWARD_RULE_DOCS_STATUS");
+            e.HasOne(d => d.PublishedByUser)
+             .WithMany()
+             .HasForeignKey(d => d.PublishedByUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 

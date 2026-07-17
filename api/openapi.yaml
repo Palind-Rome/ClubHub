@@ -1247,6 +1247,142 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/award-rule-documents:
+    get:
+      summary: 查询评奖评优评定细则
+      description: 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+      operationId: getClubAwardRuleDocuments
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, archived]
+          description: 按细则状态筛选。
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按标题、发布单位、摘要或正文搜索。
+      responses:
+        "200":
+          description: 评定细则列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有查看该社团评奖评优细则的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 上传评奖评优评定细则
+      description: 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+      operationId: createClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
+      responses:
+        "201":
+          description: 评定细则已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有上传该范围细则的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护或同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}:
+    patch:
+      summary: 更新评奖评优评定细则
+      description: 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+      operationId: updateClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardRuleDocumentRequest"
+      responses:
+        "200":
+          description: 评定细则已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+        "409":
+          description: 同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish:
+    post:
+      summary: 发布评奖评优评定细则
+      description: 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+      operationId: publishClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评定细则已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有发布该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+
   /api/clubs/{clubId}/award-schemes:
     get:
       summary: 查询社团评奖评优奖项配置
@@ -6082,6 +6218,196 @@ components:
         - awardScore
         - displayOrder
         - levelStatus
+
+    AwardRuleDocumentRecord:
+      type: object
+      description: 评奖评优评定细则，支持学校级通用细则和社团级细则。
+      properties:
+        ruleDocumentId:
+          type: integer
+          description: 细则 ID。
+          example: 137601
+        clubId:
+          type: integer
+          nullable: true
+          description: 社团级细则所属社团；学校级细则为空。
+          example: 2
+        clubName:
+          type: string
+          nullable: true
+          description: 所属社团名称；学校级细则为空。
+          example: 摄影社
+        ruleTitle:
+          type: string
+          description: 细则标题。
+          example: 2026 年度校园影像贡献奖评定细则
+        ruleScope:
+          type: string
+          enum: [global, club]
+          description: global 表示学校级通用细则，club 表示社团级细则。
+          example: club
+        ruleScopeText:
+          type: string
+          description: 细则范围中文文案。
+          example: 社团细则
+        academicYear:
+          type: string
+          description: 适用学年或年度。
+          example: "2026"
+        termName:
+          type: string
+          nullable: true
+          description: 适用学期。
+          example: 春季
+        issuerName:
+          type: string
+          nullable: true
+          description: 发布或制定单位。
+          example: 摄影社评奖评优工作组
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 细则附件或原文链接。
+          example: /demo/awards/photo-rule-2026.pdf
+        materialName:
+          type: string
+          nullable: true
+          description: 细则附件展示名称。
+          example: 摄影社 2026 年度校园影像贡献奖评定细则.pdf
+        versionNo:
+          type: string
+          description: 细则版本号。
+          example: "1.0"
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          description: 细则状态。
+          example: published
+        ruleStatusText:
+          type: string
+          description: 细则状态中文文案。
+          example: 已发布
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效开始时间。
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效结束时间。
+        publishedByUserId:
+          type: integer
+          nullable: true
+          description: 发布人用户 ID。
+        publishedByName:
+          type: string
+          nullable: true
+          description: 发布人展示名。
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 发布时间。
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - ruleDocumentId
+        - ruleTitle
+        - ruleScope
+        - ruleScopeText
+        - academicYear
+        - versionNo
+        - ruleStatus
+        - ruleStatusText
+        - createdAt
+        - updatedAt
+
+    CreateAwardRuleDocumentRequest:
+      type: object
+      description: 创建评奖评优评定细则的请求。
+      properties:
+        ruleTitle:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 细则标题。
+        ruleScope:
+          type: string
+          enum: [global, club]
+          default: club
+          description: global 为学校级细则，club 为当前社团细则。
+        academicYear:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 适用学年或年度。
+        termName:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: 适用学期。
+        issuerName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 发布或制定单位。
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: 附件或原文链接。
+        materialName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 附件展示名称。
+        versionNo:
+          type: string
+          maxLength: 50
+          default: "1.0"
+          description: 版本号。
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          default: draft
+          description: 初始状态。
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - ruleTitle
+        - academicYear
+
+    UpdateAwardRuleDocumentRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
 
     AwardSchemeRecord:
       type: object

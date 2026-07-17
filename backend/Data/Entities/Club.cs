@@ -89,5 +89,8 @@ public class Club
     public ICollection<AwardPublicityBatch> AwardPublicityBatches { get; set; } =
         new List<AwardPublicityBatch>();
 
+    public ICollection<AwardRuleDocument> AwardRuleDocuments { get; set; } =
+        new List<AwardRuleDocument>();
+
     public ICollection<Notice> Notices { get; set; } = new List<Notice>();
 }

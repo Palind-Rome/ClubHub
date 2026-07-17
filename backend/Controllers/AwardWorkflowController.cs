@@ -62,6 +62,11 @@ public class AwardWorkflowController : ControllerBase
     private const string AwardPublicityClosed = "closed";
     private const string AwardPublicityArchived = "archived";
     private const string AwardPublicityItemNormal = "normal";
+    private const string AwardRuleScopeGlobal = "global";
+    private const string AwardRuleScopeClub = "club";
+    private const string AwardRuleStatusDraft = "draft";
+    private const string AwardRuleStatusPublished = "published";
+    private const string AwardRuleStatusArchived = "archived";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
@@ -80,6 +85,225 @@ public class AwardWorkflowController : ControllerBase
     private readonly ClubHubDbContext _db;
 
     public AwardWorkflowController(ClubHubDbContext db) => _db = db;
+
+    [HttpGet("award-rule-documents")]
+    public async Task<IActionResult> GetAwardRuleDocuments(
+        int clubId,
+        [FromQuery] string? status = null,
+        [FromQuery] string? keyword = null)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var normalizedStatus = NormalizeAwardRuleStatus(status);
+        if (!string.IsNullOrWhiteSpace(status) && normalizedStatus is null)
+            return BadRequest(new { message = "评定细则状态不合法。" });
+
+        var canMaintain = CanMaintainAwardWorkflow(access.Viewer!, access.Club!);
+        var query = AwardRuleDocumentQuery()
+            .Where(d => d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId)
+            .Where(d => normalizedStatus == null || d.RuleStatus == normalizedStatus);
+
+        if (!canMaintain)
+        {
+            query = query.Where(d => d.RuleStatus == AwardRuleStatusPublished);
+        }
+
+        var normalizedKeyword = EmptyToNull(keyword)?.ToUpperInvariant();
+        if (normalizedKeyword is not null)
+        {
+            query = query.Where(d =>
+                d.RuleTitle.ToUpper().Contains(normalizedKeyword) ||
+                d.AcademicYear.ToUpper().Contains(normalizedKeyword) ||
+                (d.TermName != null && d.TermName.ToUpper().Contains(normalizedKeyword)) ||
+                (d.IssuerName != null && d.IssuerName.ToUpper().Contains(normalizedKeyword)) ||
+                (d.Summary != null && d.Summary.ToUpper().Contains(normalizedKeyword)));
+        }
+
+        var documents = await query
+            .OrderBy(d => d.RuleScope == AwardRuleScopeGlobal ? 0 : 1)
+            .ThenByDescending(d => d.PublishedAt ?? d.UpdatedAt)
+            .ThenBy(d => d.RuleTitle)
+            .ToListAsync();
+
+        return Ok(documents.Select(ToAwardRuleDocumentRecordDto).ToList());
+    }
+
+    [HttpPost("award-rule-documents")]
+    public async Task<IActionResult> CreateAwardRuleDocument(
+        int clubId,
+        [FromBody] AwardRuleDocumentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var requestedRuleScope = NormalizeAwardRuleScope(req.RuleScope);
+        if (!string.IsNullOrWhiteSpace(req.RuleScope) && requestedRuleScope is null)
+            return BadRequest(new { message = "评定细则范围不合法。" });
+        var ruleScope = requestedRuleScope ?? AwardRuleScopeClub;
+
+        var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, ruleScope);
+        if (permissionError is not null) return permissionError;
+        if (ruleScope == AwardRuleScopeClub && !IsMaintainableClub(access.Club!))
+            return Conflict(new { message = "只有正在运营的社团可以维护社团评定细则。" });
+
+        var validationError = ValidateAwardRuleDocumentRequest(req);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+
+        var ruleTitle = req.RuleTitle!.Trim();
+        var academicYear = req.AcademicYear!.Trim();
+        var termName = EmptyToNull(req.TermName);
+        var versionNo = EmptyToNull(req.VersionNo) ?? "1.0";
+        var targetClubId = ruleScope == AwardRuleScopeClub ? clubId : (int?)null;
+        if (await HasDuplicateAwardRuleDocumentAsync(ruleScope, targetClubId, ruleTitle, academicYear, termName, versionNo, null))
+            return Conflict(new { message = "同一范围、学年学期和版本下已存在同名评定细则。" });
+
+        var now = BusinessNow();
+        var document = new AwardRuleDocument
+        {
+            RuleScope = ruleScope,
+            ClubId = targetClubId,
+            RuleTitle = ruleTitle,
+            AcademicYear = academicYear,
+            TermName = termName,
+            IssuerName = EmptyToNull(req.IssuerName),
+            Summary = EmptyToNull(req.Summary),
+            ContentText = EmptyToNull(req.ContentText),
+            MaterialUrl = EmptyToNull(req.MaterialUrl),
+            MaterialName = EmptyToNull(req.MaterialName),
+            VersionNo = versionNo,
+            RuleStatus = NormalizeAwardRuleStatus(req.RuleStatus) ?? AwardRuleStatusDraft,
+            EffectiveStartAt = req.EffectiveStartAt,
+            EffectiveEndAt = req.EffectiveEndAt,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        if (document.RuleStatus == AwardRuleStatusPublished)
+        {
+            document.PublishedByUserId = currentUserId.Value;
+            document.PublishedAt = now;
+        }
+
+        _db.AwardRuleDocuments.Add(document);
+        await _db.SaveChangesAsync();
+
+        var created = await AwardRuleDocumentQuery()
+            .FirstAsync(d => d.RuleDocumentId == document.RuleDocumentId);
+        return CreatedAtAction(nameof(GetAwardRuleDocuments), new { clubId }, ToAwardRuleDocumentRecordDto(created));
+    }
+
+    [HttpPatch("award-rule-documents/{ruleDocumentId:int}")]
+    public async Task<IActionResult> UpdateAwardRuleDocument(
+        int clubId,
+        int ruleDocumentId,
+        [FromBody] AwardRuleDocumentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var document = await _db.AwardRuleDocuments.FirstOrDefaultAsync(d =>
+            d.RuleDocumentId == ruleDocumentId &&
+            (d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId));
+        if (document is null) return NotFound(new { message = "评定细则不存在。" });
+
+        var requestedRuleScope = NormalizeAwardRuleScope(req.RuleScope);
+        if (!string.IsNullOrWhiteSpace(req.RuleScope) && requestedRuleScope is null)
+            return BadRequest(new { message = "评定细则范围不合法。" });
+        var ruleScope = requestedRuleScope ?? document.RuleScope;
+
+        var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, ruleScope);
+        if (permissionError is not null) return permissionError;
+        if (ruleScope == AwardRuleScopeClub && !IsMaintainableClub(access.Club!))
+            return Conflict(new { message = "只有正在运营的社团可以维护社团评定细则。" });
+
+        var validationError = ValidateAwardRuleDocumentRequest(req);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+
+        var ruleTitle = req.RuleTitle!.Trim();
+        var academicYear = req.AcademicYear!.Trim();
+        var termName = EmptyToNull(req.TermName);
+        var versionNo = EmptyToNull(req.VersionNo) ?? "1.0";
+        var targetClubId = ruleScope == AwardRuleScopeClub ? clubId : (int?)null;
+        if (await HasDuplicateAwardRuleDocumentAsync(ruleScope, targetClubId, ruleTitle, academicYear, termName, versionNo, ruleDocumentId))
+            return Conflict(new { message = "同一范围、学年学期和版本下已存在同名评定细则。" });
+
+        var now = BusinessNow();
+        document.RuleScope = ruleScope;
+        document.ClubId = targetClubId;
+        document.RuleTitle = ruleTitle;
+        document.AcademicYear = academicYear;
+        document.TermName = termName;
+        document.IssuerName = EmptyToNull(req.IssuerName);
+        document.Summary = EmptyToNull(req.Summary);
+        document.ContentText = EmptyToNull(req.ContentText);
+        document.MaterialUrl = EmptyToNull(req.MaterialUrl);
+        document.MaterialName = EmptyToNull(req.MaterialName);
+        document.VersionNo = versionNo;
+        document.RuleStatus = NormalizeAwardRuleStatus(req.RuleStatus) ?? document.RuleStatus;
+        document.EffectiveStartAt = req.EffectiveStartAt;
+        document.EffectiveEndAt = req.EffectiveEndAt;
+        document.UpdatedAt = now;
+
+        if (document.RuleStatus == AwardRuleStatusPublished && document.PublishedAt is null)
+        {
+            document.PublishedByUserId = currentUserId.Value;
+            document.PublishedAt = now;
+        }
+        else if (document.RuleStatus == AwardRuleStatusDraft)
+        {
+            document.PublishedByUserId = null;
+            document.PublishedAt = null;
+        }
+
+        await _db.SaveChangesAsync();
+
+        var updated = await AwardRuleDocumentQuery()
+            .FirstAsync(d => d.RuleDocumentId == ruleDocumentId);
+        return Ok(ToAwardRuleDocumentRecordDto(updated));
+    }
+
+    [HttpPost("award-rule-documents/{ruleDocumentId:int}/publish")]
+    public async Task<IActionResult> PublishAwardRuleDocument(int clubId, int ruleDocumentId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var document = await _db.AwardRuleDocuments.FirstOrDefaultAsync(d =>
+            d.RuleDocumentId == ruleDocumentId &&
+            (d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId));
+        if (document is null) return NotFound(new { message = "评定细则不存在。" });
+
+        var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, document.RuleScope);
+        if (permissionError is not null) return permissionError;
+
+        var now = BusinessNow();
+        document.RuleStatus = AwardRuleStatusPublished;
+        document.PublishedByUserId = currentUserId.Value;
+        document.PublishedAt = now;
+        document.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+
+        var published = await AwardRuleDocumentQuery()
+            .FirstAsync(d => d.RuleDocumentId == ruleDocumentId);
+        return Ok(ToAwardRuleDocumentRecordDto(published));
+    }
 
     [HttpGet("award-schemes")]
     public async Task<IActionResult> GetAwardSchemes(
@@ -799,6 +1023,12 @@ public class AwardWorkflowController : ControllerBase
                 .ThenInclude(i => i.Application)
                     .ThenInclude(a => a!.Level);
 
+    private IQueryable<AwardRuleDocument> AwardRuleDocumentQuery() =>
+        _db.AwardRuleDocuments
+            .AsNoTracking()
+            .Include(d => d.Club)
+            .Include(d => d.PublishedByUser);
+
     private IQueryable<AwardPublicityBatch> PublicityBatchForUpdateQuery() =>
         _db.AwardPublicityBatches
             .Include(b => b.Items)
@@ -870,6 +1100,20 @@ public class AwardWorkflowController : ControllerBase
         IsClubPrincipal(viewer, club) ||
         UsersController.IsClubAdvisor(viewer, club.ClubId);
 
+    private IActionResult? EnsureCanMaintainAwardRuleDocument(User viewer, Club club, string ruleScope)
+    {
+        if (ruleScope == AwardRuleScopeGlobal)
+        {
+            return UsersController.IsPlatformAdmin(viewer) || UsersController.IsSystemAdmin(viewer)
+                ? null
+                : StatusCode(403, new { message = "只有平台或系统管理员可以维护学校级评定细则。" });
+        }
+
+        return CanMaintainAwardWorkflow(viewer, club)
+            ? null
+            : StatusCode(403, new { message = "只有本社团负责人、指导老师或管理员可以维护社团评定细则。" });
+    }
+
     private static bool IsClubPrincipal(User viewer, Club club) =>
         club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
 
@@ -913,6 +1157,29 @@ public class AwardWorkflowController : ControllerBase
         string.Equals(club.AuditStatus, AuditApproved, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(club.ClubStatus, ClubActive, StringComparison.OrdinalIgnoreCase);
 
+    private async Task<bool> HasDuplicateAwardRuleDocumentAsync(
+        string ruleScope,
+        int? clubId,
+        string ruleTitle,
+        string academicYear,
+        string? termName,
+        string versionNo,
+        int? ignoredRuleDocumentId)
+    {
+        var normalizedTitle = ruleTitle.ToUpperInvariant();
+        var normalizedAcademicYear = academicYear.ToUpperInvariant();
+        var normalizedTermName = (termName ?? string.Empty).ToUpperInvariant();
+        var normalizedVersionNo = versionNo.ToUpperInvariant();
+        return await _db.AwardRuleDocuments.AnyAsync(d =>
+            d.RuleScope == ruleScope &&
+            d.ClubId == clubId &&
+            (ignoredRuleDocumentId == null || d.RuleDocumentId != ignoredRuleDocumentId.Value) &&
+            d.RuleTitle.ToUpper() == normalizedTitle &&
+            d.AcademicYear.ToUpper() == normalizedAcademicYear &&
+            (d.TermName ?? string.Empty).ToUpper() == normalizedTermName &&
+            d.VersionNo.ToUpper() == normalizedVersionNo);
+    }
+
     private async Task<bool> HasDuplicateAwardSchemeAsync(
         int clubId,
         string awardName,
@@ -929,6 +1196,34 @@ public class AwardWorkflowController : ControllerBase
             s.AwardName.ToUpper() == normalizedName &&
             s.AcademicYear.ToUpper() == normalizedAcademicYear &&
             (s.TermName ?? string.Empty).ToUpper() == normalizedTermName);
+    }
+
+    private static string? ValidateAwardRuleDocumentRequest(AwardRuleDocumentRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.RuleTitle)) return "评定细则标题不能为空。";
+        if (req.RuleTitle.Trim().Length > 255) return "评定细则标题不能超过 255 个字符。";
+        if (string.IsNullOrWhiteSpace(req.AcademicYear)) return "适用学年不能为空。";
+        if (req.AcademicYear.Trim().Length > 50) return "适用学年不能超过 50 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.TermName) && req.TermName.Trim().Length > 80)
+            return "适用学期不能超过 80 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.IssuerName) && req.IssuerName.Trim().Length > 255)
+            return "制定单位不能超过 255 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.MaterialUrl) && req.MaterialUrl.Trim().Length > 1000)
+            return "材料链接不能超过 1000 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.MaterialName) && req.MaterialName.Trim().Length > 255)
+            return "材料名称不能超过 255 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.VersionNo) && req.VersionNo.Trim().Length > 50)
+            return "版本号不能超过 50 个字符。";
+        if (!string.IsNullOrWhiteSpace(req.RuleStatus) && NormalizeAwardRuleStatus(req.RuleStatus) is null)
+            return "评定细则状态不合法。";
+        if (req.EffectiveStartAt is not null &&
+            req.EffectiveEndAt is not null &&
+            req.EffectiveStartAt > req.EffectiveEndAt)
+        {
+            return "生效开始时间不能晚于结束时间。";
+        }
+
+        return null;
     }
 
     private static string? ValidateAwardSchemeRequest(CreateAwardSchemeRequest req) =>
@@ -1200,6 +1495,31 @@ public class AwardWorkflowController : ControllerBase
             ReviewedAt = reviewedAt
         };
 
+    private static AwardRuleDocumentRecordDto ToAwardRuleDocumentRecordDto(AwardRuleDocument document) => new(
+        document.RuleDocumentId,
+        document.ClubId,
+        document.Club?.ClubName,
+        document.RuleTitle,
+        document.RuleScope,
+        AwardRuleScopeText(document.RuleScope),
+        document.AcademicYear,
+        document.TermName,
+        document.IssuerName,
+        document.Summary,
+        document.ContentText,
+        document.MaterialUrl,
+        document.MaterialName,
+        document.VersionNo,
+        document.RuleStatus,
+        AwardRuleStatusText(document.RuleStatus),
+        document.EffectiveStartAt,
+        document.EffectiveEndAt,
+        document.PublishedByUserId,
+        DisplayUser(document.PublishedByUser),
+        document.PublishedAt,
+        document.CreatedAt,
+        document.UpdatedAt);
+
     private static AwardSchemeRecordDto ToAwardSchemeRecordDto(AwardScheme scheme) => new(
         scheme.AwardSchemeId,
         scheme.ClubId,
@@ -1414,6 +1734,12 @@ public class AwardWorkflowController : ControllerBase
     private static string? NormalizeAwardPublicityStatus(string? value) =>
         NormalizeToKnown(value, AwardPublicityDraft, AwardPublicityPublicizing, AwardPublicityClosed, AwardPublicityArchived);
 
+    private static string? NormalizeAwardRuleScope(string? value) =>
+        NormalizeToKnown(value, AwardRuleScopeGlobal, AwardRuleScopeClub);
+
+    private static string? NormalizeAwardRuleStatus(string? value) =>
+        NormalizeToKnown(value, AwardRuleStatusDraft, AwardRuleStatusPublished, AwardRuleStatusArchived);
+
     private static string? NormalizeToKnown(string? value, params string[] known)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
@@ -1458,6 +1784,21 @@ public class AwardWorkflowController : ControllerBase
         var studentNo = string.IsNullOrWhiteSpace(user.StudentNo) ? string.Empty : $"（{user.StudentNo}）";
         return string.IsNullOrWhiteSpace(name) ? $"用户 {user.UserId}" : $"{name}{studentNo}";
     }
+
+    private static string AwardRuleScopeText(string? scope) => scope switch
+    {
+        AwardRuleScopeGlobal => "学校细则",
+        AwardRuleScopeClub => "社团细则",
+        _ => "未知范围"
+    };
+
+    private static string AwardRuleStatusText(string? status) => status switch
+    {
+        AwardRuleStatusDraft => "草稿",
+        AwardRuleStatusPublished => "已发布",
+        AwardRuleStatusArchived => "已归档",
+        _ => "未知状态"
+    };
 
     private static string AwardSchemeStatusText(string? status) => status switch
     {
@@ -1514,6 +1855,46 @@ public record AwardLevelRecordDto(
     int? Quota,
     int DisplayOrder,
     string LevelStatus);
+
+public record AwardRuleDocumentRequest(
+    string? RuleTitle,
+    string? RuleScope,
+    string? AcademicYear,
+    string? TermName,
+    string? IssuerName,
+    string? Summary,
+    string? ContentText,
+    string? MaterialUrl,
+    string? MaterialName,
+    string? VersionNo,
+    string? RuleStatus,
+    DateTime? EffectiveStartAt,
+    DateTime? EffectiveEndAt);
+
+public record AwardRuleDocumentRecordDto(
+    int RuleDocumentId,
+    int? ClubId,
+    string? ClubName,
+    string RuleTitle,
+    string RuleScope,
+    string RuleScopeText,
+    string AcademicYear,
+    string? TermName,
+    string? IssuerName,
+    string? Summary,
+    string? ContentText,
+    string? MaterialUrl,
+    string? MaterialName,
+    string VersionNo,
+    string RuleStatus,
+    string RuleStatusText,
+    DateTime? EffectiveStartAt,
+    DateTime? EffectiveEndAt,
+    int? PublishedByUserId,
+    string? PublishedByName,
+    DateTime? PublishedAt,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
 
 public record AwardSchemeRecordDto(
     int AwardSchemeId,

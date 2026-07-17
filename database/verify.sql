@@ -23,6 +23,7 @@ WHERE sequence_name IN (
   'SEQ_AWARD_ATTACHMENTS',
   'SEQ_AWARD_PUBLICITY_BATCHES',
   'SEQ_AWARD_PUBLICITY_ITEMS',
+  'SEQ_AWARD_RULE_DOCUMENTS',
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
   'SEQ_ACTIVITY_PARTICIPATIONS',
@@ -56,6 +57,7 @@ WHERE (table_name, column_name) IN (
   ('AWARD_ATTACHMENTS', 'ATTACHMENT_ID'),
   ('AWARD_PUBLICITY_BATCHES', 'PUBLICITY_BATCH_ID'),
   ('AWARD_PUBLICITY_ITEMS', 'PUBLICITY_ITEM_ID'),
+  ('AWARD_RULE_DOCUMENTS', 'RULE_DOCUMENT_ID'),
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
   ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
@@ -63,7 +65,7 @@ WHERE (table_name, column_name) IN (
 )
 ORDER BY table_name, column_name;
 
--- ClubHub 核心表应为 35 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- ClubHub 核心表应为 36 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
@@ -74,7 +76,7 @@ WHERE table_name IN (
   'LEARNING_ITEMS', 'LEARNING_RECORDS',
   'MATERIALS', 'MATERIAL_BORROWS',
   'AWARD_SCHEMES', 'AWARD_LEVELS', 'AWARD_APPLICATIONS', 'AWARD_REVIEW_RECORDS',
-  'AWARD_ATTACHMENTS', 'AWARD_PUBLICITY_BATCHES', 'AWARD_PUBLICITY_ITEMS',
+  'AWARD_ATTACHMENTS', 'AWARD_PUBLICITY_BATCHES', 'AWARD_PUBLICITY_ITEMS', 'AWARD_RULE_DOCUMENTS',
   'EVALUATIONS', 'EVALUATION_AWARD_SOURCES',
   'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS'
 );
@@ -241,6 +243,7 @@ WHERE table_name IN (
   'AWARD_ATTACHMENTS',
   'AWARD_PUBLICITY_BATCHES',
   'AWARD_PUBLICITY_ITEMS',
+  'AWARD_RULE_DOCUMENTS',
   'EVALUATION_AWARD_SOURCES'
 )
 ORDER BY table_name, column_id;
@@ -273,6 +276,8 @@ WHERE constraint_name IN (
   'FK_AWARD_PUBLICITY_PUBLISHER',
   'FK_AWARD_PUBLICITY_ITEMS_BATCH',
   'FK_AWARD_PUBLICITY_ITEMS_APP',
+  'FK_AWARD_RULE_DOCS_CLUB',
+  'FK_AWARD_RULE_DOCS_PUBLISHER',
   'FK_EAS_EVALUATION',
   'FK_EAS_APPLICATION'
 )
@@ -289,7 +294,9 @@ WHERE index_name IN (
   'IX_AWARD_REVIEWS_APPLICATION',
   'IX_AWARD_ATTACHMENTS_APP',
   'IX_AWARD_PUBLICITY_CLUB',
-  'IX_AWARD_PUBLICITY_ITEMS_ORDER'
+  'IX_AWARD_PUBLICITY_ITEMS_ORDER',
+  'IX_AWARD_RULE_DOCS_SCOPE',
+  'IX_AWARD_RULE_DOCS_STATUS'
 )
 ORDER BY index_name;
 
@@ -349,3 +356,28 @@ JOIN award_applications application
   ON application.award_application_id = source.award_application_id
 WHERE evaluation.club_id <> application.club_id
    OR evaluation.user_id <> application.applicant_user_id;
+
+SELECT rule_document_id, rule_scope, club_id, rule_status
+FROM award_rule_documents
+WHERE rule_scope NOT IN ('global', 'club')
+   OR rule_status NOT IN ('draft', 'published', 'archived')
+   OR (rule_scope = 'global' AND club_id IS NOT NULL)
+   OR (rule_scope = 'club' AND club_id IS NULL);
+
+SELECT rule_document_id, club_id
+FROM award_rule_documents document
+WHERE document.club_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM clubs club
+    WHERE club.club_id = document.club_id
+  );
+
+SELECT rule_document_id, published_by_user_id
+FROM award_rule_documents document
+WHERE document.published_by_user_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM users publisher
+    WHERE publisher.user_id = document.published_by_user_id
+  );

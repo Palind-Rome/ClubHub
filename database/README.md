@@ -3,7 +3,7 @@
 本目录保存 ClubHub 的 Oracle 数据库脚本。
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
-- `verify.sql`：验证当前用户、35 张核心表、项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批和公示约束。
+- `verify.sql`：验证当前用户、36 张核心表、项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示和细则约束。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
@@ -38,6 +38,9 @@
    和 `EVALUATION_AWARD_SOURCES`，把评奖评优从直接录入结果扩展为奖项配置、
    申请、社团负责人初审、指导老师审核、校级终审、公示和归档流程。表间保留
    社团、奖项、申请人、审核人和考核记录外键，避免跨社团误挂数据。
+6. `20260717_add_award_rule_documents.sql`：新增 `AWARD_RULE_DOCUMENTS`，
+   用于维护校级通用细则和社团细则。系统管理员可发布校级通用细则，社团负责人
+   或指导老师可维护本社团细则，表中保留社团和发布人外键。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码和回填结果均已生效。
 
@@ -52,7 +55,7 @@
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新演示信息。
-8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档和考核奖项分来源样例，依赖评奖评优流程迁移和前述社团、成员、组织架构样例。
+8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
 
 样例账号统一密码为 `123456`：
 
@@ -84,7 +87,8 @@
 6. 执行 `migrations/004_add_project_task_progress_reports.sql`。脚本创建任务进度提交记录表；既有任务不会伪造历史记录。
 7. 执行 `migrations/20260714_add_club_departments_groups.sql`。若脚本提示存在没有部门的小组历史数据，先补齐或清理 `CLUB_MEMBERS.department_name` 后再重跑。
 8. 执行 `migrations/20260717_add_award_application_workflow.sql`，新增评奖评优申请审批和公示归档相关结构。
-9. 执行 `verify.sql`；35 张核心表计数应为 35，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用和考核奖项分来源错挂查询均应返回 0 行。
+9. 执行 `migrations/20260717_add_award_rule_documents.sql`，新增评奖评优细则维护相关结构。
+10. 执行 `verify.sql`；36 张核心表计数应为 36，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评定细则范围/外键和考核奖项分来源错挂查询均应返回 0 行。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
