@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { Bell, Check, Plus, Refresh, Search } from "@element-plus/icons-vue";
+import { Bell, Plus, Refresh, Search } from "@element-plus/icons-vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import type { Club, ClubMemberRecord, Notice as ApiNotice } from "../api/models";
@@ -11,6 +11,11 @@ type NoticeStatus = "draft" | "published" | "expired";
 interface ApiError {
   message?: string;
   title?: string;
+}
+
+interface NoticeReadResponse {
+  isRead: boolean;
+  readAt?: string | null;
 }
 
 type Notice = Omit<
@@ -40,6 +45,8 @@ const memberLoading = ref(false);
 const publishing = ref(false);
 const markingId = ref<number | null>(null);
 const publishDialogVisible = ref(false);
+const detailDialogVisible = ref(false);
+const selectedNotice = ref<Notice | null>(null);
 const publishFormRef = ref<FormInstance>();
 let stopSessionListener: (() => void) | null = null;
 let noticeRequestId = 0;
@@ -309,23 +316,32 @@ function buildTargetPayload():
   return { ok: false, message: "请选择定向范围" };
 }
 
+async function openNoticeDetail(row: Notice) {
+  selectedNotice.value = row;
+  detailDialogVisible.value = true;
+  if (!row.isRead) await markRead(row);
+}
+
 async function markRead(row: Notice) {
   const userId = currentUserId.value;
-  if (!userId || row.isRead) return;
+  if (!userId || row.isRead || markingId.value !== null) return;
 
   markingId.value = row.id;
   try {
-    await requestJson(`/api/notices/${row.id}/reads`, {
+    const result = await requestJson<NoticeReadResponse>(`/api/notices/${row.id}/reads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentUserId: userId }),
     });
-    row.isRead = true;
-    row.readAt = new Date().toISOString();
+    row.isRead = result.isRead;
+    row.readAt = result.readAt ?? new Date().toISOString();
     row.readCount += 1;
-    ElMessage.success("已标记为已读");
+
+    await loadNotices();
+    const refreshed = notices.value.find((notice) => notice.id === row.id);
+    if (selectedNotice.value?.id === row.id && refreshed) selectedNotice.value = refreshed;
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "标记已读失败");
+    ElMessage.error(e instanceof Error ? e.message : "同步已读状态失败，请稍后重试");
   } finally {
     markingId.value = null;
   }
@@ -358,7 +374,18 @@ function noticeStatusType(value: string) {
   return "warning";
 }
 
-function formatDate(value: string | null) {
+function noticeTypeText(value: string) {
+  return (
+    {
+      announcement: "公告",
+      urgent: "紧急通知",
+      event: "活动提醒",
+      system: "系统消息",
+    }[value] ?? value
+  );
+}
+
+function formatDate(value: string | null | undefined) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
 }
@@ -488,40 +515,88 @@ onUnmounted(() => {
           {{ row.readCount }} / {{ row.audienceCount ?? "-" }}
         </template>
       </el-table-column>
-      <el-table-column type="expand">
+      <el-table-column label="内容" width="100" fixed="right">
         <template #default="{ row }">
-          <div class="notice-detail">
-            <p>{{ row.content }}</p>
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="通知类型">{{ row.noticeType }}</el-descriptions-item>
-              <el-descriptions-item label="所属社团">
-                {{ row.clubName || "-" }}
-              </el-descriptions-item>
-              <el-descriptions-item label="过期时间">
-                {{ formatDate(row.expireAt) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="已读时间">
-                {{ formatDate(row.readAt) }}
-              </el-descriptions-item>
-            </el-descriptions>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="130" fixed="right">
-        <template #default="{ row }">
-          <el-button
-            type="primary"
-            plain
-            :icon="Check"
-            :disabled="row.isRead"
-            :loading="markingId === row.id"
-            @click="markRead(row)"
-          >
-            标记已读
-          </el-button>
+          <el-button type="primary" link @click="openNoticeDetail(row)">查看详情</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="通知详情"
+      width="min(720px, 92vw)"
+      append-to-body
+      destroy-on-close
+    >
+      <article v-if="selectedNotice" class="notice-dialog">
+        <header class="notice-dialog__heading">
+          <div>
+            <el-tag type="primary" effect="plain">
+              {{ noticeTypeText(selectedNotice.noticeType) }}
+            </el-tag>
+            <h3>{{ selectedNotice.title }}</h3>
+          </div>
+          <el-tag :type="selectedNotice.isRead ? 'info' : 'danger'" effect="plain">
+            {{ selectedNotice.isRead ? "已读" : "未读" }}
+          </el-tag>
+        </header>
+
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="发布人">
+            {{ selectedNotice.publisherName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布时间">
+            {{ formatDate(selectedNotice.publishAt) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布范围">
+            {{ targetTypeText(selectedNotice.targetType) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布目标">
+            {{ selectedNotice.targetName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布状态">
+            {{ noticeStatusText(selectedNotice.noticeStatus) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="所属社团">
+            {{ selectedNotice.clubName || "-" }}
+          </el-descriptions-item>
+          <el-descriptions-item label="过期时间">
+            {{ formatDate(selectedNotice.expireAt) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="已读时间">
+            {{ formatDate(selectedNotice.readAt) }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <section class="notice-dialog__content">
+          <span>通知正文</span>
+          <p>{{ selectedNotice.content }}</p>
+        </section>
+      </article>
+
+      <template #footer>
+        <div v-if="selectedNotice" class="notice-dialog__footer">
+          <span v-if="markingId === selectedNotice.id">正在同步已读状态…</span>
+          <span v-else-if="selectedNotice.isRead">
+            已于 {{ formatDate(selectedNotice.readAt) }} 阅读
+          </span>
+          <span v-else>尚未标记已读</span>
+          <div>
+            <el-button
+              v-if="!selectedNotice.isRead"
+              type="primary"
+              plain
+              :loading="markingId === selectedNotice.id"
+              @click="markRead(selectedNotice)"
+            >
+              确认已读
+            </el-button>
+            <el-button @click="detailDialogVisible = false">关闭</el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="publishDialogVisible" title="发布通知" width="680px">
       <el-form ref="publishFormRef" :model="publishForm" :rules="publishRules" label-width="100px">
@@ -692,16 +767,54 @@ onUnmounted(() => {
   width: 180px;
 }
 
-.notice-detail {
+.notice-dialog {
   display: grid;
-  gap: 14px;
-  padding: 12px 18px;
+  gap: 20px;
 }
 
-.notice-detail p {
+.notice-dialog__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.notice-dialog__heading h3 {
+  margin: 10px 0 0;
+  color: #20262e;
+  font-size: 22px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.notice-dialog__content {
+  padding: 18px 20px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.notice-dialog__content span {
+  color: #66727f;
+  font-size: 13px;
+}
+
+.notice-dialog__content p {
   margin: 0;
+  margin-top: 10px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.7;
+}
+
+.notice-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  color: #66727f;
+  font-size: 13px;
 }
 
 :deep(.el-dialog__body .el-select),
@@ -732,6 +845,12 @@ onUnmounted(() => {
 
   .filter-item {
     width: 100%;
+  }
+
+  .notice-dialog__heading,
+  .notice-dialog__footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>
