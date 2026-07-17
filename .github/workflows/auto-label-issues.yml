@@ -12,13 +12,48 @@ jobs:
     name: 解析表单并自动打标
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const issue = context.payload.issue;
             const body = issue.body || '';
             const title = issue.title || '';
             const repo = context.repo;
+
+            // ── 辅助：安全添加标签（捕获标签不存在等错误，不阻断后续流程） ──
+            async function safeAddLabels(issueNumber, labels) {
+              if (!labels || labels.length === 0) return;
+              try {
+                await github.rest.issues.addLabels({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: issueNumber,
+                  labels: labels
+                });
+                console.log(`已添加标签: ${labels.join(', ')}`);
+              } catch (e) {
+                console.log(`添加标签 [${labels.join(', ')}] 失败（标签可能不存在）: ${e.message}`);
+              }
+            }
+
+            // ── 辅助：安全移除标签（标签不存在时忽略 404） ──
+            async function safeRemoveLabel(issueNumber, labelName) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: issueNumber,
+                  name: labelName
+                });
+                console.log(`已移除标签: ${labelName}`);
+              } catch (e) {
+                if (e.status === 404) {
+                  console.log(`标签 "${labelName}" 不存在，跳过移除。`);
+                } else {
+                  console.log(`移除标签 "${labelName}" 失败: ${e.message}`);
+                }
+              }
+            }
 
             // ── 1. 从表单正文中提取优先级和领域 ──
             function extractSection(text, heading) {
@@ -31,7 +66,7 @@ jobs:
             const priority = extractSection(body, '优先级');
             const area = extractSection(body, '领域');
 
-            // ── 2. 打标（仅 opened 事件执行，edited 不打标避免重复） ──
+            // ── 2. 打标（opened 添加；edited 先移除旧组再添加新值，保持互斥） ──
             const labelsToAdd = [];
 
             if (priority && /^优先级:P[012]$/.test(priority)) {
@@ -42,18 +77,33 @@ jobs:
               labelsToAdd.push(area);
             }
 
-            if (labelsToAdd.length > 0 && context.payload.action === 'opened') {
-              await github.rest.issues.addLabels({
+            if (context.payload.action === 'opened') {
+              // 新建 Issue：直接添加标签
+              await safeAddLabels(issue.number, labelsToAdd);
+            } else if (context.payload.action === 'edited' && labelsToAdd.length > 0) {
+              // 编辑 Issue：先移除同组旧标签，再添加当前值，保持标签与表单一致
+              const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
                 owner: repo.owner,
                 repo: repo.repo,
-                issue_number: issue.number,
-                labels: labelsToAdd
+                issue_number: issue.number
               });
-              console.log(`已添加标签: ${labelsToAdd.join(', ')}`);
-            } else if (labelsToAdd.length === 0) {
-              console.log('未在表单正文中找到优先级或领域信息，跳过多余打标。');
-            } else {
-              console.log(`非 opened 事件，跳过多余打标（已检测到: ${labelsToAdd.join(', ')}）。`);
+
+              // 移除旧优先级标签（不等于当前值的）
+              for (const label of currentLabels) {
+                if (label.name.startsWith('优先级:P') && label.name !== priority) {
+                  await safeRemoveLabel(issue.number, label.name);
+                }
+                if (label.name.startsWith('area:') && label.name !== area) {
+                  await safeRemoveLabel(issue.number, label.name);
+                }
+              }
+
+              // 添加当前标签（已存在则跳过 addLabels 的 422 错误）
+              for (const label of labelsToAdd) {
+                if (!currentLabels.some(l => l.name === label)) {
+                  await safeAddLabels(issue.number, [label]);
+                }
+              }
             }
 
             // ── 3. 标题前缀校验 ──
@@ -97,14 +147,11 @@ jobs:
                 console.log('已存在标题前缀警告评论，跳过重复添加。');
               }
 
-              // 添加 invalid 标签（幂等操作）
-              await github.rest.issues.addLabels({
-                owner: repo.owner,
-                repo: repo.repo,
-                issue_number: issue.number,
-                labels: [warningLabel]
-              });
-              console.log(`已添加 "${warningLabel}" 标签。`);
+              // 添加 invalid 标签（幂等操作，已有则忽略错误）
+              await safeAddLabels(issue.number, [warningLabel]);
             } else {
               console.log('标题前缀校验通过。');
+
+              // 标题合法时移除 invalid 标签（幂等操作）
+              await safeRemoveLabel(issue.number, 'invalid');
             }
