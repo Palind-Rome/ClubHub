@@ -424,7 +424,13 @@ async function openNoticeDetail(row: Notice) {
 }
 
 async function markRead(row: Notice) {
-  if (!currentUserId.value || row.noticeStatus === "draft" || row.isRead || markingId.value !== null) return;
+  if (
+    !currentUserId.value ||
+    row.noticeStatus === "draft" ||
+    row.isRead ||
+    markingId.value !== null
+  )
+    return;
 
   markingId.value = row.id;
   try {
