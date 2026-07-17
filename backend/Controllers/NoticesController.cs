@@ -150,6 +150,93 @@ public class NoticesController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { viewerUserId = publisher.UserId }, ToApiNotice(created, publisher.UserId, context));
     }
 
+    [HttpPatch("{noticeId:int}")]
+    public async Task<IActionResult> UpdateDraft(int noticeId, [FromBody] ApiCreateNoticeRequest req)
+    {
+        var validationError = ValidateCreateRequest(req);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+
+        var operatorUser = await LoadUserAsync(req.CurrentUserId);
+        if (operatorUser is null) return NotFound(new { message = "当前操作用户不存在。" });
+        if (!UsersController.IsActive(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, new { message = "当前用户账号不可用，不能维护通知草稿。" });
+        }
+
+        var notice = await NoticeQuery().FirstOrDefaultAsync(n => n.NoticeId == noticeId);
+        if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
+        if (EffectiveStatus(notice, DateTime.UtcNow) != StatusDraft)
+        {
+            return Conflict(new { message = "只有草稿通知可以编辑或发布。" });
+        }
+
+        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        {
+            return StatusCode(403, new { message = "当前用户没有维护该通知草稿的权限。" });
+        }
+
+        var targetType = NormalizeTargetType(req.TargetType)!;
+        var status = NormalizePublishStatus(req.NoticeStatus)!;
+        var now = DateTime.UtcNow;
+        if (req.ExpireAt is not null && req.ExpireAt.Value <= now)
+        {
+            return BadRequest(new { message = "过期时间必须晚于当前时间。" });
+        }
+
+        var target = await ResolveCreateTargetAsync(req, operatorUser, targetType);
+        if (target.Result is not null) return target.Result;
+
+        notice.ClubId = target.ClubId;
+        notice.NoticeType = req.NoticeType.Trim();
+        notice.Title = req.Title.Trim();
+        notice.Content = req.Content.Trim();
+        notice.TargetType = targetType;
+        notice.TargetId = target.TargetId;
+        notice.ExpireAt = req.ExpireAt;
+        notice.NoticeStatus = status;
+        // 复用现有时间字段：草稿记录最近保存时间，发布时记录正式发布时间。
+        notice.PublishAt = now;
+
+        // 草稿不应产生阅读记录；同时清理旧版前端误为草稿写入的记录。
+        if (notice.Reads.Count > 0) _db.NoticeReads.RemoveRange(notice.Reads);
+
+        await _db.SaveChangesAsync();
+
+        var updated = await NoticeQuery().FirstAsync(n => n.NoticeId == noticeId);
+        var context = await NoticeListContext.LoadAsync(_db, [updated]);
+        return Ok(ToApiNotice(updated, operatorUser.UserId, context));
+    }
+
+    [HttpDelete("{noticeId:int}")]
+    public async Task<IActionResult> DeleteDraft(int noticeId, [FromQuery] int currentUserId)
+    {
+        if (currentUserId <= 0) return BadRequest(new { message = "请提供当前操作用户。" });
+
+        var operatorUser = await LoadUserAsync(currentUserId);
+        if (operatorUser is null) return NotFound(new { message = "当前操作用户不存在。" });
+        if (!UsersController.IsActive(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, new { message = "当前用户账号不可用，不能删除通知草稿。" });
+        }
+
+        var notice = await NoticeQuery().FirstOrDefaultAsync(n => n.NoticeId == noticeId);
+        if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
+        if (EffectiveStatus(notice, DateTime.UtcNow) != StatusDraft)
+        {
+            return Conflict(new { message = "只有草稿通知可以删除。" });
+        }
+
+        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        {
+            return StatusCode(403, new { message = "当前用户没有删除该通知草稿的权限。" });
+        }
+
+        if (notice.Reads.Count > 0) _db.NoticeReads.RemoveRange(notice.Reads);
+        _db.Notices.Remove(notice);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("{noticeId:int}/reads")]
     public async Task<IActionResult> MarkRead(int noticeId, [FromBody] ApiMarkNoticeReadRequest req)
     {
@@ -166,6 +253,10 @@ public class NoticesController : ControllerBase
         if (notice is null) return NotFound(new { message = "通知不存在。" });
 
         var effectiveStatus = EffectiveStatus(notice, DateTime.UtcNow);
+        if (effectiveStatus == StatusDraft)
+        {
+            return Conflict(new { message = "通知草稿尚未发布，不能标记已读。" });
+        }
         var context = await NoticeListContext.LoadAsync(_db, [notice]);
         if (!CanViewNotice(user, notice, effectiveStatus, context))
         {

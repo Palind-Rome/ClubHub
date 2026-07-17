@@ -292,8 +292,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
     post:
-      summary: 发布公告通知
-      description: 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+      summary: 新建公告通知
+      description: 保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验操作人权限和目标对象。
       operationId: createNotice
       requestBody:
         required: true
@@ -303,7 +303,7 @@ paths:
               $ref: "#/components/schemas/CreateNoticeRequest"
       responses:
         "201":
-          description: 公告通知已发布
+          description: 通知草稿已保存或公告通知已发布
           content:
             application/json:
               schema:
@@ -322,6 +322,98 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 发布人、社团或目标对象不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/notices/{noticeId}:
+    patch:
+      summary: 编辑或发布通知草稿
+      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+      operationId: updateNoticeDraft
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
+      responses:
+        "200":
+          description: 草稿已更新或已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notice"
+        "400":
+          description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有维护该草稿的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户、草稿或目标对象不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 通知已经发布或过期，不能再按草稿修改
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除通知草稿
+      description: 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+      operationId: deleteNoticeDraft
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: currentUserId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 草稿已删除
+        "400":
+          description: 当前操作用户缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有删除该草稿的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户或草稿不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 通知已经发布或过期，不能删除
           content:
             application/json:
               schema:
@@ -365,6 +457,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 当前用户或通知不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 通知仍是草稿，不能标记已读
           content:
             application/json:
               schema:
@@ -4558,7 +4656,7 @@ components:
         publishAt:
           type: string
           format: date-time
-          description: 发布时间。
+          description: 已发布通知的发布时间；草稿状态下表示最近保存时间。
         expireAt:
           type: string
           format: date-time
@@ -4600,7 +4698,7 @@ components:
 
     CreateNoticeRequest:
       type: object
-      description: 发布公告通知请求。
+      description: 新建、编辑或发布公告通知请求。
       properties:
         currentUserId:
           type: integer
@@ -4646,7 +4744,7 @@ components:
           nullable: true
         noticeStatus:
           type: string
-          description: 通知状态；默认 published。
+          description: 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
           enum: [draft, published]
           default: published
           example: published
