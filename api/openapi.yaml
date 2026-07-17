@@ -563,7 +563,7 @@ paths:
   /api/clubs/advisor-candidates:
     get:
       summary: 查询社团注册可选指导老师
-      description: 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+      description: 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
       operationId: getClubAdvisorCandidates
       responses:
         "200":

@@ -130,8 +130,7 @@ public class ClubsController : ControllerBase
                 u.UserRoles.Any(ur =>
                     ur.Role != null &&
                     ((ur.Role.RoleCode != null &&
-                      (ur.Role.RoleCode.ToUpper() == "TEACHER" ||
-                       ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode)) ||
+                      ur.Role.RoleCode.ToUpper() == "TEACHER") ||
                      (ur.Role.RoleName != null &&
                       (ur.Role.RoleName.Contains("教师") ||
                        ur.Role.RoleName.Contains("老师"))))))
@@ -4331,15 +4330,20 @@ public class ClubsController : ControllerBase
 
     private static bool IsTeacherCandidate(User user)
     {
+        if (IsStudentNumber(user.StudentNo)) return false;
         if (IsStaffNumber(user.StudentNo)) return true;
 
         return user.UserRoles.Any(ur =>
             ur.Role is not null &&
             ((ur.Role.RoleCode ?? string.Empty).Equals("TEACHER", StringComparison.OrdinalIgnoreCase) ||
-             (ur.Role.RoleCode ?? string.Empty).Equals(ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase) ||
              (ur.Role.RoleName ?? string.Empty).Contains("教师", StringComparison.Ordinal) ||
              (ur.Role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal)));
     }
+
+    private static bool IsStudentNumber(string? studentNo) =>
+        !string.IsNullOrWhiteSpace(studentNo) &&
+        studentNo.Trim().Length == 7 &&
+        studentNo.Trim().All(char.IsDigit);
 
     private static bool IsStaffNumber(string? studentNo) =>
         !string.IsNullOrWhiteSpace(studentNo) &&
