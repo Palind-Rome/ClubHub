@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 发布公告通知请求。
+ * 新建、编辑或发布公告通知请求。
  * @export
  * @interface CreateNoticeRequest
  */
@@ -69,7 +69,7 @@ export interface CreateNoticeRequest {
    */
   expireAt?: Date | null;
   /**
-   * 通知状态；默认 published。
+   * 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
    * @type {CreateNoticeRequestNoticeStatusEnum}
    * @memberof CreateNoticeRequest
    */

@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 发布公告通知请求。
+    /// 新建、编辑或发布公告通知请求。
     /// </summary>
     [DataContract]
     public partial class CreateNoticeRequest 
@@ -131,9 +131,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// 通知状态；默认 published。
+        /// 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
         /// </summary>
-        /// <value>通知状态；默认 published。</value>
+        /// <value>通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。</value>
         
         public enum NoticeStatusEnum
         {
@@ -152,9 +152,9 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// 通知状态；默认 published。
+        /// 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
         /// </summary>
-        /// <value>通知状态；默认 published。</value>
+        /// <value>通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。</value>
         /* <example>published</example> */
         [DataMember(Name="noticeStatus", EmitDefaultValue=true)]
         public NoticeStatusEnum NoticeStatus { get; set; } = NoticeStatusEnum.PublishedEnum;
