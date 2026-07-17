@@ -46,6 +46,7 @@ const publishDialogVisible = ref(false);
 const detailDialogVisible = ref(false);
 const selectedNotice = ref<Notice | null>(null);
 const editingNoticeId = ref<number | null>(null);
+const editingNoticeVersion = ref<string | null>(null);
 const narrowDetailLayout = ref(false);
 const publishFormRef = ref<FormInstance>();
 let stopSessionListener: (() => void) | null = null;
@@ -198,7 +199,7 @@ async function loadNotices() {
 
   loading.value = true;
   try {
-    const query = new URLSearchParams({ viewerUserId: String(userId) });
+    const query = new URLSearchParams();
     if (filters.noticeStatus) query.set("noticeStatus", filters.noticeStatus);
     if (filters.targetType) query.set("targetType", filters.targetType);
     if (filters.clubId) query.set("clubId", String(filters.clubId));
@@ -224,6 +225,7 @@ function openPublishDialog() {
 
 function resetPublishForm() {
   editingNoticeId.value = null;
+  editingNoticeVersion.value = null;
   publishForm.noticeType = "announcement";
   publishForm.title = "";
   publishForm.content = "";
@@ -237,6 +239,7 @@ function resetPublishForm() {
 
 async function openEditDialog(row: Notice) {
   editingNoticeId.value = row.id;
+  editingNoticeVersion.value = row.publishAt;
   publishForm.noticeType = row.noticeType;
   publishForm.title = row.title;
   publishForm.content = row.content;
@@ -249,6 +252,7 @@ async function openEditDialog(row: Notice) {
   publishDialogVisible.value = true;
 
   await nextTick();
+  if (["department", "member"].includes(row.targetType)) await loadMembers();
   if (row.targetType === "department") publishForm.departmentMemberId = row.targetId ?? undefined;
   if (row.targetType === "member") publishForm.memberUserId = row.targetId ?? undefined;
   publishFormRef.value?.clearValidate();
@@ -262,27 +266,30 @@ function editSelectedDraft() {
 }
 
 async function submitNotice(noticeStatus: "draft" | "published") {
-  if (!currentUserId.value || !publishFormRef.value) return;
-  try {
-    await publishFormRef.value.validate();
-  } catch {
-    return;
-  }
-
-  const target = buildTargetPayload();
-  if (!target.ok) {
-    ElMessage.warning(target.message);
-    return;
-  }
-
+  if (!currentUserId.value || !publishFormRef.value || savingStatus.value !== null) return;
   savingStatus.value = noticeStatus;
   try {
+    try {
+      await publishFormRef.value.validate();
+    } catch {
+      return;
+    }
+
+    const target = buildTargetPayload();
+    if (!target.ok) {
+      ElMessage.warning(target.message);
+      return;
+    }
+
     const noticeId = editingNoticeId.value;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (noticeId !== null && editingNoticeVersion.value) {
+      headers["If-Unmodified-Since"] = new Date(editingNoticeVersion.value).toUTCString();
+    }
     await requestJson<Notice>(noticeId === null ? "/api/notices" : `/api/notices/${noticeId}`, {
       method: noticeId === null ? "POST" : "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         noticeType: publishForm.noticeType,
         title: publishForm.title,
         content: publishForm.content,
@@ -296,6 +303,7 @@ async function submitNotice(noticeStatus: "draft" | "published") {
     ElMessage.success(noticeStatus === "draft" ? "通知草稿已保存" : "通知已发布");
     publishDialogVisible.value = false;
     editingNoticeId.value = null;
+    editingNoticeVersion.value = null;
     if (filters.noticeStatus === noticeStatus) await loadNotices();
     else filters.noticeStatus = noticeStatus;
   } catch (e) {
@@ -308,8 +316,7 @@ async function submitNotice(noticeStatus: "draft" | "published") {
 }
 
 async function publishDraft(row: Notice) {
-  const userId = currentUserId.value;
-  if (!userId || draftActionId.value !== null) return;
+  if (!currentUserId.value || draftActionId.value !== null) return;
 
   try {
     await ElMessageBox.confirm(`确认发布草稿“${row.title}”吗？`, "发布通知", {
@@ -325,8 +332,11 @@ async function publishDraft(row: Notice) {
   try {
     await requestJson<Notice>(`/api/notices/${row.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(noticePayload(row, userId, "published")),
+      headers: {
+        "Content-Type": "application/json",
+        "If-Unmodified-Since": new Date(row.publishAt).toUTCString(),
+      },
+      body: JSON.stringify(noticePayload(row, "published")),
     });
     ElMessage.success("通知已发布");
     filters.noticeStatus = "published";
@@ -338,8 +348,7 @@ async function publishDraft(row: Notice) {
 }
 
 async function deleteDraft(row: Notice) {
-  const userId = currentUserId.value;
-  if (!userId || deletingId.value !== null) return;
+  if (!currentUserId.value || deletingId.value !== null) return;
 
   try {
     await ElMessageBox.confirm(`删除草稿“${row.title}”后无法恢复，确认删除吗？`, "删除草稿", {
@@ -353,8 +362,9 @@ async function deleteDraft(row: Notice) {
 
   deletingId.value = row.id;
   try {
-    await requestJson<void>(`/api/notices/${row.id}?currentUserId=${userId}`, {
+    await requestJson<void>(`/api/notices/${row.id}`, {
       method: "DELETE",
+      headers: { "If-Unmodified-Since": new Date(row.publishAt).toUTCString() },
     });
     ElMessage.success("通知草稿已删除");
     await loadNotices();
@@ -365,9 +375,8 @@ async function deleteDraft(row: Notice) {
   }
 }
 
-function noticePayload(row: Notice, userId: number, noticeStatus: "draft" | "published") {
+function noticePayload(row: Notice, noticeStatus: "draft" | "published") {
   return {
-    currentUserId: userId,
     noticeType: row.noticeType,
     title: row.title,
     content: row.content,
@@ -415,15 +424,12 @@ async function openNoticeDetail(row: Notice) {
 }
 
 async function markRead(row: Notice) {
-  const userId = currentUserId.value;
-  if (!userId || row.noticeStatus === "draft" || row.isRead || markingId.value !== null) return;
+  if (!currentUserId.value || row.noticeStatus === "draft" || row.isRead || markingId.value !== null) return;
 
   markingId.value = row.id;
   try {
     const result = await requestJson<NoticeReadResponse>(`/api/notices/${row.id}/reads`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentUserId: userId }),
     });
     row.isRead = result.isRead;
     row.readAt = result.readAt;
@@ -435,6 +441,15 @@ async function markRead(row: Notice) {
     ElMessage.error(e instanceof Error ? e.message : "同步已读状态失败，请稍后重试");
   } finally {
     markingId.value = null;
+    const pendingNotice = selectedNotice.value;
+    if (
+      pendingNotice &&
+      pendingNotice.id !== row.id &&
+      pendingNotice.noticeStatus !== "draft" &&
+      !pendingNotice.isRead
+    ) {
+      void markRead(pendingNotice);
+    }
   }
 }
 
@@ -651,6 +666,7 @@ onUnmounted(() => {
               type="primary"
               link
               :icon="Edit"
+              :aria-label="`编辑通知草稿：${row.title}（编号 ${row.id}）`"
               :disabled="draftActionId !== null || deletingId !== null"
               @click="openEditDialog(row)"
             >
@@ -659,6 +675,7 @@ onUnmounted(() => {
             <el-button
               type="success"
               link
+              :aria-label="`发布通知草稿：${row.title}（编号 ${row.id}）`"
               :loading="draftActionId === row.id"
               :disabled="draftActionId !== null || deletingId !== null"
               @click="publishDraft(row)"
@@ -669,6 +686,7 @@ onUnmounted(() => {
               type="danger"
               link
               :icon="Delete"
+              :aria-label="`删除通知草稿：${row.title}（编号 ${row.id}）`"
               :loading="deletingId === row.id"
               :disabled="draftActionId !== null || deletingId !== null"
               @click="deleteDraft(row)"

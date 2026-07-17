@@ -233,16 +233,11 @@ paths:
   /api/notices:
     get:
       summary: 查询公告通知
-      description: 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      description: 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
       operationId: getNotices
+      security:
+        - bearerAuth: []
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前登录用户 ID（临时兼容，待 NoticesController 迁移至 JWT 后移除）。
-          schema:
-            type: integer
-            minimum: 1
         - name: noticeStatus
           in: query
           required: false
@@ -285,6 +280,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 当前用户不存在
           content:
@@ -293,14 +294,24 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 新建公告通知
-      description: 保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验操作人权限和目标对象。
+      description: 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
       operationId: createNotice
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateNoticeRequest"
+            example:
+              noticeType: announcement
+              title: 本周例会通知
+              content: 请各位成员准时参加本周例会。
+              targetType: club
+              targetId: 1
+              expireAt: null
+              noticeStatus: draft
       responses:
         "201":
           description: 通知草稿已保存或公告通知已发布
@@ -310,6 +321,12 @@ paths:
                 $ref: "#/components/schemas/Notice"
         "400":
           description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -332,18 +349,38 @@ paths:
       summary: 编辑或发布通知草稿
       description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
       operationId: updateNoticeDraft
+      security:
+        - bearerAuth: []
       parameters:
         - name: noticeId
           in: path
           required: true
+          description: 待编辑或发布的通知草稿 ID。
           schema:
             type: integer
+            minimum: 1
+            example: 12
+        - name: If-Unmodified-Since
+          in: header
+          required: true
+          description: 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+          schema:
+            type: string
+            example: Fri, 17 Jul 2026 08:00:00 GMT
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateNoticeRequest"
+            example:
+              noticeType: announcement
+              title: 本周例会通知（时间调整）
+              content: 例会调整至周五 19:00，请准时参加。
+              targetType: club
+              targetId: 1
+              expireAt: null
+              noticeStatus: published
       responses:
         "200":
           description: 草稿已更新或已发布
@@ -353,6 +390,12 @@ paths:
                 $ref: "#/components/schemas/Notice"
         "400":
           description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -370,7 +413,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 通知已经发布或过期，不能再按草稿修改
+          description: 草稿版本已变化，或通知已经发布、过期或删除
           content:
             application/json:
               schema:
@@ -379,23 +422,35 @@ paths:
       summary: 删除通知草稿
       description: 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
       operationId: deleteNoticeDraft
+      security:
+        - bearerAuth: []
       parameters:
         - name: noticeId
           in: path
           required: true
-          schema:
-            type: integer
-        - name: currentUserId
-          in: query
-          required: true
+          description: 待删除的通知草稿 ID。
           schema:
             type: integer
             minimum: 1
+            example: 12
+        - name: If-Unmodified-Since
+          in: header
+          required: true
+          description: 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+          schema:
+            type: string
+            example: Fri, 17 Jul 2026 08:00:00 GMT
       responses:
         "204":
           description: 草稿已删除
         "400":
-          description: 当前操作用户缺失
+          description: 草稿版本请求头缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -413,7 +468,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 通知已经发布或过期，不能删除
+          description: 草稿版本已变化，或通知已经发布、过期或删除
           content:
             application/json:
               schema:
@@ -424,18 +479,17 @@ paths:
       summary: 标记通知已读
       description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
       operationId: markNoticeRead
+      security:
+        - bearerAuth: []
       parameters:
         - name: noticeId
           in: path
           required: true
+          description: 待读取并标记为已读的通知 ID。
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MarkNoticeReadRequest"
+            minimum: 1
+            example: 12
       responses:
         "200":
           description: 已读记录已存在或已写入
@@ -443,8 +497,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NoticeReadResult"
-        "400":
-          description: 当前用户缺失
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -4698,12 +4752,8 @@ components:
 
     CreateNoticeRequest:
       type: object
-      description: 新建、编辑或发布公告通知请求。
+      description: 新建、编辑或发布公告通知请求；操作人身份只从 Bearer Token 获取。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 2
         noticeType:
           type: string
           description: 通知类型，例如 announcement、urgent、event。
@@ -4749,22 +4799,11 @@ components:
           default: published
           example: published
       required:
-        - currentUserId
         - noticeType
         - title
         - content
         - targetType
 
-    MarkNoticeReadRequest:
-      type: object
-      description: 标记通知已读请求。
-      properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 3
-      required:
-        - currentUserId
     NoticeReadResult:
       type: object
       description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
