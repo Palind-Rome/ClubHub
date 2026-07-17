@@ -18,7 +18,8 @@ WHERE sequence_name IN (
   'SEQ_CLUB_GROUPS',
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
-  'SEQ_ACTIVITY_PARTICIPATIONS'
+  'SEQ_ACTIVITY_PARTICIPATIONS',
+  'SEQ_NOTICE_READS'
 )
 ORDER BY sequence_name;
 
@@ -27,7 +28,8 @@ FROM user_indexes
 WHERE index_name IN (
   'UQ_USERS_USERNAME',
   'UQ_USERS_STUDENT_NO',
-  'UQ_USER_ROLES_SCOPE'
+  'UQ_USER_ROLES_SCOPE',
+  'UQ_NOTICE_READS_NOTICE_USER'
 )
 ORDER BY index_name;
 
@@ -42,7 +44,8 @@ WHERE (table_name, column_name) IN (
   ('CLUB_GROUPS', 'GROUP_ID'),
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
-  ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID')
+  ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
+  ('NOTICE_READS', 'READ_ID')
 )
 ORDER BY table_name, column_name;
 
@@ -77,6 +80,11 @@ WHERE index_name = 'UQ_PM_ACTIVE_LEADER';
 SELECT project_id, user_id, COUNT(*) AS duplicate_count
 FROM project_members
 GROUP BY project_id, user_id
+HAVING COUNT(*) > 1;
+
+SELECT notice_id, user_id, COUNT(*) AS duplicate_count
+FROM notice_reads
+GROUP BY notice_id, user_id
 HAVING COUNT(*) > 1;
 
 SELECT project_member_id, member_role, member_status

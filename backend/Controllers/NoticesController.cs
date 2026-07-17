@@ -206,6 +206,9 @@ public class NoticesController : ControllerBase
 
         var target = await ResolveCreateTargetAsync(req, operatorUser, targetType);
         if (target.Result is not null) return target.Result;
+        var publishAt = status == StatusPublished
+            ? requestTime
+            : NextDraftVersion(expectedVersion, requestTime);
 
         await using var transaction = await _db.Database.BeginTransactionAsync();
         var affectedRows = await _db.Notices
@@ -223,7 +226,7 @@ public class NoticesController : ControllerBase
                 .SetProperty(n => n.ExpireAt, req.ExpireAt)
                 .SetProperty(n => n.NoticeStatus, status)
                 // 复用现有时间字段作为草稿版本戳；发布时同时记录正式发布时间。
-                .SetProperty(n => n.PublishAt, NextDraftVersion(expectedVersion, requestTime)));
+                .SetProperty(n => n.PublishAt, publishAt));
         if (affectedRows == 0)
         {
             return Conflict(new { message = "草稿已被其他操作修改、发布或删除，请刷新后重试。" });
@@ -343,24 +346,34 @@ public class NoticesController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var nextId = (await _db.NoticeReads.MaxAsync(r => (int?)r.ReadId) ?? 0) + 1;
         var read = new NoticeRead
         {
-            ReadId = nextId,
             NoticeId = noticeId,
             UserId = user.UserId,
             ReadAt = now
         };
 
         _db.NoticeReads.Add(read);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _db.Entry(read).State = EntityState.Detached;
+            var concurrentRead = await _db.NoticeReads.FirstOrDefaultAsync(r =>
+                r.NoticeId == noticeId &&
+                r.UserId == user.UserId);
+            if (concurrentRead is null) throw;
+            read = concurrentRead;
+        }
 
         return Ok(new ApiNoticeReadResult
         {
             NoticeId = noticeId,
             UserId = user.UserId,
             IsRead = true,
-            ReadAt = now
+            ReadAt = read.ReadAt
         });
     }
 
@@ -690,6 +703,20 @@ public class NoticesController : ControllerBase
         // Oracle DATE 只保留到秒；至少递增一秒，确保 If-Unmodified-Since 能识别连续快速保存。
         var nextSecond = currentVersion.AddSeconds(1);
         return utcNow < nextSecond ? nextSecond : utcNow;
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+        {
+            if (current.Message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? NormalizeTargetType(ApiCreateNoticeRequest.TargetTypeEnum targetType) =>

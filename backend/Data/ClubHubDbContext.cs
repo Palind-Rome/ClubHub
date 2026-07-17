@@ -412,6 +412,12 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<NoticeRead>(e =>
         {
             e.HasKey(r => r.ReadId);
+            e.Property(r => r.ReadId)
+             .HasDefaultValueSql("SEQ_NOTICE_READS.NEXTVAL")
+             .ValueGeneratedOnAdd();
+            e.HasIndex(r => new { r.NoticeId, r.UserId })
+             .IsUnique()
+             .HasDatabaseName("UQ_NOTICE_READS_NOTICE_USER");
             e.HasOne(r => r.User)
              .WithMany()
              .HasForeignKey(r => r.UserId)
