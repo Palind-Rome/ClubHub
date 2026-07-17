@@ -1,7 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { Check, Close, Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type UploadUserFile,
+} from "element-plus";
+import {
+  Check,
+  Close,
+  Download,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+  Upload,
+  View,
+} from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 import {
@@ -263,6 +279,8 @@ const schemes = ref<AwardSchemeRecord[]>([]);
 const ruleDocuments = ref<AwardRuleDocumentRecord[]>([]);
 const applications = ref<AwardApplicationRecord[]>([]);
 const publicityBatches = ref<AwardPublicityBatchRecord[]>([]);
+const ruleFiles = ref<UploadUserFile[]>([]);
+const applicationFiles = ref<UploadUserFile[]>([]);
 const selectedClubId = ref<number>();
 const activeTab = ref<"rules" | "schemes" | "applications" | "publicity">("applications");
 const loading = ref(false);
@@ -817,6 +835,7 @@ function resetRuleForm() {
   ruleForm.ruleStatus = "draft";
   ruleForm.effectiveStartAt = "";
   ruleForm.effectiveEndAt = "";
+  ruleFiles.value = [];
   ruleFormRef.value?.clearValidate();
 }
 
@@ -845,6 +864,7 @@ function openEditRuleDialog(row: AwardRuleDocumentRecord) {
   ruleForm.contentText = row.contentText ?? "";
   ruleForm.materialUrl = row.materialUrl ?? "";
   ruleForm.materialName = row.materialName ?? "";
+  ruleFiles.value = [];
   ruleForm.versionNo = row.versionNo;
   ruleForm.ruleStatus = row.ruleStatus;
   ruleForm.effectiveStartAt = toDateTimeLocal(row.effectiveStartAt);
@@ -884,11 +904,14 @@ async function submitRuleDocument() {
     const url = ruleTarget.value
       ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value.ruleDocumentId}`
       : `/api/clubs/${selectedClubId.value}/award-rule-documents`;
-    await requestJson<AwardRuleDocumentRecord>(url, {
+    const savedDocument = await requestJson<AwardRuleDocumentRecord>(url, {
       method: ruleTarget.value ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (ruleFiles.value.some((entry) => entry.raw)) {
+      await uploadRuleDocumentFile(savedDocument.ruleDocumentId);
+    }
     ElMessage.success(ruleTarget.value ? "评定细则已更新" : "评定细则已创建");
     ruleDialogVisible.value = false;
     await loadAwardWorkspace();
@@ -897,6 +920,26 @@ async function submitRuleDocument() {
   } finally {
     saving.value = false;
   }
+}
+
+async function uploadRuleDocumentFile(ruleDocumentId: number) {
+  const file = ruleFiles.value.find((entry) => entry.raw)?.raw;
+  if (!selectedClubId.value || !file) return;
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error(`“${file.name}”超过 50 MB，无法上传`);
+  }
+
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  const response = await fetch(
+    `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+      body: formData,
+    },
+  );
+  if (!response.ok) throw new Error(await readResponseMessage(response, "评定细则附件上传失败"));
 }
 
 async function publishRuleDocument(row: AwardRuleDocumentRecord) {
@@ -929,6 +972,7 @@ function resetApplicationForm() {
   applicationForm.applicationReason = "";
   applicationForm.materialUrl = "";
   applicationForm.submitNow = true;
+  applicationFiles.value = [];
   applicationFormRef.value?.clearValidate();
 }
 
@@ -956,6 +1000,7 @@ function openEditApplicationDialog(row: AwardApplicationRecord) {
   applicationForm.applicationReason = row.applicationReason ?? "";
   applicationForm.materialUrl = row.materialUrl ?? "";
   applicationForm.submitNow = false;
+  applicationFiles.value = [];
   applicationFormRef.value?.clearValidate();
   applicationDialogVisible.value = true;
 }
@@ -973,8 +1018,9 @@ async function submitApplication() {
       materialUrl: emptyToNull(applicationForm.materialUrl),
       submitNow: applicationForm.submitNow,
     };
+    let savedApplication: AwardApplicationRecord;
     if (applicationTarget.value) {
-      await requestJson<AwardApplicationRecord>(
+      savedApplication = await requestJson<AwardApplicationRecord>(
         `/api/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}`,
         {
           method: "PATCH",
@@ -987,14 +1033,28 @@ async function submitApplication() {
         },
       );
     } else {
-      await requestJson<AwardApplicationRecord>(
+      savedApplication = await requestJson<AwardApplicationRecord>(
         `/api/clubs/${selectedClubId.value}/award-applications`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            submitNow: applicationFiles.value.some((entry) => entry.raw)
+              ? false
+              : payload.submitNow,
+          }),
         },
       );
+    }
+    if (applicationFiles.value.some((entry) => entry.raw)) {
+      savedApplication = await uploadApplicationFiles(savedApplication.awardApplicationId);
+      if (!applicationTarget.value && applicationForm.submitNow) {
+        savedApplication = await requestJson<AwardApplicationRecord>(
+          `/api/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
+          { method: "POST" },
+        );
+      }
     }
     ElMessage.success(applicationTarget.value ? "申请已更新" : "申请已提交");
     applicationDialogVisible.value = false;
@@ -1004,6 +1064,32 @@ async function submitApplication() {
   } finally {
     saving.value = false;
   }
+}
+
+async function uploadApplicationFiles(awardApplicationId: number) {
+  if (!selectedClubId.value) throw new Error("请选择社团。");
+  let latest: AwardApplicationRecord | null = null;
+  const files = applicationFiles.value.flatMap((entry) => (entry.raw ? [entry.raw] : []));
+  for (const file of files) {
+    if (file.size > 50 * 1024 * 1024) {
+      throw new Error(`“${file.name}”超过 50 MB，无法上传`);
+    }
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    formData.append("attachmentType", "申请材料");
+    const response = await fetch(
+      `/api/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+        body: formData,
+      },
+    );
+    if (!response.ok) throw new Error(await readResponseMessage(response, "申请材料上传失败"));
+    latest = (await response.json()) as AwardApplicationRecord;
+  }
+  if (!latest) throw new Error("请先选择申请材料文件。");
+  return latest;
 }
 
 async function submitExistingApplication(row: AwardApplicationRecord) {
@@ -1017,6 +1103,57 @@ async function submitExistingApplication(row: AwardApplicationRecord) {
     await loadAwardWorkspace();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "提交申请失败");
+  }
+}
+
+async function downloadRuleDocument(row: AwardRuleDocumentRecord) {
+  if (!selectedClubId.value || !row.materialUrl) return;
+  await downloadManagedAwardFile(
+    `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/file`,
+    row.materialName || row.ruleTitle,
+  );
+}
+
+async function downloadApplicationAttachment(
+  application: AwardApplicationRecord,
+  attachment: AwardAttachmentRecord,
+) {
+  if (!selectedClubId.value) return;
+  await downloadManagedAwardFile(
+    `/api/clubs/${selectedClubId.value}/award-applications/${application.awardApplicationId}/attachments/${attachment.attachmentId}/file`,
+    attachment.attachmentName,
+  );
+}
+
+async function downloadManagedAwardFile(url: string, fileName: string) {
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+    });
+    if (response.redirected) {
+      window.open(response.url, "_blank", "noopener");
+      return;
+    }
+    if (!response.ok) throw new Error(await readResponseMessage(response, "文件下载失败"));
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fileName;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "文件下载失败");
+  }
+}
+
+async function readResponseMessage(response: Response, fallback: string) {
+  const text = await response.text();
+  if (!text) return fallback;
+  try {
+    const body = JSON.parse(text) as { message?: string; detail?: string; title?: string };
+    return body.message || body.detail || body.title || fallback;
+  } catch {
+    return text;
   }
 }
 
@@ -1587,9 +1724,15 @@ onUnmounted(() => {
         </el-table-column>
         <el-table-column label="附件" min-width="180">
           <template #default="{ row }">
-            <a v-if="row.materialUrl" :href="row.materialUrl" target="_blank">
+            <el-button
+              v-if="row.materialUrl"
+              link
+              type="primary"
+              :icon="Download"
+              @click="downloadRuleDocument(row)"
+            >
               {{ row.materialName || "查看附件" }}
-            </a>
+            </el-button>
             <span v-else class="muted">未上传</span>
           </template>
         </el-table-column>
@@ -1853,9 +1996,6 @@ onUnmounted(() => {
           <el-form-item label="版本号">
             <el-input v-model="ruleForm.versionNo" maxlength="50" />
           </el-form-item>
-          <el-form-item label="附件名称">
-            <el-input v-model="ruleForm.materialName" maxlength="255" />
-          </el-form-item>
           <el-form-item label="生效开始">
             <el-date-picker
               v-model="ruleForm.effectiveStartAt"
@@ -1871,8 +2011,20 @@ onUnmounted(() => {
             />
           </el-form-item>
         </div>
-        <el-form-item label="附件链接">
-          <el-input v-model="ruleForm.materialUrl" maxlength="1000" />
+        <el-form-item label="附件文件">
+          <div class="upload-field">
+            <el-upload
+              v-model:file-list="ruleFiles"
+              :auto-upload="false"
+              :limit="1"
+              :on-exceed="() => ElMessage.warning('评定细则一次只能选择一个附件')"
+            >
+              <el-button :icon="Upload">选择文件</el-button>
+            </el-upload>
+            <span v-if="ruleForm.materialName && ruleFiles.length === 0" class="field-tip">
+              当前文件：{{ ruleForm.materialName }}
+            </span>
+          </div>
         </el-form-item>
         <el-form-item label="摘要">
           <el-input
@@ -2130,8 +2282,18 @@ onUnmounted(() => {
             </el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="材料链接">
-          <el-input v-model="applicationForm.materialUrl" maxlength="500" />
+        <el-form-item label="申请材料">
+          <div class="upload-field">
+            <el-upload v-model:file-list="applicationFiles" :auto-upload="false" multiple>
+              <el-button :icon="Upload">选择文件</el-button>
+            </el-upload>
+            <span
+              v-if="applicationTarget?.attachments.length && applicationFiles.length === 0"
+              class="field-tip"
+            >
+              已有 {{ applicationTarget.attachments.length }} 个材料文件，可继续补充上传。
+            </span>
+          </div>
         </el-form-item>
         <el-form-item label="申请理由" prop="applicationReason">
           <el-input
@@ -2270,13 +2432,15 @@ onUnmounted(() => {
               {{ formatDate(ruleDetailTarget.publishedAt) }}
             </el-descriptions-item>
             <el-descriptions-item label="附件" :span="2">
-              <a
+              <el-button
                 v-if="ruleDetailTarget.materialUrl"
-                :href="ruleDetailTarget.materialUrl"
-                target="_blank"
+                link
+                type="primary"
+                :icon="Download"
+                @click="downloadRuleDocument(ruleDetailTarget)"
               >
-                {{ ruleDetailTarget.materialName || ruleDetailTarget.materialUrl }}
-              </a>
+                {{ ruleDetailTarget.materialName || "下载附件" }}
+              </el-button>
               <span v-else>-</span>
             </el-descriptions-item>
             <el-descriptions-item label="摘要" :span="2">
@@ -2307,10 +2471,19 @@ onUnmounted(() => {
           <el-descriptions-item label="最终奖项分">
             {{ detailTarget.finalAwardScore ?? inferredApplicationScore(detailTarget) }}
           </el-descriptions-item>
-          <el-descriptions-item label="材料链接" :span="2">
-            <a v-if="detailTarget.materialUrl" :href="detailTarget.materialUrl" target="_blank">
-              {{ detailTarget.materialUrl }}
-            </a>
+          <el-descriptions-item label="申请材料" :span="2">
+            <div v-if="detailTarget.attachments.length" class="attachment-list">
+              <el-button
+                v-for="attachment in detailTarget.attachments"
+                :key="attachment.attachmentId"
+                link
+                type="primary"
+                :icon="Download"
+                @click="downloadApplicationAttachment(detailTarget, attachment)"
+              >
+                {{ attachment.attachmentName }}
+              </el-button>
+            </div>
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="申请理由" :span="2">
@@ -2500,6 +2673,19 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 16px;
+}
+
+.upload-field,
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.field-tip {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .switch-row {

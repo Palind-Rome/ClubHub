@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -71,6 +72,7 @@ public class AwardWorkflowController : ControllerBase
     private const string ClubOfficerRoleCode = "CLUB_OFFICER";
     private const string ClubLeaderRoleCode = "CLUB_LEADER";
     private const string ClubAdvisorRoleCode = "ADVISOR";
+    private const long MaxAwardUploadBytes = 50L * 1024 * 1024;
 
     private static readonly HashSet<string> ClubParticipantRoleCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -83,8 +85,18 @@ public class AwardWorkflowController : ControllerBase
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
 
     private readonly ClubHubDbContext _db;
+    private readonly IAwardObjectStorage _awardStorage;
+    private readonly ILogger<AwardWorkflowController> _logger;
 
-    public AwardWorkflowController(ClubHubDbContext db) => _db = db;
+    public AwardWorkflowController(
+        ClubHubDbContext db,
+        IAwardObjectStorage awardStorage,
+        ILogger<AwardWorkflowController> logger)
+    {
+        _db = db;
+        _awardStorage = awardStorage;
+        _logger = logger;
+    }
 
     [HttpGet("award-rule-documents")]
     public async Task<IActionResult> GetAwardRuleDocuments(
@@ -303,6 +315,101 @@ public class AwardWorkflowController : ControllerBase
         var published = await AwardRuleDocumentQuery()
             .FirstAsync(d => d.RuleDocumentId == ruleDocumentId);
         return Ok(ToAwardRuleDocumentRecordDto(published));
+    }
+
+    [HttpPost("award-rule-documents/{ruleDocumentId:int}/file")]
+    [RequestSizeLimit(MaxAwardUploadBytes + 1024 * 1024)]
+    public async Task<IActionResult> UploadAwardRuleDocumentFile(
+        int clubId,
+        int ruleDocumentId,
+        [FromForm] IFormFile? file)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var document = await _db.AwardRuleDocuments
+            .Include(d => d.Club)
+            .Include(d => d.PublishedByUser)
+            .FirstOrDefaultAsync(d =>
+                d.RuleDocumentId == ruleDocumentId &&
+                (d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId));
+        if (document is null) return NotFound(new { message = "评定细则不存在。" });
+
+        var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, document.RuleScope);
+        if (permissionError is not null) return permissionError;
+
+        var validationError = ValidateAwardUploadFile(file, out var originalFileName, out var extension);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+
+        string? storageReference = null;
+        var previousReference = document.MaterialUrl;
+        try
+        {
+            await using var stream = file!.OpenReadStream();
+            storageReference = await _awardStorage.UploadAsync(
+                clubId,
+                ruleDocumentId,
+                extension,
+                stream,
+                file.Length,
+                file.ContentType,
+                originalFileName,
+                HttpContext.RequestAborted);
+
+            document.MaterialUrl = storageReference;
+            document.MaterialName = originalFileName;
+            document.UpdatedAt = BusinessNow();
+            await _db.SaveChangesAsync();
+            await TryRemoveAwardObjectAsync(previousReference, $"评定细则 {ruleDocumentId}");
+
+            return Ok(ToAwardRuleDocumentRecordDto(document));
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            await TryRemoveAwardObjectAsync(storageReference, $"评定细则 {ruleDocumentId}");
+            _logger.LogError(exception, "评定细则 {RuleDocumentId} 附件上传到 OSS 失败。", ruleDocumentId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "文件存储暂不可用",
+                detail: "无法连接 OSS 或 ECS RAM 角色凭据不可用，请稍后重试。");
+        }
+        catch
+        {
+            await TryRemoveAwardObjectAsync(storageReference, $"评定细则 {ruleDocumentId}");
+            throw;
+        }
+    }
+
+    [HttpGet("award-rule-documents/{ruleDocumentId:int}/file")]
+    public async Task<IActionResult> GetAwardRuleDocumentFile(int clubId, int ruleDocumentId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var document = await _db.AwardRuleDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d =>
+                d.RuleDocumentId == ruleDocumentId &&
+                (d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId));
+        if (document is null) return NotFound(new { message = "评定细则不存在。" });
+
+        var canMaintain = CanMaintainAwardWorkflow(access.Viewer!, access.Club!);
+        if (!canMaintain && document.RuleStatus != AwardRuleStatusPublished)
+            return StatusCode(403, new { message = "评定细则发布前不可下载附件。" });
+
+        return await ReturnAwardManagedFileAsync(
+            document.MaterialUrl,
+            document.MaterialName ?? document.RuleTitle,
+            "评定细则附件",
+            ruleDocumentId);
     }
 
     [HttpGet("award-schemes")]
@@ -642,6 +749,124 @@ public class AwardWorkflowController : ControllerBase
         var updated = await AwardApplicationQuery()
             .FirstAsync(a => a.AwardApplicationId == awardApplicationId);
         return Ok(ToAwardApplicationRecordDto(updated));
+    }
+
+    [HttpPost("award-applications/{awardApplicationId:int}/attachments")]
+    [RequestSizeLimit(MaxAwardUploadBytes + 1024 * 1024)]
+    public async Task<IActionResult> UploadAwardApplicationAttachment(
+        int clubId,
+        int awardApplicationId,
+        [FromForm] IFormFile? file,
+        [FromForm] string? attachmentType = null)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var application = await _db.AwardApplications
+            .Include(a => a.Attachments)
+            .FirstOrDefaultAsync(a => a.ClubId == clubId && a.AwardApplicationId == awardApplicationId);
+        if (application is null) return NotFound(new { message = "评奖评优申请不存在。" });
+
+        var accessError = await EnsureCanEditAwardApplicationAsync(application, currentUserId.Value);
+        if (accessError is not null) return accessError;
+
+        if (application.ApplicationStatus != AwardStatusDraft &&
+            application.ApplicationStatus != AwardStatusReturned)
+        {
+            return Conflict(new { message = "只有草稿或退回状态的申请可以补充材料。" });
+        }
+
+        var validationError = ValidateAwardUploadFile(file, out var originalFileName, out var extension);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+        var normalizedAttachmentType = EmptyToNull(attachmentType);
+        if (normalizedAttachmentType?.Length > 100) return BadRequest(new { message = "材料类型不能超过 100 个字符。" });
+
+        string? storageReference = null;
+        try
+        {
+            await using var stream = file!.OpenReadStream();
+            storageReference = await _awardStorage.UploadAsync(
+                clubId,
+                awardApplicationId,
+                extension,
+                stream,
+                file.Length,
+                file.ContentType,
+                originalFileName,
+                HttpContext.RequestAborted);
+
+            var now = BusinessNow();
+            application.Attachments.Add(new AwardAttachment
+            {
+                AttachmentName = originalFileName,
+                AttachmentUrl = storageReference,
+                AttachmentType = normalizedAttachmentType,
+                UploadedByUserId = currentUserId.Value,
+                UploadedAt = now
+            });
+            application.MaterialUrl ??= storageReference;
+            application.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+
+            var updated = await AwardApplicationQuery()
+                .FirstAsync(a => a.AwardApplicationId == awardApplicationId);
+            return Ok(ToAwardApplicationRecordDto(updated));
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            await TryRemoveAwardObjectAsync(storageReference, $"评优申请 {awardApplicationId}");
+            _logger.LogError(exception, "评优申请 {AwardApplicationId} 材料上传到 OSS 失败。", awardApplicationId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "文件存储暂不可用",
+                detail: "无法连接 OSS 或 ECS RAM 角色凭据不可用，请稍后重试。");
+        }
+        catch
+        {
+            await TryRemoveAwardObjectAsync(storageReference, $"评优申请 {awardApplicationId}");
+            throw;
+        }
+    }
+
+    [HttpGet("award-applications/{awardApplicationId:int}/attachments/{attachmentId:int}/file")]
+    public async Task<IActionResult> GetAwardApplicationAttachmentFile(
+        int clubId,
+        int awardApplicationId,
+        int attachmentId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var application = await _db.AwardApplications
+            .AsNoTracking()
+            .Include(a => a.Attachments)
+            .FirstOrDefaultAsync(a => a.ClubId == clubId && a.AwardApplicationId == awardApplicationId);
+        if (application is null) return NotFound(new { message = "评奖评优申请不存在。" });
+
+        var attachment = application.Attachments.FirstOrDefault(a => a.AttachmentId == attachmentId);
+        if (attachment is null) return NotFound(new { message = "申请材料不存在。" });
+
+        var canMaintain = CanMaintainAwardWorkflow(access.Viewer!, access.Club!);
+        var isInvolvedUser =
+            application.ApplicantUserId == currentUserId.Value ||
+            application.SubmitterUserId == currentUserId.Value ||
+            application.RecommenderUserId == currentUserId.Value;
+        var isPublicResult =
+            application.PublicStatus is AwardPublicizing or AwardPublicized ||
+            application.ApplicationStatus is AwardStatusPublicizing or AwardStatusArchived;
+        if (!canMaintain && !isInvolvedUser && !isPublicResult)
+            return StatusCode(403, new { message = "当前用户没有下载该申请材料的权限。" });
+
+        return await ReturnAwardManagedFileAsync(
+            attachment.AttachmentUrl,
+            attachment.AttachmentName,
+            "评优申请材料",
+            attachmentId);
     }
 
     [HttpPost("award-applications/{awardApplicationId:int}/submit")]
@@ -1209,7 +1434,7 @@ public class AwardWorkflowController : ControllerBase
         if (!string.IsNullOrWhiteSpace(req.IssuerName) && req.IssuerName.Trim().Length > 255)
             return "制定单位不能超过 255 个字符。";
         if (!string.IsNullOrWhiteSpace(req.MaterialUrl) && req.MaterialUrl.Trim().Length > 1000)
-            return "材料链接不能超过 1000 个字符。";
+            return "材料文件引用不能超过 1000 个字符。";
         if (!string.IsNullOrWhiteSpace(req.MaterialName) && req.MaterialName.Trim().Length > 255)
             return "材料名称不能超过 255 个字符。";
         if (!string.IsNullOrWhiteSpace(req.VersionNo) && req.VersionNo.Trim().Length > 50)
@@ -1290,6 +1515,108 @@ public class AwardWorkflowController : ControllerBase
         if (req.AwardLevelId <= 0) return "请选择奖项等级。";
         if (string.IsNullOrWhiteSpace(req.ApplicationReason)) return "申请理由不能为空。";
         return null;
+    }
+
+    private static string? ValidateAwardUploadFile(
+        IFormFile? file,
+        out string originalFileName,
+        out string extension)
+    {
+        originalFileName = string.Empty;
+        extension = string.Empty;
+        if (file is null || file.Length <= 0) return "请选择需要上传的文件。";
+        if (file.Length > MaxAwardUploadBytes) return "单个文件不能超过 50 MB。";
+
+        originalFileName = Path.GetFileName(file.FileName).Trim();
+        if (string.IsNullOrWhiteSpace(originalFileName) || originalFileName.Length > 255)
+            return "文件名不能为空且不能超过 255 个字符。";
+
+        extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        if (extension.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            return "文件扩展名包含无效字符。";
+        if (IsBlockedUploadExtension(extension)) return "不允许上传可执行文件或脚本文件。";
+
+        return null;
+    }
+
+    private async Task<IActionResult> ReturnAwardManagedFileAsync(
+        string? fileReference,
+        string downloadName,
+        string fileKind,
+        int sourceId)
+    {
+        var normalizedReference = EmptyToNull(fileReference);
+        if (normalizedReference is null) return NotFound(new { message = $"{fileKind}不存在。" });
+
+        if (!_awardStorage.IsStorageReference(normalizedReference))
+        {
+            if (IsSafeLegacyFileUrl(normalizedReference)) return Redirect(normalizedReference);
+            return NotFound(new { message = $"{fileKind}文件引用无效。" });
+        }
+
+        try
+        {
+            var metadata = await _awardStorage.GetMetadataAsync(
+                normalizedReference,
+                HttpContext.RequestAborted);
+            var storedObject = await _awardStorage.OpenReadAsync(
+                normalizedReference,
+                HttpContext.RequestAborted);
+            if (metadata.ContentLength is > 0)
+            {
+                Response.ContentLength = metadata.ContentLength;
+            }
+            if (!string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
+                metadata.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
+            {
+                Response.Headers.ContentDisposition = metadata.ContentDisposition;
+                return File(
+                    storedObject.Content,
+                    metadata.ContentType ?? "application/octet-stream");
+            }
+
+            return File(
+                storedObject.Content,
+                metadata.ContentType ?? "application/octet-stream",
+                downloadName);
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            _logger.LogError(exception, "{FileKind} {SourceId} 无法从 OSS 读取。", fileKind, sourceId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "文件存储暂不可用",
+                detail: "无法从 OSS 读取文件，请稍后重试。");
+        }
+    }
+
+    private async Task TryRemoveAwardObjectAsync(string? storageReference, string context)
+    {
+        if (!_awardStorage.IsStorageReference(storageReference)) return;
+        try
+        {
+            await _awardStorage.RemoveAsync(storageReference!, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "{Context} 的旧文件清理失败。", context);
+        }
+    }
+
+    private static bool IsBlockedUploadExtension(string extension) =>
+        extension is ".exe" or ".dll" or ".com" or ".bat" or ".cmd" or ".ps1" or
+            ".sh" or ".msi" or ".scr" or ".js" or ".vbs";
+
+    private static bool IsObjectStorageFailure(Exception exception) =>
+        exception is AwardObjectStorageException;
+
+    private static bool IsSafeLegacyFileUrl(string value)
+    {
+        if (value.IndexOfAny(['\r', '\n']) >= 0) return false;
+        if (value.StartsWith("/", StringComparison.Ordinal))
+            return !value.StartsWith("//", StringComparison.Ordinal);
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private static void AddAwardLevels(
