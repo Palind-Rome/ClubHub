@@ -237,11 +237,6 @@ import {
   LoginRequestFromJSON,
   LoginRequestToJSON,
 } from "../models/LoginRequest";
-import {
-  type MarkNoticeReadRequest,
-  MarkNoticeReadRequestFromJSON,
-  MarkNoticeReadRequestToJSON,
-} from "../models/MarkNoticeReadRequest";
 import { type Material, MaterialFromJSON, MaterialToJSON } from "../models/Material";
 import {
   type MaterialBorrow,
@@ -575,7 +570,7 @@ export interface DeleteLearningResourceRequest {
 
 export interface DeleteNoticeDraftRequest {
   noticeId: number;
-  currentUserId: number;
+  ifUnmodifiedSince: string;
 }
 
 export interface DeleteProjectTaskRequest {
@@ -699,7 +694,6 @@ export interface GetMaterialsRequest {
 }
 
 export interface GetNoticesRequest {
-  viewerUserId: number;
   noticeStatus?: GetNoticesNoticeStatusEnum;
   targetType?: GetNoticesTargetTypeEnum;
   clubId?: number;
@@ -778,9 +772,8 @@ export interface LoginUserRequest {
   loginRequest: LoginRequest;
 }
 
-export interface MarkNoticeReadOperationRequest {
+export interface MarkNoticeReadRequest {
   noticeId: number;
-  markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
 export interface PreviewClubEvaluationScoresRequest {
@@ -935,6 +928,7 @@ export interface UpdateMaterialOperationRequest {
 
 export interface UpdateNoticeDraftRequest {
   noticeId: number;
+  ifUnmodifiedSince: string;
   createNoticeRequest: CreateNoticeRequest;
 }
 
@@ -2271,6 +2265,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -2283,7 +2286,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验操作人权限和目标对象。
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
    * 新建公告通知
    */
   async createNoticeRaw(
@@ -2297,7 +2300,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验操作人权限和目标对象。
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
    * 新建公告通知
    */
   async createNotice(
@@ -2842,20 +2845,29 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["currentUserId"] == null) {
+    if (requestParameters["ifUnmodifiedSince"] == null) {
       throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling deleteNoticeDraft().',
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling deleteNoticeDraft().',
       );
     }
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
     }
 
-    const headerParameters: runtime.HTTPHeaders = {};
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/notices/{noticeId}`;
     urlPath = urlPath.replace(
@@ -4533,18 +4545,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for getNotices without sending the request
    */
   async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getNotices().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["noticeStatus"] != null) {
       queryParameters["noticeStatus"] = requestParameters["noticeStatus"];
@@ -4564,6 +4565,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -4575,7 +4585,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNoticesRaw(
@@ -4589,11 +4599,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNotices(
-    requestParameters: GetNoticesRequest,
+    requestParameters: GetNoticesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Notice>> {
     const response = await this.getNoticesRaw(requestParameters, initOverrides);
@@ -5670,7 +5680,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for markNoticeRead without sending the request
    */
   async markNoticeReadRequestOpts(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["noticeId"] == null) {
       throw new runtime.RequiredError(
@@ -5679,18 +5689,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["markNoticeReadRequest"] == null) {
-      throw new runtime.RequiredError(
-        "markNoticeReadRequest",
-        'Required parameter "markNoticeReadRequest" was null or undefined when calling markNoticeRead().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/notices/{noticeId}/reads`;
     urlPath = urlPath.replace(
@@ -5703,7 +5713,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
     };
   }
 
@@ -5712,7 +5721,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeReadRaw(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<NoticeReadResult>> {
     const requestOptions = await this.markNoticeReadRequestOpts(requestParameters);
@@ -5728,7 +5737,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeRead(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
@@ -7890,6 +7899,13 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
+    if (requestParameters["ifUnmodifiedSince"] == null) {
+      throw new runtime.RequiredError(
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
     if (requestParameters["createNoticeRequest"] == null) {
       throw new runtime.RequiredError(
         "createNoticeRequest",
@@ -7902,6 +7918,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/notices/{noticeId}`;
     urlPath = urlPath.replace(

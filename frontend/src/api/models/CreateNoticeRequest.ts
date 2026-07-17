@@ -15,17 +15,11 @@
 
 import { mapValues } from "../runtime";
 /**
- * 新建、编辑或发布公告通知请求。
+ * 新建、编辑或发布公告通知请求；操作人身份只从 Bearer Token 获取。
  * @export
  * @interface CreateNoticeRequest
  */
 export interface CreateNoticeRequest {
-  /**
-   *
-   * @type {number}
-   * @memberof CreateNoticeRequest
-   */
-  currentUserId: number;
   /**
    * 通知类型，例如 announcement、urgent、event。
    * @type {string}
@@ -102,7 +96,6 @@ export type CreateNoticeRequestNoticeStatusEnum =
  * Check if a given object implements the CreateNoticeRequest interface.
  */
 export function instanceOfCreateNoticeRequest(value: object): value is CreateNoticeRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("noticeType" in value) || value["noticeType"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
   if (!("content" in value) || value["content"] === undefined) return false;
@@ -122,7 +115,6 @@ export function CreateNoticeRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     noticeType: json["noticeType"],
     title: json["title"],
     content: json["content"],
@@ -147,7 +139,6 @@ export function CreateNoticeRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     noticeType: value["noticeType"],
     title: value["title"],
     content: value["content"],
