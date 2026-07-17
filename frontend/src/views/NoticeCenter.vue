@@ -15,7 +15,7 @@ interface ApiError {
 
 interface NoticeReadResponse {
   isRead: boolean;
-  readAt?: string | null;
+  readAt: string;
 }
 
 type Notice = Omit<
@@ -47,8 +47,10 @@ const markingId = ref<number | null>(null);
 const publishDialogVisible = ref(false);
 const detailDialogVisible = ref(false);
 const selectedNotice = ref<Notice | null>(null);
+const narrowDetailLayout = ref(false);
 const publishFormRef = ref<FormInstance>();
 let stopSessionListener: (() => void) | null = null;
+let detailMediaQuery: MediaQueryList | null = null;
 let noticeRequestId = 0;
 let memberRequestId = 0;
 
@@ -334,8 +336,7 @@ async function markRead(row: Notice) {
       body: JSON.stringify({ currentUserId: userId }),
     });
     row.isRead = result.isRead;
-    row.readAt = result.readAt ?? new Date().toISOString();
-    row.readCount += 1;
+    row.readAt = result.readAt;
 
     await loadNotices();
     const refreshed = notices.value.find((notice) => notice.id === row.id);
@@ -396,6 +397,10 @@ function refreshSession() {
   void loadNotices();
 }
 
+function syncDetailLayout() {
+  narrowDetailLayout.value = detailMediaQuery?.matches ?? false;
+}
+
 watch(
   () => publishForm.targetType,
   () => {
@@ -420,12 +425,17 @@ watch(filters, () => {
 });
 
 onMounted(() => {
+  detailMediaQuery = window.matchMedia("(max-width: 900px)");
+  syncDetailLayout();
+  detailMediaQuery.addEventListener("change", syncDetailLayout);
   stopSessionListener = onSessionChange(refreshSession);
   void loadClubs();
   void loadNotices();
 });
 
 onUnmounted(() => {
+  detailMediaQuery?.removeEventListener("change", syncDetailLayout);
+  detailMediaQuery = null;
   stopSessionListener?.();
 });
 </script>
@@ -517,7 +527,14 @@ onUnmounted(() => {
       </el-table-column>
       <el-table-column label="内容" width="100" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" link @click="openNoticeDetail(row)">查看详情</el-button>
+          <el-button
+            type="primary"
+            link
+            :aria-label="`查看通知详情：${row.title}（编号 ${row.id}）`"
+            @click="openNoticeDetail(row)"
+          >
+            查看详情
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -542,7 +559,7 @@ onUnmounted(() => {
           </el-tag>
         </header>
 
-        <el-descriptions :column="2" border>
+        <el-descriptions :column="narrowDetailLayout ? 1 : 2" border>
           <el-descriptions-item label="发布人">
             {{ selectedNotice.publisherName }}
           </el-descriptions-item>
