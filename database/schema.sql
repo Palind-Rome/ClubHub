@@ -455,6 +455,7 @@ CREATE TABLE AWARD_APPLICATIONS (
   created_at date DEFAULT SYSDATE NOT NULL,
   updated_at date DEFAULT SYSDATE NOT NULL,
   CONSTRAINT UQ_AWARD_APPLICATIONS_SCOPE UNIQUE (club_id, award_application_id),
+  CONSTRAINT UQ_AWARD_APPLICATIONS_MEMBER_SCOPE UNIQUE (club_id, applicant_user_id, award_application_id),
   CONSTRAINT UQ_AWARD_APPLICATIONS_APPLICANT UNIQUE (award_scheme_id, applicant_user_id),
   CONSTRAINT CK_AWARD_APPLICATIONS_TYPE CHECK (application_type IN ('self', 'recommendation')),
   CONSTRAINT CK_AWARD_APPLICATIONS_STEP CHECK (current_step IN ('student_submit', 'club_review', 'advisor_review', 'school_review', 'publicity', 'archived')),
@@ -580,10 +581,13 @@ CREATE TABLE EVALUATIONS (
   grade varchar2(255),
   public_status varchar2(255),
   comment_text varchar2(255),
-  created_at date
+  created_at date,
+  CONSTRAINT UQ_EVALUATIONS_SOURCE_SCOPE UNIQUE (club_id, user_id, evaluation_id)
 );
 
 CREATE TABLE EVALUATION_AWARD_SOURCES (
+  club_id number NOT NULL,
+  user_id number NOT NULL,
   evaluation_id number NOT NULL,
   award_application_id number NOT NULL,
   award_score number DEFAULT 0 NOT NULL,
@@ -791,9 +795,9 @@ ALTER TABLE EVALUATIONS ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) DEF
 
 ALTER TABLE EVALUATIONS ADD FOREIGN KEY (evaluator_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_EVALUATION FOREIGN KEY (evaluation_id) REFERENCES EVALUATIONS (evaluation_id) DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_EVALUATION FOREIGN KEY (club_id, user_id, evaluation_id) REFERENCES EVALUATIONS (club_id, user_id, evaluation_id) DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_APPLICATION FOREIGN KEY (award_application_id) REFERENCES AWARD_APPLICATIONS (award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_APPLICATION FOREIGN KEY (club_id, user_id, award_application_id) REFERENCES AWARD_APPLICATIONS (club_id, applicant_user_id, award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE NOTICES ADD FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
 

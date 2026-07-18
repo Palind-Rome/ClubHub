@@ -1629,11 +1629,16 @@ public class ClubsController : ControllerBase
             createdCount++;
         }
 
-        await _db.SaveChangesAsync();
-        await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
-        if (sourceSyncs.Count > 0)
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
         {
             await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
+            if (sourceSyncs.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
         }
 
         var records = await EvaluationQuery()
@@ -1723,12 +1728,16 @@ public class ClubsController : ControllerBase
             CreatedAt = now
         };
 
-        _db.Evaluations.Add(evaluation);
-        await _db.SaveChangesAsync();
-        await ReplaceEvaluationAwardSourcesAsync(
-            new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
-            now);
-        await _db.SaveChangesAsync();
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            _db.Evaluations.Add(evaluation);
+            await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(
+                new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
+                now);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
 
         var created = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluation.EvaluationId);
         return Created(
@@ -3455,7 +3464,7 @@ public class ClubsController : ControllerBase
             ClampEvaluationScore(taskScore ?? generated.TaskScore),
             ClampEvaluationScore(learningScore ?? generated.LearningScore),
             ClampEvaluationScore(awardScore ?? generated.AwardScore),
-            generated.AwardSources);
+            awardScore is null ? generated.AwardSources : Array.Empty<AwardScoreSource>());
     }
 
     private async Task<EvaluationScoreSnapshot> CalculateSemesterEvaluationScoresAsync(
@@ -3993,6 +4002,8 @@ public class ClubsController : ControllerBase
             {
                 _db.EvaluationAwardSources.Add(new EvaluationAwardSource
                 {
+                    ClubId = sync.Evaluation.ClubId,
+                    UserId = sync.Evaluation.UserId,
                     EvaluationId = sync.Evaluation.EvaluationId,
                     AwardApplicationId = source.AwardApplicationId,
                     AwardScore = source.AwardScore,

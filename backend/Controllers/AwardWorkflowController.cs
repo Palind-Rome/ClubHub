@@ -5,11 +5,21 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AwardApplicationRecordDto = Org.OpenAPITools.Models.AwardApplicationRecord;
+using AwardAttachmentRecordDto = Org.OpenAPITools.Models.AwardAttachmentRecord;
+using AwardLevelRecordDto = Org.OpenAPITools.Models.AwardLevelRecord;
+using AwardPublicityBatchRecordDto = Org.OpenAPITools.Models.AwardPublicityBatchRecord;
+using AwardPublicityItemRecordDto = Org.OpenAPITools.Models.AwardPublicityItemRecord;
+using AwardReviewRecordDto = Org.OpenAPITools.Models.AwardReviewRecord;
+using AwardRuleDocumentRecordDto = Org.OpenAPITools.Models.AwardRuleDocumentRecord;
+using AwardSchemeRecordDto = Org.OpenAPITools.Models.AwardSchemeRecord;
 using CreateAwardApplicationRequest = Org.OpenAPITools.Models.CreateAwardApplicationRequest;
 using CreateAwardPublicityBatchRequest = Org.OpenAPITools.Models.CreateAwardPublicityBatchRequest;
+using CreateAwardRuleDocumentRequest = Org.OpenAPITools.Models.CreateAwardRuleDocumentRequest;
 using CreateAwardSchemeRequest = Org.OpenAPITools.Models.CreateAwardSchemeRequest;
 using ReviewAwardApplicationRequest = Org.OpenAPITools.Models.ReviewAwardApplicationRequest;
 using UpdateAwardApplicationRequest = Org.OpenAPITools.Models.UpdateAwardApplicationRequest;
+using UpdateAwardRuleDocumentRequest = Org.OpenAPITools.Models.UpdateAwardRuleDocumentRequest;
 using UpdateAwardSchemeRequest = Org.OpenAPITools.Models.UpdateAwardSchemeRequest;
 
 namespace ClubHub.Api.Controllers;
@@ -148,7 +158,7 @@ public class AwardWorkflowController : ControllerBase
     [HttpPost("award-rule-documents")]
     public async Task<IActionResult> CreateAwardRuleDocument(
         int clubId,
-        [FromBody] AwardRuleDocumentRequest req)
+        [FromBody] CreateAwardRuleDocumentRequest req)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -157,11 +167,9 @@ public class AwardWorkflowController : ControllerBase
         var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
 
-        var requestedRuleScope = NormalizeAwardRuleScope(req.RuleScope);
-        if (!string.IsNullOrWhiteSpace(req.RuleScope) && requestedRuleScope is null)
+        var ruleScope = ToAwardRuleScope(req.RuleScope);
+        if (ruleScope is null)
             return BadRequest(new { message = "评定细则范围不合法。" });
-        var ruleScope = requestedRuleScope ?? AwardRuleScopeClub;
-
         var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, ruleScope);
         if (permissionError is not null) return permissionError;
         if (ruleScope == AwardRuleScopeClub && !IsMaintainableClub(access.Club!))
@@ -192,7 +200,7 @@ public class AwardWorkflowController : ControllerBase
             MaterialUrl = EmptyToNull(req.MaterialUrl),
             MaterialName = EmptyToNull(req.MaterialName),
             VersionNo = versionNo,
-            RuleStatus = NormalizeAwardRuleStatus(req.RuleStatus) ?? AwardRuleStatusDraft,
+            RuleStatus = ToAwardRuleStatus(req.RuleStatus) ?? AwardRuleStatusDraft,
             EffectiveStartAt = req.EffectiveStartAt,
             EffectiveEndAt = req.EffectiveEndAt,
             CreatedAt = now,
@@ -217,7 +225,7 @@ public class AwardWorkflowController : ControllerBase
     public async Task<IActionResult> UpdateAwardRuleDocument(
         int clubId,
         int ruleDocumentId,
-        [FromBody] AwardRuleDocumentRequest req)
+        [FromBody] UpdateAwardRuleDocumentRequest req)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -231,10 +239,11 @@ public class AwardWorkflowController : ControllerBase
             (d.RuleScope == AwardRuleScopeGlobal || d.ClubId == clubId));
         if (document is null) return NotFound(new { message = "评定细则不存在。" });
 
-        var requestedRuleScope = NormalizeAwardRuleScope(req.RuleScope);
-        if (!string.IsNullOrWhiteSpace(req.RuleScope) && requestedRuleScope is null)
+        var ruleScope = ToAwardRuleScope(req.RuleScope);
+        if (ruleScope is null)
             return BadRequest(new { message = "评定细则范围不合法。" });
-        var ruleScope = requestedRuleScope ?? document.RuleScope;
+        var sourcePermissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, document.RuleScope);
+        if (sourcePermissionError is not null) return sourcePermissionError;
 
         var permissionError = EnsureCanMaintainAwardRuleDocument(access.Viewer!, access.Club!, ruleScope);
         if (permissionError is not null) return permissionError;
@@ -264,7 +273,7 @@ public class AwardWorkflowController : ControllerBase
         document.MaterialUrl = EmptyToNull(req.MaterialUrl);
         document.MaterialName = EmptyToNull(req.MaterialName);
         document.VersionNo = versionNo;
-        document.RuleStatus = NormalizeAwardRuleStatus(req.RuleStatus) ?? document.RuleStatus;
+        document.RuleStatus = ToAwardRuleStatus(req.RuleStatus) ?? document.RuleStatus;
         document.EffectiveStartAt = req.EffectiveStartAt;
         document.EffectiveEndAt = req.EffectiveEndAt;
         document.UpdatedAt = now;
@@ -978,6 +987,8 @@ public class AwardWorkflowController : ControllerBase
             return BadRequest(new { message = "当前用户账号不可用，不能审核评奖评优申请。" });
 
         var reviewResult = ToAwardReviewResult(req.ReviewResult);
+        if (reviewResult is null)
+            return BadRequest(new { message = "审核动作不合法。" });
         var permissionError = ValidateAwardReviewPermission(viewer, club, application, reviewResult);
         if (permissionError is not null) return permissionError;
 
@@ -997,17 +1008,14 @@ public class AwardWorkflowController : ControllerBase
         application.CurrentStep = transition.Step!;
         application.PublicStatus = transition.PublicStatus ?? application.PublicStatus;
         application.UpdatedAt = now;
-        if (reviewResult == AwardReviewApprove && transition.Status == AwardStatusApproved)
+        if (reviewResult == AwardReviewApprove &&
+            fromStep == AwardStepSchoolReview &&
+            transition.Status == AwardStatusApproved)
         {
             application.FinalAwardScore = ClampAwardScore(req.FinalAwardScore ?? application.Level?.AwardScore ?? 0);
             application.FinalAmount = req.FinalAmount ?? application.Level?.Amount;
             application.ApprovedAt = now;
         }
-        else if (req.FinalAwardScore is not null)
-        {
-            application.FinalAwardScore = ClampAwardScore(req.FinalAwardScore.Value);
-        }
-
         if (reviewResult == AwardReviewPublish)
         {
             application.PublicizedAt = now;
@@ -1034,6 +1042,7 @@ public class AwardWorkflowController : ControllerBase
         return Ok(ToAwardApplicationRecordDto(reviewed));
     }
 
+    [AllowAnonymous]
     [HttpGet("award-publicity")]
     public async Task<IActionResult> GetAwardPublicityBatches(
         int clubId,
@@ -1041,7 +1050,9 @@ public class AwardWorkflowController : ControllerBase
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
-            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        {
+            return await GetPublicAwardPublicityBatchesAsync(clubId, status);
+        }
 
         var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
         if (access.Result is not null) return access.Result;
@@ -1069,6 +1080,38 @@ public class AwardWorkflowController : ControllerBase
         return Ok(batches.Select(ToAwardPublicityBatchRecordDto).ToList());
     }
 
+    private async Task<IActionResult> GetPublicAwardPublicityBatchesAsync(
+        int clubId,
+        string? status)
+    {
+        var normalizedStatus = NormalizeAwardPublicityStatus(status);
+        if (!string.IsNullOrWhiteSpace(status) && normalizedStatus is null)
+            return BadRequest(new { message = "公示状态不合法。" });
+
+        var query = AwardPublicityQuery().Where(b => b.ClubId == clubId);
+        if (normalizedStatus is null)
+        {
+            query = query.Where(b =>
+                b.PublicityStatus == AwardPublicityPublicizing ||
+                b.PublicityStatus == AwardPublicityClosed ||
+                b.PublicityStatus == AwardPublicityArchived);
+        }
+        else if (IsPublicAwardPublicityStatus(normalizedStatus))
+        {
+            query = query.Where(b => b.PublicityStatus == normalizedStatus);
+        }
+        else
+        {
+            query = query.Where(_ => false);
+        }
+
+        var batches = await query
+            .OrderByDescending(b => b.PublicityStartAt ?? b.CreatedAt)
+            .ThenByDescending(b => b.PublicityBatchId)
+            .ToListAsync();
+        return Ok(batches.Select(ToAwardPublicityBatchRecordDto).ToList());
+    }
+
     [HttpPost("award-publicity")]
     public async Task<IActionResult> CreateAwardPublicityBatch(
         int clubId,
@@ -1083,6 +1126,13 @@ public class AwardWorkflowController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(req.Title))
             return BadRequest(new { message = "公示标题不能为空。" });
+
+        if (req.PublicityStartAt is null)
+            return BadRequest(new { message = "公示开始时间不能为空。" });
+        if (req.PublicityEndAt is null)
+            return BadRequest(new { message = "公示结束时间不能为空。" });
+        if (req.PublicityEndAt <= req.PublicityStartAt)
+            return BadRequest(new { message = "公示结束时间必须晚于公示开始时间。" });
 
         var applicationIds = req.AwardApplicationIds?.Distinct().ToList() ?? new List<int>();
         if (applicationIds.Count == 0)
@@ -1220,12 +1270,6 @@ public class AwardWorkflowController : ControllerBase
             application.PublicizedAt ??= now;
             application.ArchivedAt = now;
             application.UpdatedAt = now;
-            if (application.Scheme is not null)
-            {
-                application.Scheme.SchemeStatus = AwardSchemeArchived;
-                application.Scheme.UpdatedAt = now;
-            }
-
             _db.AwardReviewRecords.Add(NewAwardReviewRecord(
                 application,
                 currentUserId.Value,
@@ -1454,29 +1498,64 @@ public class AwardWorkflowController : ControllerBase
             (s.TermName ?? string.Empty).ToUpper() == normalizedTermName);
     }
 
-    private static string? ValidateAwardRuleDocumentRequest(AwardRuleDocumentRequest req)
+    private static string? ValidateAwardRuleDocumentRequest(CreateAwardRuleDocumentRequest req) =>
+        ValidateAwardRuleDocumentRequestCore(
+            req.RuleTitle,
+            req.AcademicYear,
+            req.TermName,
+            req.IssuerName,
+            req.MaterialUrl,
+            req.MaterialName,
+            req.VersionNo,
+            ToAwardRuleStatus(req.RuleStatus),
+            req.EffectiveStartAt,
+            req.EffectiveEndAt);
+
+    private static string? ValidateAwardRuleDocumentRequest(UpdateAwardRuleDocumentRequest req) =>
+        ValidateAwardRuleDocumentRequestCore(
+            req.RuleTitle,
+            req.AcademicYear,
+            req.TermName,
+            req.IssuerName,
+            req.MaterialUrl,
+            req.MaterialName,
+            req.VersionNo,
+            ToAwardRuleStatus(req.RuleStatus),
+            req.EffectiveStartAt,
+            req.EffectiveEndAt);
+
+    private static string? ValidateAwardRuleDocumentRequestCore(
+        string? ruleTitle,
+        string? academicYear,
+        string? termName,
+        string? issuerName,
+        string? materialUrl,
+        string? materialName,
+        string? versionNo,
+        string? ruleStatus,
+        DateTime? effectiveStartAt,
+        DateTime? effectiveEndAt)
     {
-        if (string.IsNullOrWhiteSpace(req.RuleTitle)) return "评定细则标题不能为空。";
-        if (req.RuleTitle.Trim().Length > 255) return "评定细则标题不能超过 255 个字符。";
-        if (string.IsNullOrWhiteSpace(req.AcademicYear)) return "适用学年不能为空。";
-        if (req.AcademicYear.Trim().Length > 50) return "适用学年不能超过 50 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.TermName) && req.TermName.Trim().Length > 80)
-            return "适用学期不能超过 80 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.IssuerName) && req.IssuerName.Trim().Length > 255)
-            return "制定单位不能超过 255 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.MaterialUrl) && req.MaterialUrl.Trim().Length > 1000)
-            return "材料文件引用不能超过 1000 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.MaterialName) && req.MaterialName.Trim().Length > 255)
-            return "材料名称不能超过 255 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.VersionNo) && req.VersionNo.Trim().Length > 50)
-            return "版本号不能超过 50 个字符。";
-        if (!string.IsNullOrWhiteSpace(req.RuleStatus) && NormalizeAwardRuleStatus(req.RuleStatus) is null)
-            return "评定细则状态不合法。";
-        if (req.EffectiveStartAt is not null &&
-            req.EffectiveEndAt is not null &&
-            req.EffectiveStartAt > req.EffectiveEndAt)
+        if (string.IsNullOrWhiteSpace(ruleTitle)) return "Rule title is required.";
+        if (ruleTitle.Trim().Length > 255) return "Rule title cannot exceed 255 characters.";
+        if (string.IsNullOrWhiteSpace(academicYear)) return "Academic year is required.";
+        if (academicYear.Trim().Length > 50) return "Academic year cannot exceed 50 characters.";
+        if (!string.IsNullOrWhiteSpace(termName) && termName.Trim().Length > 80)
+            return "Term name cannot exceed 80 characters.";
+        if (!string.IsNullOrWhiteSpace(issuerName) && issuerName.Trim().Length > 255)
+            return "Issuer name cannot exceed 255 characters.";
+        if (!string.IsNullOrWhiteSpace(materialUrl) && materialUrl.Trim().Length > 1000)
+            return "Material reference cannot exceed 1000 characters.";
+        if (!string.IsNullOrWhiteSpace(materialName) && materialName.Trim().Length > 255)
+            return "Material name cannot exceed 255 characters.";
+        if (!string.IsNullOrWhiteSpace(versionNo) && versionNo.Trim().Length > 50)
+            return "Version number cannot exceed 50 characters.";
+        if (ruleStatus is null) return "Rule status is invalid.";
+        if (effectiveStartAt is not null &&
+            effectiveEndAt is not null &&
+            effectiveStartAt > effectiveEndAt)
         {
-            return "生效开始时间不能晚于结束时间。";
+            return "Effective start time cannot be later than effective end time.";
         }
 
         return null;
@@ -1820,7 +1899,14 @@ public class AwardWorkflowController : ControllerBase
         if (reviewResult == AwardReviewReject)
             return (AwardStatusRejected, application.CurrentStep, AwardPublicNone, null);
         if (reviewResult == AwardReviewWithdraw)
+        {
+            if (application.ApplicationStatus is AwardStatusArchived or AwardStatusRejected or AwardStatusWithdrawn)
+            {
+                return (null, null, null, Conflict(new { message = "申请已处于终态，不能撤回。" }));
+            }
+
             return (AwardStatusWithdrawn, application.CurrentStep, AwardPublicWithdrawn, null);
+        }
 
         if (reviewResult == AwardReviewPublish)
         {
@@ -1870,177 +1956,309 @@ public class AwardWorkflowController : ControllerBase
             ReviewedAt = reviewedAt
         };
 
-    private static AwardRuleDocumentRecordDto ToAwardRuleDocumentRecordDto(AwardRuleDocument document) => new(
-        document.RuleDocumentId,
-        document.ClubId,
-        document.Club?.ClubName,
-        document.RuleTitle,
-        document.RuleScope,
-        AwardRuleScopeText(document.RuleScope),
-        document.AcademicYear,
-        document.TermName,
-        document.IssuerName,
-        document.Summary,
-        document.ContentText,
-        document.MaterialUrl,
-        document.MaterialName,
-        document.VersionNo,
-        document.RuleStatus,
-        AwardRuleStatusText(document.RuleStatus),
-        document.EffectiveStartAt,
-        document.EffectiveEndAt,
-        document.PublishedByUserId,
-        DisplayUser(document.PublishedByUser),
-        document.PublishedAt,
-        document.CreatedAt,
-        document.UpdatedAt);
+    private static AwardRuleDocumentRecordDto ToAwardRuleDocumentRecordDto(AwardRuleDocument document) => new()
+    {
+        RuleDocumentId = document.RuleDocumentId,
+        ClubId = document.ClubId,
+        ClubName = document.Club?.ClubName,
+        RuleTitle = document.RuleTitle,
+        RuleScope = ToAwardRuleDocumentScopeRecordValue(document.RuleScope),
+        RuleScopeText = AwardRuleScopeText(document.RuleScope),
+        AcademicYear = document.AcademicYear,
+        TermName = document.TermName,
+        IssuerName = document.IssuerName,
+        Summary = document.Summary,
+        ContentText = document.ContentText,
+        MaterialUrl = document.MaterialUrl,
+        MaterialName = document.MaterialName,
+        VersionNo = document.VersionNo,
+        RuleStatus = ToAwardRuleDocumentStatusRecordValue(document.RuleStatus),
+        RuleStatusText = AwardRuleStatusText(document.RuleStatus),
+        EffectiveStartAt = document.EffectiveStartAt,
+        EffectiveEndAt = document.EffectiveEndAt,
+        PublishedByUserId = document.PublishedByUserId,
+        PublishedByName = DisplayUser(document.PublishedByUser),
+        PublishedAt = document.PublishedAt,
+        CreatedAt = document.CreatedAt,
+        UpdatedAt = document.UpdatedAt
+    };
 
-    private static AwardSchemeRecordDto ToAwardSchemeRecordDto(AwardScheme scheme) => new(
-        scheme.AwardSchemeId,
-        scheme.ClubId,
-        scheme.Club?.ClubName ?? $"社团 {scheme.ClubId}",
-        scheme.AwardName,
-        scheme.AwardCategory,
-        scheme.AcademicYear,
-        scheme.TermName,
-        scheme.SponsorUnit,
-        scheme.RewardLevel,
-        scheme.FundingSource,
-        scheme.IsRanked == 1,
-        scheme.IsFixedAmount == 1,
-        scheme.Description,
-        scheme.MaterialDescription,
-        scheme.ApplicationStartAt,
-        scheme.ApplicationEndAt,
-        scheme.PublicityStartAt,
-        scheme.PublicityEndAt,
-        scheme.SchemeStatus,
-        AwardSchemeStatusText(scheme.SchemeStatus),
-        scheme.CreatedByUserId,
-        DisplayUser(scheme.CreatedByUser),
-        scheme.CreatedAt,
-        scheme.UpdatedAt,
-        scheme.Levels
+    private static AwardSchemeRecordDto ToAwardSchemeRecordDto(AwardScheme scheme) => new()
+    {
+        AwardSchemeId = scheme.AwardSchemeId,
+        ClubId = scheme.ClubId,
+        ClubName = scheme.Club?.ClubName ?? $"社团 {scheme.ClubId}",
+        AwardName = scheme.AwardName,
+        AwardCategory = ToAwardSchemeCategoryRecordValue(scheme.AwardCategory),
+        AcademicYear = scheme.AcademicYear,
+        TermName = scheme.TermName,
+        SponsorUnit = scheme.SponsorUnit,
+        RewardLevel = scheme.RewardLevel,
+        FundingSource = scheme.FundingSource,
+        IsRanked = scheme.IsRanked == 1,
+        IsFixedAmount = scheme.IsFixedAmount == 1,
+        Description = scheme.Description,
+        MaterialDescription = scheme.MaterialDescription,
+        ApplicationStartAt = scheme.ApplicationStartAt,
+        ApplicationEndAt = scheme.ApplicationEndAt,
+        PublicityStartAt = scheme.PublicityStartAt,
+        PublicityEndAt = scheme.PublicityEndAt,
+        SchemeStatus = ToAwardSchemeStatusRecordValue(scheme.SchemeStatus),
+        SchemeStatusText = AwardSchemeStatusText(scheme.SchemeStatus),
+        CreatedByUserId = scheme.CreatedByUserId,
+        CreatedByName = DisplayUser(scheme.CreatedByUser),
+        CreatedAt = scheme.CreatedAt,
+        UpdatedAt = scheme.UpdatedAt,
+        Levels = scheme.Levels
             .OrderBy(level => level.DisplayOrder)
             .ThenBy(level => level.LevelName)
             .Select(ToAwardLevelRecordDto)
-            .ToArray());
+            .ToList()
+    };
 
-    private static AwardLevelRecordDto ToAwardLevelRecordDto(AwardLevel level) => new(
-        level.AwardLevelId,
-        level.AwardSchemeId,
-        level.LevelName,
-        level.AwardScore,
-        level.Amount,
-        level.Quota,
-        level.DisplayOrder,
-        level.LevelStatus);
+    private static AwardLevelRecordDto ToAwardLevelRecordDto(AwardLevel level) => new()
+    {
+        AwardLevelId = level.AwardLevelId,
+        AwardSchemeId = level.AwardSchemeId,
+        LevelName = level.LevelName,
+        AwardScore = level.AwardScore,
+        Amount = level.Amount,
+        Quota = level.Quota,
+        DisplayOrder = level.DisplayOrder,
+        LevelStatus = level.LevelStatus == "inactive"
+            ? AwardLevelRecordDto.LevelStatusEnum.InactiveEnum
+            : AwardLevelRecordDto.LevelStatusEnum.ActiveEnum
+    };
 
-    private static AwardApplicationRecordDto ToAwardApplicationRecordDto(AwardApplication application) => new(
-        application.AwardApplicationId,
-        application.ClubId,
-        application.Club?.ClubName ?? $"社团 {application.ClubId}",
-        application.AwardSchemeId,
-        application.Scheme?.AwardName ?? $"奖项 {application.AwardSchemeId}",
-        application.Scheme?.AwardCategory ?? "honor",
-        application.Scheme?.AcademicYear ?? string.Empty,
-        application.Scheme?.TermName,
-        application.AwardLevelId,
-        application.Level?.LevelName ?? $"等级 {application.AwardLevelId}",
-        application.ApplicantUserId,
-        DisplayUser(application.Applicant) ?? $"用户 {application.ApplicantUserId}",
-        application.Applicant?.StudentNo,
-        application.RecommenderUserId,
-        DisplayUser(application.Recommender),
-        application.SubmitterUserId,
-        DisplayUser(application.Submitter),
-        application.ApplicationType,
-        application.ApplicationReason,
-        application.MaterialUrl,
-        application.CurrentStep,
-        AwardStepText(application.CurrentStep),
-        application.ApplicationStatus,
-        AwardApplicationStatusText(application.ApplicationStatus),
-        application.PublicStatus,
-        application.ReviewRound,
-        application.FinalAwardScore,
-        application.FinalAmount,
-        application.SubmittedAt,
-        application.ApprovedAt,
-        application.PublicizedAt,
-        application.ArchivedAt,
-        application.CreatedAt,
-        application.UpdatedAt,
-        application.ReviewRecords
+    private static AwardApplicationRecordDto ToAwardApplicationRecordDto(AwardApplication application) => new()
+    {
+        AwardApplicationId = application.AwardApplicationId,
+        ClubId = application.ClubId,
+        ClubName = application.Club?.ClubName ?? $"社团 {application.ClubId}",
+        AwardSchemeId = application.AwardSchemeId,
+        AwardName = application.Scheme?.AwardName ?? $"奖项 {application.AwardSchemeId}",
+        AwardCategory = ToAwardApplicationCategoryRecordValue(application.Scheme?.AwardCategory),
+        AcademicYear = application.Scheme?.AcademicYear ?? string.Empty,
+        TermName = application.Scheme?.TermName,
+        AwardLevelId = application.AwardLevelId,
+        LevelName = application.Level?.LevelName ?? $"等级 {application.AwardLevelId}",
+        ApplicantUserId = application.ApplicantUserId,
+        ApplicantName = DisplayUser(application.Applicant) ?? $"用户 {application.ApplicantUserId}",
+        ApplicantStudentNo = application.Applicant?.StudentNo,
+        RecommenderUserId = application.RecommenderUserId,
+        RecommenderName = DisplayUser(application.Recommender),
+        SubmitterUserId = application.SubmitterUserId,
+        SubmitterName = DisplayUser(application.Submitter),
+        ApplicationType = ToAwardApplicationTypeRecordValue(application.ApplicationType),
+        ApplicationReason = application.ApplicationReason,
+        MaterialUrl = application.MaterialUrl,
+        CurrentStep = ToAwardApplicationStepRecordValue(application.CurrentStep),
+        CurrentStepText = AwardStepText(application.CurrentStep),
+        ApplicationStatus = ToAwardApplicationStatusRecordValue(application.ApplicationStatus),
+        ApplicationStatusText = AwardApplicationStatusText(application.ApplicationStatus),
+        PublicStatus = ToAwardApplicationPublicStatusRecordValue(application.PublicStatus),
+        ReviewRound = application.ReviewRound,
+        FinalAwardScore = application.FinalAwardScore,
+        FinalAmount = application.FinalAmount,
+        SubmittedAt = application.SubmittedAt,
+        ApprovedAt = application.ApprovedAt,
+        PublicizedAt = application.PublicizedAt,
+        ArchivedAt = application.ArchivedAt,
+        CreatedAt = application.CreatedAt,
+        UpdatedAt = application.UpdatedAt,
+        ReviewRecords = application.ReviewRecords
             .OrderBy(record => record.ReviewedAt)
             .Select(ToAwardReviewRecordDto)
-            .ToArray(),
-        application.Attachments
+            .ToList(),
+        Attachments = application.Attachments
             .OrderBy(attachment => attachment.UploadedAt)
             .Select(ToAwardAttachmentRecordDto)
-            .ToArray());
+            .ToList()
+    };
 
-    private static AwardReviewRecordDto ToAwardReviewRecordDto(AwardReviewRecord record) => new(
-        record.ReviewId,
-        record.AwardApplicationId,
-        record.ReviewRound,
-        record.ReviewStep,
-        record.ReviewResult,
-        record.ReviewerUserId,
-        DisplayUser(record.Reviewer),
-        record.ReviewComment,
-        record.FromStatus,
-        record.ToStatus,
-        record.ReviewedAt);
+    private static AwardReviewRecordDto ToAwardReviewRecordDto(AwardReviewRecord record) => new()
+    {
+        ReviewId = record.ReviewId,
+        AwardApplicationId = record.AwardApplicationId,
+        ReviewRound = record.ReviewRound,
+        ReviewStep = ToAwardReviewStepRecordValue(record.ReviewStep),
+        ReviewResult = ToAwardReviewResultRecordValue(record.ReviewResult),
+        ReviewerUserId = record.ReviewerUserId,
+        ReviewerName = DisplayUser(record.Reviewer),
+        ReviewComment = record.ReviewComment,
+        FromStatus = record.FromStatus,
+        ToStatus = record.ToStatus,
+        ReviewedAt = record.ReviewedAt
+    };
 
-    private static AwardAttachmentRecordDto ToAwardAttachmentRecordDto(AwardAttachment attachment) => new(
-        attachment.AttachmentId,
-        attachment.AwardApplicationId,
-        attachment.AttachmentName,
-        attachment.AttachmentUrl,
-        attachment.AttachmentType,
-        attachment.UploadedByUserId,
-        DisplayUser(attachment.UploadedByUser),
-        attachment.UploadedAt);
+    private static AwardAttachmentRecordDto ToAwardAttachmentRecordDto(AwardAttachment attachment) => new()
+    {
+        AttachmentId = attachment.AttachmentId,
+        AwardApplicationId = attachment.AwardApplicationId,
+        AttachmentName = attachment.AttachmentName,
+        AttachmentUrl = attachment.AttachmentUrl,
+        AttachmentType = attachment.AttachmentType,
+        UploadedByUserId = attachment.UploadedByUserId,
+        UploadedByName = DisplayUser(attachment.UploadedByUser),
+        UploadedAt = attachment.UploadedAt
+    };
 
-    private static AwardPublicityBatchRecordDto ToAwardPublicityBatchRecordDto(AwardPublicityBatch batch) => new(
-        batch.PublicityBatchId,
-        batch.ClubId,
-        batch.Club?.ClubName ?? $"社团 {batch.ClubId}",
-        batch.Title,
-        batch.Description,
-        batch.PublicityStartAt,
-        batch.PublicityEndAt,
-        batch.PublicityStatus,
-        AwardPublicityStatusText(batch.PublicityStatus),
-        batch.PublisherUserId,
-        DisplayUser(batch.Publisher),
-        batch.CreatedAt,
-        batch.UpdatedAt,
-        batch.Items
+    private static AwardPublicityBatchRecordDto ToAwardPublicityBatchRecordDto(AwardPublicityBatch batch) => new()
+    {
+        PublicityBatchId = batch.PublicityBatchId,
+        ClubId = batch.ClubId,
+        ClubName = batch.Club?.ClubName ?? $"社团 {batch.ClubId}",
+        Title = batch.Title,
+        Description = batch.Description,
+        PublicityStartAt = batch.PublicityStartAt,
+        PublicityEndAt = batch.PublicityEndAt,
+        PublicityStatus = ToAwardPublicityStatusRecordValue(batch.PublicityStatus),
+        PublicityStatusText = AwardPublicityStatusText(batch.PublicityStatus),
+        PublisherUserId = batch.PublisherUserId,
+        PublisherName = DisplayUser(batch.Publisher),
+        CreatedAt = batch.CreatedAt,
+        UpdatedAt = batch.UpdatedAt,
+        Items = batch.Items
             .OrderBy(item => item.DisplayOrder)
             .ThenBy(item => item.PublicityItemId)
             .Select(ToAwardPublicityItemRecordDto)
-            .ToArray());
+            .ToList()
+    };
 
     private static AwardPublicityItemRecordDto ToAwardPublicityItemRecordDto(AwardPublicityItem item)
     {
         var application = item.Application;
-        return new AwardPublicityItemRecordDto(
-            item.PublicityItemId,
-            item.PublicityBatchId,
-            item.AwardApplicationId,
-            application?.ApplicantUserId ?? 0,
-            DisplayUser(application?.Applicant) ?? "未知成员",
-            application?.Scheme?.AwardName ?? "未知奖项",
-            application?.Level?.LevelName ?? "未知等级",
-            application?.FinalAwardScore,
-            application?.FinalAmount,
-            item.DisplayOrder,
-            item.PublicityResult,
-            item.CreatedAt);
+        return new AwardPublicityItemRecordDto
+        {
+            PublicityItemId = item.PublicityItemId,
+            PublicityBatchId = item.PublicityBatchId,
+            AwardApplicationId = item.AwardApplicationId,
+            ApplicantUserId = application?.ApplicantUserId ?? 0,
+            ApplicantName = DisplayUser(application?.Applicant) ?? "未知成员",
+            AwardName = application?.Scheme?.AwardName ?? "未知奖项",
+            LevelName = application?.Level?.LevelName ?? "未知等级",
+            FinalAwardScore = application?.FinalAwardScore,
+            FinalAmount = application?.FinalAmount,
+            DisplayOrder = item.DisplayOrder,
+            PublicityResult = ToAwardPublicityItemResultRecordValue(item.PublicityResult),
+            CreatedAt = item.CreatedAt
+        };
     }
 
+    private static AwardRuleDocumentRecordDto.RuleScopeEnum ToAwardRuleDocumentScopeRecordValue(string? scope) =>
+        scope == AwardRuleScopeGlobal
+            ? AwardRuleDocumentRecordDto.RuleScopeEnum.GlobalEnum
+            : AwardRuleDocumentRecordDto.RuleScopeEnum.ClubEnum;
+
+    private static AwardRuleDocumentRecordDto.RuleStatusEnum ToAwardRuleDocumentStatusRecordValue(string? status) => status switch
+    {
+        AwardRuleStatusPublished => AwardRuleDocumentRecordDto.RuleStatusEnum.PublishedEnum,
+        AwardRuleStatusArchived => AwardRuleDocumentRecordDto.RuleStatusEnum.ArchivedEnum,
+        _ => AwardRuleDocumentRecordDto.RuleStatusEnum.DraftEnum
+    };
+
+    private static AwardSchemeRecordDto.AwardCategoryEnum ToAwardSchemeCategoryRecordValue(string? category) => category switch
+    {
+        "scholarship" => AwardSchemeRecordDto.AwardCategoryEnum.ScholarshipEnum,
+        "competition" => AwardSchemeRecordDto.AwardCategoryEnum.CompetitionEnum,
+        "service" => AwardSchemeRecordDto.AwardCategoryEnum.ServiceEnum,
+        "other" => AwardSchemeRecordDto.AwardCategoryEnum.OtherEnum,
+        _ => AwardSchemeRecordDto.AwardCategoryEnum.HonorEnum
+    };
+
+    private static AwardApplicationRecordDto.AwardCategoryEnum ToAwardApplicationCategoryRecordValue(string? category) => category switch
+    {
+        "scholarship" => AwardApplicationRecordDto.AwardCategoryEnum.ScholarshipEnum,
+        "competition" => AwardApplicationRecordDto.AwardCategoryEnum.CompetitionEnum,
+        "service" => AwardApplicationRecordDto.AwardCategoryEnum.ServiceEnum,
+        "other" => AwardApplicationRecordDto.AwardCategoryEnum.OtherEnum,
+        _ => AwardApplicationRecordDto.AwardCategoryEnum.HonorEnum
+    };
+
+    private static AwardSchemeRecordDto.SchemeStatusEnum ToAwardSchemeStatusRecordValue(string? status) => status switch
+    {
+        AwardSchemeOpen => AwardSchemeRecordDto.SchemeStatusEnum.OpenEnum,
+        AwardSchemeReviewing => AwardSchemeRecordDto.SchemeStatusEnum.ReviewingEnum,
+        AwardSchemePublicizing => AwardSchemeRecordDto.SchemeStatusEnum.PublicizingEnum,
+        AwardSchemeArchived => AwardSchemeRecordDto.SchemeStatusEnum.ArchivedEnum,
+        AwardSchemeClosed => AwardSchemeRecordDto.SchemeStatusEnum.ClosedEnum,
+        _ => AwardSchemeRecordDto.SchemeStatusEnum.DraftEnum
+    };
+
+    private static AwardApplicationRecordDto.ApplicationTypeEnum ToAwardApplicationTypeRecordValue(string? value) =>
+        value == AwardApplicationRecommendation
+            ? AwardApplicationRecordDto.ApplicationTypeEnum.RecommendationEnum
+            : AwardApplicationRecordDto.ApplicationTypeEnum.SelfEnum;
+
+    private static AwardApplicationRecordDto.CurrentStepEnum ToAwardApplicationStepRecordValue(string? step) => step switch
+    {
+        AwardStepClubReview => AwardApplicationRecordDto.CurrentStepEnum.ClubReviewEnum,
+        AwardStepAdvisorReview => AwardApplicationRecordDto.CurrentStepEnum.AdvisorReviewEnum,
+        AwardStepSchoolReview => AwardApplicationRecordDto.CurrentStepEnum.SchoolReviewEnum,
+        AwardStepPublicity => AwardApplicationRecordDto.CurrentStepEnum.PublicityEnum,
+        AwardStepArchived => AwardApplicationRecordDto.CurrentStepEnum.ArchivedEnum,
+        _ => AwardApplicationRecordDto.CurrentStepEnum.StudentSubmitEnum
+    };
+
+    private static AwardApplicationRecordDto.ApplicationStatusEnum ToAwardApplicationStatusRecordValue(string? status) => status switch
+    {
+        "submitted" => AwardApplicationRecordDto.ApplicationStatusEnum.SubmittedEnum,
+        AwardStatusClubReview => AwardApplicationRecordDto.ApplicationStatusEnum.ClubReviewEnum,
+        AwardStatusAdvisorReview => AwardApplicationRecordDto.ApplicationStatusEnum.AdvisorReviewEnum,
+        AwardStatusSchoolReview => AwardApplicationRecordDto.ApplicationStatusEnum.SchoolReviewEnum,
+        AwardStatusReturned => AwardApplicationRecordDto.ApplicationStatusEnum.ReturnedEnum,
+        AwardStatusRejected => AwardApplicationRecordDto.ApplicationStatusEnum.RejectedEnum,
+        AwardStatusApproved => AwardApplicationRecordDto.ApplicationStatusEnum.ApprovedEnum,
+        AwardStatusPublicizing => AwardApplicationRecordDto.ApplicationStatusEnum.PublicizingEnum,
+        AwardPublicized => AwardApplicationRecordDto.ApplicationStatusEnum.PublicizedEnum,
+        AwardStatusArchived => AwardApplicationRecordDto.ApplicationStatusEnum.ArchivedEnum,
+        AwardStatusWithdrawn => AwardApplicationRecordDto.ApplicationStatusEnum.WithdrawnEnum,
+        _ => AwardApplicationRecordDto.ApplicationStatusEnum.DraftEnum
+    };
+
+    private static AwardApplicationRecordDto.PublicStatusEnum ToAwardApplicationPublicStatusRecordValue(string? status) => status switch
+    {
+        AwardPublicizing => AwardApplicationRecordDto.PublicStatusEnum.PublicizingEnum,
+        AwardPublicized => AwardApplicationRecordDto.PublicStatusEnum.PublicizedEnum,
+        AwardPublicWithdrawn => AwardApplicationRecordDto.PublicStatusEnum.WithdrawnEnum,
+        _ => AwardApplicationRecordDto.PublicStatusEnum.NoneEnum
+    };
+
+    private static AwardReviewRecordDto.ReviewStepEnum ToAwardReviewStepRecordValue(string? step) => step switch
+    {
+        AwardStepClubReview => AwardReviewRecordDto.ReviewStepEnum.ClubReviewEnum,
+        AwardStepAdvisorReview => AwardReviewRecordDto.ReviewStepEnum.AdvisorReviewEnum,
+        AwardStepSchoolReview => AwardReviewRecordDto.ReviewStepEnum.SchoolReviewEnum,
+        AwardStepPublicity => AwardReviewRecordDto.ReviewStepEnum.PublicityEnum,
+        AwardReviewStepArchive => AwardReviewRecordDto.ReviewStepEnum.ArchiveEnum,
+        _ => AwardReviewRecordDto.ReviewStepEnum.StudentSubmitEnum
+    };
+
+    private static AwardReviewRecordDto.ReviewResultEnum ToAwardReviewResultRecordValue(string? result) => result switch
+    {
+        AwardReviewSubmit => AwardReviewRecordDto.ReviewResultEnum.SubmitEnum,
+        AwardReviewReject => AwardReviewRecordDto.ReviewResultEnum.RejectEnum,
+        AwardReviewReturn => AwardReviewRecordDto.ReviewResultEnum.ReturnEnum,
+        AwardReviewPublish => AwardReviewRecordDto.ReviewResultEnum.PublishEnum,
+        AwardReviewArchive => AwardReviewRecordDto.ReviewResultEnum.ArchiveEnum,
+        AwardReviewWithdraw => AwardReviewRecordDto.ReviewResultEnum.WithdrawEnum,
+        _ => AwardReviewRecordDto.ReviewResultEnum.ApproveEnum
+    };
+
+    private static AwardPublicityBatchRecordDto.PublicityStatusEnum ToAwardPublicityStatusRecordValue(string? status) => status switch
+    {
+        AwardPublicityPublicizing => AwardPublicityBatchRecordDto.PublicityStatusEnum.PublicizingEnum,
+        AwardPublicityClosed => AwardPublicityBatchRecordDto.PublicityStatusEnum.ClosedEnum,
+        AwardPublicityArchived => AwardPublicityBatchRecordDto.PublicityStatusEnum.ArchivedEnum,
+        _ => AwardPublicityBatchRecordDto.PublicityStatusEnum.DraftEnum
+    };
+
+    private static AwardPublicityItemRecordDto.PublicityResultEnum ToAwardPublicityItemResultRecordValue(string? result) => result switch
+    {
+        "withdrawn" => AwardPublicityItemRecordDto.PublicityResultEnum.WithdrawnEnum,
+        "corrected" => AwardPublicityItemRecordDto.PublicityResultEnum.CorrectedEnum,
+        _ => AwardPublicityItemRecordDto.PublicityResultEnum.NormalEnum
+    };
     private static string ToAwardCategory(CreateAwardSchemeRequest.AwardCategoryEnum value) => value switch
     {
         CreateAwardSchemeRequest.AwardCategoryEnum.ScholarshipEnum => "scholarship",
@@ -2082,19 +2300,50 @@ public class AwardWorkflowController : ControllerBase
     private static string ToAwardLevelStatus(Org.OpenAPITools.Models.AwardLevelInput.LevelStatusEnum value) =>
         value == Org.OpenAPITools.Models.AwardLevelInput.LevelStatusEnum.InactiveEnum ? "inactive" : "active";
 
+    private static string? ToAwardRuleScope(CreateAwardRuleDocumentRequest.RuleScopeEnum value) => value switch
+    {
+        CreateAwardRuleDocumentRequest.RuleScopeEnum.GlobalEnum => AwardRuleScopeGlobal,
+        CreateAwardRuleDocumentRequest.RuleScopeEnum.ClubEnum => AwardRuleScopeClub,
+        _ => null
+    };
+
+    private static string? ToAwardRuleScope(UpdateAwardRuleDocumentRequest.RuleScopeEnum value) => value switch
+    {
+        UpdateAwardRuleDocumentRequest.RuleScopeEnum.GlobalEnum => AwardRuleScopeGlobal,
+        UpdateAwardRuleDocumentRequest.RuleScopeEnum.ClubEnum => AwardRuleScopeClub,
+        _ => null
+    };
+
+    private static string? ToAwardRuleStatus(CreateAwardRuleDocumentRequest.RuleStatusEnum value) => value switch
+    {
+        CreateAwardRuleDocumentRequest.RuleStatusEnum.PublishedEnum => AwardRuleStatusPublished,
+        CreateAwardRuleDocumentRequest.RuleStatusEnum.ArchivedEnum => AwardRuleStatusArchived,
+        CreateAwardRuleDocumentRequest.RuleStatusEnum.DraftEnum => AwardRuleStatusDraft,
+        _ => null
+    };
+
+    private static string? ToAwardRuleStatus(UpdateAwardRuleDocumentRequest.RuleStatusEnum value) => value switch
+    {
+        UpdateAwardRuleDocumentRequest.RuleStatusEnum.PublishedEnum => AwardRuleStatusPublished,
+        UpdateAwardRuleDocumentRequest.RuleStatusEnum.ArchivedEnum => AwardRuleStatusArchived,
+        UpdateAwardRuleDocumentRequest.RuleStatusEnum.DraftEnum => AwardRuleStatusDraft,
+        _ => null
+    };
+
     private static string ToAwardApplicationType(CreateAwardApplicationRequest.ApplicationTypeEnum value) =>
         value == CreateAwardApplicationRequest.ApplicationTypeEnum.RecommendationEnum
             ? AwardApplicationRecommendation
             : AwardApplicationSelf;
 
-    private static string ToAwardReviewResult(ReviewAwardApplicationRequest.ReviewResultEnum value) => value switch
+    private static string? ToAwardReviewResult(ReviewAwardApplicationRequest.ReviewResultEnum value) => value switch
     {
         ReviewAwardApplicationRequest.ReviewResultEnum.RejectEnum => AwardReviewReject,
         ReviewAwardApplicationRequest.ReviewResultEnum.ReturnEnum => AwardReviewReturn,
         ReviewAwardApplicationRequest.ReviewResultEnum.PublishEnum => AwardReviewPublish,
         ReviewAwardApplicationRequest.ReviewResultEnum.ArchiveEnum => AwardReviewArchive,
         ReviewAwardApplicationRequest.ReviewResultEnum.WithdrawEnum => AwardReviewWithdraw,
-        _ => AwardReviewApprove
+        ReviewAwardApplicationRequest.ReviewResultEnum.ApproveEnum => AwardReviewApprove,
+        _ => null
     };
 
     private static string? NormalizeAwardSchemeStatus(string? value) =>
@@ -2108,6 +2357,9 @@ public class AwardWorkflowController : ControllerBase
 
     private static string? NormalizeAwardPublicityStatus(string? value) =>
         NormalizeToKnown(value, AwardPublicityDraft, AwardPublicityPublicizing, AwardPublicityClosed, AwardPublicityArchived);
+
+    private static bool IsPublicAwardPublicityStatus(string status) =>
+        status is AwardPublicityPublicizing or AwardPublicityClosed or AwardPublicityArchived;
 
     private static string? NormalizeAwardRuleScope(string? value) =>
         NormalizeToKnown(value, AwardRuleScopeGlobal, AwardRuleScopeClub);
@@ -2220,171 +2472,3 @@ public class AwardWorkflowController : ControllerBase
         _ => "未知状态"
     };
 }
-
-public record AwardLevelRecordDto(
-    int AwardLevelId,
-    int AwardSchemeId,
-    string LevelName,
-    decimal AwardScore,
-    decimal? Amount,
-    int? Quota,
-    int DisplayOrder,
-    string LevelStatus);
-
-public record AwardRuleDocumentRequest(
-    string? RuleTitle,
-    string? RuleScope,
-    string? AcademicYear,
-    string? TermName,
-    string? IssuerName,
-    string? Summary,
-    string? ContentText,
-    string? MaterialUrl,
-    string? MaterialName,
-    string? VersionNo,
-    string? RuleStatus,
-    DateTime? EffectiveStartAt,
-    DateTime? EffectiveEndAt);
-
-public record AwardRuleDocumentRecordDto(
-    int RuleDocumentId,
-    int? ClubId,
-    string? ClubName,
-    string RuleTitle,
-    string RuleScope,
-    string RuleScopeText,
-    string AcademicYear,
-    string? TermName,
-    string? IssuerName,
-    string? Summary,
-    string? ContentText,
-    string? MaterialUrl,
-    string? MaterialName,
-    string VersionNo,
-    string RuleStatus,
-    string RuleStatusText,
-    DateTime? EffectiveStartAt,
-    DateTime? EffectiveEndAt,
-    int? PublishedByUserId,
-    string? PublishedByName,
-    DateTime? PublishedAt,
-    DateTime CreatedAt,
-    DateTime UpdatedAt);
-
-public record AwardSchemeRecordDto(
-    int AwardSchemeId,
-    int ClubId,
-    string ClubName,
-    string AwardName,
-    string AwardCategory,
-    string AcademicYear,
-    string? TermName,
-    string? SponsorUnit,
-    string? RewardLevel,
-    string? FundingSource,
-    bool IsRanked,
-    bool IsFixedAmount,
-    string? Description,
-    string? MaterialDescription,
-    DateTime? ApplicationStartAt,
-    DateTime? ApplicationEndAt,
-    DateTime? PublicityStartAt,
-    DateTime? PublicityEndAt,
-    string SchemeStatus,
-    string SchemeStatusText,
-    int? CreatedByUserId,
-    string? CreatedByName,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
-    IReadOnlyCollection<AwardLevelRecordDto> Levels);
-
-public record AwardReviewRecordDto(
-    int ReviewId,
-    int AwardApplicationId,
-    int ReviewRound,
-    string ReviewStep,
-    string ReviewResult,
-    int? ReviewerUserId,
-    string? ReviewerName,
-    string? ReviewComment,
-    string? FromStatus,
-    string? ToStatus,
-    DateTime ReviewedAt);
-
-public record AwardAttachmentRecordDto(
-    int AttachmentId,
-    int AwardApplicationId,
-    string AttachmentName,
-    string AttachmentUrl,
-    string? AttachmentType,
-    int UploadedByUserId,
-    string? UploadedByName,
-    DateTime UploadedAt);
-
-public record AwardApplicationRecordDto(
-    int AwardApplicationId,
-    int ClubId,
-    string ClubName,
-    int AwardSchemeId,
-    string AwardName,
-    string AwardCategory,
-    string AcademicYear,
-    string? TermName,
-    int AwardLevelId,
-    string LevelName,
-    int ApplicantUserId,
-    string ApplicantName,
-    string? ApplicantStudentNo,
-    int? RecommenderUserId,
-    string? RecommenderName,
-    int SubmitterUserId,
-    string? SubmitterName,
-    string ApplicationType,
-    string? ApplicationReason,
-    string? MaterialUrl,
-    string CurrentStep,
-    string CurrentStepText,
-    string ApplicationStatus,
-    string ApplicationStatusText,
-    string PublicStatus,
-    int ReviewRound,
-    decimal? FinalAwardScore,
-    decimal? FinalAmount,
-    DateTime? SubmittedAt,
-    DateTime? ApprovedAt,
-    DateTime? PublicizedAt,
-    DateTime? ArchivedAt,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
-    IReadOnlyCollection<AwardReviewRecordDto> ReviewRecords,
-    IReadOnlyCollection<AwardAttachmentRecordDto> Attachments);
-
-public record AwardPublicityItemRecordDto(
-    int PublicityItemId,
-    int PublicityBatchId,
-    int AwardApplicationId,
-    int ApplicantUserId,
-    string ApplicantName,
-    string AwardName,
-    string LevelName,
-    decimal? FinalAwardScore,
-    decimal? FinalAmount,
-    int DisplayOrder,
-    string PublicityResult,
-    DateTime CreatedAt);
-
-public record AwardPublicityBatchRecordDto(
-    int PublicityBatchId,
-    int ClubId,
-    string ClubName,
-    string Title,
-    string? Description,
-    DateTime? PublicityStartAt,
-    DateTime? PublicityEndAt,
-    string PublicityStatus,
-    string PublicityStatusText,
-    int? PublisherUserId,
-    string? PublisherName,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
-    IReadOnlyCollection<AwardPublicityItemRecordDto> Items);

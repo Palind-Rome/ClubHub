@@ -3,7 +3,10 @@
 -- migrations/20260717_add_award_application_workflow.sql。
 -- 围绕 zhang_guoxiong（张国雄）账号准备本人申请、负责人审核、公示归档和考核奖项分来源数据。
 
+-- Requires migrations/20260717_add_award_rule_documents.sql.
+-- Requires migrations/20260718_harden_evaluation_award_sources.sql.
 SET DEFINE OFF;
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
 
 DECLARE
   v_zhang_count NUMBER;
@@ -363,6 +366,8 @@ INSERT ALL
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137210, 137102, 1, 'school_review', 'approve', school_reviewer_id, '复核通过。', 'school_review', 'approved', DATE '2026-03-16')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
+  VALUES (137224, 137102, 1, 'publicity', 'publish', comp_president_id, '发布拟获奖名单，公示期无异议。', 'approved', 'publicized', DATE '2026-03-22')
+  INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137211, 137102, 1, 'archive', 'archive', comp_president_id, '公示无异议，完成归档。', 'publicized', 'archived', DATE '2026-03-25')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137212, 137103, 1, 'student_submit', 'submit', zhang_id, '提交校园影像贡献奖申请。', 'draft', 'club_review', DATE '2026-07-12')
@@ -474,11 +479,12 @@ SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zha
 FROM dual;
 
 INSERT ALL
-  INTO EVALUATION_AWARD_SOURCES (evaluation_id, award_application_id, award_score, created_at)
-  VALUES (137501, 137101, 18, SYSDATE)
-  INTO EVALUATION_AWARD_SOURCES (evaluation_id, award_application_id, award_score, created_at)
-  VALUES (137502, 137106, 15, SYSDATE)
-SELECT 1 FROM dual;
+  INTO EVALUATION_AWARD_SOURCES (club_id, user_id, evaluation_id, award_application_id, award_score, created_at)
+  VALUES (1, zhang_id, 137501, 137101, 18, SYSDATE)
+  INTO EVALUATION_AWARD_SOURCES (club_id, user_id, evaluation_id, award_application_id, award_score, created_at)
+  VALUES (3, zhang_id, 137502, 137106, 15, SYSDATE)
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id
+FROM dual;
 
 DECLARE
   v_invalid_award_links NUMBER;
@@ -504,14 +510,22 @@ BEGIN
   SELECT COUNT(*)
   INTO v_invalid_source_links
   FROM EVALUATION_AWARD_SOURCES source
-  JOIN EVALUATIONS evaluation
+  LEFT JOIN EVALUATIONS evaluation
     ON evaluation.evaluation_id = source.evaluation_id
-  JOIN AWARD_APPLICATIONS application
+  LEFT JOIN AWARD_APPLICATIONS application
     ON application.award_application_id = source.award_application_id
   WHERE source.evaluation_id BETWEEN 137500 AND 137599
     AND (
-      evaluation.club_id <> application.club_id
-      OR evaluation.user_id <> application.applicant_user_id
+      evaluation.evaluation_id IS NULL
+      OR application.award_application_id IS NULL
+      OR source.club_id <> evaluation.club_id
+      OR source.user_id <> evaluation.user_id
+      OR source.club_id <> application.club_id
+      OR source.user_id <> application.applicant_user_id
+      OR application.application_status <> 'archived'
+      OR application.public_status <> 'publicized'
+      OR application.final_award_score IS NULL
+      OR source.award_score <> application.final_award_score
     );
 
   IF v_invalid_source_links > 0 THEN

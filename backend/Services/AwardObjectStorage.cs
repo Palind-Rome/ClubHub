@@ -41,6 +41,10 @@ public sealed class OssAwardObjectStorage : IAwardObjectStorage, IDisposable
             configuration.ReadWriteTimeout = TimeSpan.FromMinutes(5);
             _client = new OSS.Client(configuration);
         }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
         catch (Exception exception)
         {
             _configurationError = exception;
@@ -250,8 +254,12 @@ public sealed class OssAwardObjectStorage : IAwardObjectStorage, IDisposable
     private static string NormalizeEndpoint(string endpoint)
     {
         var normalized = endpoint.Trim().TrimEnd('/');
-        return normalized.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-               normalized.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        if (normalized.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Award file OSS endpoint must use HTTPS or omit the scheme.");
+        }
+
+        return normalized.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
             ? normalized
             : $"https://{normalized}";
     }

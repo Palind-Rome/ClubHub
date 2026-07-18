@@ -268,9 +268,11 @@ WHERE constraint_name IN (
   'UQ_AWARD_LEVELS_SCOPE',
   'UQ_AWARD_LEVELS_NAME',
   'UQ_AWARD_APPLICATIONS_SCOPE',
+  'UQ_AWARD_APPLICATIONS_MEMBER_SCOPE',
   'UQ_AWARD_APPLICATIONS_APPLICANT',
   'UQ_AWARD_PUBLICITY_BATCH_SCOPE',
   'UQ_AWARD_PUBLICITY_ITEMS_APP',
+  'UQ_EVALUATIONS_SOURCE_SCOPE',
   'PK_EVALUATION_AWARD_SOURCES',
   'FK_AWARD_SCHEMES_CLUB',
   'FK_AWARD_SCHEMES_CREATOR',
@@ -322,6 +324,14 @@ WITH expected_constraint_columns AS (
   SELECT 'FK_AWARD_APPLICATIONS_LEVEL',
          'AWARD_SCHEME_ID,AWARD_LEVEL_ID'
   FROM dual
+  UNION ALL
+  SELECT 'FK_EAS_EVALUATION',
+         'CLUB_ID,USER_ID,EVALUATION_ID'
+  FROM dual
+  UNION ALL
+  SELECT 'FK_EAS_APPLICATION',
+         'CLUB_ID,USER_ID,AWARD_APPLICATION_ID'
+  FROM dual
 ),
 actual_constraint_columns AS (
   SELECT constraint_name,
@@ -329,7 +339,9 @@ actual_constraint_columns AS (
   FROM user_cons_columns
   WHERE constraint_name IN (
     'FK_AWARD_APPLICATIONS_SCHEME',
-    'FK_AWARD_APPLICATIONS_LEVEL'
+    'FK_AWARD_APPLICATIONS_LEVEL',
+    'FK_EAS_EVALUATION',
+    'FK_EAS_APPLICATION'
   )
   GROUP BY constraint_name
 )
@@ -389,14 +401,33 @@ WHERE NOT EXISTS (
     AND application.award_application_id = item.award_application_id
 );
 
-SELECT source.evaluation_id, source.award_application_id
+SELECT source.club_id,
+       source.user_id,
+       source.evaluation_id,
+       source.award_application_id,
+       source.award_score,
+       evaluation.club_id AS evaluation_club_id,
+       evaluation.user_id AS evaluation_user_id,
+       application.club_id AS application_club_id,
+       application.applicant_user_id,
+       application.application_status,
+       application.public_status,
+       application.final_award_score
 FROM evaluation_award_sources source
-JOIN evaluations evaluation
+LEFT JOIN evaluations evaluation
   ON evaluation.evaluation_id = source.evaluation_id
-JOIN award_applications application
+LEFT JOIN award_applications application
   ON application.award_application_id = source.award_application_id
-WHERE evaluation.club_id <> application.club_id
-   OR evaluation.user_id <> application.applicant_user_id;
+WHERE evaluation.evaluation_id IS NULL
+   OR application.award_application_id IS NULL
+   OR source.club_id <> evaluation.club_id
+   OR source.user_id <> evaluation.user_id
+   OR source.club_id <> application.club_id
+   OR source.user_id <> application.applicant_user_id
+   OR application.application_status <> 'archived'
+   OR application.public_status <> 'publicized'
+   OR application.final_award_score IS NULL
+   OR source.award_score <> application.final_award_score;
 
 SELECT rule_document_id, rule_scope, club_id, rule_status
 FROM award_rule_documents

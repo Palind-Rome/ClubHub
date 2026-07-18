@@ -305,9 +305,11 @@ const ruleDetailTarget = ref<AwardRuleDocumentRecord | null>(null);
 const applicationTarget = ref<AwardApplicationRecord | null>(null);
 const publicityDetailTarget = ref<AwardPublicityBatchRecord | null>(null);
 const detailTarget = ref<AwardApplicationRecord | null>(null);
+const applicationSubmitAfterUpload = ref(false);
 let stopSessionListener: (() => void) | null = null;
 let loadRequestId = 0;
 let memberRequestId = 0;
+const awardFileRequestTimeoutMs = 30_000;
 
 const filters = reactive({
   keyword: "",
@@ -408,6 +410,8 @@ const reviewRules: FormRules = {
 };
 const publicityRules: FormRules = {
   title: [{ required: true, message: "请填写公示标题", trigger: "blur" }],
+  publicityStartAt: [{ required: true, message: "请选择公示开始时间", trigger: "change" }],
+  publicityEndAt: [{ required: true, message: "请选择公示结束时间", trigger: "change" }],
   awardApplicationIds: [{ required: true, message: "请选择公示名单", trigger: "change" }],
 };
 
@@ -485,9 +489,13 @@ const applicationSchemeOptions = computed(() => {
 const selectedApplicationScheme = computed(() =>
   schemes.value.find((scheme) => scheme.awardSchemeId === applicationForm.awardSchemeId),
 );
-const selectedApplicationLevels = computed(() =>
-  (selectedApplicationScheme.value?.levels ?? []).filter((level) => level.levelStatus === "active"),
-);
+const selectedApplicationLevels = computed(() => {
+  const levels = selectedApplicationScheme.value?.levels ?? [];
+  const currentLevelId = applicationTarget.value?.awardLevelId;
+  return levels.filter(
+    (level) => level.levelStatus === "active" || level.awardLevelId === currentLevelId,
+  );
+});
 const filteredRuleDocuments = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase();
   return ruleDocuments.value.filter((document) => {
@@ -590,6 +598,24 @@ async function validateForm(form?: FormInstance) {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function fetchAwardFile(input: RequestInfo | URL, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), awardFileRequestTimeoutMs);
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: init.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("File request timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
@@ -916,18 +942,21 @@ async function submitRuleDocument() {
       effectiveStartAt: fromDateTimeLocal(ruleForm.effectiveStartAt),
       effectiveEndAt: fromDateTimeLocal(ruleForm.effectiveEndAt),
     };
-    const url = ruleTarget.value
-      ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value.ruleDocumentId}`
+    const wasEditing = Boolean(ruleTarget.value);
+    const url = wasEditing
+      ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value!.ruleDocumentId}`
       : `/api/clubs/${selectedClubId.value}/award-rule-documents`;
-    const savedDocument = await requestJson<AwardRuleDocumentRecord>(url, {
-      method: ruleTarget.value ? "PATCH" : "POST",
+    let savedDocument = await requestJson<AwardRuleDocumentRecord>(url, {
+      method: wasEditing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    ruleTarget.value = savedDocument;
     if (ruleFiles.value.some((entry) => entry.raw)) {
-      await uploadRuleDocumentFile(savedDocument.ruleDocumentId);
+      savedDocument = await uploadRuleDocumentFile(savedDocument.ruleDocumentId);
+      ruleTarget.value = savedDocument;
     }
-    ElMessage.success(ruleTarget.value ? "评定细则已更新" : "评定细则已创建");
+    ElMessage.success(wasEditing ? "评定细则已更新" : "评定细则已创建");
     ruleDialogVisible.value = false;
     await loadAwardWorkspace();
   } catch (error) {
@@ -938,15 +967,16 @@ async function submitRuleDocument() {
 }
 
 async function uploadRuleDocumentFile(ruleDocumentId: number) {
-  const file = ruleFiles.value.find((entry) => entry.raw)?.raw;
-  if (!selectedClubId.value || !file) return;
+  const fileEntry = ruleFiles.value.find((entry) => entry.raw);
+  const file = fileEntry?.raw;
+  if (!selectedClubId.value || !file) throw new Error("Please choose an award rule file first.");
   if (file.size > 50 * 1024 * 1024) {
-    throw new Error(`“${file.name}”超过 50 MB，无法上传`);
+    throw new Error(`${file.name} exceeds 50 MB and cannot be uploaded`);
   }
 
   const formData = new FormData();
   formData.append("file", file, file.name);
-  const response = await fetch(
+  const response = await fetchAwardFile(
     `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
     {
       method: "POST",
@@ -955,6 +985,8 @@ async function uploadRuleDocumentFile(ruleDocumentId: number) {
     },
   );
   if (!response.ok) throw new Error(await readResponseMessage(response, "评定细则附件上传失败"));
+  ruleFiles.value = ruleFiles.value.filter((entry) => entry !== fileEntry);
+  return (await response.json()) as AwardRuleDocumentRecord;
 }
 
 async function publishRuleDocument(row: AwardRuleDocumentRecord) {
@@ -998,6 +1030,7 @@ function openCreateApplicationDialog() {
     return;
   }
   applicationTarget.value = null;
+  applicationSubmitAfterUpload.value = false;
   resetApplicationForm();
   applicationDialogVisible.value = true;
 }
@@ -1008,6 +1041,7 @@ function openEditApplicationDialog(row: AwardApplicationRecord) {
     return;
   }
   applicationTarget.value = row;
+  applicationSubmitAfterUpload.value = false;
   applicationForm.awardSchemeId = row.awardSchemeId;
   applicationForm.awardLevelId = row.awardLevelId;
   applicationForm.applicantUserId = row.applicantUserId;
@@ -1024,6 +1058,10 @@ async function submitApplication() {
   if (!selectedClubId.value || !(await validateForm(applicationFormRef.value))) return;
   saving.value = true;
   try {
+    const wasCreating = !applicationTarget.value;
+    const hasPendingFiles = applicationFiles.value.some((entry) => entry.raw);
+    const shouldSubmitAfterUpload =
+      applicationSubmitAfterUpload.value || (wasCreating && applicationForm.submitNow);
     const payload = {
       awardSchemeId: applicationForm.awardSchemeId,
       awardLevelId: applicationForm.awardLevelId,
@@ -1055,23 +1093,32 @@ async function submitApplication() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...payload,
-            submitNow: applicationFiles.value.some((entry) => entry.raw)
-              ? false
-              : payload.submitNow,
+            submitNow: hasPendingFiles ? false : payload.submitNow,
           }),
         },
       );
+      applicationTarget.value = savedApplication;
+      applicationSubmitAfterUpload.value = shouldSubmitAfterUpload && hasPendingFiles;
     }
     if (applicationFiles.value.some((entry) => entry.raw)) {
       savedApplication = await uploadApplicationFiles(savedApplication.awardApplicationId);
-      if (!applicationTarget.value && applicationForm.submitNow) {
-        savedApplication = await requestJson<AwardApplicationRecord>(
-          `/api/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
-          { method: "POST" },
-        );
-      }
+      applicationTarget.value = savedApplication;
     }
-    ElMessage.success(applicationTarget.value ? "申请已更新" : "申请已提交");
+    if (applicationSubmitAfterUpload.value) {
+      savedApplication = await requestJson<AwardApplicationRecord>(
+        `/api/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
+        { method: "POST" },
+      );
+      applicationTarget.value = savedApplication;
+      applicationSubmitAfterUpload.value = false;
+    }
+    ElMessage.success(
+      wasCreating
+        ? applicationForm.submitNow
+          ? "申请已提交审核"
+          : "申请草稿已保存"
+        : "申请已更新",
+    );
     applicationDialogVisible.value = false;
     await loadAwardWorkspace();
   } catch (error) {
@@ -1084,15 +1131,16 @@ async function submitApplication() {
 async function uploadApplicationFiles(awardApplicationId: number) {
   if (!selectedClubId.value) throw new Error("请选择社团。");
   let latest: AwardApplicationRecord | null = null;
-  const files = applicationFiles.value.flatMap((entry) => (entry.raw ? [entry.raw] : []));
-  for (const file of files) {
+  const fileEntries = applicationFiles.value.filter((entry) => entry.raw);
+  for (const fileEntry of fileEntries) {
+    const file = fileEntry.raw!;
     if (file.size > 50 * 1024 * 1024) {
       throw new Error(`“${file.name}”超过 50 MB，无法上传`);
     }
     const formData = new FormData();
     formData.append("file", file, file.name);
     formData.append("attachmentType", "申请材料");
-    const response = await fetch(
+    const response = await fetchAwardFile(
       `/api/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
       {
         method: "POST",
@@ -1102,6 +1150,7 @@ async function uploadApplicationFiles(awardApplicationId: number) {
     );
     if (!response.ok) throw new Error(await readResponseMessage(response, "申请材料上传失败"));
     latest = (await response.json()) as AwardApplicationRecord;
+    applicationFiles.value = applicationFiles.value.filter((entry) => entry !== fileEntry);
   }
   if (!latest) throw new Error("请先选择申请材料文件。");
   return latest;
@@ -1142,7 +1191,7 @@ async function downloadApplicationAttachment(
 
 async function downloadManagedAwardFile(url: string, fileName: string) {
   try {
-    const response = await fetch(url, {
+    const response = await fetchAwardFile(url, {
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
     });
     if (response.redirected) {
@@ -1242,6 +1291,17 @@ function openCreatePublicityDialog() {
 
 async function submitPublicity() {
   if (!selectedClubId.value || !(await validateForm(publicityFormRef.value))) return;
+  const startAt = fromDateTimeLocal(publicityForm.publicityStartAt);
+  const endAt = fromDateTimeLocal(publicityForm.publicityEndAt);
+  if (!startAt || !endAt) {
+    ElMessage.warning("请选择完整的公示时间");
+    return;
+  }
+  if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+    ElMessage.warning("公示结束时间必须晚于开始时间");
+    return;
+  }
+
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
@@ -1252,8 +1312,8 @@ async function submitPublicity() {
         body: JSON.stringify({
           title: publicityForm.title.trim(),
           description: emptyToNull(publicityForm.description),
-          publicityStartAt: fromDateTimeLocal(publicityForm.publicityStartAt),
-          publicityEndAt: fromDateTimeLocal(publicityForm.publicityEndAt),
+          publicityStartAt: startAt,
+          publicityEndAt: endAt,
           awardApplicationIds: publicityForm.awardApplicationIds,
         }),
       },
@@ -2024,7 +2084,7 @@ onUnmounted(() => {
     <el-dialog
       v-model="ruleDialogVisible"
       :title="ruleTarget ? '编辑评定细则' : '上传评定细则'"
-      width="820px"
+      width="min(820px, calc(100vw - 32px))"
     >
       <el-form ref="ruleFormRef" :model="ruleForm" :rules="ruleRules" label-width="110px">
         <div class="form-grid">
@@ -2122,7 +2182,7 @@ onUnmounted(() => {
     <el-dialog
       v-model="schemeDialogVisible"
       :title="schemeTarget ? '编辑奖项项目' : '新增奖项项目'"
-      width="860px"
+      width="min(860px, calc(100vw - 32px))"
     >
       <el-form ref="schemeFormRef" :model="schemeForm" :rules="schemeRules" label-width="110px">
         <div class="form-grid">
@@ -2219,6 +2279,8 @@ onUnmounted(() => {
                   type="danger"
                   :icon="Close"
                   :disabled="schemeForm.levels.length <= 1"
+                  :aria-label="`删除等级 ${index + 1}`"
+                  :title="`删除等级 ${index + 1}`"
                   @click="removeAwardLevel(index)"
                 />
               </div>
@@ -2297,7 +2359,7 @@ onUnmounted(() => {
     <el-dialog
       v-model="applicationDialogVisible"
       :title="applicationTarget ? '编辑评优申请' : '发起评优申请'"
-      width="720px"
+      width="min(720px, calc(100vw - 32px))"
     >
       <el-form
         ref="applicationFormRef"
@@ -2386,7 +2448,11 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reviewDialogVisible" title="审核评优申请" width="560px">
+    <el-dialog
+      v-model="reviewDialogVisible"
+      title="审核评优申请"
+      width="min(560px, calc(100vw - 32px))"
+    >
       <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="100px">
         <el-form-item label="审核结果" prop="reviewResult">
           <el-radio-group v-model="reviewForm.reviewResult">
@@ -2418,7 +2484,11 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="publicityDialogVisible" title="新建公示批次" width="700px">
+    <el-dialog
+      v-model="publicityDialogVisible"
+      title="新建公示批次"
+      width="min(700px, calc(100vw - 32px))"
+    >
       <el-form
         ref="publicityFormRef"
         :model="publicityForm"
@@ -2429,14 +2499,14 @@ onUnmounted(() => {
           <el-input v-model="publicityForm.title" maxlength="120" />
         </el-form-item>
         <div class="form-grid">
-          <el-form-item label="公示开始">
+          <el-form-item label="公示开始" prop="publicityStartAt">
             <el-date-picker
               v-model="publicityForm.publicityStartAt"
               type="datetime"
               value-format="YYYY-MM-DDTHH:mm"
             />
           </el-form-item>
-          <el-form-item label="公示结束">
+          <el-form-item label="公示结束" prop="publicityEndAt">
             <el-date-picker
               v-model="publicityForm.publicityEndAt"
               type="datetime"
@@ -2469,7 +2539,11 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="publicityDetailVisible" title="公示名单详情" width="860px">
+    <el-dialog
+      v-model="publicityDetailVisible"
+      title="公示名单详情"
+      width="min(860px, calc(100vw - 32px))"
+    >
       <template v-if="publicityDetailTarget">
         <div class="publicity-detail-head">
           <div>
@@ -2525,7 +2599,7 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="ruleDetailVisible" title="评定细则" width="760px">
+    <el-dialog v-model="ruleDetailVisible" title="评定细则" width="min(760px, calc(100vw - 32px))">
       <template v-if="ruleDetailTarget">
         <div class="rule-reader">
           <div class="rule-reader-head">
@@ -2582,7 +2656,7 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="detailVisible" title="评优申请详情" width="760px">
+    <el-dialog v-model="detailVisible" title="评优申请详情" width="min(760px, calc(100vw - 32px))">
       <template v-if="detailTarget">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="申请人">{{

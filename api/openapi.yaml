@@ -6378,32 +6378,40 @@ components:
       properties:
         awardLevelId:
           type: integer
+          description: 奖项等级 ID。
           example: 10001
         awardSchemeId:
           type: integer
+          description: 所属奖项配置 ID。
           example: 9001
         levelName:
           type: string
+          description: 等级名称，例如一等奖、二等奖或优秀奖。
           example: 一等奖
         awardScore:
           type: number
           format: decimal
+          description: 该等级折算到成员考核中的奖项分。
           example: 20
         amount:
           type: number
           format: decimal
           nullable: true
+          description: 该等级对应的奖励金额；无固定金额时为空。
           example: 500
         quota:
           type: integer
           nullable: true
+          description: 该等级名额；不限制名额时为空。
           example: 3
         displayOrder:
           type: integer
+          description: 等级展示顺序，数值越小越靠前。
           example: 1
         levelStatus:
           type: string
           enum: [active, inactive]
+          description: 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
           example: active
       required:
         - awardLevelId
@@ -6609,91 +6617,122 @@ components:
       properties:
         awardSchemeId:
           type: integer
+          description: 奖项配置 ID。
           example: 9001
         clubId:
           type: integer
+          description: 所属社团 ID。
           example: 1
         clubName:
           type: string
+          description: 所属社团名称。
           example: 计算机协会
         awardName:
           type: string
+          description: 奖项名称。
           example: 优秀社团干部
         awardCategory:
           type: string
           enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
           example: honor
         academicYear:
           type: string
+          description: 奖项所属学年或年度。
           example: 2025-2026学年
         termName:
           type: string
           nullable: true
+          description: 奖项所属学期；跨学年项目可为空。
           example: 春季
         sponsorUnit:
           type: string
           nullable: true
+          description: 奖项设立或资助单位。
           example: 同济大学团委
         rewardLevel:
           type: string
           nullable: true
+          description: 奖项层级，例如校级、院级或社团级。
           example: 校级
         fundingSource:
           type: string
           nullable: true
+          description: 奖励经费来源说明。
           example: 社团专项经费
         isRanked:
           type: boolean
+          description: 是否区分一等奖、二等奖等等级。
           example: true
         isFixedAmount:
           type: boolean
+          description: 是否按等级固定奖励金额。
           example: true
         description:
           type: string
           nullable: true
+          description: 奖项说明。
           example: 面向本学期在社团运营中表现突出的成员。
         materialDescription:
           type: string
           nullable: true
+          description: 申请材料要求。
           example: 需提交个人总结、活动组织证明和负责人推荐意见。
         applicationStartAt:
           type: string
           format: date-time
           nullable: true
+          description: 申请窗口开始时间；为空表示不限制开始时间。
+          example: "2026-07-01T00:00:00Z"
         applicationEndAt:
           type: string
           format: date-time
           nullable: true
+          description: 申请窗口结束时间；为空表示不限制结束时间。
+          example: "2026-07-16T23:59:59Z"
         publicityStartAt:
           type: string
           format: date-time
           nullable: true
+          description: 奖项配置中的建议公示开始时间。
+          example: "2026-07-18T09:00:00Z"
         publicityEndAt:
           type: string
           format: date-time
           nullable: true
+          description: 奖项配置中的建议公示结束时间。
+          example: "2026-07-21T18:00:00Z"
         schemeStatus:
           type: string
           enum: [draft, open, reviewing, publicizing, archived, closed]
+          description: 奖项配置状态。
           example: open
         schemeStatusText:
           type: string
+          description: 奖项配置状态中文文案。
           example: 开放申请
         createdByUserId:
           type: integer
           nullable: true
+          description: 创建人用户 ID。
         createdByName:
           type: string
           nullable: true
+          description: 创建人展示名。
           example: 王社长
         createdAt:
           type: string
           format: date-time
+          description: 创建时间。
+          example: "2026-07-01T08:30:00Z"
         updatedAt:
           type: string
           format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
         levels:
           type: array
+          description: 奖项等级列表。
           items:
             $ref: "#/components/schemas/AwardLevelRecord"
       required:
@@ -6803,12 +6842,15 @@ components:
       properties:
         reviewId:
           type: integer
+          description: 审批记录 ID。
           example: 80001
         awardApplicationId:
           type: integer
+          description: 所属评奖评优申请 ID。
           example: 70001
         reviewRound:
           type: integer
+          description: 审批轮次；退回后重新提交会进入新轮次。
           example: 1
         reviewStep:
           type: string
@@ -6821,34 +6863,43 @@ components:
               publicity,
               archive,
             ]
+          description: 本次审批所在节点。
           example: club_review
         reviewResult:
           type: string
           enum: [submit, approve, reject, return, publish, archive, withdraw]
+          description: 审批动作或系统流转动作。
           example: approve
         reviewerUserId:
           type: integer
           nullable: true
+          description: 审批人用户 ID；系统生成记录可为空。
           example: 3
         reviewerName:
           type: string
           nullable: true
+          description: 审批人展示名。
           example: 王社长
         reviewComment:
           type: string
           nullable: true
+          description: 审批意见。
           example: 材料完整，同意进入指导老师审核。
         fromStatus:
           type: string
           nullable: true
+          description: 审批前申请状态。
           example: club_review
         toStatus:
           type: string
           nullable: true
+          description: 审批后申请状态。
           example: advisor_review
         reviewedAt:
           type: string
           format: date-time
+          description: 审批记录生成时间。
+          example: "2026-07-12T10:15:00Z"
       required:
         - reviewId
         - awardApplicationId
@@ -6863,12 +6914,15 @@ components:
       properties:
         attachmentId:
           type: integer
+          description: 附件记录 ID。
           example: 60001
         awardApplicationId:
           type: integer
+          description: 所属评奖评优申请 ID。
           example: 70001
         attachmentName:
           type: string
+          description: 附件展示名称。
           example: 个人总结.pdf
         attachmentUrl:
           type: string
@@ -6877,17 +6931,22 @@ components:
         attachmentType:
           type: string
           nullable: true
+          description: 附件类型或材料分类。
           example: pdf
         uploadedByUserId:
           type: integer
+          description: 上传人用户 ID。
           example: 12
         uploadedByName:
           type: string
           nullable: true
+          description: 上传人展示名。
           example: 张三
         uploadedAt:
           type: string
           format: date-time
+          description: 上传时间。
+          example: "2026-07-10T08:30:00Z"
       required:
         - attachmentId
         - awardApplicationId
@@ -6902,66 +6961,86 @@ components:
       properties:
         awardApplicationId:
           type: integer
+          description: 评奖评优申请 ID。
           example: 70001
         clubId:
           type: integer
+          description: 所属社团 ID。
           example: 1
         clubName:
           type: string
+          description: 所属社团名称。
           example: 计算机协会
         awardSchemeId:
           type: integer
+          description: 被申请的奖项配置 ID。
           example: 9001
         awardName:
           type: string
+          description: 被申请的奖项名称。
           example: 优秀社团干部
         awardCategory:
           type: string
           enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类。
           example: honor
         academicYear:
           type: string
+          description: 奖项所属学年或年度。
           example: 2025-2026学年
         termName:
           type: string
           nullable: true
+          description: 奖项所属学期。
           example: 春季
         awardLevelId:
           type: integer
+          description: 被申请的奖项等级 ID。
           example: 10001
         levelName:
           type: string
+          description: 被申请的奖项等级名称。
           example: 一等奖
         applicantUserId:
           type: integer
+          description: 申请人或被推荐人用户 ID。
           example: 12
         applicantName:
           type: string
+          description: 申请人或被推荐人展示名。
           example: 张三
         applicantStudentNo:
           type: string
           nullable: true
+          description: 申请人或被推荐人学号。
           example: "2450001"
         recommenderUserId:
           type: integer
           nullable: true
+          description: 推荐人用户 ID；本人申请时为空。
         recommenderName:
           type: string
           nullable: true
+          description: 推荐人展示名；本人申请时为空。
         submitterUserId:
           type: integer
+          description: 提交该申请的用户 ID。
           example: 12
         submitterName:
           type: string
           nullable: true
+          description: 提交人展示名。
           example: 张三
         applicationType:
           type: string
           enum: [self, recommendation]
+          description: 申请类型，self 为本人申请，recommendation 为负责人推荐。
           example: self
         applicationReason:
           type: string
           nullable: true
+          description: 申请理由或推荐理由。
+          example: 本学期组织多次技术分享并负责核心项目推进。
         materialUrl:
           type: string
           nullable: true
@@ -6977,9 +7056,11 @@ components:
               publicity,
               archived,
             ]
+          description: 当前所处流程节点。
           example: advisor_review
         currentStepText:
           type: string
+          description: 当前流程节点中文文案。
           example: 待指导老师审核
         applicationStatus:
           type: string
@@ -6998,55 +7079,71 @@ components:
               archived,
               withdrawn,
             ]
+          description: 申请状态。
           example: advisor_review
         applicationStatusText:
           type: string
+          description: 申请状态中文文案。
           example: 审核中
         publicStatus:
           type: string
           enum: [none, publicizing, publicized, withdrawn]
+          description: 公示状态。
           example: none
         reviewRound:
           type: integer
+          description: 当前审批轮次。
           example: 1
         finalAwardScore:
           type: number
           format: decimal
           nullable: true
+          description: 校级终审确认后的最终奖项分。
           example: 20
         finalAmount:
           type: number
           format: decimal
           nullable: true
+          description: 校级终审确认后的最终奖励金额。
           example: 500
         submittedAt:
           type: string
           format: date-time
           nullable: true
+          description: 首次提交审核时间。
         approvedAt:
           type: string
           format: date-time
           nullable: true
+          description: 校级终审通过时间。
         publicizedAt:
           type: string
           format: date-time
           nullable: true
+          description: 进入公示时间。
         archivedAt:
           type: string
           format: date-time
           nullable: true
+          description: 归档时间。
         createdAt:
           type: string
           format: date-time
+          description: 创建时间。
+          example: "2026-07-10T08:30:00Z"
         updatedAt:
           type: string
           format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
         reviewRecords:
           type: array
+          description: 审批流转记录，按时间顺序返回。
           items:
             $ref: "#/components/schemas/AwardReviewRecord"
         attachments:
           type: array
+          description: 申请材料附件列表。
           items:
             $ref: "#/components/schemas/AwardAttachmentRecord"
       required:
@@ -7175,45 +7272,58 @@ components:
       properties:
         publicityItemId:
           type: integer
+          description: 公示明细 ID。
           example: 50001
         publicityBatchId:
           type: integer
+          description: 所属公示批次 ID。
           example: 40001
         awardApplicationId:
           type: integer
+          description: 被公示的评奖评优申请 ID。
           example: 70001
         applicantUserId:
           type: integer
+          description: 获奖成员用户 ID。
           example: 12
         applicantName:
           type: string
+          description: 获奖成员展示名。
           example: 张三
         awardName:
           type: string
+          description: 公示奖项名称。
           example: 优秀社团干部
         levelName:
           type: string
+          description: 公示奖项等级名称。
           example: 一等奖
         finalAwardScore:
           type: number
           format: decimal
           nullable: true
+          description: 公示采用的最终奖项分。
           example: 20
         finalAmount:
           type: number
           format: decimal
           nullable: true
+          description: 公示采用的最终奖励金额。
           example: 500
         displayOrder:
           type: integer
+          description: 公示名单展示顺序。
           example: 1
         publicityResult:
           type: string
           enum: [normal, withdrawn, corrected]
+          description: 公示结果状态。
           example: normal
         createdAt:
           type: string
           format: date-time
+          description: 明细创建时间。
+          example: "2026-07-18T09:00:00Z"
       required:
         - publicityItemId
         - publicityBatchId
@@ -7232,49 +7342,68 @@ components:
       properties:
         publicityBatchId:
           type: integer
+          description: 公示批次 ID。
           example: 40001
         clubId:
           type: integer
+          description: 所属社团 ID。
           example: 1
         clubName:
           type: string
+          description: 所属社团名称。
           example: 计算机协会
         title:
           type: string
+          description: 公示标题。
           example: 2025-2026学年春季优秀社团干部拟获奖名单公示
         description:
           type: string
           nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
         publicityStartAt:
           type: string
           format: date-time
           nullable: true
+          description: 公示开始时间。
+          example: "2026-07-18T09:00:00Z"
         publicityEndAt:
           type: string
           format: date-time
           nullable: true
+          description: 公示结束时间。
+          example: "2026-07-21T18:00:00Z"
         publicityStatus:
           type: string
           enum: [draft, publicizing, closed, archived]
+          description: 公示批次状态。
           example: publicizing
         publicityStatusText:
           type: string
+          description: 公示批次状态中文文案。
           example: 公示中
         publisherUserId:
           type: integer
           nullable: true
+          description: 发布人用户 ID。
         publisherName:
           type: string
           nullable: true
+          description: 发布人展示名。
           example: 王社长
         createdAt:
           type: string
           format: date-time
+          description: 批次创建时间。
+          example: "2026-07-18T09:00:00Z"
         updatedAt:
           type: string
           format: date-time
+          description: 批次最近更新时间。
+          example: "2026-07-18T10:00:00Z"
         items:
           type: array
+          description: 公示名单明细。
           items:
             $ref: "#/components/schemas/AwardPublicityItemRecord"
       required:
@@ -7296,18 +7425,25 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          description: 公示标题。
           example: 2025-2026学年春季优秀社团干部拟获奖名单公示
         description:
           type: string
           nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
         publicityStartAt:
           type: string
           format: date-time
           nullable: true
+          description: 公示开始时间，不能为空。
+          example: "2026-07-18T09:00:00Z"
         publicityEndAt:
           type: string
           format: date-time
           nullable: true
+          description: 公示结束时间，必须晚于 publicityStartAt。
+          example: "2026-07-21T18:00:00Z"
         awardApplicationIds:
           type: array
           minItems: 1
@@ -7318,6 +7454,8 @@ components:
           example: [70001, 70002]
       required:
         - title
+        - publicityStartAt
+        - publicityEndAt
         - awardApplicationIds
 
     ClubEvaluationRecord:

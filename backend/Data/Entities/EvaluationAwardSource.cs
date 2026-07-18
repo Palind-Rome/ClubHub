@@ -5,6 +5,12 @@ namespace ClubHub.Api.Data.Entities;
 [Table("EVALUATION_AWARD_SOURCES")]
 public class EvaluationAwardSource
 {
+    [Column("CLUB_ID")]
+    public int ClubId { get; set; }
+
+    [Column("USER_ID")]
+    public int UserId { get; set; }
+
     [Column("EVALUATION_ID")]
     public int EvaluationId { get; set; }
 
@@ -17,9 +23,7 @@ public class EvaluationAwardSource
     [Column("CREATED_AT")]
     public DateTime CreatedAt { get; set; }
 
-    [ForeignKey(nameof(EvaluationId))]
     public Evaluation? Evaluation { get; set; }
 
-    [ForeignKey(nameof(AwardApplicationId))]
     public AwardApplication? Application { get; set; }
 }

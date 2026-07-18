@@ -270,6 +270,8 @@ public class ClubHubDbContext : DbContext
             e.HasKey(a => a.AwardApplicationId);
             e.HasAlternateKey(a => new { a.ClubId, a.AwardApplicationId })
              .HasName("UQ_AWARD_APPLICATIONS_SCOPE");
+            e.HasAlternateKey(a => new { a.ClubId, a.ApplicantUserId, a.AwardApplicationId })
+             .HasName("UQ_AWARD_APPLICATIONS_MEMBER_SCOPE");
             e.Property(a => a.AwardApplicationId)
              .ValueGeneratedOnAdd()
              .HasDefaultValueSql("SEQ_AWARD_APPLICATIONS.NEXTVAL");
@@ -730,6 +732,8 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Evaluation>(e =>
         {
             e.HasKey(ev => ev.EvaluationId);
+            e.HasAlternateKey(ev => new { ev.ClubId, ev.UserId, ev.EvaluationId })
+             .HasName("UQ_EVALUATIONS_SOURCE_SCOPE");
             e.Property(ev => ev.EvaluationId)
              .ValueGeneratedOnAdd()
              .HasDefaultValueSql("SEQ_EVALUATIONS.NEXTVAL");
@@ -745,10 +749,6 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(ev => ev.EvaluatorUserId)
              .OnDelete(DeleteBehavior.NoAction);
-            e.HasMany(ev => ev.AwardSources)
-             .WithOne(source => source.Evaluation)
-             .HasForeignKey(source => source.EvaluationId)
-             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<EvaluationAwardSource>(e =>
@@ -756,9 +756,15 @@ public class ClubHubDbContext : DbContext
             e.HasKey(source => new { source.EvaluationId, source.AwardApplicationId });
             e.Property(source => source.AwardScore).HasDefaultValue(0);
             e.Property(source => source.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasOne(source => source.Evaluation)
+             .WithMany(evaluation => evaluation.AwardSources)
+             .HasForeignKey(source => new { source.ClubId, source.UserId, source.EvaluationId })
+             .HasPrincipalKey(evaluation => new { evaluation.ClubId, evaluation.UserId, evaluation.EvaluationId })
+             .OnDelete(DeleteBehavior.NoAction);
             e.HasOne(source => source.Application)
              .WithMany(application => application.EvaluationSources)
-             .HasForeignKey(source => source.AwardApplicationId)
+             .HasForeignKey(source => new { source.ClubId, source.UserId, source.AwardApplicationId })
+             .HasPrincipalKey(application => new { application.ClubId, application.ApplicantUserId, application.AwardApplicationId })
              .OnDelete(DeleteBehavior.NoAction);
         });
 
