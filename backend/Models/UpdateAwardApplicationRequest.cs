@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 更新评奖评优申请草稿或退回记录。
     /// </summary>
     [DataContract]
-    public partial class UpdateAwardApplicationRequest 
+    public partial class UpdateAwardApplicationRequest
     {
         /// <summary>
         /// Gets or Sets AwardLevelId

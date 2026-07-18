@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 评奖评优申请材料附件。
     /// </summary>
     [DataContract]
-    public partial class AwardAttachmentRecord 
+    public partial class AwardAttachmentRecord
     {
         /// <summary>
         /// Gets or Sets AttachmentId

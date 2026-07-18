@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     ///
     /// </summary>
     [DataContract]
-    public partial class UpdateAwardSchemeRequest 
+    public partial class UpdateAwardSchemeRequest
     {
         /// <summary>
         /// Gets or Sets AwardName
@@ -38,34 +38,34 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets AwardCategory
         /// </summary>
-        
+
         public enum AwardCategoryEnum
         {
-            
+
             /// <summary>
             /// Enum HonorEnum for honor
             /// </summary>
             [EnumMember(Value = "honor")]
             HonorEnum = 1,
-            
+
             /// <summary>
             /// Enum ScholarshipEnum for scholarship
             /// </summary>
             [EnumMember(Value = "scholarship")]
             ScholarshipEnum = 2,
-            
+
             /// <summary>
             /// Enum CompetitionEnum for competition
             /// </summary>
             [EnumMember(Value = "competition")]
             CompetitionEnum = 3,
-            
+
             /// <summary>
             /// Enum ServiceEnum for service
             /// </summary>
             [EnumMember(Value = "service")]
             ServiceEnum = 4,
-            
+
             /// <summary>
             /// Enum OtherEnum for other
             /// </summary>
@@ -174,40 +174,40 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets SchemeStatus
         /// </summary>
-        
+
         public enum SchemeStatusEnum
         {
-            
+
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-            
+
             /// <summary>
             /// Enum OpenEnum for open
             /// </summary>
             [EnumMember(Value = "open")]
             OpenEnum = 2,
-            
+
             /// <summary>
             /// Enum ReviewingEnum for reviewing
             /// </summary>
             [EnumMember(Value = "reviewing")]
             ReviewingEnum = 3,
-            
+
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 4,
-            
+
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
             [EnumMember(Value = "archived")]
             ArchivedEnum = 5,
-            
+
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>

@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 社团评奖评优奖项等级配置。
     /// </summary>
     [DataContract]
-    public partial class AwardLevelRecord 
+    public partial class AwardLevelRecord
     {
         /// <summary>
         /// Gets or Sets AwardLevelId
@@ -83,16 +83,16 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets LevelStatus
         /// </summary>
-        
+
         public enum LevelStatusEnum
         {
-            
+
             /// <summary>
             /// Enum ActiveEnum for active
             /// </summary>
             [EnumMember(Value = "active")]
             ActiveEnum = 1,
-            
+
             /// <summary>
             /// Enum InactiveEnum for inactive
             /// </summary>

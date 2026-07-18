@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 评奖评优公示批次。
     /// </summary>
     [DataContract]
-    public partial class AwardPublicityBatchRecord 
+    public partial class AwardPublicityBatchRecord
     {
         /// <summary>
         /// Gets or Sets PublicityBatchId
@@ -79,28 +79,28 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets PublicityStatus
         /// </summary>
-        
+
         public enum PublicityStatusEnum
         {
-            
+
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-            
+
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 2,
-            
+
             /// <summary>
             /// Enum ClosedEnum for closed
             /// </summary>
             [EnumMember(Value = "closed")]
             ClosedEnum = 3,
-            
+
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>

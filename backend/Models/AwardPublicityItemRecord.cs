@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 公示批次中的单条获奖申请。
     /// </summary>
     [DataContract]
-    public partial class AwardPublicityItemRecord 
+    public partial class AwardPublicityItemRecord
     {
         /// <summary>
         /// Gets or Sets PublicityItemId
@@ -107,22 +107,22 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets PublicityResult
         /// </summary>
-        
+
         public enum PublicityResultEnum
         {
-            
+
             /// <summary>
             /// Enum NormalEnum for normal
             /// </summary>
             [EnumMember(Value = "normal")]
             NormalEnum = 1,
-            
+
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>
             [EnumMember(Value = "withdrawn")]
             WithdrawnEnum = 2,
-            
+
             /// <summary>
             /// Enum CorrectedEnum for corrected
             /// </summary>

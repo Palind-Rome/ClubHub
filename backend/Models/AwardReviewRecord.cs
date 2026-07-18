@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 评奖评优申请审批记录。
     /// </summary>
     [DataContract]
-    public partial class AwardReviewRecord 
+    public partial class AwardReviewRecord
     {
         /// <summary>
         /// Gets or Sets ReviewId
@@ -53,40 +53,40 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ReviewStep
         /// </summary>
-        
+
         public enum ReviewStepEnum
         {
-            
+
             /// <summary>
             /// Enum StudentSubmitEnum for student_submit
             /// </summary>
             [EnumMember(Value = "student_submit")]
             StudentSubmitEnum = 1,
-            
+
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 2,
-            
+
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 3,
-            
+
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 4,
-            
+
             /// <summary>
             /// Enum PublicityEnum for publicity
             /// </summary>
             [EnumMember(Value = "publicity")]
             PublicityEnum = 5,
-            
+
             /// <summary>
             /// Enum ArchiveEnum for archive
             /// </summary>
@@ -106,46 +106,46 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ReviewResult
         /// </summary>
-        
+
         public enum ReviewResultEnum
         {
-            
+
             /// <summary>
             /// Enum SubmitEnum for submit
             /// </summary>
             [EnumMember(Value = "submit")]
             SubmitEnum = 1,
-            
+
             /// <summary>
             /// Enum ApproveEnum for approve
             /// </summary>
             [EnumMember(Value = "approve")]
             ApproveEnum = 2,
-            
+
             /// <summary>
             /// Enum RejectEnum for reject
             /// </summary>
             [EnumMember(Value = "reject")]
             RejectEnum = 3,
-            
+
             /// <summary>
             /// Enum ReturnEnum for return
             /// </summary>
             [EnumMember(Value = "return")]
             ReturnEnum = 4,
-            
+
             /// <summary>
             /// Enum PublishEnum for publish
             /// </summary>
             [EnumMember(Value = "publish")]
             PublishEnum = 5,
-            
+
             /// <summary>
             /// Enum ArchiveEnum for archive
             /// </summary>
             [EnumMember(Value = "archive")]
             ArchiveEnum = 6,
-            
+
             /// <summary>
             /// Enum WithdrawEnum for withdraw
             /// </summary>

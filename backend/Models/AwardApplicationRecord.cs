@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 评奖评优申请记录，承载成员自荐、负责人推荐、分级审批、公示和归档状态。
     /// </summary>
     [DataContract]
-    public partial class AwardApplicationRecord 
+    public partial class AwardApplicationRecord
     {
         /// <summary>
         /// Gets or Sets AwardApplicationId
@@ -69,34 +69,34 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets AwardCategory
         /// </summary>
-        
+
         public enum AwardCategoryEnum
         {
-            
+
             /// <summary>
             /// Enum HonorEnum for honor
             /// </summary>
             [EnumMember(Value = "honor")]
             HonorEnum = 1,
-            
+
             /// <summary>
             /// Enum ScholarshipEnum for scholarship
             /// </summary>
             [EnumMember(Value = "scholarship")]
             ScholarshipEnum = 2,
-            
+
             /// <summary>
             /// Enum CompetitionEnum for competition
             /// </summary>
             [EnumMember(Value = "competition")]
             CompetitionEnum = 3,
-            
+
             /// <summary>
             /// Enum ServiceEnum for service
             /// </summary>
             [EnumMember(Value = "service")]
             ServiceEnum = 4,
-            
+
             /// <summary>
             /// Enum OtherEnum for other
             /// </summary>
@@ -197,16 +197,16 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ApplicationType
         /// </summary>
-        
+
         public enum ApplicationTypeEnum
         {
-            
+
             /// <summary>
             /// Enum SelfEnum for self
             /// </summary>
             [EnumMember(Value = "self")]
             SelfEnum = 1,
-            
+
             /// <summary>
             /// Enum RecommendationEnum for recommendation
             /// </summary>
@@ -238,40 +238,40 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets CurrentStep
         /// </summary>
-        
+
         public enum CurrentStepEnum
         {
-            
+
             /// <summary>
             /// Enum StudentSubmitEnum for student_submit
             /// </summary>
             [EnumMember(Value = "student_submit")]
             StudentSubmitEnum = 1,
-            
+
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 2,
-            
+
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 3,
-            
+
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 4,
-            
+
             /// <summary>
             /// Enum PublicityEnum for publicity
             /// </summary>
             [EnumMember(Value = "publicity")]
             PublicityEnum = 5,
-            
+
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
@@ -299,76 +299,76 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ApplicationStatus
         /// </summary>
-        
+
         public enum ApplicationStatusEnum
         {
-            
+
             /// <summary>
             /// Enum DraftEnum for draft
             /// </summary>
             [EnumMember(Value = "draft")]
             DraftEnum = 1,
-            
+
             /// <summary>
             /// Enum SubmittedEnum for submitted
             /// </summary>
             [EnumMember(Value = "submitted")]
             SubmittedEnum = 2,
-            
+
             /// <summary>
             /// Enum ClubReviewEnum for club_review
             /// </summary>
             [EnumMember(Value = "club_review")]
             ClubReviewEnum = 3,
-            
+
             /// <summary>
             /// Enum AdvisorReviewEnum for advisor_review
             /// </summary>
             [EnumMember(Value = "advisor_review")]
             AdvisorReviewEnum = 4,
-            
+
             /// <summary>
             /// Enum SchoolReviewEnum for school_review
             /// </summary>
             [EnumMember(Value = "school_review")]
             SchoolReviewEnum = 5,
-            
+
             /// <summary>
             /// Enum ReturnedEnum for returned
             /// </summary>
             [EnumMember(Value = "returned")]
             ReturnedEnum = 6,
-            
+
             /// <summary>
             /// Enum RejectedEnum for rejected
             /// </summary>
             [EnumMember(Value = "rejected")]
             RejectedEnum = 7,
-            
+
             /// <summary>
             /// Enum ApprovedEnum for approved
             /// </summary>
             [EnumMember(Value = "approved")]
             ApprovedEnum = 8,
-            
+
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 9,
-            
+
             /// <summary>
             /// Enum PublicizedEnum for publicized
             /// </summary>
             [EnumMember(Value = "publicized")]
             PublicizedEnum = 10,
-            
+
             /// <summary>
             /// Enum ArchivedEnum for archived
             /// </summary>
             [EnumMember(Value = "archived")]
             ArchivedEnum = 11,
-            
+
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>
@@ -396,28 +396,28 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets PublicStatus
         /// </summary>
-        
+
         public enum PublicStatusEnum
         {
-            
+
             /// <summary>
             /// Enum NoneEnum for none
             /// </summary>
             [EnumMember(Value = "none")]
             NoneEnum = 1,
-            
+
             /// <summary>
             /// Enum PublicizingEnum for publicizing
             /// </summary>
             [EnumMember(Value = "publicizing")]
             PublicizingEnum = 2,
-            
+
             /// <summary>
             /// Enum PublicizedEnum for publicized
             /// </summary>
             [EnumMember(Value = "publicized")]
             PublicizedEnum = 3,
-            
+
             /// <summary>
             /// Enum WithdrawnEnum for withdrawn
             /// </summary>

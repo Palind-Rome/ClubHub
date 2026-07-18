@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 奖项等级配置输入；不分等级的奖项也应保留一个默认等级，作为奖项分、金额和名额的规则来源。
     /// </summary>
     [DataContract]
-    public partial class AwardLevelInput 
+    public partial class AwardLevelInput
     {
         /// <summary>
         /// 已有等级 ID；新增等级时为空。
@@ -82,16 +82,16 @@ namespace Org.OpenAPITools.Models
         /// 等级状态。
         /// </summary>
         /// <value>等级状态。</value>
-        
+
         public enum LevelStatusEnum
         {
-            
+
             /// <summary>
             /// Enum ActiveEnum for active
             /// </summary>
             [EnumMember(Value = "active")]
             ActiveEnum = 1,
-            
+
             /// <summary>
             /// Enum InactiveEnum for inactive
             /// </summary>

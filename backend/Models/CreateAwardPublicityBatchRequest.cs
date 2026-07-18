@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 创建评奖评优公示批次。
     /// </summary>
     [DataContract]
-    public partial class CreateAwardPublicityBatchRequest 
+    public partial class CreateAwardPublicityBatchRequest
     {
         /// <summary>
         /// Gets or Sets Title

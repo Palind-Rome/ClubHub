@@ -18,12 +18,12 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Org.OpenAPITools.Models
-{ 
+{
     /// <summary>
     /// 创建评奖评优申请或负责人推荐。
     /// </summary>
     [DataContract]
-    public partial class CreateAwardApplicationRequest 
+    public partial class CreateAwardApplicationRequest
     {
         /// <summary>
         /// Gets or Sets AwardSchemeId
@@ -54,16 +54,16 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets ApplicationType
         /// </summary>
-        
+
         public enum ApplicationTypeEnum
         {
-            
+
             /// <summary>
             /// Enum SelfEnum for self
             /// </summary>
             [EnumMember(Value = "self")]
             SelfEnum = 1,
-            
+
             /// <summary>
             /// Enum RecommendationEnum for recommendation
             /// </summary>
