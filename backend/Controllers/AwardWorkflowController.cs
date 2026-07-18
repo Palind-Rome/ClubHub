@@ -989,18 +989,15 @@ public class AwardWorkflowController : ControllerBase
         var reviewResult = ToAwardReviewResult(req.ReviewResult);
         if (reviewResult is null)
             return BadRequest(new { message = "审核动作不合法。" });
+        if (reviewResult is AwardReviewPublish or AwardReviewArchive)
+            return BadRequest(new { message = "发布公示和归档必须通过公示批次接口处理。" });
+
         var permissionError = ValidateAwardReviewPermission(viewer, club, application, reviewResult);
         if (permissionError is not null) return permissionError;
 
         var now = BusinessNow();
         var transition = ResolveAwardReviewTransition(application, reviewResult);
         if (transition.Error is not null) return transition.Error;
-        if (reviewResult == AwardReviewArchive)
-        {
-            var publicityError =
-                await EnsureAwardApplicationPublicityEndedAsync(clubId, awardApplicationId, now);
-            if (publicityError is not null) return publicityError;
-        }
 
         var fromStatus = application.ApplicationStatus;
         var fromStep = application.CurrentStep;
@@ -1015,15 +1012,6 @@ public class AwardWorkflowController : ControllerBase
             application.FinalAwardScore = ClampAwardScore(req.FinalAwardScore ?? application.Level?.AwardScore ?? 0);
             application.FinalAmount = req.FinalAmount ?? application.Level?.Amount;
             application.ApprovedAt = now;
-        }
-        if (reviewResult == AwardReviewPublish)
-        {
-            application.PublicizedAt = now;
-        }
-        else if (reviewResult == AwardReviewArchive)
-        {
-            application.PublicizedAt ??= now;
-            application.ArchivedAt = now;
         }
 
         _db.AwardReviewRecords.Add(NewAwardReviewRecord(
@@ -1067,10 +1055,13 @@ public class AwardWorkflowController : ControllerBase
             .Where(b => normalizedStatus == null || b.PublicityStatus == normalizedStatus);
         if (!canMaintain)
         {
+            var now = BusinessNow();
             query = query.Where(b =>
-                b.PublicityStatus == AwardPublicityPublicizing ||
-                b.PublicityStatus == AwardPublicityClosed ||
-                b.PublicityStatus == AwardPublicityArchived);
+                (b.PublicityStatus == AwardPublicityPublicizing ||
+                 b.PublicityStatus == AwardPublicityClosed ||
+                 b.PublicityStatus == AwardPublicityArchived) &&
+                b.PublicityStartAt != null &&
+                b.PublicityStartAt <= now);
         }
 
         var batches = await query
@@ -1088,6 +1079,7 @@ public class AwardWorkflowController : ControllerBase
         if (!string.IsNullOrWhiteSpace(status) && normalizedStatus is null)
             return BadRequest(new { message = "公示状态不合法。" });
 
+        var now = BusinessNow();
         var query = AwardPublicityQuery().Where(b => b.ClubId == clubId);
         if (normalizedStatus is null)
         {
@@ -1104,6 +1096,7 @@ public class AwardWorkflowController : ControllerBase
         {
             query = query.Where(_ => false);
         }
+        query = query.Where(b => b.PublicityStartAt != null && b.PublicityStartAt <= now);
 
         var batches = await query
             .OrderByDescending(b => b.PublicityStartAt ?? b.CreatedAt)
@@ -1894,32 +1887,21 @@ public class AwardWorkflowController : ControllerBase
     private (string? Status, string? Step, string? PublicStatus, IActionResult? Error)
         ResolveAwardReviewTransition(AwardApplication application, string reviewResult)
     {
+        if (application.ApplicationStatus is AwardStatusArchived or AwardStatusRejected or AwardStatusWithdrawn)
+        {
+            return (null, null, null, Conflict(new { message = "申请已处于终态，不能继续流转。" }));
+        }
+
         if (reviewResult == AwardReviewReturn)
             return (AwardStatusReturned, AwardStepStudentSubmit, AwardPublicNone, null);
         if (reviewResult == AwardReviewReject)
             return (AwardStatusRejected, application.CurrentStep, AwardPublicNone, null);
         if (reviewResult == AwardReviewWithdraw)
-        {
-            if (application.ApplicationStatus is AwardStatusArchived or AwardStatusRejected or AwardStatusWithdrawn)
-            {
-                return (null, null, null, Conflict(new { message = "申请已处于终态，不能撤回。" }));
-            }
-
             return (AwardStatusWithdrawn, application.CurrentStep, AwardPublicWithdrawn, null);
-        }
 
-        if (reviewResult == AwardReviewPublish)
+        if (reviewResult is AwardReviewPublish or AwardReviewArchive)
         {
-            return application.ApplicationStatus == AwardStatusApproved
-                ? (AwardStatusPublicizing, AwardStepPublicity, AwardPublicizing, null)
-                : (null, null, null, Conflict(new { message = "只有已通过终审的申请可以发布公示。" }));
-        }
-
-        if (reviewResult == AwardReviewArchive)
-        {
-            return application.ApplicationStatus == AwardStatusPublicizing
-                ? (AwardStatusArchived, AwardStepArchived, AwardPublicized, null)
-                : (null, null, null, Conflict(new { message = "只有公示中且公示期已结束的申请可以归档。" }));
+            return (null, null, null, BadRequest(new { message = "发布公示和归档必须通过公示批次接口处理。" }));
         }
 
         if (reviewResult != AwardReviewApprove)
