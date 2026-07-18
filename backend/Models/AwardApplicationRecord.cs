@@ -26,40 +26,45 @@ namespace Org.OpenAPITools.Models
     public partial class AwardApplicationRecord 
     {
         /// <summary>
-        /// Gets or Sets AwardApplicationId
+        /// 评奖评优申请 ID。
         /// </summary>
+        /// <value>评奖评优申请 ID。</value>
         /* <example>70001</example> */
         [Required]
         [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// 所属社团名称。
         /// </summary>
+        /// <value>所属社团名称。</value>
         /* <example>计算机协会</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardSchemeId
+        /// 被申请的奖项配置 ID。
         /// </summary>
+        /// <value>被申请的奖项配置 ID。</value>
         /* <example>9001</example> */
         [Required]
         [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardName
+        /// 被申请的奖项名称。
         /// </summary>
+        /// <value>被申请的奖项名称。</value>
         /* <example>优秀社团干部</example> */
         [Required]
         [DataMember(Name="awardName", EmitDefaultValue=false)]
@@ -67,8 +72,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets AwardCategory
+        /// 奖项分类。
         /// </summary>
+        /// <value>奖项分类。</value>
         
         public enum AwardCategoryEnum
         {
@@ -105,98 +111,111 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets AwardCategory
+        /// 奖项分类。
         /// </summary>
+        /// <value>奖项分类。</value>
         /* <example>honor</example> */
         [Required]
         [DataMember(Name="awardCategory", EmitDefaultValue=true)]
         public AwardCategoryEnum AwardCategory { get; set; }
 
         /// <summary>
-        /// Gets or Sets AcademicYear
+        /// 奖项所属学年或年度。
         /// </summary>
+        /// <value>奖项所属学年或年度。</value>
         /* <example>2025-2026学年</example> */
         [Required]
         [DataMember(Name="academicYear", EmitDefaultValue=false)]
         public string AcademicYear { get; set; }
 
         /// <summary>
-        /// Gets or Sets TermName
+        /// 奖项所属学期。
         /// </summary>
+        /// <value>奖项所属学期。</value>
         /* <example>春季</example> */
         [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardLevelId
+        /// 被申请的奖项等级 ID。
         /// </summary>
+        /// <value>被申请的奖项等级 ID。</value>
         /* <example>10001</example> */
         [Required]
         [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
-        /// Gets or Sets LevelName
+        /// 被申请的奖项等级名称。
         /// </summary>
+        /// <value>被申请的奖项等级名称。</value>
         /* <example>一等奖</example> */
         [Required]
         [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantUserId
+        /// 申请人或被推荐人用户 ID。
         /// </summary>
+        /// <value>申请人或被推荐人用户 ID。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
         public int ApplicantUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantName
+        /// 申请人或被推荐人展示名。
         /// </summary>
+        /// <value>申请人或被推荐人展示名。</value>
         /* <example>张三</example> */
         [Required]
         [DataMember(Name="applicantName", EmitDefaultValue=false)]
         public string ApplicantName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantStudentNo
+        /// 申请人或被推荐人学号。
         /// </summary>
+        /// <value>申请人或被推荐人学号。</value>
         /* <example>2450001</example> */
         [DataMember(Name="applicantStudentNo", EmitDefaultValue=true)]
         public string? ApplicantStudentNo { get; set; }
 
         /// <summary>
-        /// Gets or Sets RecommenderUserId
+        /// 推荐人用户 ID；本人申请时为空。
         /// </summary>
+        /// <value>推荐人用户 ID；本人申请时为空。</value>
         [DataMember(Name="recommenderUserId", EmitDefaultValue=true)]
         public int? RecommenderUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets RecommenderName
+        /// 推荐人展示名；本人申请时为空。
         /// </summary>
+        /// <value>推荐人展示名；本人申请时为空。</value>
         [DataMember(Name="recommenderName", EmitDefaultValue=true)]
         public string? RecommenderName { get; set; }
 
         /// <summary>
-        /// Gets or Sets SubmitterUserId
+        /// 提交该申请的用户 ID。
         /// </summary>
+        /// <value>提交该申请的用户 ID。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="submitterUserId", EmitDefaultValue=true)]
         public int SubmitterUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets SubmitterName
+        /// 提交人展示名。
         /// </summary>
+        /// <value>提交人展示名。</value>
         /* <example>张三</example> */
         [DataMember(Name="submitterName", EmitDefaultValue=true)]
         public string? SubmitterName { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets ApplicationType
+        /// 申请类型，self 为本人申请，recommendation 为负责人推荐。
         /// </summary>
+        /// <value>申请类型，self 为本人申请，recommendation 为负责人推荐。</value>
         
         public enum ApplicationTypeEnum
         {
@@ -215,16 +234,19 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets ApplicationType
+        /// 申请类型，self 为本人申请，recommendation 为负责人推荐。
         /// </summary>
+        /// <value>申请类型，self 为本人申请，recommendation 为负责人推荐。</value>
         /* <example>self</example> */
         [Required]
         [DataMember(Name="applicationType", EmitDefaultValue=true)]
         public ApplicationTypeEnum ApplicationType { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationReason
+        /// 申请理由或推荐理由。
         /// </summary>
+        /// <value>申请理由或推荐理由。</value>
+        /* <example>本学期组织多次技术分享并负责核心项目推进。</example> */
         [DataMember(Name="applicationReason", EmitDefaultValue=true)]
         public string? ApplicationReason { get; set; }
 
@@ -237,8 +259,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets CurrentStep
+        /// 当前所处流程节点。
         /// </summary>
+        /// <value>当前所处流程节点。</value>
         
         public enum CurrentStepEnum
         {
@@ -281,16 +304,18 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets CurrentStep
+        /// 当前所处流程节点。
         /// </summary>
+        /// <value>当前所处流程节点。</value>
         /* <example>advisor_review</example> */
         [Required]
         [DataMember(Name="currentStep", EmitDefaultValue=true)]
         public CurrentStepEnum CurrentStep { get; set; }
 
         /// <summary>
-        /// Gets or Sets CurrentStepText
+        /// 当前流程节点中文文案。
         /// </summary>
+        /// <value>当前流程节点中文文案。</value>
         /* <example>待指导老师审核</example> */
         [Required]
         [DataMember(Name="currentStepText", EmitDefaultValue=false)]
@@ -298,8 +323,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets ApplicationStatus
+        /// 申请状态。
         /// </summary>
+        /// <value>申请状态。</value>
         
         public enum ApplicationStatusEnum
         {
@@ -378,16 +404,18 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets ApplicationStatus
+        /// 申请状态。
         /// </summary>
+        /// <value>申请状态。</value>
         /* <example>advisor_review</example> */
         [Required]
         [DataMember(Name="applicationStatus", EmitDefaultValue=true)]
         public ApplicationStatusEnum ApplicationStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationStatusText
+        /// 申请状态中文文案。
         /// </summary>
+        /// <value>申请状态中文文案。</value>
         /* <example>审核中</example> */
         [Required]
         [DataMember(Name="applicationStatusText", EmitDefaultValue=false)]
@@ -395,8 +423,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态。
         /// </summary>
+        /// <value>公示状态。</value>
         
         public enum PublicStatusEnum
         {
@@ -427,83 +456,97 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PublicStatus
+        /// 公示状态。
         /// </summary>
+        /// <value>公示状态。</value>
         /* <example>none</example> */
         [Required]
         [DataMember(Name="publicStatus", EmitDefaultValue=true)]
         public PublicStatusEnum PublicStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewRound
+        /// 当前审批轮次。
         /// </summary>
+        /// <value>当前审批轮次。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="reviewRound", EmitDefaultValue=true)]
         public int ReviewRound { get; set; }
 
         /// <summary>
-        /// Gets or Sets FinalAwardScore
+        /// 校级终审确认后的最终奖项分。
         /// </summary>
+        /// <value>校级终审确认后的最终奖项分。</value>
         /* <example>20</example> */
         [DataMember(Name="finalAwardScore", EmitDefaultValue=true)]
         public decimal? FinalAwardScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets FinalAmount
+        /// 校级终审确认后的最终奖励金额。
         /// </summary>
+        /// <value>校级终审确认后的最终奖励金额。</value>
         /* <example>500</example> */
         [DataMember(Name="finalAmount", EmitDefaultValue=true)]
         public decimal? FinalAmount { get; set; }
 
         /// <summary>
-        /// Gets or Sets SubmittedAt
+        /// 首次提交审核时间。
         /// </summary>
+        /// <value>首次提交审核时间。</value>
         [DataMember(Name="submittedAt", EmitDefaultValue=true)]
         public DateTime? SubmittedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApprovedAt
+        /// 校级终审通过时间。
         /// </summary>
+        /// <value>校级终审通过时间。</value>
         [DataMember(Name="approvedAt", EmitDefaultValue=true)]
         public DateTime? ApprovedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicizedAt
+        /// 进入公示时间。
         /// </summary>
+        /// <value>进入公示时间。</value>
         [DataMember(Name="publicizedAt", EmitDefaultValue=true)]
         public DateTime? PublicizedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ArchivedAt
+        /// 归档时间。
         /// </summary>
+        /// <value>归档时间。</value>
         [DataMember(Name="archivedAt", EmitDefaultValue=true)]
         public DateTime? ArchivedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 创建时间。
         /// </summary>
+        /// <value>创建时间。</value>
+        /* <example>2026-07-10T08:30Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 最近更新时间。
         /// </summary>
+        /// <value>最近更新时间。</value>
+        /* <example>2026-07-12T10:15Z</example> */
         [Required]
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewRecords
+        /// 审批流转记录，按时间顺序返回。
         /// </summary>
+        /// <value>审批流转记录，按时间顺序返回。</value>
         [Required]
         [DataMember(Name="reviewRecords", EmitDefaultValue=false)]
         public List<AwardReviewRecord> ReviewRecords { get; set; }
 
         /// <summary>
-        /// Gets or Sets Attachments
+        /// 申请材料附件列表。
         /// </summary>
+        /// <value>申请材料附件列表。</value>
         [Required]
         [DataMember(Name="attachments", EmitDefaultValue=false)]
         public List<AwardAttachmentRecord> Attachments { get; set; }

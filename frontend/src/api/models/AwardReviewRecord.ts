@@ -21,67 +21,67 @@ import { mapValues } from "../runtime";
  */
 export interface AwardReviewRecord {
   /**
-   *
+   * 审批记录 ID。
    * @type {number}
    * @memberof AwardReviewRecord
    */
   reviewId: number;
   /**
-   *
+   * 所属评奖评优申请 ID。
    * @type {number}
    * @memberof AwardReviewRecord
    */
   awardApplicationId: number;
   /**
-   *
+   * 审批轮次；退回后重新提交会进入新轮次。
    * @type {number}
    * @memberof AwardReviewRecord
    */
   reviewRound: number;
   /**
-   *
+   * 本次审批所在节点。
    * @type {AwardReviewRecordReviewStepEnum}
    * @memberof AwardReviewRecord
    */
   reviewStep: AwardReviewRecordReviewStepEnum;
   /**
-   *
+   * 审批动作或系统流转动作。
    * @type {AwardReviewRecordReviewResultEnum}
    * @memberof AwardReviewRecord
    */
   reviewResult: AwardReviewRecordReviewResultEnum;
   /**
-   *
+   * 审批人用户 ID；系统生成记录可为空。
    * @type {number}
    * @memberof AwardReviewRecord
    */
   reviewerUserId?: number | null;
   /**
-   *
+   * 审批人展示名。
    * @type {string}
    * @memberof AwardReviewRecord
    */
   reviewerName?: string | null;
   /**
-   *
+   * 审批意见。
    * @type {string}
    * @memberof AwardReviewRecord
    */
   reviewComment?: string | null;
   /**
-   *
+   * 审批前申请状态。
    * @type {string}
    * @memberof AwardReviewRecord
    */
   fromStatus?: string | null;
   /**
-   *
+   * 审批后申请状态。
    * @type {string}
    * @memberof AwardReviewRecord
    */
   toStatus?: string | null;
   /**
-   *
+   * 审批记录生成时间。
    * @type {Date}
    * @memberof AwardReviewRecord
    */

@@ -26,8 +26,9 @@ namespace Org.OpenAPITools.Models
     public partial class CreateAwardPublicityBatchRequest 
     {
         /// <summary>
-        /// Gets or Sets Title
+        /// 公示标题。
         /// </summary>
+        /// <value>公示标题。</value>
         /* <example>2025-2026学年春季优秀社团干部拟获奖名单公示</example> */
         [Required]
         [StringLength(255, MinimumLength=1)]
@@ -35,20 +36,28 @@ namespace Org.OpenAPITools.Models
         public string Title { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 公示说明。
         /// </summary>
+        /// <value>公示说明。</value>
+        /* <example>公示期内如有异议请联系社团负责人。</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityStartAt
+        /// 公示开始时间，不能为空。
         /// </summary>
+        /// <value>公示开始时间，不能为空。</value>
+        /* <example>2026-07-18T09:00Z</example> */
+        [Required]
         [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityEndAt
+        /// 公示结束时间，必须晚于 publicityStartAt。
         /// </summary>
+        /// <value>公示结束时间，必须晚于 publicityStartAt。</value>
+        /* <example>2026-07-21T18:00Z</example> */
+        [Required]
         [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 

@@ -26,24 +26,27 @@ namespace Org.OpenAPITools.Models
     public partial class AwardReviewRecord 
     {
         /// <summary>
-        /// Gets or Sets ReviewId
+        /// 审批记录 ID。
         /// </summary>
+        /// <value>审批记录 ID。</value>
         /* <example>80001</example> */
         [Required]
         [DataMember(Name="reviewId", EmitDefaultValue=true)]
         public int ReviewId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardApplicationId
+        /// 所属评奖评优申请 ID。
         /// </summary>
+        /// <value>所属评奖评优申请 ID。</value>
         /* <example>70001</example> */
         [Required]
         [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewRound
+        /// 审批轮次；退回后重新提交会进入新轮次。
         /// </summary>
+        /// <value>审批轮次；退回后重新提交会进入新轮次。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="reviewRound", EmitDefaultValue=true)]
@@ -51,8 +54,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets ReviewStep
+        /// 本次审批所在节点。
         /// </summary>
+        /// <value>本次审批所在节点。</value>
         
         public enum ReviewStepEnum
         {
@@ -95,8 +99,9 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets ReviewStep
+        /// 本次审批所在节点。
         /// </summary>
+        /// <value>本次审批所在节点。</value>
         /* <example>club_review</example> */
         [Required]
         [DataMember(Name="reviewStep", EmitDefaultValue=true)]
@@ -104,8 +109,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets ReviewResult
+        /// 审批动作或系统流转动作。
         /// </summary>
+        /// <value>审批动作或系统流转动作。</value>
         
         public enum ReviewResultEnum
         {
@@ -154,51 +160,59 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets ReviewResult
+        /// 审批动作或系统流转动作。
         /// </summary>
+        /// <value>审批动作或系统流转动作。</value>
         /* <example>approve</example> */
         [Required]
         [DataMember(Name="reviewResult", EmitDefaultValue=true)]
         public ReviewResultEnum ReviewResult { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewerUserId
+        /// 审批人用户 ID；系统生成记录可为空。
         /// </summary>
+        /// <value>审批人用户 ID；系统生成记录可为空。</value>
         /* <example>3</example> */
         [DataMember(Name="reviewerUserId", EmitDefaultValue=true)]
         public int? ReviewerUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewerName
+        /// 审批人展示名。
         /// </summary>
+        /// <value>审批人展示名。</value>
         /* <example>王社长</example> */
         [DataMember(Name="reviewerName", EmitDefaultValue=true)]
         public string? ReviewerName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewComment
+        /// 审批意见。
         /// </summary>
+        /// <value>审批意见。</value>
         /* <example>材料完整，同意进入指导老师审核。</example> */
         [DataMember(Name="reviewComment", EmitDefaultValue=true)]
         public string? ReviewComment { get; set; }
 
         /// <summary>
-        /// Gets or Sets FromStatus
+        /// 审批前申请状态。
         /// </summary>
+        /// <value>审批前申请状态。</value>
         /* <example>club_review</example> */
         [DataMember(Name="fromStatus", EmitDefaultValue=true)]
         public string? FromStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets ToStatus
+        /// 审批后申请状态。
         /// </summary>
+        /// <value>审批后申请状态。</value>
         /* <example>advisor_review</example> */
         [DataMember(Name="toStatus", EmitDefaultValue=true)]
         public string? ToStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets ReviewedAt
+        /// 审批记录生成时间。
         /// </summary>
+        /// <value>审批记录生成时间。</value>
+        /* <example>2026-07-12T10:15Z</example> */
         [Required]
         [DataMember(Name="reviewedAt", EmitDefaultValue=true)]
         public DateTime ReviewedAt { get; set; }

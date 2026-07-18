@@ -29,85 +29,85 @@ import {
  */
 export interface AwardPublicityBatchRecord {
   /**
-   *
+   * 公示批次 ID。
    * @type {number}
    * @memberof AwardPublicityBatchRecord
    */
   publicityBatchId: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof AwardPublicityBatchRecord
    */
   clubId: number;
   /**
-   *
+   * 所属社团名称。
    * @type {string}
    * @memberof AwardPublicityBatchRecord
    */
   clubName: string;
   /**
-   *
+   * 公示标题。
    * @type {string}
    * @memberof AwardPublicityBatchRecord
    */
   title: string;
   /**
-   *
+   * 公示说明。
    * @type {string}
    * @memberof AwardPublicityBatchRecord
    */
   description?: string | null;
   /**
-   *
+   * 公示开始时间。
    * @type {Date}
    * @memberof AwardPublicityBatchRecord
    */
   publicityStartAt?: Date | null;
   /**
-   *
+   * 公示结束时间。
    * @type {Date}
    * @memberof AwardPublicityBatchRecord
    */
   publicityEndAt?: Date | null;
   /**
-   *
+   * 公示批次状态。
    * @type {AwardPublicityBatchRecordPublicityStatusEnum}
    * @memberof AwardPublicityBatchRecord
    */
   publicityStatus: AwardPublicityBatchRecordPublicityStatusEnum;
   /**
-   *
+   * 公示批次状态中文文案。
    * @type {string}
    * @memberof AwardPublicityBatchRecord
    */
   publicityStatusText: string;
   /**
-   *
+   * 发布人用户 ID。
    * @type {number}
    * @memberof AwardPublicityBatchRecord
    */
   publisherUserId?: number | null;
   /**
-   *
+   * 发布人展示名。
    * @type {string}
    * @memberof AwardPublicityBatchRecord
    */
   publisherName?: string | null;
   /**
-   *
+   * 批次创建时间。
    * @type {Date}
    * @memberof AwardPublicityBatchRecord
    */
   createdAt: Date;
   /**
-   *
+   * 批次最近更新时间。
    * @type {Date}
    * @memberof AwardPublicityBatchRecord
    */
   updatedAt: Date;
   /**
-   *
+   * 公示名单明细。
    * @type {Array<AwardPublicityItemRecord>}
    * @memberof AwardPublicityBatchRecord
    */

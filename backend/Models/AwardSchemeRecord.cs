@@ -27,32 +27,36 @@ namespace Org.OpenAPITools.Models
     public partial class AwardSchemeRecord 
     {
         /// <summary>
-        /// Gets or Sets AwardSchemeId
+        /// 奖项配置 ID。
         /// </summary>
+        /// <value>奖项配置 ID。</value>
         /* <example>9001</example> */
         [Required]
         [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// 所属社团名称。
         /// </summary>
+        /// <value>所属社团名称。</value>
         /* <example>计算机协会</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardName
+        /// 奖项名称。
         /// </summary>
+        /// <value>奖项名称。</value>
         /* <example>优秀社团干部</example> */
         [Required]
         [DataMember(Name="awardName", EmitDefaultValue=false)]
@@ -60,8 +64,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets AwardCategory
+        /// 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
         /// </summary>
+        /// <value>奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。</value>
         
         public enum AwardCategoryEnum
         {
@@ -98,52 +103,59 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets AwardCategory
+        /// 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
         /// </summary>
+        /// <value>奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。</value>
         /* <example>honor</example> */
         [Required]
         [DataMember(Name="awardCategory", EmitDefaultValue=true)]
         public AwardCategoryEnum AwardCategory { get; set; }
 
         /// <summary>
-        /// Gets or Sets AcademicYear
+        /// 奖项所属学年或年度。
         /// </summary>
+        /// <value>奖项所属学年或年度。</value>
         /* <example>2025-2026学年</example> */
         [Required]
         [DataMember(Name="academicYear", EmitDefaultValue=false)]
         public string AcademicYear { get; set; }
 
         /// <summary>
-        /// Gets or Sets TermName
+        /// 奖项所属学期；跨学年项目可为空。
         /// </summary>
+        /// <value>奖项所属学期；跨学年项目可为空。</value>
         /* <example>春季</example> */
         [DataMember(Name="termName", EmitDefaultValue=true)]
         public string? TermName { get; set; }
 
         /// <summary>
-        /// Gets or Sets SponsorUnit
+        /// 奖项设立或资助单位。
         /// </summary>
+        /// <value>奖项设立或资助单位。</value>
         /* <example>同济大学团委</example> */
         [DataMember(Name="sponsorUnit", EmitDefaultValue=true)]
         public string? SponsorUnit { get; set; }
 
         /// <summary>
-        /// Gets or Sets RewardLevel
+        /// 奖项层级，例如校级、院级或社团级。
         /// </summary>
+        /// <value>奖项层级，例如校级、院级或社团级。</value>
         /* <example>校级</example> */
         [DataMember(Name="rewardLevel", EmitDefaultValue=true)]
         public string? RewardLevel { get; set; }
 
         /// <summary>
-        /// Gets or Sets FundingSource
+        /// 奖励经费来源说明。
         /// </summary>
+        /// <value>奖励经费来源说明。</value>
         /* <example>社团专项经费</example> */
         [DataMember(Name="fundingSource", EmitDefaultValue=true)]
         public string? FundingSource { get; set; }
 
         /// <summary>
-        /// Gets or Sets IsRanked
+        /// 是否区分一等奖、二等奖等等级。
         /// </summary>
+        /// <value>是否区分一等奖、二等奖等等级。</value>
         /* <example>true</example> */
         [JsonRequired]
         [Required]
@@ -151,8 +163,9 @@ namespace Org.OpenAPITools.Models
         public bool IsRanked { get; set; }
 
         /// <summary>
-        /// Gets or Sets IsFixedAmount
+        /// 是否按等级固定奖励金额。
         /// </summary>
+        /// <value>是否按等级固定奖励金额。</value>
         /* <example>true</example> */
         [JsonRequired]
         [Required]
@@ -160,47 +173,58 @@ namespace Org.OpenAPITools.Models
         public bool IsFixedAmount { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 奖项说明。
         /// </summary>
+        /// <value>奖项说明。</value>
         /* <example>面向本学期在社团运营中表现突出的成员。</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets MaterialDescription
+        /// 申请材料要求。
         /// </summary>
+        /// <value>申请材料要求。</value>
         /* <example>需提交个人总结、活动组织证明和负责人推荐意见。</example> */
         [DataMember(Name="materialDescription", EmitDefaultValue=true)]
         public string? MaterialDescription { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationStartAt
+        /// 申请窗口开始时间；为空表示不限制开始时间。
         /// </summary>
+        /// <value>申请窗口开始时间；为空表示不限制开始时间。</value>
+        /* <example>2026-07-01T00:00Z</example> */
         [DataMember(Name="applicationStartAt", EmitDefaultValue=true)]
         public DateTime? ApplicationStartAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicationEndAt
+        /// 申请窗口结束时间；为空表示不限制结束时间。
         /// </summary>
+        /// <value>申请窗口结束时间；为空表示不限制结束时间。</value>
+        /* <example>2026-07-16T23:59:59Z</example> */
         [DataMember(Name="applicationEndAt", EmitDefaultValue=true)]
         public DateTime? ApplicationEndAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityStartAt
+        /// 奖项配置中的建议公示开始时间。
         /// </summary>
+        /// <value>奖项配置中的建议公示开始时间。</value>
+        /* <example>2026-07-18T09:00Z</example> */
         [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityEndAt
+        /// 奖项配置中的建议公示结束时间。
         /// </summary>
+        /// <value>奖项配置中的建议公示结束时间。</value>
+        /* <example>2026-07-21T18:00Z</example> */
         [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets SchemeStatus
+        /// 奖项配置状态。
         /// </summary>
+        /// <value>奖项配置状态。</value>
         
         public enum SchemeStatusEnum
         {
@@ -243,51 +267,60 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets SchemeStatus
+        /// 奖项配置状态。
         /// </summary>
+        /// <value>奖项配置状态。</value>
         /* <example>open</example> */
         [Required]
         [DataMember(Name="schemeStatus", EmitDefaultValue=true)]
         public SchemeStatusEnum SchemeStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets SchemeStatusText
+        /// 奖项配置状态中文文案。
         /// </summary>
+        /// <value>奖项配置状态中文文案。</value>
         /* <example>开放申请</example> */
         [Required]
         [DataMember(Name="schemeStatusText", EmitDefaultValue=false)]
         public string SchemeStatusText { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedByUserId
+        /// 创建人用户 ID。
         /// </summary>
+        /// <value>创建人用户 ID。</value>
         [DataMember(Name="createdByUserId", EmitDefaultValue=true)]
         public int? CreatedByUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedByName
+        /// 创建人展示名。
         /// </summary>
+        /// <value>创建人展示名。</value>
         /* <example>王社长</example> */
         [DataMember(Name="createdByName", EmitDefaultValue=true)]
         public string? CreatedByName { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 创建时间。
         /// </summary>
+        /// <value>创建时间。</value>
+        /* <example>2026-07-01T08:30Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 最近更新时间。
         /// </summary>
+        /// <value>最近更新时间。</value>
+        /* <example>2026-07-12T10:15Z</example> */
         [Required]
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets Levels
+        /// 奖项等级列表。
         /// </summary>
+        /// <value>奖项等级列表。</value>
         [Required]
         [DataMember(Name="levels", EmitDefaultValue=false)]
         public List<AwardLevelRecord> Levels { get; set; }

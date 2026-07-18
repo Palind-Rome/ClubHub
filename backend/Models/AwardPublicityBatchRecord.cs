@@ -26,59 +26,70 @@ namespace Org.OpenAPITools.Models
     public partial class AwardPublicityBatchRecord 
     {
         /// <summary>
-        /// Gets or Sets PublicityBatchId
+        /// 公示批次 ID。
         /// </summary>
+        /// <value>公示批次 ID。</value>
         /* <example>40001</example> */
         [Required]
         [DataMember(Name="publicityBatchId", EmitDefaultValue=true)]
         public int PublicityBatchId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubName
+        /// 所属社团名称。
         /// </summary>
+        /// <value>所属社团名称。</value>
         /* <example>计算机协会</example> */
         [Required]
         [DataMember(Name="clubName", EmitDefaultValue=false)]
         public string ClubName { get; set; }
 
         /// <summary>
-        /// Gets or Sets Title
+        /// 公示标题。
         /// </summary>
+        /// <value>公示标题。</value>
         /* <example>2025-2026学年春季优秀社团干部拟获奖名单公示</example> */
         [Required]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
-        /// Gets or Sets Description
+        /// 公示说明。
         /// </summary>
+        /// <value>公示说明。</value>
+        /* <example>公示期内如有异议请联系社团负责人。</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityStartAt
+        /// 公示开始时间。
         /// </summary>
+        /// <value>公示开始时间。</value>
+        /* <example>2026-07-18T09:00Z</example> */
         [DataMember(Name="publicityStartAt", EmitDefaultValue=true)]
         public DateTime? PublicityStartAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityEndAt
+        /// 公示结束时间。
         /// </summary>
+        /// <value>公示结束时间。</value>
+        /* <example>2026-07-21T18:00Z</example> */
         [DataMember(Name="publicityEndAt", EmitDefaultValue=true)]
         public DateTime? PublicityEndAt { get; set; }
 
 
         /// <summary>
-        /// Gets or Sets PublicityStatus
+        /// 公示批次状态。
         /// </summary>
+        /// <value>公示批次状态。</value>
         
         public enum PublicityStatusEnum
         {
@@ -109,51 +120,60 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PublicityStatus
+        /// 公示批次状态。
         /// </summary>
+        /// <value>公示批次状态。</value>
         /* <example>publicizing</example> */
         [Required]
         [DataMember(Name="publicityStatus", EmitDefaultValue=true)]
         public PublicityStatusEnum PublicityStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityStatusText
+        /// 公示批次状态中文文案。
         /// </summary>
+        /// <value>公示批次状态中文文案。</value>
         /* <example>公示中</example> */
         [Required]
         [DataMember(Name="publicityStatusText", EmitDefaultValue=false)]
         public string PublicityStatusText { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublisherUserId
+        /// 发布人用户 ID。
         /// </summary>
+        /// <value>发布人用户 ID。</value>
         [DataMember(Name="publisherUserId", EmitDefaultValue=true)]
         public int? PublisherUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublisherName
+        /// 发布人展示名。
         /// </summary>
+        /// <value>发布人展示名。</value>
         /* <example>王社长</example> */
         [DataMember(Name="publisherName", EmitDefaultValue=true)]
         public string? PublisherName { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 批次创建时间。
         /// </summary>
+        /// <value>批次创建时间。</value>
+        /* <example>2026-07-18T09:00Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 批次最近更新时间。
         /// </summary>
+        /// <value>批次最近更新时间。</value>
+        /* <example>2026-07-18T10:00Z</example> */
         [Required]
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets Items
+        /// 公示名单明细。
         /// </summary>
+        /// <value>公示名单明细。</value>
         [Required]
         [DataMember(Name="items", EmitDefaultValue=false)]
         public List<AwardPublicityItemRecord> Items { get; set; }

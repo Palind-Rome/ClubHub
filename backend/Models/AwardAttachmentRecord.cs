@@ -26,24 +26,27 @@ namespace Org.OpenAPITools.Models
     public partial class AwardAttachmentRecord 
     {
         /// <summary>
-        /// Gets or Sets AttachmentId
+        /// 附件记录 ID。
         /// </summary>
+        /// <value>附件记录 ID。</value>
         /* <example>60001</example> */
         [Required]
         [DataMember(Name="attachmentId", EmitDefaultValue=true)]
         public int AttachmentId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardApplicationId
+        /// 所属评奖评优申请 ID。
         /// </summary>
+        /// <value>所属评奖评优申请 ID。</value>
         /* <example>70001</example> */
         [Required]
         [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AttachmentName
+        /// 附件展示名称。
         /// </summary>
+        /// <value>附件展示名称。</value>
         /* <example>个人总结.pdf</example> */
         [Required]
         [DataMember(Name="attachmentName", EmitDefaultValue=false)]
@@ -59,30 +62,35 @@ namespace Org.OpenAPITools.Models
         public string AttachmentUrl { get; set; }
 
         /// <summary>
-        /// Gets or Sets AttachmentType
+        /// 附件类型或材料分类。
         /// </summary>
+        /// <value>附件类型或材料分类。</value>
         /* <example>pdf</example> */
         [DataMember(Name="attachmentType", EmitDefaultValue=true)]
         public string? AttachmentType { get; set; }
 
         /// <summary>
-        /// Gets or Sets UploadedByUserId
+        /// 上传人用户 ID。
         /// </summary>
+        /// <value>上传人用户 ID。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="uploadedByUserId", EmitDefaultValue=true)]
         public int UploadedByUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets UploadedByName
+        /// 上传人展示名。
         /// </summary>
+        /// <value>上传人展示名。</value>
         /* <example>张三</example> */
         [DataMember(Name="uploadedByName", EmitDefaultValue=true)]
         public string? UploadedByName { get; set; }
 
         /// <summary>
-        /// Gets or Sets UploadedAt
+        /// 上传时间。
         /// </summary>
+        /// <value>上传时间。</value>
+        /* <example>2026-07-10T08:30Z</example> */
         [Required]
         [DataMember(Name="uploadedAt", EmitDefaultValue=true)]
         public DateTime UploadedAt { get; set; }

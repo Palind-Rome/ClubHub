@@ -21,29 +21,29 @@ import { mapValues } from "../runtime";
  */
 export interface CreateAwardPublicityBatchRequest {
   /**
-   *
+   * 公示标题。
    * @type {string}
    * @memberof CreateAwardPublicityBatchRequest
    */
   title: string;
   /**
-   *
+   * 公示说明。
    * @type {string}
    * @memberof CreateAwardPublicityBatchRequest
    */
   description?: string | null;
   /**
-   *
+   * 公示开始时间，不能为空。
    * @type {Date}
    * @memberof CreateAwardPublicityBatchRequest
    */
-  publicityStartAt?: Date | null;
+  publicityStartAt: Date | null;
   /**
-   *
+   * 公示结束时间，必须晚于 publicityStartAt。
    * @type {Date}
    * @memberof CreateAwardPublicityBatchRequest
    */
-  publicityEndAt?: Date | null;
+  publicityEndAt: Date | null;
   /**
    * 纳入公示的已通过申请 ID。
    * @type {Array<number>}
@@ -59,6 +59,8 @@ export function instanceOfCreateAwardPublicityBatchRequest(
   value: object,
 ): value is CreateAwardPublicityBatchRequest {
   if (!("title" in value) || value["title"] === undefined) return false;
+  if (!("publicityStartAt" in value) || value["publicityStartAt"] === undefined) return false;
+  if (!("publicityEndAt" in value) || value["publicityEndAt"] === undefined) return false;
   if (!("awardApplicationIds" in value) || value["awardApplicationIds"] === undefined) return false;
   return true;
 }
@@ -79,9 +81,8 @@ export function CreateAwardPublicityBatchRequestFromJSONTyped(
   return {
     title: json["title"],
     description: json["description"] == null ? undefined : json["description"],
-    publicityStartAt:
-      json["publicityStartAt"] == null ? undefined : new Date(json["publicityStartAt"]),
-    publicityEndAt: json["publicityEndAt"] == null ? undefined : new Date(json["publicityEndAt"]),
+    publicityStartAt: json["publicityStartAt"] == null ? null : new Date(json["publicityStartAt"]),
+    publicityEndAt: json["publicityEndAt"] == null ? null : new Date(json["publicityEndAt"]),
     awardApplicationIds: json["awardApplicationIds"],
   };
 }

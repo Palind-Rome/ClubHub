@@ -21,19 +21,19 @@ import { mapValues } from "../runtime";
  */
 export interface AwardAttachmentRecord {
   /**
-   *
+   * 附件记录 ID。
    * @type {number}
    * @memberof AwardAttachmentRecord
    */
   attachmentId: number;
   /**
-   *
+   * 所属评奖评优申请 ID。
    * @type {number}
    * @memberof AwardAttachmentRecord
    */
   awardApplicationId: number;
   /**
-   *
+   * 附件展示名称。
    * @type {string}
    * @memberof AwardAttachmentRecord
    */
@@ -45,25 +45,25 @@ export interface AwardAttachmentRecord {
    */
   attachmentUrl: string;
   /**
-   *
+   * 附件类型或材料分类。
    * @type {string}
    * @memberof AwardAttachmentRecord
    */
   attachmentType?: string | null;
   /**
-   *
+   * 上传人用户 ID。
    * @type {number}
    * @memberof AwardAttachmentRecord
    */
   uploadedByUserId: number;
   /**
-   *
+   * 上传人展示名。
    * @type {string}
    * @memberof AwardAttachmentRecord
    */
   uploadedByName?: string | null;
   /**
-   *
+   * 上传时间。
    * @type {Date}
    * @memberof AwardAttachmentRecord
    */

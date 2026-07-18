@@ -21,73 +21,73 @@ import { mapValues } from "../runtime";
  */
 export interface AwardPublicityItemRecord {
   /**
-   *
+   * 公示明细 ID。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   publicityItemId: number;
   /**
-   *
+   * 所属公示批次 ID。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   publicityBatchId: number;
   /**
-   *
+   * 被公示的评奖评优申请 ID。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   awardApplicationId: number;
   /**
-   *
+   * 获奖成员用户 ID。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   applicantUserId: number;
   /**
-   *
+   * 获奖成员展示名。
    * @type {string}
    * @memberof AwardPublicityItemRecord
    */
   applicantName: string;
   /**
-   *
+   * 公示奖项名称。
    * @type {string}
    * @memberof AwardPublicityItemRecord
    */
   awardName: string;
   /**
-   *
+   * 公示奖项等级名称。
    * @type {string}
    * @memberof AwardPublicityItemRecord
    */
   levelName: string;
   /**
-   *
+   * 公示采用的最终奖项分。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   finalAwardScore?: number | null;
   /**
-   *
+   * 公示采用的最终奖励金额。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   finalAmount?: number | null;
   /**
-   *
+   * 公示名单展示顺序。
    * @type {number}
    * @memberof AwardPublicityItemRecord
    */
   displayOrder: number;
   /**
-   *
+   * 公示结果状态。
    * @type {AwardPublicityItemRecordPublicityResultEnum}
    * @memberof AwardPublicityItemRecord
    */
   publicityResult: AwardPublicityItemRecordPublicityResultEnum;
   /**
-   *
+   * 明细创建时间。
    * @type {Date}
    * @memberof AwardPublicityItemRecord
    */

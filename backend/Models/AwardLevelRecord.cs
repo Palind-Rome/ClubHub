@@ -26,54 +26,61 @@ namespace Org.OpenAPITools.Models
     public partial class AwardLevelRecord 
     {
         /// <summary>
-        /// Gets or Sets AwardLevelId
+        /// 奖项等级 ID。
         /// </summary>
+        /// <value>奖项等级 ID。</value>
         /* <example>10001</example> */
         [Required]
         [DataMember(Name="awardLevelId", EmitDefaultValue=true)]
         public int AwardLevelId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardSchemeId
+        /// 所属奖项配置 ID。
         /// </summary>
+        /// <value>所属奖项配置 ID。</value>
         /* <example>9001</example> */
         [Required]
         [DataMember(Name="awardSchemeId", EmitDefaultValue=true)]
         public int AwardSchemeId { get; set; }
 
         /// <summary>
-        /// Gets or Sets LevelName
+        /// 等级名称，例如一等奖、二等奖或优秀奖。
         /// </summary>
+        /// <value>等级名称，例如一等奖、二等奖或优秀奖。</value>
         /* <example>一等奖</example> */
         [Required]
         [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardScore
+        /// 该等级折算到成员考核中的奖项分。
         /// </summary>
+        /// <value>该等级折算到成员考核中的奖项分。</value>
         /* <example>20</example> */
         [Required]
         [DataMember(Name="awardScore", EmitDefaultValue=true)]
         public decimal AwardScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets Amount
+        /// 该等级对应的奖励金额；无固定金额时为空。
         /// </summary>
+        /// <value>该等级对应的奖励金额；无固定金额时为空。</value>
         /* <example>500</example> */
         [DataMember(Name="amount", EmitDefaultValue=true)]
         public decimal? Amount { get; set; }
 
         /// <summary>
-        /// Gets or Sets Quota
+        /// 该等级名额；不限制名额时为空。
         /// </summary>
+        /// <value>该等级名额；不限制名额时为空。</value>
         /* <example>3</example> */
         [DataMember(Name="quota", EmitDefaultValue=true)]
         public int? Quota { get; set; }
 
         /// <summary>
-        /// Gets or Sets DisplayOrder
+        /// 等级展示顺序，数值越小越靠前。
         /// </summary>
+        /// <value>等级展示顺序，数值越小越靠前。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="displayOrder", EmitDefaultValue=true)]
@@ -81,8 +88,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets LevelStatus
+        /// 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
         /// </summary>
+        /// <value>等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。</value>
         
         public enum LevelStatusEnum
         {
@@ -101,8 +109,9 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets LevelStatus
+        /// 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
         /// </summary>
+        /// <value>等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。</value>
         /* <example>active</example> */
         [Required]
         [DataMember(Name="levelStatus", EmitDefaultValue=true)]

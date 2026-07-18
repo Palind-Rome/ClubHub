@@ -29,151 +29,151 @@ import {
  */
 export interface AwardSchemeRecord {
   /**
-   *
+   * 奖项配置 ID。
    * @type {number}
    * @memberof AwardSchemeRecord
    */
   awardSchemeId: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof AwardSchemeRecord
    */
   clubId: number;
   /**
-   *
+   * 所属社团名称。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   clubName: string;
   /**
-   *
+   * 奖项名称。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   awardName: string;
   /**
-   *
+   * 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
    * @type {AwardSchemeRecordAwardCategoryEnum}
    * @memberof AwardSchemeRecord
    */
   awardCategory: AwardSchemeRecordAwardCategoryEnum;
   /**
-   *
+   * 奖项所属学年或年度。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   academicYear: string;
   /**
-   *
+   * 奖项所属学期；跨学年项目可为空。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   termName?: string | null;
   /**
-   *
+   * 奖项设立或资助单位。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   sponsorUnit?: string | null;
   /**
-   *
+   * 奖项层级，例如校级、院级或社团级。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   rewardLevel?: string | null;
   /**
-   *
+   * 奖励经费来源说明。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   fundingSource?: string | null;
   /**
-   *
+   * 是否区分一等奖、二等奖等等级。
    * @type {boolean}
    * @memberof AwardSchemeRecord
    */
   isRanked: boolean;
   /**
-   *
+   * 是否按等级固定奖励金额。
    * @type {boolean}
    * @memberof AwardSchemeRecord
    */
   isFixedAmount: boolean;
   /**
-   *
+   * 奖项说明。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   description?: string | null;
   /**
-   *
+   * 申请材料要求。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   materialDescription?: string | null;
   /**
-   *
+   * 申请窗口开始时间；为空表示不限制开始时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   applicationStartAt?: Date | null;
   /**
-   *
+   * 申请窗口结束时间；为空表示不限制结束时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   applicationEndAt?: Date | null;
   /**
-   *
+   * 奖项配置中的建议公示开始时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   publicityStartAt?: Date | null;
   /**
-   *
+   * 奖项配置中的建议公示结束时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   publicityEndAt?: Date | null;
   /**
-   *
+   * 奖项配置状态。
    * @type {AwardSchemeRecordSchemeStatusEnum}
    * @memberof AwardSchemeRecord
    */
   schemeStatus: AwardSchemeRecordSchemeStatusEnum;
   /**
-   *
+   * 奖项配置状态中文文案。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   schemeStatusText: string;
   /**
-   *
+   * 创建人用户 ID。
    * @type {number}
    * @memberof AwardSchemeRecord
    */
   createdByUserId?: number | null;
   /**
-   *
+   * 创建人展示名。
    * @type {string}
    * @memberof AwardSchemeRecord
    */
   createdByName?: string | null;
   /**
-   *
+   * 创建时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   createdAt: Date;
   /**
-   *
+   * 最近更新时间。
    * @type {Date}
    * @memberof AwardSchemeRecord
    */
   updatedAt: Date;
   /**
-   *
+   * 奖项等级列表。
    * @type {Array<AwardLevelRecord>}
    * @memberof AwardSchemeRecord
    */

@@ -36,115 +36,115 @@ import {
  */
 export interface AwardApplicationRecord {
   /**
-   *
+   * 评奖评优申请 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   awardApplicationId: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   clubId: number;
   /**
-   *
+   * 所属社团名称。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   clubName: string;
   /**
-   *
+   * 被申请的奖项配置 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   awardSchemeId: number;
   /**
-   *
+   * 被申请的奖项名称。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   awardName: string;
   /**
-   *
+   * 奖项分类。
    * @type {AwardApplicationRecordAwardCategoryEnum}
    * @memberof AwardApplicationRecord
    */
   awardCategory: AwardApplicationRecordAwardCategoryEnum;
   /**
-   *
+   * 奖项所属学年或年度。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   academicYear: string;
   /**
-   *
+   * 奖项所属学期。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   termName?: string | null;
   /**
-   *
+   * 被申请的奖项等级 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   awardLevelId: number;
   /**
-   *
+   * 被申请的奖项等级名称。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   levelName: string;
   /**
-   *
+   * 申请人或被推荐人用户 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   applicantUserId: number;
   /**
-   *
+   * 申请人或被推荐人展示名。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   applicantName: string;
   /**
-   *
+   * 申请人或被推荐人学号。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   applicantStudentNo?: string | null;
   /**
-   *
+   * 推荐人用户 ID；本人申请时为空。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   recommenderUserId?: number | null;
   /**
-   *
+   * 推荐人展示名；本人申请时为空。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   recommenderName?: string | null;
   /**
-   *
+   * 提交该申请的用户 ID。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   submitterUserId: number;
   /**
-   *
+   * 提交人展示名。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   submitterName?: string | null;
   /**
-   *
+   * 申请类型，self 为本人申请，recommendation 为负责人推荐。
    * @type {AwardApplicationRecordApplicationTypeEnum}
    * @memberof AwardApplicationRecord
    */
   applicationType: AwardApplicationRecordApplicationTypeEnum;
   /**
-   *
+   * 申请理由或推荐理由。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
@@ -156,97 +156,97 @@ export interface AwardApplicationRecord {
    */
   materialUrl?: string | null;
   /**
-   *
+   * 当前所处流程节点。
    * @type {AwardApplicationRecordCurrentStepEnum}
    * @memberof AwardApplicationRecord
    */
   currentStep: AwardApplicationRecordCurrentStepEnum;
   /**
-   *
+   * 当前流程节点中文文案。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   currentStepText: string;
   /**
-   *
+   * 申请状态。
    * @type {AwardApplicationRecordApplicationStatusEnum}
    * @memberof AwardApplicationRecord
    */
   applicationStatus: AwardApplicationRecordApplicationStatusEnum;
   /**
-   *
+   * 申请状态中文文案。
    * @type {string}
    * @memberof AwardApplicationRecord
    */
   applicationStatusText: string;
   /**
-   *
+   * 公示状态。
    * @type {AwardApplicationRecordPublicStatusEnum}
    * @memberof AwardApplicationRecord
    */
   publicStatus: AwardApplicationRecordPublicStatusEnum;
   /**
-   *
+   * 当前审批轮次。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   reviewRound: number;
   /**
-   *
+   * 校级终审确认后的最终奖项分。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   finalAwardScore?: number | null;
   /**
-   *
+   * 校级终审确认后的最终奖励金额。
    * @type {number}
    * @memberof AwardApplicationRecord
    */
   finalAmount?: number | null;
   /**
-   *
+   * 首次提交审核时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   submittedAt?: Date | null;
   /**
-   *
+   * 校级终审通过时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   approvedAt?: Date | null;
   /**
-   *
+   * 进入公示时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   publicizedAt?: Date | null;
   /**
-   *
+   * 归档时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   archivedAt?: Date | null;
   /**
-   *
+   * 创建时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   createdAt: Date;
   /**
-   *
+   * 最近更新时间。
    * @type {Date}
    * @memberof AwardApplicationRecord
    */
   updatedAt: Date;
   /**
-   *
+   * 审批流转记录，按时间顺序返回。
    * @type {Array<AwardReviewRecord>}
    * @memberof AwardApplicationRecord
    */
   reviewRecords: Array<AwardReviewRecord>;
   /**
-   *
+   * 申请材料附件列表。
    * @type {Array<AwardAttachmentRecord>}
    * @memberof AwardApplicationRecord
    */

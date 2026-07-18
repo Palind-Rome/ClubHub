@@ -26,78 +26,88 @@ namespace Org.OpenAPITools.Models
     public partial class AwardPublicityItemRecord 
     {
         /// <summary>
-        /// Gets or Sets PublicityItemId
+        /// 公示明细 ID。
         /// </summary>
+        /// <value>公示明细 ID。</value>
         /* <example>50001</example> */
         [Required]
         [DataMember(Name="publicityItemId", EmitDefaultValue=true)]
         public int PublicityItemId { get; set; }
 
         /// <summary>
-        /// Gets or Sets PublicityBatchId
+        /// 所属公示批次 ID。
         /// </summary>
+        /// <value>所属公示批次 ID。</value>
         /* <example>40001</example> */
         [Required]
         [DataMember(Name="publicityBatchId", EmitDefaultValue=true)]
         public int PublicityBatchId { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardApplicationId
+        /// 被公示的评奖评优申请 ID。
         /// </summary>
+        /// <value>被公示的评奖评优申请 ID。</value>
         /* <example>70001</example> */
         [Required]
         [DataMember(Name="awardApplicationId", EmitDefaultValue=true)]
         public int AwardApplicationId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantUserId
+        /// 获奖成员用户 ID。
         /// </summary>
+        /// <value>获奖成员用户 ID。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="applicantUserId", EmitDefaultValue=true)]
         public int ApplicantUserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets ApplicantName
+        /// 获奖成员展示名。
         /// </summary>
+        /// <value>获奖成员展示名。</value>
         /* <example>张三</example> */
         [Required]
         [DataMember(Name="applicantName", EmitDefaultValue=false)]
         public string ApplicantName { get; set; }
 
         /// <summary>
-        /// Gets or Sets AwardName
+        /// 公示奖项名称。
         /// </summary>
+        /// <value>公示奖项名称。</value>
         /* <example>优秀社团干部</example> */
         [Required]
         [DataMember(Name="awardName", EmitDefaultValue=false)]
         public string AwardName { get; set; }
 
         /// <summary>
-        /// Gets or Sets LevelName
+        /// 公示奖项等级名称。
         /// </summary>
+        /// <value>公示奖项等级名称。</value>
         /* <example>一等奖</example> */
         [Required]
         [DataMember(Name="levelName", EmitDefaultValue=false)]
         public string LevelName { get; set; }
 
         /// <summary>
-        /// Gets or Sets FinalAwardScore
+        /// 公示采用的最终奖项分。
         /// </summary>
+        /// <value>公示采用的最终奖项分。</value>
         /* <example>20</example> */
         [DataMember(Name="finalAwardScore", EmitDefaultValue=true)]
         public decimal? FinalAwardScore { get; set; }
 
         /// <summary>
-        /// Gets or Sets FinalAmount
+        /// 公示采用的最终奖励金额。
         /// </summary>
+        /// <value>公示采用的最终奖励金额。</value>
         /* <example>500</example> */
         [DataMember(Name="finalAmount", EmitDefaultValue=true)]
         public decimal? FinalAmount { get; set; }
 
         /// <summary>
-        /// Gets or Sets DisplayOrder
+        /// 公示名单展示顺序。
         /// </summary>
+        /// <value>公示名单展示顺序。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="displayOrder", EmitDefaultValue=true)]
@@ -105,8 +115,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets PublicityResult
+        /// 公示结果状态。
         /// </summary>
+        /// <value>公示结果状态。</value>
         
         public enum PublicityResultEnum
         {
@@ -131,16 +142,19 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PublicityResult
+        /// 公示结果状态。
         /// </summary>
+        /// <value>公示结果状态。</value>
         /* <example>normal</example> */
         [Required]
         [DataMember(Name="publicityResult", EmitDefaultValue=true)]
         public PublicityResultEnum PublicityResult { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 明细创建时间。
         /// </summary>
+        /// <value>明细创建时间。</value>
+        /* <example>2026-07-18T09:00Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }

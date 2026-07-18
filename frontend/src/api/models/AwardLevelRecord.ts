@@ -21,49 +21,49 @@ import { mapValues } from "../runtime";
  */
 export interface AwardLevelRecord {
   /**
-   *
+   * 奖项等级 ID。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   awardLevelId: number;
   /**
-   *
+   * 所属奖项配置 ID。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   awardSchemeId: number;
   /**
-   *
+   * 等级名称，例如一等奖、二等奖或优秀奖。
    * @type {string}
    * @memberof AwardLevelRecord
    */
   levelName: string;
   /**
-   *
+   * 该等级折算到成员考核中的奖项分。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   awardScore: number;
   /**
-   *
+   * 该等级对应的奖励金额；无固定金额时为空。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   amount?: number | null;
   /**
-   *
+   * 该等级名额；不限制名额时为空。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   quota?: number | null;
   /**
-   *
+   * 等级展示顺序，数值越小越靠前。
    * @type {number}
    * @memberof AwardLevelRecord
    */
   displayOrder: number;
   /**
-   *
+   * 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
    * @type {AwardLevelRecordLevelStatusEnum}
    * @memberof AwardLevelRecord
    */
