@@ -610,6 +610,10 @@ export interface CreateLearningItemOperationRequest {
   createLearningItemRequest: CreateLearningItemRequest;
 }
 
+export interface CreateLearningPreviewSessionRequest {
+  itemId: number;
+}
+
 export interface CreateMaterialOperationRequest {
   createMaterialRequest: CreateMaterialRequest;
 }
@@ -797,6 +801,11 @@ export interface GetLearningItemStatisticsRequest {
 
 export interface GetLearningItemsRequest {
   clubId?: number;
+}
+
+export interface GetLearningPreviewRequest {
+  itemId: number;
+  range?: string;
 }
 
 export interface GetLearningRecordsRequest {
@@ -2694,6 +2703,68 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<LearningItem> {
     const response = await this.createLearningItemRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for createLearningPreviewSession without sending the request
+   */
+  async createLearningPreviewSessionRequestOpts(
+    requestParameters: CreateLearningPreviewSessionRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling createLearningPreviewSession().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/preview-session`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；Office 文件首次访问时在受限服务端进程中转换并缓存为私有 OSS PDF。成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。
+   * 准备学习资源在线预览会话
+   */
+  async createLearningPreviewSessionRaw(
+    requestParameters: CreateLearningPreviewSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.createLearningPreviewSessionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；Office 文件首次访问时在受限服务端进程中转换并缓存为私有 OSS PDF。成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。
+   * 准备学习资源在线预览会话
+   */
+  async createLearningPreviewSession(
+    requestParameters: CreateLearningPreviewSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.createLearningPreviewSessionRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -5267,6 +5338,64 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningItem>> {
     const response = await this.getLearningItemsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningPreview without sending the request
+   */
+  async getLearningPreviewRequestOpts(
+    requestParameters: GetLearningPreviewRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningPreview().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["range"] != null) {
+      headerParameters["Range"] = String(requestParameters["range"]);
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/preview`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF，DOC、DOCX、PPT、PPTX 返回缓存的 PDF 副本。该操作不会写入下载时间或下载 IP。
+   * 获取受保护的学习资源在线预览内容
+   */
+  async getLearningPreviewRaw(
+    requestParameters: GetLearningPreviewRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getLearningPreviewRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF，DOC、DOCX、PPT、PPTX 返回缓存的 PDF 副本。该操作不会写入下载时间或下载 IP。
+   * 获取受保护的学习资源在线预览内容
+   */
+  async getLearningPreview(
+    requestParameters: GetLearningPreviewRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getLearningPreviewRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
