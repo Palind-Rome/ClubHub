@@ -67,6 +67,11 @@ import {
   AwardPublicityBatchRecordToJSON,
 } from "../models/AwardPublicityBatchRecord";
 import {
+  type AwardRuleDocumentRecord,
+  AwardRuleDocumentRecordFromJSON,
+  AwardRuleDocumentRecordToJSON,
+} from "../models/AwardRuleDocumentRecord";
+import {
   type AwardSchemeRecord,
   AwardSchemeRecordFromJSON,
   AwardSchemeRecordToJSON,
@@ -127,6 +132,11 @@ import {
   CreateAwardPublicityBatchRequestFromJSON,
   CreateAwardPublicityBatchRequestToJSON,
 } from "../models/CreateAwardPublicityBatchRequest";
+import {
+  type CreateAwardRuleDocumentRequest,
+  CreateAwardRuleDocumentRequestFromJSON,
+  CreateAwardRuleDocumentRequestToJSON,
+} from "../models/CreateAwardRuleDocumentRequest";
 import {
   type CreateAwardSchemeRequest,
   CreateAwardSchemeRequestFromJSON,
@@ -393,6 +403,11 @@ import {
   UpdateAwardApplicationRequestToJSON,
 } from "../models/UpdateAwardApplicationRequest";
 import {
+  type UpdateAwardRuleDocumentRequest,
+  UpdateAwardRuleDocumentRequestFromJSON,
+  UpdateAwardRuleDocumentRequestToJSON,
+} from "../models/UpdateAwardRuleDocumentRequest";
+import {
   type UpdateAwardSchemeRequest,
   UpdateAwardSchemeRequestFromJSON,
   UpdateAwardSchemeRequestToJSON,
@@ -560,6 +575,11 @@ export interface CreateClubAwardPublicityBatchRequest {
   createAwardPublicityBatchRequest: CreateAwardPublicityBatchRequest;
 }
 
+export interface CreateClubAwardRuleDocumentRequest {
+  clubId: number;
+  createAwardRuleDocumentRequest: CreateAwardRuleDocumentRequest;
+}
+
 export interface CreateClubAwardSchemeRequest {
   clubId: number;
   createAwardSchemeRequest: CreateAwardSchemeRequest;
@@ -700,6 +720,17 @@ export interface GetClubApplicationsRequest {
   endDate?: Date;
 }
 
+export interface GetClubAwardApplicationRequest {
+  clubId: number;
+  awardApplicationId: number;
+}
+
+export interface GetClubAwardApplicationAttachmentFileRequest {
+  clubId: number;
+  awardApplicationId: number;
+  attachmentId: number;
+}
+
 export interface GetClubAwardApplicationsRequest {
   clubId: number;
   awardSchemeId?: number;
@@ -711,6 +742,17 @@ export interface GetClubAwardApplicationsRequest {
 export interface GetClubAwardPublicityBatchesRequest {
   clubId: number;
   status?: GetClubAwardPublicityBatchesStatusEnum;
+}
+
+export interface GetClubAwardRuleDocumentFileRequest {
+  clubId: number;
+  ruleDocumentId: number;
+}
+
+export interface GetClubAwardRuleDocumentsRequest {
+  clubId: number;
+  status?: GetClubAwardRuleDocumentsStatusEnum;
+  keyword?: string;
 }
 
 export interface GetClubAwardSchemesRequest {
@@ -871,6 +913,11 @@ export interface PublishClubAwardPublicityBatchRequest {
   publicityBatchId: number;
 }
 
+export interface PublishClubAwardRuleDocumentRequest {
+  clubId: number;
+  ruleDocumentId: number;
+}
+
 export interface RegisterActivityRequest {
   activityId: number;
 }
@@ -982,6 +1029,12 @@ export interface UpdateClubAwardApplicationRequest {
   updateAwardApplicationRequest: UpdateAwardApplicationRequest;
 }
 
+export interface UpdateClubAwardRuleDocumentRequest {
+  clubId: number;
+  ruleDocumentId: number;
+  updateAwardRuleDocumentRequest: UpdateAwardRuleDocumentRequest;
+}
+
 export interface UpdateClubAwardSchemeRequest {
   clubId: number;
   awardSchemeId: number;
@@ -1063,6 +1116,19 @@ export interface UpdateVenueOperationRequest {
 export interface UpdateVenueStatusOperationRequest {
   venueId: number;
   updateVenueStatusRequest: UpdateVenueStatusRequest;
+}
+
+export interface UploadClubAwardApplicationAttachmentRequest {
+  clubId: number;
+  awardApplicationId: number;
+  file: Blob;
+  attachmentType?: string | null;
+}
+
+export interface UploadClubAwardRuleDocumentFileRequest {
+  clubId: number;
+  ruleDocumentId: number;
+  file: Blob;
 }
 
 export interface UploadLearningResourceRequest {
@@ -2063,7 +2129,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐，提交后进入负责人初审。
+   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
    * 创建评奖评优申请或负责人推荐
    */
   async createClubAwardApplicationRaw(
@@ -2079,7 +2145,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐，提交后进入负责人初审。
+   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
    * 创建评奖评优申请或负责人推荐
    */
   async createClubAwardApplication(
@@ -2155,6 +2221,74 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<AwardPublicityBatchRecord> {
     const response = await this.createClubAwardPublicityBatchRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubAwardRuleDocument without sending the request
+   */
+  async createClubAwardRuleDocumentRequestOpts(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["createAwardRuleDocumentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardRuleDocumentRequest",
+        'Required parameter "createAwardRuleDocumentRequest" was null or undefined when calling createClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardRuleDocumentRequestToJSON(
+        requestParameters["createAwardRuleDocumentRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+   * 上传评奖评优评定细则
+   */
+  async createClubAwardRuleDocumentRaw(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.createClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+   * 上传评奖评优评定细则
+   */
+  async createClubAwardRuleDocument(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.createClubAwardRuleDocumentRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4070,7 +4204,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
    * 查询社团注册可选指导老师
    */
   async getClubAdvisorCandidatesRaw(
@@ -4085,7 +4219,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+   * 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
    * 查询社团注册可选指导老师
    */
   async getClubAdvisorCandidates(
@@ -4158,6 +4292,153 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ClubApplication>> {
     const response = await this.getClubApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardApplication without sending the request
+   */
+  async getClubAwardApplicationRequestOpts(
+    requestParameters: GetClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling getClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+   * 获取评奖评优申请详情
+   */
+  async getClubAwardApplicationRaw(
+    requestParameters: GetClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.getClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+   * 获取评奖评优申请详情
+   */
+  async getClubAwardApplication(
+    requestParameters: GetClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.getClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardApplicationAttachmentFile without sending the request
+   */
+  async getClubAwardApplicationAttachmentFileRequestOpts(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    if (requestParameters["attachmentId"] == null) {
+      throw new runtime.RequiredError(
+        "attachmentId",
+        'Required parameter "attachmentId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+    urlPath = urlPath.replace(
+      "{attachmentId}",
+      encodeURIComponent(String(requestParameters["attachmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优申请材料
+   */
+  async getClubAwardApplicationAttachmentFileRaw(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions =
+      await this.getClubAwardApplicationAttachmentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优申请材料
+   */
+  async getClubAwardApplicationAttachmentFile(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getClubAwardApplicationAttachmentFileRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 
@@ -4294,6 +4575,135 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubAwardRuleDocumentFile without sending the request
+   */
+  async getClubAwardRuleDocumentFileRequestOpts(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling getClubAwardRuleDocumentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优评定细则附件
+   */
+  async getClubAwardRuleDocumentFileRaw(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getClubAwardRuleDocumentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优评定细则附件
+   */
+  async getClubAwardRuleDocumentFile(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getClubAwardRuleDocumentFileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardRuleDocuments without sending the request
+   */
+  async getClubAwardRuleDocumentsRequestOpts(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardRuleDocuments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+   * 查询评奖评优评定细则
+   */
+  async getClubAwardRuleDocumentsRaw(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardRuleDocumentRecord>>> {
+    const requestOptions = await this.getClubAwardRuleDocumentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardRuleDocumentRecordFromJSON),
+    );
+  }
+
+  /**
+   * 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+   * 查询评奖评优评定细则
+   */
+  async getClubAwardRuleDocuments(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardRuleDocumentRecord>> {
+    const response = await this.getClubAwardRuleDocumentsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubAwardSchemes without sending the request
    */
   async getClubAwardSchemesRequestOpts(
@@ -4330,7 +4740,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 面向社团评奖评优流程的奖项开放列表；普通成员只能查看已开放或已归档奖项，负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+   * 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
    * 查询社团评奖评优奖项配置
    */
   async getClubAwardSchemesRaw(
@@ -4346,7 +4756,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 面向社团评奖评优流程的奖项开放列表；普通成员只能查看已开放或已归档奖项，负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+   * 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
    * 查询社团评奖评优奖项配置
    */
   async getClubAwardSchemes(
@@ -6465,6 +6875,73 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for publishClubAwardRuleDocument without sending the request
+   */
+  async publishClubAwardRuleDocumentRequestOpts(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling publishClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling publishClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+   * 发布评奖评优评定细则
+   */
+  async publishClubAwardRuleDocumentRaw(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.publishClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+   * 发布评奖评优评定细则
+   */
+  async publishClubAwardRuleDocument(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.publishClubAwardRuleDocumentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for refreshAuthSession without sending the request
    */
   async refreshAuthSessionRequestOpts(): Promise<runtime.RequestOpts> {
@@ -7170,7 +7647,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；每次动作都会写入审核记录。
+   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
    * 审核评奖评优申请
    */
   async reviewClubAwardApplicationRaw(
@@ -7186,7 +7663,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；每次动作都会写入审核记录。
+   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
    * 审核评奖评优申请
    */
   async reviewClubAwardApplication(
@@ -8074,6 +8551,85 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<AwardApplicationRecord> {
     const response = await this.updateClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubAwardRuleDocument without sending the request
+   */
+  async updateClubAwardRuleDocumentRequestOpts(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["updateAwardRuleDocumentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateAwardRuleDocumentRequest",
+        'Required parameter "updateAwardRuleDocumentRequest" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateAwardRuleDocumentRequestToJSON(
+        requestParameters["updateAwardRuleDocumentRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+   * 更新评奖评优评定细则
+   */
+  async updateClubAwardRuleDocumentRaw(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.updateClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+   * 更新评奖评优评定细则
+   */
+  async updateClubAwardRuleDocument(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.updateClubAwardRuleDocumentRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -9197,6 +9753,203 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for uploadClubAwardApplicationAttachment without sending the request
+   */
+  async uploadClubAwardApplicationAttachmentRequestOpts(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    if (requestParameters["attachmentType"] != null) {
+      formParams.append("attachmentType", requestParameters["attachmentType"] as any);
+    }
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+   * 上传评奖评优申请材料
+   */
+  async uploadClubAwardApplicationAttachmentRaw(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions =
+      await this.uploadClubAwardApplicationAttachmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+   * 上传评奖评优申请材料
+   */
+  async uploadClubAwardApplicationAttachment(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.uploadClubAwardApplicationAttachmentRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for uploadClubAwardRuleDocumentFile without sending the request
+   */
+  async uploadClubAwardRuleDocumentFileRequestOpts(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+   * 上传评奖评优评定细则附件
+   */
+  async uploadClubAwardRuleDocumentFileRaw(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.uploadClubAwardRuleDocumentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+   * 上传评奖评优评定细则附件
+   */
+  async uploadClubAwardRuleDocumentFile(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.uploadClubAwardRuleDocumentFileRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
    * Creates request options for uploadLearningResource without sending the request
    */
   async uploadLearningResourceRequestOpts(
@@ -9375,6 +10128,16 @@ export const GetClubAwardPublicityBatchesStatusEnum = {
 } as const;
 export type GetClubAwardPublicityBatchesStatusEnum =
   (typeof GetClubAwardPublicityBatchesStatusEnum)[keyof typeof GetClubAwardPublicityBatchesStatusEnum];
+/**
+ * @export
+ */
+export const GetClubAwardRuleDocumentsStatusEnum = {
+  Draft: "draft",
+  Published: "published",
+  Archived: "archived",
+} as const;
+export type GetClubAwardRuleDocumentsStatusEnum =
+  (typeof GetClubAwardRuleDocumentsStatusEnum)[keyof typeof GetClubAwardRuleDocumentsStatusEnum];
 /**
  * @export
  */

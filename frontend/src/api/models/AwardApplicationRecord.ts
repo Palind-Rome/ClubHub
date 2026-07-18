@@ -150,7 +150,7 @@ export interface AwardApplicationRecord {
    */
   applicationReason?: string | null;
   /**
-   *
+   * 申请主材料的内部文件引用；具体材料以 attachments 为准，客户端下载文件应调用申请材料下载接口。
    * @type {string}
    * @memberof AwardApplicationRecord
    */

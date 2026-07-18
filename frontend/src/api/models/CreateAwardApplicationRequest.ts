@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 创建评奖评优申请或负责人推荐。
+ * 创建评奖评优申请或负责人推荐；awardSchemeId 必须属于当前路径社团，且对应奖项处于开放申请或审核中，并仍在申请时间窗内。
  * @export
  * @interface CreateAwardApplicationRequest
  */
@@ -51,7 +51,7 @@ export interface CreateAwardApplicationRequest {
    */
   applicationReason: string;
   /**
-   * 申请材料入口；后续可拆为附件表多条记录。
+   * 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
    * @type {string}
    * @memberof CreateAwardApplicationRequest
    */

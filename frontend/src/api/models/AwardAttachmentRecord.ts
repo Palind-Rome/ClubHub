@@ -39,7 +39,7 @@ export interface AwardAttachmentRecord {
    */
   attachmentName: string;
   /**
-   *
+   * 申请材料的内部文件引用；客户端下载文件应调用申请材料下载接口。
    * @type {string}
    * @memberof AwardAttachmentRecord
    */
