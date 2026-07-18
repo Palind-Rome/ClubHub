@@ -436,11 +436,19 @@ public class AwardWorkflowController : ControllerBase
 
         if (!canMaintain)
         {
+            var now = BusinessNow();
             query = query.Where(s =>
                 s.SchemeStatus == AwardSchemeOpen ||
+                (s.SchemeStatus == AwardSchemeReviewing &&
+                 (s.ApplicationStartAt == null || s.ApplicationStartAt <= now) &&
+                 (s.ApplicationEndAt == null || s.ApplicationEndAt >= now)) ||
                 s.SchemeStatus == AwardSchemePublicizing ||
                 s.SchemeStatus == AwardSchemeArchived ||
-                s.SchemeStatus == AwardSchemeClosed);
+                s.SchemeStatus == AwardSchemeClosed ||
+                s.Applications.Any(a =>
+                    a.ApplicantUserId == currentUserId.Value ||
+                    a.SubmitterUserId == currentUserId.Value ||
+                    a.RecommenderUserId == currentUserId.Value));
         }
 
         var normalizedKeyword = EmptyToNull(keyword)?.ToUpperInvariant();
@@ -616,6 +624,29 @@ public class AwardWorkflowController : ControllerBase
         return Ok(applications.Select(ToAwardApplicationRecordDto).ToList());
     }
 
+    [HttpGet("award-applications/{awardApplicationId:int}")]
+    public async Task<IActionResult> GetAwardApplication(int clubId, int awardApplicationId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewAwardWorkflowAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var application = await AwardApplicationQuery()
+            .FirstOrDefaultAsync(a => a.ClubId == clubId && a.AwardApplicationId == awardApplicationId);
+        if (application is null) return NotFound(new { message = "评奖评优申请不存在。" });
+
+        var canMaintain = CanMaintainAwardWorkflow(access.Viewer!, access.Club!);
+        if (!CanViewAwardApplicationDetail(application, currentUserId.Value, canMaintain))
+        {
+            return StatusCode(403, new { message = "当前用户没有查看该评奖评优申请详情的权限。" });
+        }
+
+        return Ok(ToAwardApplicationRecordDto(application));
+    }
+
     [HttpPost("award-applications")]
     public async Task<IActionResult> CreateAwardApplication(
         int clubId,
@@ -643,15 +674,15 @@ public class AwardWorkflowController : ControllerBase
         var scheme = await _db.AwardSchemes
             .Include(s => s.Levels)
             .FirstOrDefaultAsync(s => s.ClubId == clubId && s.AwardSchemeId == req.AwardSchemeId);
-        if (scheme is null) return NotFound(new { message = "奖项配置不存在。" });
+        if (scheme is null) return NotFound(new { message = "当前社团不存在该奖项配置。" });
 
         var level = scheme.Levels.FirstOrDefault(l =>
             l.AwardLevelId == req.AwardLevelId &&
             l.LevelStatus == MemberActive);
         if (level is null) return NotFound(new { message = "奖项等级不存在或已停用。" });
 
-        if (!canMaintain && !IsAwardSchemeOpenForApplication(scheme))
-            return Conflict(new { message = "该奖项当前未开放申请。" });
+        if (!IsAwardSchemeAcceptingApplications(scheme))
+            return Conflict(new { message = "该奖项当前不在可申请状态或申请时间窗内。" });
 
         var member = await LoadCurrentClubMemberAsync(clubId, req.ApplicantUserId);
         if (member is null) return Conflict(new { message = "申请人不是本社团当前有效成员。" });
@@ -1610,6 +1641,23 @@ public class AwardWorkflowController : ControllerBase
     private static bool IsObjectStorageFailure(Exception exception) =>
         exception is AwardObjectStorageException;
 
+    private static bool CanViewAwardApplicationDetail(
+        AwardApplication application,
+        int currentUserId,
+        bool canMaintain)
+    {
+        if (canMaintain) return true;
+        if (application.ApplicantUserId == currentUserId ||
+            application.SubmitterUserId == currentUserId ||
+            application.RecommenderUserId == currentUserId)
+        {
+            return true;
+        }
+
+        return application.PublicStatus is AwardPublicizing or AwardPublicized ||
+               application.ApplicationStatus is AwardStatusPublicizing or "publicized" or AwardStatusArchived;
+    }
+
     private static bool IsSafeLegacyFileUrl(string value)
     {
         if (value.IndexOfAny(['\r', '\n']) >= 0) return false;
@@ -1695,9 +1743,9 @@ public class AwardWorkflowController : ControllerBase
         return null;
     }
 
-    private static bool IsAwardSchemeOpenForApplication(AwardScheme scheme)
+    private static bool IsAwardSchemeAcceptingApplications(AwardScheme scheme)
     {
-        if (scheme.SchemeStatus != AwardSchemeOpen) return false;
+        if (scheme.SchemeStatus is not (AwardSchemeOpen or AwardSchemeReviewing)) return false;
         var now = BusinessNow();
         return (scheme.ApplicationStartAt is null || scheme.ApplicationStartAt <= now) &&
                (scheme.ApplicationEndAt is null || scheme.ApplicationEndAt >= now);

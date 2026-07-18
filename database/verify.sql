@@ -166,6 +166,19 @@ WHERE constraint_name IN (
 )
 ORDER BY table_name, constraint_type, constraint_name;
 
+SELECT constraint_name,
+       table_name,
+       LISTAGG(column_name, ',') WITHIN GROUP (ORDER BY position) AS constraint_columns
+FROM user_cons_columns
+WHERE constraint_name IN (
+  'FK_AWARD_APPLICATIONS_SCHEME',
+  'FK_AWARD_APPLICATIONS_LEVEL',
+  'FK_AWARD_PUBLICITY_ITEMS_APP',
+  'FK_AWARD_PUBLICITY_ITEMS_BATCH'
+)
+GROUP BY constraint_name, table_name
+ORDER BY constraint_name;
+
 SELECT index_name, table_name, uniqueness
 FROM user_indexes
 WHERE index_name IN (
@@ -301,6 +314,34 @@ WHERE index_name IN (
 ORDER BY index_name;
 
 -- The following award workflow checks should return 0 rows.
+WITH expected_constraint_columns AS (
+  SELECT 'FK_AWARD_APPLICATIONS_SCHEME' AS constraint_name,
+         'CLUB_ID,AWARD_SCHEME_ID' AS expected_columns
+  FROM dual
+  UNION ALL
+  SELECT 'FK_AWARD_APPLICATIONS_LEVEL',
+         'AWARD_SCHEME_ID,AWARD_LEVEL_ID'
+  FROM dual
+),
+actual_constraint_columns AS (
+  SELECT constraint_name,
+         LISTAGG(column_name, ',') WITHIN GROUP (ORDER BY position) AS actual_columns
+  FROM user_cons_columns
+  WHERE constraint_name IN (
+    'FK_AWARD_APPLICATIONS_SCHEME',
+    'FK_AWARD_APPLICATIONS_LEVEL'
+  )
+  GROUP BY constraint_name
+)
+SELECT expected.constraint_name,
+       expected.expected_columns,
+       actual.actual_columns
+FROM expected_constraint_columns expected
+LEFT JOIN actual_constraint_columns actual
+  ON actual.constraint_name = expected.constraint_name
+WHERE actual.actual_columns IS NULL
+   OR actual.actual_columns <> expected.expected_columns;
+
 SELECT award_scheme_id, level_name, COUNT(*) AS duplicate_count
 FROM award_levels
 GROUP BY award_scheme_id, level_name

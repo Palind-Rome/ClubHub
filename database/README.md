@@ -41,6 +41,10 @@
 6. `20260717_add_award_rule_documents.sql`：新增 `AWARD_RULE_DOCUMENTS`，
    用于维护校级通用细则和社团细则。系统管理员可发布校级通用细则，社团负责人
    或指导老师可维护本社团细则，表中保留社团和发布人外键。
+7. `20260718_harden_award_application_constraints.sql`：硬化已有库里的
+   `AWARD_APPLICATIONS` 外键。脚本会先检查是否存在跨社团或缺失奖项/等级的
+   申请数据，若有脏数据会停止；通过检查后，会把旧的同名单列外键替换为
+   `(club_id, award_scheme_id)` 和 `(award_scheme_id, award_level_id)` 复合外键。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码和回填结果均已生效。
 
@@ -88,7 +92,8 @@
 7. 执行 `migrations/20260714_add_club_departments_groups.sql`。若脚本提示存在没有部门的小组历史数据，先补齐或清理 `CLUB_MEMBERS.department_name` 后再重跑。
 8. 执行 `migrations/20260717_add_award_application_workflow.sql`，新增评奖评优申请审批和公示归档相关结构。
 9. 执行 `migrations/20260717_add_award_rule_documents.sql`，新增评奖评优细则维护相关结构。
-10. 执行 `verify.sql`；36 张核心表计数应为 36，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评定细则范围/外键和考核奖项分来源错挂查询均应返回 0 行。
+10. 执行 `migrations/20260718_harden_award_application_constraints.sql`，确认已有库里的评奖评优申请外键是复合外键，不允许申请跨社团挂到别的社团奖项。
+11. 执行 `verify.sql`；36 张核心表计数应为 36，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评奖评优申请复合外键列定义、评定细则范围/外键和考核奖项分来源错挂查询均应返回 0 行。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 

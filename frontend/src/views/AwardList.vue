@@ -292,6 +292,7 @@ const ruleDetailVisible = ref(false);
 const applicationDialogVisible = ref(false);
 const reviewDialogVisible = ref(false);
 const publicityDialogVisible = ref(false);
+const publicityDetailVisible = ref(false);
 const detailVisible = ref(false);
 const schemeFormRef = ref<FormInstance>();
 const ruleFormRef = ref<FormInstance>();
@@ -302,6 +303,7 @@ const schemeTarget = ref<AwardSchemeRecord | null>(null);
 const ruleTarget = ref<AwardRuleDocumentRecord | null>(null);
 const ruleDetailTarget = ref<AwardRuleDocumentRecord | null>(null);
 const applicationTarget = ref<AwardApplicationRecord | null>(null);
+const publicityDetailTarget = ref<AwardPublicityBatchRecord | null>(null);
 const detailTarget = ref<AwardApplicationRecord | null>(null);
 let stopSessionListener: (() => void) | null = null;
 let loadRequestId = 0;
@@ -466,9 +468,20 @@ const applicantOptions = computed(() =>
     ? currentMembers.value.filter((member) => canMaintainMember(member))
     : currentMembers.value.filter((member) => member.userId === currentUserId.value),
 );
-const openSchemes = computed(() =>
-  schemes.value.filter((scheme) => scheme.schemeStatus === "open" || canMaintainSelectedClub.value),
+const creatableAwardSchemes = computed(() =>
+  schemes.value.filter(
+    (scheme) =>
+      scheme.clubId === selectedClubId.value &&
+      isAwardSchemeAvailableForApplication(scheme) &&
+      scheme.levels.some((level) => level.levelStatus === "active"),
+  ),
 );
+const applicationSchemeOptions = computed(() => {
+  if (!applicationTarget.value) return creatableAwardSchemes.value;
+  return schemes.value.filter(
+    (scheme) => scheme.awardSchemeId === applicationTarget.value?.awardSchemeId,
+  );
+});
 const selectedApplicationScheme = computed(() =>
   schemes.value.find((scheme) => scheme.awardSchemeId === applicationForm.awardSchemeId),
 );
@@ -624,18 +637,23 @@ async function loadMembers() {
   }
 }
 
+function clearAwardWorkspaceData() {
+  schemes.value = [];
+  ruleDocuments.value = [];
+  applications.value = [];
+  publicityBatches.value = [];
+}
+
 async function loadAwardWorkspace() {
   const requestId = ++loadRequestId;
   const clubId = selectedClubId.value;
   if (!currentUserId.value || !clubId) {
-    schemes.value = [];
-    ruleDocuments.value = [];
-    applications.value = [];
-    publicityBatches.value = [];
+    clearAwardWorkspaceData();
     return;
   }
 
   loading.value = true;
+  clearAwardWorkspaceData();
   try {
     const [schemeData, ruleDocumentData, applicationData, publicityData] = await Promise.all([
       requestJson<AwardSchemeRecord[]>(`/api/clubs/${clubId}/award-schemes`),
@@ -650,10 +668,7 @@ async function loadAwardWorkspace() {
     publicityBatches.value = publicityData;
   } catch (error) {
     if (requestId === loadRequestId) {
-      schemes.value = [];
-      ruleDocuments.value = [];
-      applications.value = [];
-      publicityBatches.value = [];
+      clearAwardWorkspaceData();
       ElMessage.error(error instanceof Error ? error.message : "评奖评优流程加载失败");
     }
   } finally {
@@ -961,7 +976,7 @@ async function publishRuleDocument(row: AwardRuleDocumentRecord) {
 }
 
 function resetApplicationForm() {
-  const firstScheme = openSchemes.value[0];
+  const firstScheme = creatableAwardSchemes.value[0];
   const firstLevel = firstScheme?.levels.find((level) => level.levelStatus === "active");
   applicationForm.awardSchemeId = firstScheme?.awardSchemeId;
   applicationForm.awardLevelId = firstLevel?.awardLevelId;
@@ -978,8 +993,8 @@ function resetApplicationForm() {
 
 function openCreateApplicationDialog() {
   if (!selectedClubId.value) return;
-  if (openSchemes.value.length === 0) {
-    ElMessage.warning("当前社团暂无可申请的奖项项目。");
+  if (creatableAwardSchemes.value.length === 0) {
+    ElMessage.warning("当前社团暂无在申请期内的奖项项目。");
     return;
   }
   applicationTarget.value = null;
@@ -1299,6 +1314,39 @@ function openDetail(row: AwardApplicationRecord) {
   detailVisible.value = true;
 }
 
+function openPublicityBatchDetail(row: AwardPublicityBatchRecord) {
+  publicityDetailTarget.value = row;
+  publicityDetailVisible.value = true;
+}
+
+function publicityItemResultText(result: string) {
+  if (result === "normal") return "拟获奖";
+  if (result === "adjusted") return "调整后获奖";
+  if (result === "cancelled") return "取消获奖";
+  return result || "-";
+}
+
+async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
+  const cachedApplication = applications.value.find(
+    (application) => application.awardApplicationId === item.awardApplicationId,
+  );
+  if (cachedApplication) {
+    openDetail(cachedApplication);
+    return;
+  }
+  if (!selectedClubId.value) return;
+
+  try {
+    const application = await requestJson<AwardApplicationRecord>(
+      `/api/clubs/${selectedClubId.value}/award-applications/${item.awardApplicationId}`,
+    );
+    detailTarget.value = application;
+    detailVisible.value = true;
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "申请详情加载失败");
+  }
+}
+
 function openRuleDetail(row: AwardRuleDocumentRecord) {
   ruleDetailTarget.value = row;
   ruleDetailVisible.value = true;
@@ -1493,6 +1541,16 @@ function toDateTimeLocal(value: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
+function isAwardSchemeAvailableForApplication(scheme: AwardSchemeRecord) {
+  if (!["open", "reviewing"].includes(scheme.schemeStatus)) return false;
+  const now = Date.now();
+  const startAt = scheme.applicationStartAt ? new Date(scheme.applicationStartAt).getTime() : null;
+  const endAt = scheme.applicationEndAt ? new Date(scheme.applicationEndAt).getTime() : null;
+  if (startAt !== null && (Number.isNaN(startAt) || startAt > now)) return false;
+  if (endAt !== null && (Number.isNaN(endAt) || endAt < now)) return false;
+  return true;
+}
+
 function fromDateTimeLocal(value: string) {
   return value ? new Date(value).toISOString() : null;
 }
@@ -1510,7 +1568,27 @@ async function confirmAction(message: string) {
   });
 }
 
+function closeClubScopedAwardDialogs() {
+  schemeDialogVisible.value = false;
+  ruleDialogVisible.value = false;
+  ruleDetailVisible.value = false;
+  applicationDialogVisible.value = false;
+  reviewDialogVisible.value = false;
+  publicityDialogVisible.value = false;
+  publicityDetailVisible.value = false;
+  detailVisible.value = false;
+  schemeTarget.value = null;
+  ruleTarget.value = null;
+  ruleDetailTarget.value = null;
+  applicationTarget.value = null;
+  publicityDetailTarget.value = null;
+  detailTarget.value = null;
+  ruleFiles.value = [];
+  applicationFiles.value = [];
+}
+
 watch(selectedClubId, () => {
+  closeClubScopedAwardDialogs();
   void Promise.all([loadMembers(), loadAwardWorkspace()]);
 });
 
@@ -1920,8 +1998,9 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
+              <el-button :icon="View" @click="openPublicityBatchDetail(row)">查看名单</el-button>
               <el-button
                 v-if="canMaintainSelectedClub && row.publicityStatus === 'draft'"
                 type="warning"
@@ -1936,17 +2015,6 @@ onUnmounted(() => {
               >
                 归档
               </el-button>
-            </template>
-          </el-table-column>
-          <el-table-column type="expand">
-            <template #default="{ row }">
-              <div class="publicity-items">
-                <div v-for="item in row.items" :key="item.publicityItemId" class="publicity-item">
-                  <strong>{{ item.applicantName }}</strong>
-                  <span>{{ item.awardName }} / {{ item.levelName }}</span>
-                  <el-tag effect="plain">{{ item.finalAwardScore ?? 0 }} 分</el-tag>
-                </div>
-              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -2238,9 +2306,13 @@ onUnmounted(() => {
         label-width="110px"
       >
         <el-form-item label="奖项项目" prop="awardSchemeId">
-          <el-select v-model="applicationForm.awardSchemeId" filterable>
+          <el-select
+            v-model="applicationForm.awardSchemeId"
+            :disabled="Boolean(applicationTarget)"
+            filterable
+          >
             <el-option
-              v-for="scheme in openSchemes"
+              v-for="scheme in applicationSchemeOptions"
               :key="scheme.awardSchemeId"
               :label="`${scheme.awardName}（${scheme.academicYear}${scheme.termName || ''}）`"
               :value="scheme.awardSchemeId"
@@ -2394,6 +2466,62 @@ onUnmounted(() => {
       <template #footer>
         <el-button @click="publicityDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="submitPublicity">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="publicityDetailVisible" title="公示名单详情" width="860px">
+      <template v-if="publicityDetailTarget">
+        <div class="publicity-detail-head">
+          <div>
+            <h3>{{ publicityDetailTarget.title }}</h3>
+            <div class="muted">{{ publicityDetailTarget.description || "无备注" }}</div>
+          </div>
+          <el-tag :type="publicityStatusType(publicityDetailTarget.publicityStatus)" effect="plain">
+            {{ publicityDetailTarget.publicityStatusText }}
+          </el-tag>
+        </div>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="所属社团">
+            {{ publicityDetailTarget.clubName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发布人">
+            {{ publicityDetailTarget.publisherName || "-" }}
+          </el-descriptions-item>
+          <el-descriptions-item label="公示时间" :span="2">
+            {{ formatDate(publicityDetailTarget.publicityStartAt) }}
+            至 {{ formatDate(publicityDetailTarget.publicityEndAt) }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-table
+          class="publicity-detail-table"
+          :data="publicityDetailTarget.items"
+          border
+          empty-text="暂无公示名单"
+        >
+          <el-table-column label="申请人" min-width="120">
+            <template #default="{ row }">
+              <strong>{{ row.applicantName }}</strong>
+            </template>
+          </el-table-column>
+          <el-table-column label="奖项" min-width="220">
+            <template #default="{ row }">{{ row.awardName }} / {{ row.levelName }}</template>
+          </el-table-column>
+          <el-table-column label="奖项分" width="100">
+            <template #default="{ row }">{{ row.finalAwardScore ?? 0 }} 分</template>
+          </el-table-column>
+          <el-table-column label="公示结果" width="120">
+            <template #default="{ row }">
+              <el-tag effect="plain">{{ publicityItemResultText(row.publicityResult) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="140" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" :icon="View" @click="openPublicityItemDetail(row)">
+                查看申请
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </template>
     </el-dialog>
 
@@ -2645,6 +2773,23 @@ onUnmounted(() => {
   padding: 14px 16px;
 }
 
+.publicity-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.publicity-detail-head h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.publicity-detail-table {
+  margin-top: 12px;
+}
+
 .publicity-pane {
   display: flex;
   flex-direction: column;
@@ -2654,19 +2799,6 @@ onUnmounted(() => {
 .table-actions {
   justify-content: flex-end;
   padding: 4px;
-}
-
-.publicity-items {
-  display: grid;
-  gap: 8px;
-  padding: 10px 24px;
-}
-
-.publicity-item {
-  display: grid;
-  grid-template-columns: 160px 1fr 80px;
-  align-items: center;
-  gap: 12px;
 }
 
 .form-grid {

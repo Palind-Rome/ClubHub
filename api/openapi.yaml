@@ -1463,7 +1463,7 @@ paths:
   /api/clubs/{clubId}/award-schemes:
     get:
       summary: 查询社团评奖评优奖项配置
-      description: 面向社团评奖评优流程的奖项开放列表；普通成员只能查看已开放或已归档奖项，负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+      description: 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
       operationId: getClubAwardSchemes
       parameters:
         - name: clubId
@@ -1643,7 +1643,7 @@ paths:
 
     post:
       summary: 创建评奖评优申请或负责人推荐
-      description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐，提交后进入负责人初审。
+      description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
       operationId: createClubAwardApplication
       parameters:
         - name: clubId
@@ -1671,9 +1671,36 @@ paths:
         "404":
           description: 当前用户、社团、奖项配置或申请成员不存在
         "409":
-          description: 奖项未开放、成员不在社团内或该成员已有同奖项申请
+          description: 奖项不属于当前社团、不在可申请状态或申请时间窗内、成员不在社团内或该成员已有同奖项申请
 
   /api/clubs/{clubId}/award-applications/{awardApplicationId}:
+    get:
+      summary: 获取评奖评优申请详情
+      description: 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+      operationId: getClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评奖评优申请详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户没有查看该申请详情的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+
     patch:
       summary: 更新评奖评优申请草稿
       description: 申请人可修改草稿或退回状态的申请材料；负责人推荐记录可由推荐人或更高权限维护人修改。
@@ -7049,7 +7076,7 @@ components:
 
     CreateAwardApplicationRequest:
       type: object
-      description: 创建评奖评优申请或负责人推荐。
+      description: 创建评奖评优申请或负责人推荐；awardSchemeId 必须属于当前路径社团，且对应奖项处于开放申请或审核中，并仍在申请时间窗内。
       properties:
         awardSchemeId:
           type: integer
