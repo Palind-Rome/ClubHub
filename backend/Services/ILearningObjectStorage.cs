@@ -21,8 +21,21 @@ public interface ILearningObjectStorage
         string storageReference,
         CancellationToken cancellationToken);
 
+    Task<bool> ExistsAsync(
+        string storageReference,
+        CancellationToken cancellationToken);
+
     Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
+        StoredObjectRange? range,
+        CancellationToken cancellationToken);
+
+    Task SaveAsync(
+        string storageReference,
+        Stream content,
+        long contentLength,
+        string contentType,
+        string contentDisposition,
         CancellationToken cancellationToken);
 
     Task RemoveAsync(string storageReference, CancellationToken cancellationToken);
@@ -36,6 +49,8 @@ public sealed record StoredObjectMetadata(
     DateTimeOffset? LastModified);
 
 public sealed record StoredObjectDownload(Stream Content);
+
+public sealed record StoredObjectRange(long Start, long End);
 
 public sealed class LearningObjectStorageException : Exception
 {

@@ -47,6 +47,8 @@ public class LearningController : ControllerBase
     private readonly AuthService _authService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILearningObjectStorage _objectStorage;
+    private readonly LearningPreviewService _previewService;
+    private readonly AuthTokenService _authTokenService;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
@@ -54,12 +56,16 @@ public class LearningController : ControllerBase
         AuthService authService,
         IWebHostEnvironment environment,
         ILearningObjectStorage objectStorage,
+        LearningPreviewService previewService,
+        AuthTokenService authTokenService,
         ILogger<LearningController> logger)
     {
         _db = db;
         _authService = authService;
         _environment = environment;
         _objectStorage = objectStorage;
+        _previewService = previewService;
+        _authTokenService = authTokenService;
         _logger = logger;
     }
 
@@ -456,6 +462,116 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
+    /// 校验资源可见范围、准备 Office 转换副本，并建立短时在线预览会话。
+    /// </summary>
+    [HttpPost("items/{itemId:int}/preview-session")]
+    public async Task<IActionResult> CreatePreviewSession(int itemId)
+    {
+        var access = await GetPreviewAccessAsync(itemId);
+        if (access.Error is not null) return access.Error;
+
+        try
+        {
+            var preview = await _previewService.PrepareAsync(
+                access.Item!.ItemId,
+                access.Item.ClubId,
+                access.Item.FileUrl,
+                HttpContext.RequestAborted);
+            var previewToken = _authTokenService.CreatePreviewToken(access.UserId, itemId);
+            Response.Cookies.Append(
+                AuthTokenService.PreviewCookieName,
+                previewToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = Request.IsHttps,
+                    SameSite = SameSiteMode.Strict,
+                    Path = $"/api/learning/items/{itemId}/preview",
+                    MaxAge = _authTokenService.PreviewSessionLifetime,
+                    IsEssential = true
+                });
+            Response.Headers["X-ClubHub-Preview-Kind"] = PreviewKindValue(preview.Kind);
+            Response.Headers["X-ClubHub-Preview-Converted"] =
+                preview.IsConverted ? "true" : "false";
+            Response.Headers.CacheControl = "no-store";
+            return NoContent();
+        }
+        catch (LearningPreviewException exception)
+        {
+            return PreviewFailure(exception);
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            _logger.LogError(exception, "资源 {ItemId} 无法准备在线预览。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "无法从私有 OSS 读取或保存预览副本，请稍后重试。");
+        }
+    }
+
+    /// <summary>
+    /// 使用短时预览会话重新校验权限后，以 inline 和 Range 语义返回预览内容。
+    /// </summary>
+    [HttpGet("items/{itemId:int}/preview")]
+    public async Task<IActionResult> GetPreview(int itemId)
+    {
+        var access = await GetPreviewAccessAsync(itemId);
+        if (access.Error is not null) return access.Error;
+
+        PreparedLearningPreview? preview = null;
+        try
+        {
+            preview = await _previewService.PrepareAsync(
+                access.Item!.ItemId,
+                access.Item.ClubId,
+                access.Item.FileUrl,
+                HttpContext.RequestAborted);
+            LearningPreviewHttpPolicy.Apply(
+                Response,
+                preview.ContentType,
+                BuildPreviewFileName(access.Item.Title, preview));
+
+            var content = await _previewService.OpenAsync(
+                preview,
+                Request.Headers.Range.ToString(),
+                HttpContext.RequestAborted);
+            if (content.PhysicalPath is not null)
+            {
+                return new PhysicalFileResult(content.PhysicalPath, preview.ContentType)
+                {
+                    EnableRangeProcessing = true
+                };
+            }
+
+            if (content.Range is not null)
+            {
+                Response.StatusCode = StatusCodes.Status206PartialContent;
+                Response.Headers.ContentRange =
+                    $"bytes {content.Range.Start}-{content.Range.End}/{content.Range.TotalLength}";
+            }
+            Response.ContentLength = content.ContentLength;
+            return File(content.Content!, preview.ContentType);
+        }
+        catch (LearningPreviewException exception)
+        {
+            if (exception.Failure == LearningPreviewFailure.InvalidRange && preview is not null)
+            {
+                Response.Headers.ContentRange = $"bytes */{preview.Length}";
+            }
+            return PreviewFailure(exception);
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            _logger.LogError(exception, "资源 {ItemId} 无法返回在线预览内容。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "无法从私有 OSS 读取预览内容，请稍后重试。");
+        }
+    }
+
+    /// <summary>
     /// 校验资源访问权限后返回历史本地文件，或从私有 OSS 读取对象并流式传输。
     /// </summary>
     [HttpGet("items/{itemId:int}/file")]
@@ -498,6 +614,7 @@ public class LearningController : ControllerBase
                     HttpContext.RequestAborted);
                 var storedObject = await _objectStorage.OpenReadAsync(
                     item.FileUrl!,
+                    null,
                     HttpContext.RequestAborted);
                 if (metadata.ContentLength is > 0)
                 {
@@ -583,6 +700,24 @@ public class LearningController : ControllerBase
         _db.LearningRecords.RemoveRange(records);
         _db.LearningItems.Remove(item);
         await _db.SaveChangesAsync();
+
+        try
+        {
+            await _previewService.RemovePreviewAsync(
+                itemId,
+                clubId,
+                item.FileUrl,
+                HttpContext.RequestAborted);
+        }
+        catch (Exception exception) when (IsObjectStorageFailure(exception))
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(exception, "资源 {ItemId} 的预览副本无法从对象存储删除。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源存储暂不可用",
+                detail: "无法清理资源预览副本，数据库记录已保留，请稍后重试。");
+        }
 
         if (storageReference is not null)
         {
@@ -1535,6 +1670,120 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
+    /// 在线预览始终重新校验登录用户、资源可见范围和非公开状态的管理权限。
+    /// </summary>
+    private async Task<PreviewAccessResult> GetPreviewAccessAsync(int itemId)
+    {
+        if (itemId <= 0)
+        {
+            return new PreviewAccessResult(
+                null,
+                0,
+                BadRequest("资源 ID 必须大于 0。"));
+        }
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+        {
+            return new PreviewAccessResult(
+                null,
+                0,
+                Unauthorized("在线预览会话已失效，请重新打开预览。"));
+        }
+
+        var item = await LoadLearningItemForAccessAsync(itemId);
+        if (item is null)
+        {
+            return new PreviewAccessResult(null, currentUserId.Value, NotFound("学习资源不存在。"));
+        }
+        if (!LearningWorkflow.IsSupportedResourceType(item.ItemType))
+        {
+            return new PreviewAccessResult(
+                null,
+                currentUserId.Value,
+                BadRequest("培训课程没有可在线预览的资源文件。"));
+        }
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null)
+        {
+            return new PreviewAccessResult(null, currentUserId.Value, NotFound("当前用户不存在。"));
+        }
+        if (!UsersController.IsActive(user.AccountStatus))
+        {
+            return new PreviewAccessResult(
+                null,
+                currentUserId.Value,
+                StatusCode(StatusCodes.Status403Forbidden, "当前用户账号已停用。"));
+        }
+
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+        var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
+        var canReview = HasPermission(permissionRoles, ResourceReviewPermission, item.ClubId);
+        var canDelete = HasPermission(permissionRoles, ResourceDeletePermission, item.ClubId);
+        var isVisible = CanViewLearningItem(user, permissionRoles, item, record, canManage);
+        if (!LearningPreviewAccessPolicy.CanPreview(
+                isVisible,
+                LearningWorkflow.IsPublished(item),
+                canManage,
+                canReview,
+                canDelete))
+        {
+            return new PreviewAccessResult(
+                null,
+                currentUserId.Value,
+                StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    "当前用户不在该资源的可见范围内，或没有预览非公开资源的管理权限。"));
+        }
+
+        return new PreviewAccessResult(item, currentUserId.Value, null);
+    }
+
+    private IActionResult PreviewFailure(LearningPreviewException exception)
+    {
+        var statusCode = exception.Failure switch
+        {
+            LearningPreviewFailure.Unsupported => StatusCodes.Status415UnsupportedMediaType,
+            LearningPreviewFailure.InvalidRange => StatusCodes.Status416RangeNotSatisfiable,
+            LearningPreviewFailure.ConversionFailed => StatusCodes.Status422UnprocessableEntity,
+            _ => StatusCodes.Status404NotFound
+        };
+        _logger.LogWarning(
+            exception,
+            "学习资源在线预览失败，类型 {Failure}。",
+            exception.Failure);
+        return StatusCode(statusCode, exception.Message);
+    }
+
+    private static string PreviewKindValue(LearningPreviewKind kind) => kind switch
+    {
+        LearningPreviewKind.Image => "image",
+        LearningPreviewKind.Video => "video",
+        _ => "pdf"
+    };
+
+    private static string BuildPreviewFileName(
+        string title,
+        PreparedLearningPreview preview)
+    {
+        var extension = preview.ContentType switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png" => ".png",
+            "image/gif" => ".gif",
+            "image/webp" => ".webp",
+            "video/mp4" => ".mp4",
+            "video/webm" => ".webm",
+            _ => ".pdf"
+        };
+        return title.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+            ? title
+            : $"{title}{extension}";
+    }
+
+    /// <summary>
     /// 返回当前用户不能学习或下载资源的原因；允许访问时返回空。
     /// </summary>
     private static EnrollmentDecision? GetLearningAccessDecision(
@@ -2196,4 +2445,9 @@ public class LearningController : ControllerBase
         (value ?? string.Empty).Trim().ToLowerInvariant();
 
     private sealed record EnrollmentDecision(int StatusCode, string Message);
+
+    private sealed record PreviewAccessResult(
+        DbLearningItem? Item,
+        int UserId,
+        IActionResult? Error);
 }
