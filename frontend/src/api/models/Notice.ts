@@ -87,7 +87,7 @@ export interface Notice {
    */
   targetName?: string | null;
   /**
-   * 发布时间。
+   * 已发布通知的发布时间；草稿状态下表示最近保存时间。
    * @type {Date}
    * @memberof Notice
    */

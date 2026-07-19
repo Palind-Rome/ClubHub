@@ -1,15 +1,18 @@
+using System.Globalization;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiCreateNoticeRequest = Org.OpenAPITools.Models.CreateNoticeRequest;
-using ApiMarkNoticeReadRequest = Org.OpenAPITools.Models.MarkNoticeReadRequest;
 using ApiNotice = Org.OpenAPITools.Models.Notice;
 using ApiNoticeReadResult = Org.OpenAPITools.Models.NoticeReadResult;
 
 namespace ClubHub.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class NoticesController : ControllerBase
 {
@@ -20,6 +23,7 @@ public class NoticesController : ControllerBase
     private const string StatusDraft = "draft";
     private const string StatusPublished = "published";
     private const string StatusExpired = "expired";
+    private const string StatusDeleting = "deleting";
     private const string MemberActive = "active";
 
     private static readonly HashSet<string> NoticePublisherRoleCodes = new(StringComparer.OrdinalIgnoreCase)
@@ -37,15 +41,15 @@ public class NoticesController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int viewerUserId,
         [FromQuery] string? noticeStatus,
         [FromQuery] string? targetType,
         [FromQuery] int? clubId,
         [FromQuery] bool unreadOnly = false)
     {
-        if (viewerUserId <= 0) return BadRequest(new { message = "请提供当前查看用户。" });
+        var viewerUserId = User.GetUserId();
+        if (viewerUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(viewerUserId);
+        var viewer = await LoadUserAsync(viewerUserId.Value);
         if (viewer is null) return NotFound(new { message = "当前查看用户不存在。" });
         if (!UsersController.IsActive(viewer.AccountStatus))
         {
@@ -104,10 +108,13 @@ public class NoticesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ApiCreateNoticeRequest req)
     {
+        var publisherUserId = User.GetUserId();
+        if (publisherUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
         var validationError = ValidateCreateRequest(req);
         if (validationError is not null) return BadRequest(new { message = validationError });
 
-        var publisher = await LoadUserAsync(req.CurrentUserId);
+        var publisher = await LoadUserAsync(publisherUserId.Value);
         if (publisher is null) return NotFound(new { message = "发布人不存在。" });
         if (!UsersController.IsActive(publisher.AccountStatus))
         {
@@ -147,15 +154,163 @@ public class NoticesController : ControllerBase
 
         var created = await NoticeQuery().FirstAsync(n => n.NoticeId == notice.NoticeId);
         var context = await NoticeListContext.LoadAsync(_db, [created]);
-        return CreatedAtAction(nameof(GetAll), new { viewerUserId = publisher.UserId }, ToApiNotice(created, publisher.UserId, context));
+        return CreatedAtAction(nameof(GetAll), ToApiNotice(created, publisher.UserId, context));
+    }
+
+    [HttpPatch("{noticeId:int}")]
+    public async Task<IActionResult> UpdateDraft(
+        int noticeId,
+        [FromHeader(Name = "If-Unmodified-Since")] string? ifUnmodifiedSince,
+        [FromBody] ApiCreateNoticeRequest req)
+    {
+        var operatorUserId = User.GetUserId();
+        if (operatorUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        if (!TryParseDraftVersion(ifUnmodifiedSince, out var expectedVersion))
+        {
+            return BadRequest(new { message = "缺少有效的草稿版本，请刷新后重试。" });
+        }
+
+        var validationError = ValidateCreateRequest(req);
+        if (validationError is not null) return BadRequest(new { message = validationError });
+
+        var operatorUser = await LoadUserAsync(operatorUserId.Value);
+        if (operatorUser is null) return NotFound(new { message = "当前操作用户不存在。" });
+        if (!UsersController.IsActive(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, new { message = "当前用户账号不可用，不能维护通知草稿。" });
+        }
+
+        var notice = await NoticeQuery(asNoTracking: true).FirstOrDefaultAsync(n => n.NoticeId == noticeId);
+        if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
+        if (EffectiveStatus(notice, DateTime.UtcNow) != StatusDraft)
+        {
+            return Conflict(new { message = "只有草稿通知可以编辑或发布。" });
+        }
+        if (notice.PublishAt.Ticks != expectedVersion.Ticks)
+        {
+            return Conflict(new { message = "草稿已被其他操作修改，请刷新后重试。" });
+        }
+
+        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        {
+            return StatusCode(403, new { message = "当前用户没有维护该通知草稿的权限。" });
+        }
+
+        var targetType = NormalizeTargetType(req.TargetType)!;
+        var status = NormalizePublishStatus(req.NoticeStatus)!;
+        var requestTime = DateTime.UtcNow;
+        if (req.ExpireAt is not null && req.ExpireAt.Value <= requestTime)
+        {
+            return BadRequest(new { message = "过期时间必须晚于当前时间。" });
+        }
+
+        var target = await ResolveCreateTargetAsync(req, operatorUser, targetType);
+        if (target.Result is not null) return target.Result;
+        var publishAt = status == StatusPublished
+            ? requestTime
+            : NextDraftVersion(expectedVersion, requestTime);
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var affectedRows = await _db.Notices
+            .Where(n =>
+                n.NoticeId == noticeId &&
+                n.NoticeStatus == StatusDraft &&
+                n.PublishAt == expectedVersion)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(n => n.ClubId, target.ClubId)
+                .SetProperty(n => n.NoticeType, req.NoticeType.Trim())
+                .SetProperty(n => n.Title, req.Title.Trim())
+                .SetProperty(n => n.Content, req.Content.Trim())
+                .SetProperty(n => n.TargetType, targetType)
+                .SetProperty(n => n.TargetId, target.TargetId)
+                .SetProperty(n => n.ExpireAt, req.ExpireAt)
+                .SetProperty(n => n.NoticeStatus, status)
+                // 复用现有时间字段作为草稿版本戳；发布时同时记录正式发布时间。
+                .SetProperty(n => n.PublishAt, publishAt));
+        if (affectedRows == 0)
+        {
+            return Conflict(new { message = "草稿已被其他操作修改、发布或删除，请刷新后重试。" });
+        }
+
+        // 草稿不应产生阅读记录；同时清理旧版前端误为草稿写入的记录。
+        var staleReads = await _db.NoticeReads.Where(r => r.NoticeId == noticeId).ToListAsync();
+        if (staleReads.Count > 0)
+        {
+            _db.NoticeReads.RemoveRange(staleReads);
+            await _db.SaveChangesAsync();
+        }
+        await transaction.CommitAsync();
+
+        var updated = await NoticeQuery().FirstAsync(n => n.NoticeId == noticeId);
+        var context = await NoticeListContext.LoadAsync(_db, [updated]);
+        return Ok(ToApiNotice(updated, operatorUser.UserId, context));
+    }
+
+    [HttpDelete("{noticeId:int}")]
+    public async Task<IActionResult> DeleteDraft(
+        int noticeId,
+        [FromHeader(Name = "If-Unmodified-Since")] string? ifUnmodifiedSince)
+    {
+        var operatorUserId = User.GetUserId();
+        if (operatorUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+        if (!TryParseDraftVersion(ifUnmodifiedSince, out var expectedVersion))
+        {
+            return BadRequest(new { message = "缺少有效的草稿版本，请刷新后重试。" });
+        }
+
+        var operatorUser = await LoadUserAsync(operatorUserId.Value);
+        if (operatorUser is null) return NotFound(new { message = "当前操作用户不存在。" });
+        if (!UsersController.IsActive(operatorUser.AccountStatus))
+        {
+            return StatusCode(403, new { message = "当前用户账号不可用，不能删除通知草稿。" });
+        }
+
+        var notice = await NoticeQuery(asNoTracking: true).FirstOrDefaultAsync(n => n.NoticeId == noticeId);
+        if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
+        if (EffectiveStatus(notice, DateTime.UtcNow) != StatusDraft)
+        {
+            return Conflict(new { message = "只有草稿通知可以删除。" });
+        }
+        if (notice.PublishAt.Ticks != expectedVersion.Ticks)
+        {
+            return Conflict(new { message = "草稿已被其他操作修改，请刷新后重试。" });
+        }
+
+        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        {
+            return StatusCode(403, new { message = "当前用户没有删除该通知草稿的权限。" });
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var claimedRows = await _db.Notices
+            .Where(n =>
+                n.NoticeId == noticeId &&
+                n.NoticeStatus == StatusDraft &&
+                n.PublishAt == expectedVersion)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(n => n.NoticeStatus, StatusDeleting));
+        if (claimedRows == 0)
+        {
+            return Conflict(new { message = "草稿已被其他操作修改、发布或删除，请刷新后重试。" });
+        }
+
+        var staleReads = await _db.NoticeReads.Where(r => r.NoticeId == noticeId).ToListAsync();
+        if (staleReads.Count > 0) _db.NoticeReads.RemoveRange(staleReads);
+
+        var claimedNotice = await _db.Notices.FirstAsync(n =>
+            n.NoticeId == noticeId && n.NoticeStatus == StatusDeleting);
+        _db.Notices.Remove(claimedNotice);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return NoContent();
     }
 
     [HttpPost("{noticeId:int}/reads")]
-    public async Task<IActionResult> MarkRead(int noticeId, [FromBody] ApiMarkNoticeReadRequest req)
+    public async Task<IActionResult> MarkRead(int noticeId)
     {
-        if (req.CurrentUserId <= 0) return BadRequest(new { message = "请提供当前阅读用户。" });
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var user = await LoadUserAsync(req.CurrentUserId);
+        var user = await LoadUserAsync(userId.Value);
         if (user is null) return NotFound(new { message = "当前阅读用户不存在。" });
         if (!UsersController.IsActive(user.AccountStatus))
         {
@@ -166,6 +321,10 @@ public class NoticesController : ControllerBase
         if (notice is null) return NotFound(new { message = "通知不存在。" });
 
         var effectiveStatus = EffectiveStatus(notice, DateTime.UtcNow);
+        if (effectiveStatus == StatusDraft)
+        {
+            return Conflict(new { message = "通知草稿尚未发布，不能标记已读。" });
+        }
         var context = await NoticeListContext.LoadAsync(_db, [notice]);
         if (!CanViewNotice(user, notice, effectiveStatus, context))
         {
@@ -187,32 +346,45 @@ public class NoticesController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var nextId = (await _db.NoticeReads.MaxAsync(r => (int?)r.ReadId) ?? 0) + 1;
         var read = new NoticeRead
         {
-            ReadId = nextId,
             NoticeId = noticeId,
             UserId = user.UserId,
             ReadAt = now
         };
 
         _db.NoticeReads.Add(read);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _db.Entry(read).State = EntityState.Detached;
+            var concurrentRead = await _db.NoticeReads.FirstOrDefaultAsync(r =>
+                r.NoticeId == noticeId &&
+                r.UserId == user.UserId);
+            if (concurrentRead is null) throw;
+            read = concurrentRead;
+        }
 
         return Ok(new ApiNoticeReadResult
         {
             NoticeId = noticeId,
             UserId = user.UserId,
             IsRead = true,
-            ReadAt = now
+            ReadAt = read.ReadAt
         });
     }
 
-    private IQueryable<Notice> NoticeQuery() =>
-        _db.Notices
+    private IQueryable<Notice> NoticeQuery(bool asNoTracking = false)
+    {
+        var query = _db.Notices
             .Include(n => n.Club)
             .Include(n => n.Publisher)
             .Include(n => n.Reads);
+        return asNoTracking ? query.AsNoTracking() : query;
+    }
 
     private async Task<User?> LoadUserAsync(int userId) =>
         await _db.Users
@@ -499,7 +671,6 @@ public class NoticesController : ControllerBase
 
     private static string? ValidateCreateRequest(ApiCreateNoticeRequest req)
     {
-        if (req.CurrentUserId <= 0) return "请选择当前发布人。";
         if (string.IsNullOrWhiteSpace(req.NoticeType)) return "通知类型不能为空。";
         if (req.NoticeType.Trim().Length > 50) return "通知类型不能超过 50 个字符。";
         if (string.IsNullOrWhiteSpace(req.Title)) return "通知标题不能为空。";
@@ -509,6 +680,43 @@ public class NoticesController : ControllerBase
         if (NormalizeTargetType(req.TargetType) is null) return "定向类型只能是 school、club、department 或 member。";
         if (NormalizePublishStatus(req.NoticeStatus) is null) return "通知状态只能是 draft 或 published。";
         return null;
+    }
+
+    private static bool TryParseDraftVersion(string? value, out DateTime version)
+    {
+        if (DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed))
+        {
+            version = parsed.UtcDateTime;
+            return true;
+        }
+
+        version = default;
+        return false;
+    }
+
+    private static DateTime NextDraftVersion(DateTime currentVersion, DateTime utcNow)
+    {
+        // Oracle DATE 只保留到秒；至少递增一秒，确保 If-Unmodified-Since 能识别连续快速保存。
+        var nextSecond = currentVersion.AddSeconds(1);
+        return utcNow < nextSecond ? nextSecond : utcNow;
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+        {
+            if (current.Message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? NormalizeTargetType(ApiCreateNoticeRequest.TargetTypeEnum targetType) =>

@@ -237,11 +237,6 @@ import {
   LoginRequestFromJSON,
   LoginRequestToJSON,
 } from "../models/LoginRequest";
-import {
-  type MarkNoticeReadRequest,
-  MarkNoticeReadRequestFromJSON,
-  MarkNoticeReadRequestToJSON,
-} from "../models/MarkNoticeReadRequest";
 import { type Material, MaterialFromJSON, MaterialToJSON } from "../models/Material";
 import {
   type MaterialBorrow,
@@ -573,6 +568,11 @@ export interface DeleteLearningResourceRequest {
   itemId: number;
 }
 
+export interface DeleteNoticeDraftRequest {
+  noticeId: number;
+  ifUnmodifiedSince: string;
+}
+
 export interface DeleteProjectTaskRequest {
   projectId: number;
   taskId: number;
@@ -694,7 +694,6 @@ export interface GetMaterialsRequest {
 }
 
 export interface GetNoticesRequest {
-  viewerUserId: number;
   noticeStatus?: GetNoticesNoticeStatusEnum;
   targetType?: GetNoticesTargetTypeEnum;
   clubId?: number;
@@ -773,9 +772,8 @@ export interface LoginUserRequest {
   loginRequest: LoginRequest;
 }
 
-export interface MarkNoticeReadOperationRequest {
+export interface MarkNoticeReadRequest {
   noticeId: number;
-  markNoticeReadRequest: MarkNoticeReadRequest;
 }
 
 export interface PreviewClubEvaluationScoresRequest {
@@ -926,6 +924,12 @@ export interface UpdateLearningProgressOperationRequest {
 export interface UpdateMaterialOperationRequest {
   materialId: number;
   updateMaterialRequest: UpdateMaterialRequest;
+}
+
+export interface UpdateNoticeDraftRequest {
+  noticeId: number;
+  ifUnmodifiedSince: string;
+  createNoticeRequest: CreateNoticeRequest;
 }
 
 export interface UpdateProjectTaskProgressOperationRequest {
@@ -2261,6 +2265,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -2273,8 +2286,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 新建公告通知
    */
   async createNoticeRaw(
     requestParameters: CreateNoticeOperationRequest,
@@ -2287,8 +2300,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 新建公告通知
    */
   async createNotice(
     requestParameters: CreateNoticeOperationRequest,
@@ -2817,6 +2830,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteLearningResourceRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteNoticeDraft without sending the request
+   */
+  async deleteNoticeDraftRequestOpts(
+    requestParameters: DeleteNoticeDraftRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["noticeId"] == null) {
+      throw new runtime.RequiredError(
+        "noticeId",
+        'Required parameter "noticeId" was null or undefined when calling deleteNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["ifUnmodifiedSince"] == null) {
+      throw new runtime.RequiredError(
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling deleteNoticeDraft().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/notices/{noticeId}`;
+    urlPath = urlPath.replace(
+      "{noticeId}",
+      encodeURIComponent(String(requestParameters["noticeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 删除通知草稿
+   */
+  async deleteNoticeDraftRaw(
+    requestParameters: DeleteNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteNoticeDraftRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 删除通知草稿
+   */
+  async deleteNoticeDraft(
+    requestParameters: DeleteNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteNoticeDraftRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -4456,18 +4545,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for getNotices without sending the request
    */
   async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getNotices().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["noticeStatus"] != null) {
       queryParameters["noticeStatus"] = requestParameters["noticeStatus"];
@@ -4487,6 +4565,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -4498,7 +4585,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNoticesRaw(
@@ -4512,11 +4599,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNotices(
-    requestParameters: GetNoticesRequest,
+    requestParameters: GetNoticesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Notice>> {
     const response = await this.getNoticesRaw(requestParameters, initOverrides);
@@ -5593,7 +5680,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for markNoticeRead without sending the request
    */
   async markNoticeReadRequestOpts(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["noticeId"] == null) {
       throw new runtime.RequiredError(
@@ -5602,18 +5689,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["markNoticeReadRequest"] == null) {
-      throw new runtime.RequiredError(
-        "markNoticeReadRequest",
-        'Required parameter "markNoticeReadRequest" was null or undefined when calling markNoticeRead().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/notices/{noticeId}/reads`;
     urlPath = urlPath.replace(
@@ -5626,7 +5713,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
     };
   }
 
@@ -5635,7 +5721,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeReadRaw(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<NoticeReadResult>> {
     const requestOptions = await this.markNoticeReadRequestOpts(requestParameters);
@@ -5651,7 +5737,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeRead(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
@@ -7797,6 +7883,93 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Material> {
     const response = await this.updateMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateNoticeDraft without sending the request
+   */
+  async updateNoticeDraftRequestOpts(
+    requestParameters: UpdateNoticeDraftRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["noticeId"] == null) {
+      throw new runtime.RequiredError(
+        "noticeId",
+        'Required parameter "noticeId" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["ifUnmodifiedSince"] == null) {
+      throw new runtime.RequiredError(
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["createNoticeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createNoticeRequest",
+        'Required parameter "createNoticeRequest" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/notices/{noticeId}`;
+    urlPath = urlPath.replace(
+      "{noticeId}",
+      encodeURIComponent(String(requestParameters["noticeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateNoticeRequestToJSON(requestParameters["createNoticeRequest"]),
+    };
+  }
+
+  /**
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 编辑或发布通知草稿
+   */
+  async updateNoticeDraftRaw(
+    requestParameters: UpdateNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Notice>> {
+    const requestOptions = await this.updateNoticeDraftRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => NoticeFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 编辑或发布通知草稿
+   */
+  async updateNoticeDraft(
+    requestParameters: UpdateNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Notice> {
+    const response = await this.updateNoticeDraftRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

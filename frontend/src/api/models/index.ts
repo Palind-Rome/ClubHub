@@ -50,7 +50,6 @@ export * from "./LearningItemStatistics";
 export * from "./LearningRecord";
 export * from "./LearningTeacherCandidate";
 export * from "./LoginRequest";
-export * from "./MarkNoticeReadRequest";
 export * from "./Material";
 export * from "./MaterialBorrow";
 export * from "./Notice";

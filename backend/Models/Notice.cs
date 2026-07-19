@@ -155,9 +155,9 @@ namespace Org.OpenAPITools.Models
         public string? TargetName { get; set; }
 
         /// <summary>
-        /// 发布时间。
+        /// 已发布通知的发布时间；草稿状态下表示最近保存时间。
         /// </summary>
-        /// <value>发布时间。</value>
+        /// <value>已发布通知的发布时间；草稿状态下表示最近保存时间。</value>
         [Required]
         [DataMember(Name="publishAt", EmitDefaultValue=true)]
         public DateTime PublishAt { get; set; }
