@@ -50,6 +50,8 @@ public class ClubsController : ControllerBase
     private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
     private const string EvaluationPublished = "published";
+    private const string AwardApplicationArchived = "archived";
+    private const string AwardPublicized = "publicized";
     private const decimal MaxEvaluationScore = 100m;
     private const decimal ActivityCheckedOutScore = 10m;
     private const decimal ActivityCheckedInScore = 8m;
@@ -128,8 +130,7 @@ public class ClubsController : ControllerBase
                 u.UserRoles.Any(ur =>
                     ur.Role != null &&
                     ((ur.Role.RoleCode != null &&
-                      (ur.Role.RoleCode.ToUpper() == "TEACHER" ||
-                       ur.Role.RoleCode.ToUpper() == ClubAdvisorRoleCode)) ||
+                      ur.Role.RoleCode.ToUpper() == "TEACHER") ||
                      (ur.Role.RoleName != null &&
                       (ur.Role.RoleName.Contains("教师") ||
                        ur.Role.RoleName.Contains("老师"))))))
@@ -1560,10 +1561,11 @@ public class ClubsController : ControllerBase
             .GroupBy(ev => ev.UserId)
             .ToDictionary(group => group.Key, group => group.First());
 
-        var now = DateTime.UtcNow;
+        var now = BusinessNow();
         var createdCount = 0;
         var refreshedCount = 0;
         var skippedPublishedCount = 0;
+        var sourceSyncs = new List<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)>();
         var scoreByUser = await CalculateSemesterEvaluationScoresForUsersAsync(
             clubId,
             members.Select(member => member.UserId).ToList(),
@@ -1600,11 +1602,12 @@ public class ClubsController : ControllerBase
                 existing.PublicStatus = EvaluationDraft;
                 existing.EvaluatorUserId = currentUserId.Value;
                 existing.CommentText = EmptyToNull(existing.CommentText) ?? "系统自动生成，待负责人或指导老师确认。";
+                sourceSyncs.Add((existing, scores.AwardSources));
                 refreshedCount++;
                 continue;
             }
 
-            _db.Evaluations.Add(new Evaluation
+            var evaluation = new Evaluation
             {
                 EvaluationType = EvaluationSemester,
                 ClubId = clubId,
@@ -1620,11 +1623,23 @@ public class ClubsController : ControllerBase
                 PublicStatus = EvaluationDraft,
                 CommentText = "系统自动生成，待负责人或指导老师确认。",
                 CreatedAt = now
-            });
+            };
+            _db.Evaluations.Add(evaluation);
+            sourceSyncs.Add((evaluation, scores.AwardSources));
             createdCount++;
         }
 
-        await _db.SaveChangesAsync();
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
+            if (sourceSyncs.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
 
         var records = await EvaluationQuery()
             .Where(ev =>
@@ -1713,8 +1728,16 @@ public class ClubsController : ControllerBase
             CreatedAt = now
         };
 
-        _db.Evaluations.Add(evaluation);
-        await _db.SaveChangesAsync();
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            _db.Evaluations.Add(evaluation);
+            await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(
+                new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
+                now);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
 
         var created = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluation.EvaluationId);
         return Created(
@@ -1812,6 +1835,9 @@ public class ClubsController : ControllerBase
         evaluation.CommentText = EmptyToNull(nextCommentText);
         evaluation.EvaluatorUserId = currentUserId.Value;
 
+        await ReplaceEvaluationAwardSourcesAsync(
+            new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
+            BusinessNow());
         await _db.SaveChangesAsync();
 
         var updated = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluationId);
@@ -3373,6 +3399,13 @@ public class ClubsController : ControllerBase
         decimal ActivityScore,
         decimal TaskScore,
         decimal LearningScore,
+        decimal AwardScore,
+        IReadOnlyList<AwardScoreSource> AwardSources);
+    private sealed record AwardScoreSnapshot(
+        decimal Score,
+        IReadOnlyList<AwardScoreSource> Sources);
+    private sealed record AwardScoreSource(
+        int AwardApplicationId,
         decimal AwardScore);
     private sealed record EvaluationTermWindow(DateTime Start, DateTime End);
 
@@ -3408,7 +3441,8 @@ public class ClubsController : ControllerBase
                 ClampEvaluationScore(activityScore ?? 0),
                 ClampEvaluationScore(taskScore ?? 0),
                 ClampEvaluationScore(learningScore ?? 0),
-                ClampEvaluationScore(awardScore ?? 0));
+                ClampEvaluationScore(awardScore ?? 0),
+                Array.Empty<AwardScoreSource>());
         }
 
         if (activityScore is not null &&
@@ -3420,7 +3454,8 @@ public class ClubsController : ControllerBase
                 ClampEvaluationScore(activityScore.Value),
                 ClampEvaluationScore(taskScore.Value),
                 ClampEvaluationScore(learningScore.Value),
-                ClampEvaluationScore(awardScore.Value));
+                ClampEvaluationScore(awardScore.Value),
+                Array.Empty<AwardScoreSource>());
         }
 
         var generated = await CalculateSemesterEvaluationScoresAsync(clubId, userId, termName, ignoredEvaluationId);
@@ -3428,7 +3463,8 @@ public class ClubsController : ControllerBase
             ClampEvaluationScore(activityScore ?? generated.ActivityScore),
             ClampEvaluationScore(taskScore ?? generated.TaskScore),
             ClampEvaluationScore(learningScore ?? generated.LearningScore),
-            ClampEvaluationScore(awardScore ?? generated.AwardScore));
+            ClampEvaluationScore(awardScore ?? generated.AwardScore),
+            awardScore is null ? generated.AwardSources : Array.Empty<AwardScoreSource>());
     }
 
     private async Task<EvaluationScoreSnapshot> CalculateSemesterEvaluationScoresAsync(
@@ -3448,7 +3484,12 @@ public class ClubsController : ControllerBase
             termName,
             ignoredEvaluationId);
 
-        return new EvaluationScoreSnapshot(activityScore, taskScore, learningScore, awardScore);
+        return new EvaluationScoreSnapshot(
+            activityScore,
+            taskScore,
+            learningScore,
+            awardScore.Score,
+            awardScore.Sources);
     }
 
     private async Task<Dictionary<int, EvaluationScoreSnapshot>> CalculateSemesterEvaluationScoresForUsersAsync(
@@ -3475,7 +3516,8 @@ public class ClubsController : ControllerBase
                 activityScores.GetValueOrDefault(userId),
                 taskScores.GetValueOrDefault(userId),
                 learningScores.GetValueOrDefault(userId),
-                awardScores.GetValueOrDefault(userId)));
+                awardScores.GetValueOrDefault(userId)?.Score ?? 0,
+                awardScores.GetValueOrDefault(userId)?.Sources ?? Array.Empty<AwardScoreSource>()));
     }
 
     private async Task<decimal> CalculateSemesterActivityScoreAsync(
@@ -3804,45 +3846,111 @@ public class ClubsController : ControllerBase
                     row.DownloadedAt))));
     }
 
-    private async Task<decimal> CalculateSemesterAwardScoreAsync(
+    private async Task<AwardScoreSnapshot> CalculateSemesterAwardScoreAsync(
         int clubId,
         int userId,
         string termName,
         int? ignoredEvaluationId = null)
     {
+        var snapshots = await CalculateSemesterAwardScoresAsync(
+            clubId,
+            new[] { userId },
+            termName,
+            ignoredEvaluationId);
+        return snapshots.GetValueOrDefault(userId) ??
+               new AwardScoreSnapshot(0, Array.Empty<AwardScoreSource>());
+    }
+
+    private async Task<Dictionary<int, AwardScoreSnapshot>> CalculateSemesterAwardScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, AwardScoreSnapshot>();
+        }
+
         var normalizedTerm = termName.Trim();
-        var query = _db.Evaluations
+        var termWindow = ResolveEvaluationTermWindow(normalizedTerm);
+        var awardApplicationRows = await _db.AwardApplications
+            .AsNoTracking()
+            .Where(application =>
+                application.ClubId == clubId &&
+                ids.Contains(application.ApplicantUserId) &&
+                (application.ApplicationStatus == AwardApplicationArchived ||
+                 application.PublicStatus == AwardPublicized))
+            .Select(application => new
+            {
+                application.ApplicantUserId,
+                application.AwardApplicationId,
+                application.FinalAwardScore,
+                LevelAwardScore = application.Level == null
+                    ? (decimal?)null
+                    : application.Level.AwardScore,
+                AcademicYear = application.Scheme == null
+                    ? null
+                    : application.Scheme.AcademicYear,
+                TermName = application.Scheme == null
+                    ? null
+                    : application.Scheme.TermName
+            })
+            .ToListAsync();
+
+        var result = awardApplicationRows
+            .Where(row => AwardSchemeMatchesEvaluationTerm(
+                row.AcademicYear,
+                row.TermName,
+                normalizedTerm,
+                termWindow))
+            .Select(row => new
+            {
+                row.ApplicantUserId,
+                Source = new AwardScoreSource(
+                    row.AwardApplicationId,
+                    ClampEvaluationScore(row.FinalAwardScore ?? row.LevelAwardScore ?? 0))
+            })
+            .GroupBy(row => row.ApplicantUserId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var sources = group
+                        .Select(row => row.Source)
+                        .GroupBy(source => source.AwardApplicationId)
+                        .Select(sourceGroup => sourceGroup.First())
+                        .OrderBy(source => source.AwardApplicationId)
+                        .ToArray();
+                    return new AwardScoreSnapshot(
+                        ClampEvaluationScore(sources.Sum(source => source.AwardScore)),
+                        sources);
+                });
+
+        var legacyUserIds = ids
+            .Where(userId => !result.ContainsKey(userId))
+            .ToList();
+        if (legacyUserIds.Count == 0)
+        {
+            return result;
+        }
+
+        var legacyQuery = _db.Evaluations
             .AsNoTracking()
             .Where(ev =>
                 ev.ClubId == clubId &&
-                ev.UserId == userId &&
+                legacyUserIds.Contains(ev.UserId) &&
                 ev.EvaluationType == EvaluationAward &&
                 ev.TermName == normalizedTerm &&
                 ev.PublicStatus == EvaluationPublished);
 
         if (ignoredEvaluationId is not null)
         {
-            query = query.Where(ev => ev.EvaluationId != ignoredEvaluationId.Value);
+            legacyQuery = legacyQuery.Where(ev => ev.EvaluationId != ignoredEvaluationId.Value);
         }
 
-        var total = await query.SumAsync(ev => ev.AwardScore ?? 0);
-        return ClampEvaluationScore(total);
-    }
-
-    private async Task<Dictionary<int, decimal>> CalculateSemesterAwardScoresAsync(
-        int clubId,
-        IReadOnlyCollection<int> userIds,
-        string termName)
-    {
-        var normalizedTerm = termName.Trim();
-        var awardScores = await _db.Evaluations
-            .AsNoTracking()
-            .Where(ev =>
-                ev.ClubId == clubId &&
-                userIds.Contains(ev.UserId) &&
-                ev.EvaluationType == EvaluationAward &&
-                ev.TermName == normalizedTerm &&
-                ev.PublicStatus == EvaluationPublished)
+        var legacyAwardScores = await legacyQuery
             .GroupBy(ev => ev.UserId)
             .Select(group => new
             {
@@ -3851,9 +3959,58 @@ public class ClubsController : ControllerBase
             })
             .ToListAsync();
 
-        return awardScores.ToDictionary(
-            row => row.UserId,
-            row => ClampEvaluationScore(row.Score));
+        foreach (var row in legacyAwardScores)
+        {
+            result[row.UserId] = new AwardScoreSnapshot(
+                ClampEvaluationScore(row.Score),
+                Array.Empty<AwardScoreSource>());
+        }
+
+        return result;
+    }
+
+    private async Task ReplaceEvaluationAwardSourcesAsync(
+        IEnumerable<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)> syncs,
+        DateTime now)
+    {
+        var materialized = syncs
+            .Where(sync => sync.Evaluation.EvaluationId > 0)
+            .GroupBy(sync => sync.Evaluation.EvaluationId)
+            .Select(group => group.Last())
+            .ToList();
+        if (materialized.Count == 0)
+        {
+            return;
+        }
+
+        var evaluationIds = materialized
+            .Select(sync => sync.Evaluation.EvaluationId)
+            .ToList();
+        var existingSources = await _db.EvaluationAwardSources
+            .Where(source => evaluationIds.Contains(source.EvaluationId))
+            .ToListAsync();
+        _db.EvaluationAwardSources.RemoveRange(existingSources);
+
+        foreach (var sync in materialized)
+        {
+            var sources = sync.Sources
+                .GroupBy(source => source.AwardApplicationId)
+                .Select(group => group.First())
+                .Where(source => source.AwardScore > 0)
+                .ToList();
+            foreach (var source in sources)
+            {
+                _db.EvaluationAwardSources.Add(new EvaluationAwardSource
+                {
+                    ClubId = sync.Evaluation.ClubId,
+                    UserId = sync.Evaluation.UserId,
+                    EvaluationId = sync.Evaluation.EvaluationId,
+                    AwardApplicationId = source.AwardApplicationId,
+                    AwardScore = source.AwardScore,
+                    CreatedAt = now
+                });
+            }
+        }
     }
 
     private static decimal ActivityParticipationScore(
@@ -3947,6 +4104,45 @@ public class ClubsController : ControllerBase
 
     private static decimal ClampEvaluationScore(decimal score) =>
         decimal.Round(Math.Clamp(score, 0, MaxEvaluationScore), 1, MidpointRounding.AwayFromZero);
+
+    private static bool AwardSchemeMatchesEvaluationTerm(
+        string? academicYear,
+        string? schemeTermName,
+        string evaluationTermName,
+        EvaluationTermWindow? evaluationTermWindow)
+    {
+        var compositeTerm = $"{academicYear ?? string.Empty}{schemeTermName ?? string.Empty}";
+        var schemeTermWindow = ResolveEvaluationTermWindow(compositeTerm);
+        if (schemeTermWindow is not null && evaluationTermWindow is not null)
+        {
+            return schemeTermWindow.Start == evaluationTermWindow.Start &&
+                   schemeTermWindow.End == evaluationTermWindow.End;
+        }
+
+        var normalizedEvaluationTerm = NormalizeTermKey(evaluationTermName);
+        var normalizedAcademicYear = NormalizeTermKey(academicYear);
+        var normalizedSchemeTerm = NormalizeTermKey(schemeTermName);
+        if (string.IsNullOrWhiteSpace(normalizedSchemeTerm))
+        {
+            return normalizedEvaluationTerm == normalizedAcademicYear;
+        }
+
+        return normalizedEvaluationTerm.Contains(normalizedAcademicYear, StringComparison.Ordinal) &&
+               normalizedEvaluationTerm.Contains(normalizedSchemeTerm, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeTermKey(string? term) =>
+        (term ?? string.Empty)
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .Replace("　", string.Empty, StringComparison.Ordinal)
+            .Replace("学年", string.Empty, StringComparison.Ordinal)
+            .Replace("年度", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("—", string.Empty, StringComparison.Ordinal)
+            .Replace("~", string.Empty, StringComparison.Ordinal)
+            .Replace("至", string.Empty, StringComparison.Ordinal)
+            .Trim()
+            .ToLowerInvariant();
 
     private static string? ValidateSemesterEvaluationTermName(string termName) =>
         ResolveEvaluationTermWindow(termName) is null
@@ -4145,15 +4341,20 @@ public class ClubsController : ControllerBase
 
     private static bool IsTeacherCandidate(User user)
     {
+        if (IsStudentNumber(user.StudentNo)) return false;
         if (IsStaffNumber(user.StudentNo)) return true;
 
         return user.UserRoles.Any(ur =>
             ur.Role is not null &&
             ((ur.Role.RoleCode ?? string.Empty).Equals("TEACHER", StringComparison.OrdinalIgnoreCase) ||
-             (ur.Role.RoleCode ?? string.Empty).Equals(ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase) ||
              (ur.Role.RoleName ?? string.Empty).Contains("教师", StringComparison.Ordinal) ||
              (ur.Role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal)));
     }
+
+    private static bool IsStudentNumber(string? studentNo) =>
+        !string.IsNullOrWhiteSpace(studentNo) &&
+        studentNo.Trim().Length == 7 &&
+        studentNo.Trim().All(char.IsDigit);
 
     private static bool IsStaffNumber(string? studentNo) =>
         !string.IsNullOrWhiteSpace(studentNo) &&

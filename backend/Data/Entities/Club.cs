@@ -82,5 +82,15 @@ public class Club
 
     public ICollection<ClubGroup> Groups { get; set; } = new List<ClubGroup>();
 
+    public ICollection<AwardScheme> AwardSchemes { get; set; } = new List<AwardScheme>();
+
+    public ICollection<AwardApplication> AwardApplications { get; set; } = new List<AwardApplication>();
+
+    public ICollection<AwardPublicityBatch> AwardPublicityBatches { get; set; } =
+        new List<AwardPublicityBatch>();
+
+    public ICollection<AwardRuleDocument> AwardRuleDocuments { get; set; } =
+        new List<AwardRuleDocument>();
+
     public ICollection<Notice> Notices { get; set; } = new List<Notice>();
 }

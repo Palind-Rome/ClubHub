@@ -563,7 +563,7 @@ paths:
   /api/clubs/advisor-candidates:
     get:
       summary: 查询社团注册可选指导老师
-      description: 学生提交社团注册申请时使用，返回正常状态的教师或指导老师账号候选。
+      description: 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
       operationId: getClubAdvisorCandidates
       responses:
         "200":
@@ -1246,6 +1246,780 @@ paths:
           description: 当前用户、社团或成员任期记录不存在
         "409":
           description: 社团状态不允许移出或成员身份已结束
+
+  /api/clubs/{clubId}/award-rule-documents:
+    get:
+      summary: 查询评奖评优评定细则
+      description: 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+      operationId: getClubAwardRuleDocuments
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, archived]
+          description: 按细则状态筛选。
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按标题、发布单位、摘要或正文搜索。
+      responses:
+        "200":
+          description: 评定细则列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有查看该社团评奖评优细则的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 上传评奖评优评定细则
+      description: 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+      operationId: createClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
+      responses:
+        "201":
+          description: 评定细则已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有上传该范围细则的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护或同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}:
+    patch:
+      summary: 更新评奖评优评定细则
+      description: 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+      operationId: updateClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardRuleDocumentRequest"
+      responses:
+        "200":
+          description: 评定细则已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+        "409":
+          description: 同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish:
+    post:
+      summary: 发布评奖评优评定细则
+      description: 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+      operationId: publishClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评定细则已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有发布该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file:
+    post:
+      summary: 上传评奖评优评定细则附件
+      description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+      operationId: uploadClubAwardRuleDocumentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的评定细则附件。
+              required:
+                - file
+      responses:
+        "200":
+          description: 附件已上传并绑定到评定细则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 文件为空、过大或文件类型不允许
+        "403":
+          description: 当前用户没有维护该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+        "503":
+          description: 文件存储暂不可用
+
+    get:
+      summary: 下载评奖评优评定细则附件
+      description: 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+      operationId: getClubAwardRuleDocumentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "302":
+          description: 历史外部地址型附件的兼容跳转
+        "403":
+          description: 当前用户没有下载该附件的权限
+        "404":
+          description: 细则或附件不存在
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-schemes:
+    get:
+      summary: 查询社团评奖评优奖项配置
+      description: 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+      operationId: getClubAwardSchemes
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, open, reviewing, publicizing, archived, closed]
+          description: 按奖项配置状态筛选。
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按奖项名称、等级名称或设立单位搜索。
+      responses:
+        "200":
+          description: 奖项配置列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardSchemeRecord"
+        "403":
+          description: 当前用户没有查看该社团奖项配置的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建社团评奖评优奖项配置
+      description: 社团负责人、指导老师或系统管理员创建奖项批次及等级，作为成员申请、负责人推荐和后续奖项分计算的规则来源。
+      operationId: createClubAwardScheme
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardSchemeRequest"
+      responses:
+        "201":
+          description: 奖项配置已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardSchemeRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团奖项配置的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 同一社团、学年、学期下已存在同名奖项
+
+  /api/clubs/{clubId}/award-schemes/{awardSchemeId}:
+    patch:
+      summary: 更新社团评奖评优奖项配置
+      description: 在不破坏既有申请外键的前提下更新奖项配置、等级、开放时间和状态；已归档奖项不允许再修改核心规则。
+      operationId: updateClubAwardScheme
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardSchemeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardSchemeRequest"
+      responses:
+        "200":
+          description: 奖项配置已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardSchemeRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团奖项配置的权限
+        "404":
+          description: 当前用户、社团或奖项配置不存在
+        "409":
+          description: 奖项配置状态不允许修改
+
+  /api/clubs/{clubId}/award-applications:
+    get:
+      summary: 查询社团评奖评优申请
+      description: 普通成员查看自己的申请；社团负责人、指导老师、系统管理员可按审核步骤、状态、奖项、成员筛选本社团申请。
+      operationId: getClubAwardApplications
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardSchemeId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按奖项配置筛选。
+        - name: applicantUserId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按申请成员筛选；普通成员只能传本人。
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              [
+                draft,
+                submitted,
+                club_review,
+                advisor_review,
+                school_review,
+                returned,
+                rejected,
+                approved,
+                publicizing,
+                publicized,
+                archived,
+                withdrawn,
+              ]
+          description: 按申请状态筛选。
+        - name: currentStep
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              [
+                student_submit,
+                club_review,
+                advisor_review,
+                school_review,
+                publicity,
+                archived,
+              ]
+          description: 按当前审核步骤筛选。
+      responses:
+        "200":
+          description: 评奖评优申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户没有查看该社团评奖评优申请的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建评奖评优申请或负责人推荐
+      description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
+      operationId: createClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardApplicationRequest"
+      responses:
+        "201":
+          description: 评奖评优申请已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有创建该申请的权限
+        "404":
+          description: 当前用户、社团、奖项配置或申请成员不存在
+        "409":
+          description: 奖项不属于当前社团、不在可申请状态或申请时间窗内、成员不在社团内或该成员已有同奖项申请
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}:
+    get:
+      summary: 获取评奖评优申请详情
+      description: 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+      operationId: getClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评奖评优申请详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户没有查看该申请详情的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+
+    patch:
+      summary: 更新评奖评优申请草稿
+      description: 申请人可修改草稿或退回状态的申请材料；负责人推荐记录可由推荐人或更高权限维护人修改。
+      operationId: updateClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardApplicationRequest"
+      responses:
+        "200":
+          description: 评奖评优申请已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许修改
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments:
+    post:
+      summary: 上传评奖评优申请材料
+      description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+      operationId: uploadClubAwardApplicationAttachment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的申请材料文件。
+                attachmentType:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  description: 材料类型，例如个人总结、获奖证明、作品集。
+              required:
+                - file
+      responses:
+        "200":
+          description: 材料已上传并绑定到申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 文件为空、过大或文件类型不允许
+        "403":
+          description: 当前用户没有维护该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许补充材料
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file:
+    get:
+      summary: 下载评奖评优申请材料
+      description: 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+      operationId: getClubAwardApplicationAttachmentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "302":
+          description: 历史外部地址型材料的兼容跳转
+        "403":
+          description: 当前用户没有下载该材料的权限
+        "404":
+          description: 申请或材料不存在
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/submit:
+    post:
+      summary: 提交或重新提交评奖评优申请
+      description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
+      operationId: submitClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 申请已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 申请材料不完整
+        "403":
+          description: 当前用户没有提交该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许提交
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/review:
+    post:
+      summary: 审核评奖评优申请
+      description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
+      operationId: reviewClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAwardApplicationRequest"
+      responses:
+        "200":
+          description: 审核动作已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有执行该审核步骤的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态与审核动作不匹配
+
+  /api/clubs/{clubId}/award-publicity:
+    get:
+      summary: 查询评奖评优公示批次
+      description: 公开查看已公示批次；维护人可查看草稿、公示中、已结束和已归档批次。
+      operationId: getClubAwardPublicityBatches
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, publicizing, closed, archived]
+      responses:
+        "200":
+          description: 公示批次列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有查看该社团公示的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建评奖评优公示批次
+      description: 社团负责人、指导老师或系统管理员从已通过的申请中创建公示批次。
+      operationId: createClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardPublicityBatchRequest"
+      responses:
+        "201":
+          description: 公示批次已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有创建公示批次的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 申请状态不允许进入公示
+
+  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/publish:
+    post:
+      summary: 发布评奖评优公示批次
+      description: 将公示批次发布到公示列表，并把批次内申请标记为公示中。
+      operationId: publishClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: publicityBatchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 公示批次已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有发布公示的权限
+        "404":
+          description: 当前用户、社团或公示批次不存在
+        "409":
+          description: 公示批次状态不允许发布
+
+  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/archive:
+    post:
+      summary: 归档评奖评优公示批次
+      description: 将已公示结束的批次归档，并把批次内申请标记为已归档；归档后的申请成为成员考核奖项分的权威来源。
+      operationId: archiveClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: publicityBatchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 公示批次已归档
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有归档公示的权限
+        "404":
+          description: 当前用户、社团或公示批次不存在
+        "409":
+          description: 公示批次状态不允许归档
 
   /api/clubs/{clubId}/evaluations:
     get:
@@ -5546,6 +6320,1144 @@ components:
           nullable: true
           description: 历史兼容字段；新流程优先使用 groupId。
           example: 后端组
+
+    AwardLevelInput:
+      type: object
+      description: 奖项等级配置输入；不分等级的奖项也应保留一个默认等级，作为奖项分、金额和名额的规则来源。
+      properties:
+        awardLevelId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 已有等级 ID；新增等级时为空。
+          example: 10001
+        levelName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 等级名称。
+          example: 一等奖
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 该等级贡献到成员考核的奖项分。
+          example: 20
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          description: 奖励金额；非经费类荣誉可为空。
+          example: 500
+        quota:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: 名额；不限名额时为空。
+          example: 3
+        displayOrder:
+          type: integer
+          default: 0
+          description: 等级展示顺序。
+          example: 1
+        levelStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+          description: 等级状态。
+          example: active
+      required:
+        - levelName
+        - awardScore
+
+    AwardLevelRecord:
+      type: object
+      description: 社团评奖评优奖项等级配置。
+      properties:
+        awardLevelId:
+          type: integer
+          description: 奖项等级 ID。
+          example: 10001
+        awardSchemeId:
+          type: integer
+          description: 所属奖项配置 ID。
+          example: 9001
+        levelName:
+          type: string
+          description: 等级名称，例如一等奖、二等奖或优秀奖。
+          example: 一等奖
+        awardScore:
+          type: number
+          format: decimal
+          description: 该等级折算到成员考核中的奖项分。
+          example: 20
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 该等级对应的奖励金额；无固定金额时为空。
+          example: 500
+        quota:
+          type: integer
+          nullable: true
+          description: 该等级名额；不限制名额时为空。
+          example: 3
+        displayOrder:
+          type: integer
+          description: 等级展示顺序，数值越小越靠前。
+          example: 1
+        levelStatus:
+          type: string
+          enum: [active, inactive]
+          description: 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
+          example: active
+      required:
+        - awardLevelId
+        - awardSchemeId
+        - levelName
+        - awardScore
+        - displayOrder
+        - levelStatus
+
+    AwardRuleDocumentRecord:
+      type: object
+      description: 评奖评优评定细则，支持学校级通用细则和社团级细则。
+      properties:
+        ruleDocumentId:
+          type: integer
+          description: 细则 ID。
+          example: 137601
+        clubId:
+          type: integer
+          nullable: true
+          description: 社团级细则所属社团；学校级细则为空。
+          example: 2
+        clubName:
+          type: string
+          nullable: true
+          description: 所属社团名称；学校级细则为空。
+          example: 摄影社
+        ruleTitle:
+          type: string
+          description: 细则标题。
+          example: 2026 年度校园影像贡献奖评定细则
+        ruleScope:
+          type: string
+          enum: [global, club]
+          description: global 表示学校级通用细则，club 表示社团级细则。
+          example: club
+        ruleScopeText:
+          type: string
+          description: 细则范围中文文案。
+          example: 社团细则
+        academicYear:
+          type: string
+          description: 适用学年或年度。
+          example: "2026"
+        termName:
+          type: string
+          nullable: true
+          description: 适用学期。
+          example: 春季
+        issuerName:
+          type: string
+          nullable: true
+          description: 发布或制定单位。
+          example: 摄影社评奖评优工作组
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 细则附件的内部文件引用；客户端下载文件应调用评定细则附件下载接口。
+          example: clubs/2/awards/137601/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        materialName:
+          type: string
+          nullable: true
+          description: 细则附件展示名称。
+          example: 摄影社 2026 年度校园影像贡献奖评定细则.pdf
+        versionNo:
+          type: string
+          description: 细则版本号。
+          example: "1.0"
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          description: 细则状态。
+          example: published
+        ruleStatusText:
+          type: string
+          description: 细则状态中文文案。
+          example: 已发布
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效开始时间。
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效结束时间。
+        publishedByUserId:
+          type: integer
+          nullable: true
+          description: 发布人用户 ID。
+        publishedByName:
+          type: string
+          nullable: true
+          description: 发布人展示名。
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 发布时间。
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - ruleDocumentId
+        - ruleTitle
+        - ruleScope
+        - ruleScopeText
+        - academicYear
+        - versionNo
+        - ruleStatus
+        - ruleStatusText
+        - createdAt
+        - updatedAt
+
+    CreateAwardRuleDocumentRequest:
+      type: object
+      description: 创建评奖评优评定细则的请求。
+      properties:
+        ruleTitle:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 细则标题。
+        ruleScope:
+          type: string
+          enum: [global, club]
+          default: club
+          description: global 为学校级细则，club 为当前社团细则。
+        academicYear:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 适用学年或年度。
+        termName:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: 适用学期。
+        issuerName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 发布或制定单位。
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: 兼容字段，由附件上传接口维护内部文件引用；新前端不应让用户手填地址。
+        materialName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 附件展示名称。
+        versionNo:
+          type: string
+          maxLength: 50
+          default: "1.0"
+          description: 版本号。
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          default: draft
+          description: 初始状态。
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - ruleTitle
+        - academicYear
+
+    UpdateAwardRuleDocumentRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
+
+    AwardSchemeRecord:
+      type: object
+      description: 社团评奖评优奖项配置，对应学校奖学金系统里的奖种详情，但按社团维度管理。
+      properties:
+        awardSchemeId:
+          type: integer
+          description: 奖项配置 ID。
+          example: 9001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        awardName:
+          type: string
+          description: 奖项名称。
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
+          example: honor
+        academicYear:
+          type: string
+          description: 奖项所属学年或年度。
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          description: 奖项所属学期；跨学年项目可为空。
+          example: 春季
+        sponsorUnit:
+          type: string
+          nullable: true
+          description: 奖项设立或资助单位。
+          example: 同济大学团委
+        rewardLevel:
+          type: string
+          nullable: true
+          description: 奖项层级，例如校级、院级或社团级。
+          example: 校级
+        fundingSource:
+          type: string
+          nullable: true
+          description: 奖励经费来源说明。
+          example: 社团专项经费
+        isRanked:
+          type: boolean
+          description: 是否区分一等奖、二等奖等等级。
+          example: true
+        isFixedAmount:
+          type: boolean
+          description: 是否按等级固定奖励金额。
+          example: true
+        description:
+          type: string
+          nullable: true
+          description: 奖项说明。
+          example: 面向本学期在社团运营中表现突出的成员。
+        materialDescription:
+          type: string
+          nullable: true
+          description: 申请材料要求。
+          example: 需提交个人总结、活动组织证明和负责人推荐意见。
+        applicationStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 申请窗口开始时间；为空表示不限制开始时间。
+          example: "2026-07-01T00:00:00Z"
+        applicationEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 申请窗口结束时间；为空表示不限制结束时间。
+          example: "2026-07-16T23:59:59Z"
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 奖项配置中的建议公示开始时间。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 奖项配置中的建议公示结束时间。
+          example: "2026-07-21T18:00:00Z"
+        schemeStatus:
+          type: string
+          enum: [draft, open, reviewing, publicizing, archived, closed]
+          description: 奖项配置状态。
+          example: open
+        schemeStatusText:
+          type: string
+          description: 奖项配置状态中文文案。
+          example: 开放申请
+        createdByUserId:
+          type: integer
+          nullable: true
+          description: 创建人用户 ID。
+        createdByName:
+          type: string
+          nullable: true
+          description: 创建人展示名。
+          example: 王社长
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。
+          example: "2026-07-01T08:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
+        levels:
+          type: array
+          description: 奖项等级列表。
+          items:
+            $ref: "#/components/schemas/AwardLevelRecord"
+      required:
+        - awardSchemeId
+        - clubId
+        - clubName
+        - awardName
+        - awardCategory
+        - academicYear
+        - isRanked
+        - isFixedAmount
+        - schemeStatus
+        - schemeStatusText
+        - createdAt
+        - updatedAt
+        - levels
+
+    CreateAwardSchemeRequest:
+      type: object
+      description: 创建评奖评优奖项配置的请求。
+      properties:
+        awardName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          default: honor
+          example: honor
+        academicYear:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          maxLength: 80
+          example: 春季
+        sponsorUnit:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: 同济大学团委
+        rewardLevel:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: 校级
+        fundingSource:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: 社团专项经费
+        isRanked:
+          type: boolean
+          default: true
+        isFixedAmount:
+          type: boolean
+          default: true
+        description:
+          type: string
+          nullable: true
+        materialDescription:
+          type: string
+          nullable: true
+        applicationStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        applicationEndAt:
+          type: string
+          format: date-time
+          nullable: true
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+        schemeStatus:
+          type: string
+          enum: [draft, open, reviewing, publicizing, archived, closed]
+          default: draft
+        levels:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AwardLevelInput"
+      required:
+        - awardName
+        - awardCategory
+        - academicYear
+        - levels
+
+    UpdateAwardSchemeRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAwardSchemeRequest"
+
+    AwardReviewRecord:
+      type: object
+      description: 评奖评优申请审批记录。
+      properties:
+        reviewId:
+          type: integer
+          description: 审批记录 ID。
+          example: 80001
+        awardApplicationId:
+          type: integer
+          description: 所属评奖评优申请 ID。
+          example: 70001
+        reviewRound:
+          type: integer
+          description: 审批轮次；退回后重新提交会进入新轮次。
+          example: 1
+        reviewStep:
+          type: string
+          enum:
+            [
+              student_submit,
+              club_review,
+              advisor_review,
+              school_review,
+              publicity,
+              archive,
+            ]
+          description: 本次审批所在节点。
+          example: club_review
+        reviewResult:
+          type: string
+          enum: [submit, approve, reject, return, publish, archive, withdraw]
+          description: 审批动作或系统流转动作。
+          example: approve
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审批人用户 ID；系统生成记录可为空。
+          example: 3
+        reviewerName:
+          type: string
+          nullable: true
+          description: 审批人展示名。
+          example: 王社长
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审批意见。
+          example: 材料完整，同意进入指导老师审核。
+        fromStatus:
+          type: string
+          nullable: true
+          description: 审批前申请状态。
+          example: club_review
+        toStatus:
+          type: string
+          nullable: true
+          description: 审批后申请状态。
+          example: advisor_review
+        reviewedAt:
+          type: string
+          format: date-time
+          description: 审批记录生成时间。
+          example: "2026-07-12T10:15:00Z"
+      required:
+        - reviewId
+        - awardApplicationId
+        - reviewRound
+        - reviewStep
+        - reviewResult
+        - reviewedAt
+
+    AwardAttachmentRecord:
+      type: object
+      description: 评奖评优申请材料附件。
+      properties:
+        attachmentId:
+          type: integer
+          description: 附件记录 ID。
+          example: 60001
+        awardApplicationId:
+          type: integer
+          description: 所属评奖评优申请 ID。
+          example: 70001
+        attachmentName:
+          type: string
+          description: 附件展示名称。
+          example: 个人总结.pdf
+        attachmentUrl:
+          type: string
+          description: 申请材料的内部文件引用；客户端下载文件应调用申请材料下载接口。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        attachmentType:
+          type: string
+          nullable: true
+          description: 附件类型或材料分类。
+          example: pdf
+        uploadedByUserId:
+          type: integer
+          description: 上传人用户 ID。
+          example: 12
+        uploadedByName:
+          type: string
+          nullable: true
+          description: 上传人展示名。
+          example: 张三
+        uploadedAt:
+          type: string
+          format: date-time
+          description: 上传时间。
+          example: "2026-07-10T08:30:00Z"
+      required:
+        - attachmentId
+        - awardApplicationId
+        - attachmentName
+        - attachmentUrl
+        - uploadedByUserId
+        - uploadedAt
+
+    AwardApplicationRecord:
+      type: object
+      description: 评奖评优申请记录，承载成员自荐、负责人推荐、分级审批、公示和归档状态。
+      properties:
+        awardApplicationId:
+          type: integer
+          description: 评奖评优申请 ID。
+          example: 70001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        awardSchemeId:
+          type: integer
+          description: 被申请的奖项配置 ID。
+          example: 9001
+        awardName:
+          type: string
+          description: 被申请的奖项名称。
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类。
+          example: honor
+        academicYear:
+          type: string
+          description: 奖项所属学年或年度。
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          description: 奖项所属学期。
+          example: 春季
+        awardLevelId:
+          type: integer
+          description: 被申请的奖项等级 ID。
+          example: 10001
+        levelName:
+          type: string
+          description: 被申请的奖项等级名称。
+          example: 一等奖
+        applicantUserId:
+          type: integer
+          description: 申请人或被推荐人用户 ID。
+          example: 12
+        applicantName:
+          type: string
+          description: 申请人或被推荐人展示名。
+          example: 张三
+        applicantStudentNo:
+          type: string
+          nullable: true
+          description: 申请人或被推荐人学号。
+          example: "2450001"
+        recommenderUserId:
+          type: integer
+          nullable: true
+          description: 推荐人用户 ID；本人申请时为空。
+        recommenderName:
+          type: string
+          nullable: true
+          description: 推荐人展示名；本人申请时为空。
+        submitterUserId:
+          type: integer
+          description: 提交该申请的用户 ID。
+          example: 12
+        submitterName:
+          type: string
+          nullable: true
+          description: 提交人展示名。
+          example: 张三
+        applicationType:
+          type: string
+          enum: [self, recommendation]
+          description: 申请类型，self 为本人申请，recommendation 为负责人推荐。
+          example: self
+        applicationReason:
+          type: string
+          nullable: true
+          description: 申请理由或推荐理由。
+          example: 本学期组织多次技术分享并负责核心项目推进。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 申请主材料的内部文件引用；具体材料以 attachments 为准，客户端下载文件应调用申请材料下载接口。
+        currentStep:
+          type: string
+          enum:
+            [
+              student_submit,
+              club_review,
+              advisor_review,
+              school_review,
+              publicity,
+              archived,
+            ]
+          description: 当前所处流程节点。
+          example: advisor_review
+        currentStepText:
+          type: string
+          description: 当前流程节点中文文案。
+          example: 待指导老师审核
+        applicationStatus:
+          type: string
+          enum:
+            [
+              draft,
+              submitted,
+              club_review,
+              advisor_review,
+              school_review,
+              returned,
+              rejected,
+              approved,
+              publicizing,
+              publicized,
+              archived,
+              withdrawn,
+            ]
+          description: 申请状态。
+          example: advisor_review
+        applicationStatusText:
+          type: string
+          description: 申请状态中文文案。
+          example: 审核中
+        publicStatus:
+          type: string
+          enum: [none, publicizing, publicized, withdrawn]
+          description: 公示状态。
+          example: none
+        reviewRound:
+          type: integer
+          description: 当前审批轮次。
+          example: 1
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          description: 校级终审确认后的最终奖项分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 校级终审确认后的最终奖励金额。
+          example: 500
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 首次提交审核时间。
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 校级终审通过时间。
+        publicizedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 进入公示时间。
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 归档时间。
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。
+          example: "2026-07-10T08:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
+        reviewRecords:
+          type: array
+          description: 审批流转记录，按时间顺序返回。
+          items:
+            $ref: "#/components/schemas/AwardReviewRecord"
+        attachments:
+          type: array
+          description: 申请材料附件列表。
+          items:
+            $ref: "#/components/schemas/AwardAttachmentRecord"
+      required:
+        - awardApplicationId
+        - clubId
+        - clubName
+        - awardSchemeId
+        - awardName
+        - awardCategory
+        - academicYear
+        - awardLevelId
+        - levelName
+        - applicantUserId
+        - applicantName
+        - submitterUserId
+        - applicationType
+        - currentStep
+        - currentStepText
+        - applicationStatus
+        - applicationStatusText
+        - publicStatus
+        - reviewRound
+        - createdAt
+        - updatedAt
+        - reviewRecords
+        - attachments
+
+    CreateAwardApplicationRequest:
+      type: object
+      description: 创建评奖评优申请或负责人推荐；awardSchemeId 必须属于当前路径社团，且对应奖项处于开放申请或审核中，并仍在申请时间窗内。
+      properties:
+        awardSchemeId:
+          type: integer
+          minimum: 1
+          example: 9001
+        awardLevelId:
+          type: integer
+          minimum: 1
+          example: 10001
+        applicantUserId:
+          type: integer
+          minimum: 1
+          description: 被推荐或申请的社团成员用户 ID。
+          example: 12
+        applicationType:
+          type: string
+          enum: [self, recommendation]
+          default: self
+          example: self
+        applicationReason:
+          type: string
+          minLength: 1
+          description: 申请理由或推荐理由。
+          example: 本学期组织多次技术分享并负责核心项目推进。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        submitNow:
+          type: boolean
+          default: false
+          description: 是否创建后立即提交到负责人初审。
+      required:
+        - awardSchemeId
+        - awardLevelId
+        - applicantUserId
+        - applicationType
+        - applicationReason
+
+    UpdateAwardApplicationRequest:
+      type: object
+      description: 更新评奖评优申请草稿或退回记录。
+      properties:
+        awardLevelId:
+          type: integer
+          minimum: 1
+          example: 10001
+        applicationReason:
+          type: string
+          minLength: 1
+          example: 已补充新的活动组织证明。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+      required:
+        - awardLevelId
+        - applicationReason
+
+    ReviewAwardApplicationRequest:
+      type: object
+      description: 评奖评优审核动作；后端根据当前步骤和审核结果推进下一状态。
+      properties:
+        reviewResult:
+          type: string
+          enum: [approve, reject, return, publish, archive, withdraw]
+          description: 审核动作。
+          example: approve
+        reviewComment:
+          type: string
+          nullable: true
+          example: 材料完整，同意进入下一环节。
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: 校级终审可确认最终奖项分；为空时使用等级配置分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          description: 校级终审可确认最终金额；为空时使用等级配置金额。
+          example: 500
+      required:
+        - reviewResult
+
+    AwardPublicityItemRecord:
+      type: object
+      description: 公示批次中的单条获奖申请。
+      properties:
+        publicityItemId:
+          type: integer
+          description: 公示明细 ID。
+          example: 50001
+        publicityBatchId:
+          type: integer
+          description: 所属公示批次 ID。
+          example: 40001
+        awardApplicationId:
+          type: integer
+          description: 被公示的评奖评优申请 ID。
+          example: 70001
+        applicantUserId:
+          type: integer
+          description: 获奖成员用户 ID。
+          example: 12
+        applicantName:
+          type: string
+          description: 获奖成员展示名。
+          example: 张三
+        awardName:
+          type: string
+          description: 公示奖项名称。
+          example: 优秀社团干部
+        levelName:
+          type: string
+          description: 公示奖项等级名称。
+          example: 一等奖
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          description: 公示采用的最终奖项分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 公示采用的最终奖励金额。
+          example: 500
+        displayOrder:
+          type: integer
+          description: 公示名单展示顺序。
+          example: 1
+        publicityResult:
+          type: string
+          enum: [normal, withdrawn, corrected]
+          description: 公示结果状态。
+          example: normal
+        createdAt:
+          type: string
+          format: date-time
+          description: 明细创建时间。
+          example: "2026-07-18T09:00:00Z"
+      required:
+        - publicityItemId
+        - publicityBatchId
+        - awardApplicationId
+        - applicantUserId
+        - applicantName
+        - awardName
+        - levelName
+        - displayOrder
+        - publicityResult
+        - createdAt
+
+    AwardPublicityBatchRecord:
+      type: object
+      description: 评奖评优公示批次。
+      properties:
+        publicityBatchId:
+          type: integer
+          description: 公示批次 ID。
+          example: 40001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        title:
+          type: string
+          description: 公示标题。
+          example: 2025-2026学年春季优秀社团干部拟获奖名单公示
+        description:
+          type: string
+          nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示开始时间。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示结束时间。
+          example: "2026-07-21T18:00:00Z"
+        publicityStatus:
+          type: string
+          enum: [draft, publicizing, closed, archived]
+          description: 公示批次状态。
+          example: publicizing
+        publicityStatusText:
+          type: string
+          description: 公示批次状态中文文案。
+          example: 公示中
+        publisherUserId:
+          type: integer
+          nullable: true
+          description: 发布人用户 ID。
+        publisherName:
+          type: string
+          nullable: true
+          description: 发布人展示名。
+          example: 王社长
+        createdAt:
+          type: string
+          format: date-time
+          description: 批次创建时间。
+          example: "2026-07-18T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 批次最近更新时间。
+          example: "2026-07-18T10:00:00Z"
+        items:
+          type: array
+          description: 公示名单明细。
+          items:
+            $ref: "#/components/schemas/AwardPublicityItemRecord"
+      required:
+        - publicityBatchId
+        - clubId
+        - clubName
+        - title
+        - publicityStatus
+        - publicityStatusText
+        - createdAt
+        - updatedAt
+        - items
+
+    CreateAwardPublicityBatchRequest:
+      type: object
+      description: 创建评奖评优公示批次。
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 公示标题。
+          example: 2025-2026学年春季优秀社团干部拟获奖名单公示
+        description:
+          type: string
+          nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示开始时间，不能为空。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示结束时间，必须晚于 publicityStartAt。
+          example: "2026-07-21T18:00:00Z"
+        awardApplicationIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          description: 纳入公示的已通过申请 ID。
+          example: [70001, 70002]
+      required:
+        - title
+        - publicityStartAt
+        - publicityEndAt
+        - awardApplicationIds
+
     ClubEvaluationRecord:
       type: object
       description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。

@@ -5,6 +5,14 @@ CREATE SEQUENCE SEQ_CLUBS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_CLUB_MEMBERS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_CLUB_DEPARTMENTS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_CLUB_GROUPS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_SCHEMES START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_LEVELS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_APPLICATIONS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_REVIEW_RECORDS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_ATTACHMENTS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_PUBLICITY_BATCHES START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_PUBLICITY_ITEMS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AWARD_RULE_DOCUMENTS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_EVALUATIONS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_ACTIVITIES START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_ACTIVITY_PARTICIPATIONS START WITH 1000000 INCREMENT BY 1 NOCACHE NOCYCLE;
@@ -364,6 +372,197 @@ CREATE TABLE MATERIAL_BORROWS (
   compensation_amount number
 );
 
+CREATE TABLE AWARD_SCHEMES (
+  award_scheme_id number DEFAULT SEQ_AWARD_SCHEMES.NEXTVAL PRIMARY KEY,
+  club_id number NOT NULL,
+  award_name varchar2(255 char) NOT NULL,
+  award_category varchar2(100 char) DEFAULT 'honor' NOT NULL,
+  academic_year varchar2(50 char) NOT NULL,
+  term_name varchar2(80 char),
+  sponsor_unit varchar2(255 char),
+  reward_level varchar2(100 char),
+  funding_source varchar2(255 char),
+  is_ranked number(1) DEFAULT 1 NOT NULL,
+  is_fixed_amount number(1) DEFAULT 1 NOT NULL,
+  description clob,
+  material_description clob,
+  application_start_at date,
+  application_end_at date,
+  publicity_start_at date,
+  publicity_end_at date,
+  scheme_status varchar2(30 char) DEFAULT 'draft' NOT NULL,
+  created_by_user_id number,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  updated_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT UQ_AWARD_SCHEMES_SCOPE UNIQUE (club_id, award_scheme_id),
+  CONSTRAINT CK_AWARD_SCHEMES_CATEGORY CHECK (award_category IN ('honor', 'scholarship', 'competition', 'service', 'other')),
+  CONSTRAINT CK_AWARD_SCHEMES_RANKED CHECK (is_ranked IN (0, 1)),
+  CONSTRAINT CK_AWARD_SCHEMES_FIXED_AMOUNT CHECK (is_fixed_amount IN (0, 1)),
+  CONSTRAINT CK_AWARD_SCHEMES_STATUS CHECK (scheme_status IN ('draft', 'open', 'reviewing', 'publicizing', 'archived', 'closed'))
+);
+
+CREATE UNIQUE INDEX UQ_AWARD_SCHEMES_NAME ON AWARD_SCHEMES (
+  club_id,
+  award_name,
+  academic_year,
+  NVL(term_name, '-')
+);
+
+CREATE INDEX IX_AWARD_SCHEMES_CLUB_STATUS ON AWARD_SCHEMES (club_id, scheme_status, application_start_at);
+
+CREATE TABLE AWARD_LEVELS (
+  award_level_id number DEFAULT SEQ_AWARD_LEVELS.NEXTVAL PRIMARY KEY,
+  award_scheme_id number NOT NULL,
+  level_name varchar2(255 char) NOT NULL,
+  award_score number DEFAULT 0 NOT NULL,
+  amount number,
+  quota number,
+  display_order number DEFAULT 0 NOT NULL,
+  level_status varchar2(30 char) DEFAULT 'active' NOT NULL,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  updated_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT UQ_AWARD_LEVELS_SCOPE UNIQUE (award_scheme_id, award_level_id),
+  CONSTRAINT UQ_AWARD_LEVELS_NAME UNIQUE (award_scheme_id, level_name),
+  CONSTRAINT CK_AWARD_LEVELS_SCORE CHECK (award_score BETWEEN 0 AND 100),
+  CONSTRAINT CK_AWARD_LEVELS_AMOUNT CHECK (amount IS NULL OR amount >= 0),
+  CONSTRAINT CK_AWARD_LEVELS_QUOTA CHECK (quota IS NULL OR quota >= 0),
+  CONSTRAINT CK_AWARD_LEVELS_STATUS CHECK (level_status IN ('active', 'inactive'))
+);
+
+CREATE INDEX IX_AWARD_LEVELS_ORDER ON AWARD_LEVELS (award_scheme_id, display_order, level_name);
+
+CREATE TABLE AWARD_APPLICATIONS (
+  award_application_id number DEFAULT SEQ_AWARD_APPLICATIONS.NEXTVAL PRIMARY KEY,
+  club_id number NOT NULL,
+  award_scheme_id number NOT NULL,
+  award_level_id number NOT NULL,
+  applicant_user_id number NOT NULL,
+  recommender_user_id number,
+  submitter_user_id number NOT NULL,
+  application_type varchar2(30 char) DEFAULT 'self' NOT NULL,
+  application_reason clob,
+  material_url varchar2(1000 char),
+  current_step varchar2(30 char) DEFAULT 'student_submit' NOT NULL,
+  application_status varchar2(30 char) DEFAULT 'draft' NOT NULL,
+  public_status varchar2(30 char) DEFAULT 'none' NOT NULL,
+  review_round number DEFAULT 1 NOT NULL,
+  final_award_score number,
+  final_amount number,
+  submitted_at date,
+  approved_at date,
+  publicized_at date,
+  archived_at date,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  updated_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT UQ_AWARD_APPLICATIONS_SCOPE UNIQUE (club_id, award_application_id),
+  CONSTRAINT UQ_AWARD_APPLICATIONS_MEMBER_SCOPE UNIQUE (club_id, applicant_user_id, award_application_id),
+  CONSTRAINT UQ_AWARD_APPLICATIONS_APPLICANT UNIQUE (award_scheme_id, applicant_user_id),
+  CONSTRAINT CK_AWARD_APPLICATIONS_TYPE CHECK (application_type IN ('self', 'recommendation')),
+  CONSTRAINT CK_AWARD_APPLICATIONS_STEP CHECK (current_step IN ('student_submit', 'club_review', 'advisor_review', 'school_review', 'publicity', 'archived')),
+  CONSTRAINT CK_AWARD_APPLICATIONS_STATUS CHECK (application_status IN ('draft', 'submitted', 'club_review', 'advisor_review', 'school_review', 'returned', 'rejected', 'approved', 'publicizing', 'publicized', 'archived', 'withdrawn')),
+  CONSTRAINT CK_AWARD_APPLICATIONS_PUBLIC CHECK (public_status IN ('none', 'publicizing', 'publicized', 'withdrawn')),
+  CONSTRAINT CK_AWARD_APPLICATIONS_ROUND CHECK (review_round >= 1),
+  CONSTRAINT CK_AWARD_APPLICATIONS_SCORE CHECK (final_award_score IS NULL OR final_award_score BETWEEN 0 AND 100),
+  CONSTRAINT CK_AWARD_APPLICATIONS_AMOUNT CHECK (final_amount IS NULL OR final_amount >= 0)
+);
+
+CREATE INDEX IX_AWARD_APPLICATIONS_STATUS ON AWARD_APPLICATIONS (club_id, application_status, current_step);
+
+CREATE INDEX IX_AWARD_APPLICATIONS_USER ON AWARD_APPLICATIONS (applicant_user_id, club_id, award_scheme_id);
+
+CREATE TABLE AWARD_REVIEW_RECORDS (
+  review_id number DEFAULT SEQ_AWARD_REVIEW_RECORDS.NEXTVAL PRIMARY KEY,
+  award_application_id number NOT NULL,
+  review_round number DEFAULT 1 NOT NULL,
+  review_step varchar2(30 char) NOT NULL,
+  review_result varchar2(30 char) NOT NULL,
+  reviewer_user_id number,
+  review_comment clob,
+  from_status varchar2(30 char),
+  to_status varchar2(30 char),
+  reviewed_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT CK_AWARD_REVIEWS_ROUND CHECK (review_round >= 1),
+  CONSTRAINT CK_AWARD_REVIEWS_STEP CHECK (review_step IN ('student_submit', 'club_review', 'advisor_review', 'school_review', 'publicity', 'archive')),
+  CONSTRAINT CK_AWARD_REVIEWS_RESULT CHECK (review_result IN ('submit', 'approve', 'reject', 'return', 'publish', 'archive', 'withdraw'))
+);
+
+CREATE INDEX IX_AWARD_REVIEWS_APPLICATION ON AWARD_REVIEW_RECORDS (award_application_id, review_round, reviewed_at);
+
+CREATE TABLE AWARD_ATTACHMENTS (
+  attachment_id number DEFAULT SEQ_AWARD_ATTACHMENTS.NEXTVAL PRIMARY KEY,
+  award_application_id number NOT NULL,
+  attachment_name varchar2(255 char) NOT NULL,
+  attachment_url varchar2(1000 char) NOT NULL,
+  attachment_type varchar2(100 char),
+  uploaded_by_user_id number NOT NULL,
+  uploaded_at date DEFAULT SYSDATE NOT NULL
+);
+
+CREATE INDEX IX_AWARD_ATTACHMENTS_APP ON AWARD_ATTACHMENTS (award_application_id, uploaded_at);
+
+CREATE TABLE AWARD_PUBLICITY_BATCHES (
+  publicity_batch_id number DEFAULT SEQ_AWARD_PUBLICITY_BATCHES.NEXTVAL PRIMARY KEY,
+  club_id number NOT NULL,
+  title varchar2(255 char) NOT NULL,
+  description clob,
+  publicity_start_at date,
+  publicity_end_at date,
+  publicity_status varchar2(30 char) DEFAULT 'draft' NOT NULL,
+  publisher_user_id number,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  updated_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT UQ_AWARD_PUBLICITY_BATCH_SCOPE UNIQUE (club_id, publicity_batch_id),
+  CONSTRAINT CK_AWARD_PUBLICITY_STATUS CHECK (publicity_status IN ('draft', 'publicizing', 'closed', 'archived'))
+);
+
+CREATE INDEX IX_AWARD_PUBLICITY_CLUB ON AWARD_PUBLICITY_BATCHES (club_id, publicity_status, publicity_start_at);
+
+CREATE TABLE AWARD_PUBLICITY_ITEMS (
+  publicity_item_id number DEFAULT SEQ_AWARD_PUBLICITY_ITEMS.NEXTVAL PRIMARY KEY,
+  publicity_batch_id number NOT NULL,
+  club_id number NOT NULL,
+  award_application_id number NOT NULL,
+  display_order number DEFAULT 0 NOT NULL,
+  publicity_result varchar2(30 char) DEFAULT 'normal' NOT NULL,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT UQ_AWARD_PUBLICITY_ITEMS_APP UNIQUE (publicity_batch_id, award_application_id),
+  CONSTRAINT CK_AWARD_PUBLICITY_ITEMS_RESULT CHECK (publicity_result IN ('normal', 'withdrawn', 'corrected'))
+);
+
+CREATE INDEX IX_AWARD_PUBLICITY_ITEMS_ORDER ON AWARD_PUBLICITY_ITEMS (publicity_batch_id, display_order);
+
+CREATE TABLE AWARD_RULE_DOCUMENTS (
+  rule_document_id number DEFAULT SEQ_AWARD_RULE_DOCUMENTS.NEXTVAL PRIMARY KEY,
+  club_id number,
+  rule_title varchar2(255 char) NOT NULL,
+  rule_scope varchar2(30 char) DEFAULT 'club' NOT NULL,
+  academic_year varchar2(50 char) NOT NULL,
+  term_name varchar2(80 char),
+  issuer_name varchar2(255 char),
+  summary clob,
+  content_text clob,
+  material_url varchar2(1000 char),
+  material_name varchar2(255 char),
+  version_no varchar2(50 char) DEFAULT '1.0' NOT NULL,
+  rule_status varchar2(30 char) DEFAULT 'draft' NOT NULL,
+  effective_start_at date,
+  effective_end_at date,
+  published_by_user_id number,
+  published_at date,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  updated_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT CK_AWARD_RULE_DOCS_SCOPE CHECK (rule_scope IN ('global', 'club')),
+  CONSTRAINT CK_AWARD_RULE_DOCS_STATUS CHECK (rule_status IN ('draft', 'published', 'archived')),
+  CONSTRAINT CK_AWARD_RULE_DOCS_CLUB CHECK (
+    (rule_scope = 'global' AND club_id IS NULL) OR
+    (rule_scope = 'club' AND club_id IS NOT NULL)
+  )
+);
+
+CREATE INDEX IX_AWARD_RULE_DOCS_SCOPE ON AWARD_RULE_DOCUMENTS (club_id, rule_status, academic_year, term_name);
+
+CREATE INDEX IX_AWARD_RULE_DOCS_STATUS ON AWARD_RULE_DOCUMENTS (rule_scope, rule_status, effective_start_at);
+
 CREATE TABLE EVALUATIONS (
   evaluation_id number DEFAULT SEQ_EVALUATIONS.NEXTVAL PRIMARY KEY,
   evaluation_type varchar2(255),
@@ -382,7 +581,19 @@ CREATE TABLE EVALUATIONS (
   grade varchar2(255),
   public_status varchar2(255),
   comment_text varchar2(255),
-  created_at date
+  created_at date,
+  CONSTRAINT UQ_EVALUATIONS_SOURCE_SCOPE UNIQUE (club_id, user_id, evaluation_id)
+);
+
+CREATE TABLE EVALUATION_AWARD_SOURCES (
+  club_id number NOT NULL,
+  user_id number NOT NULL,
+  evaluation_id number NOT NULL,
+  award_application_id number NOT NULL,
+  award_score number DEFAULT 0 NOT NULL,
+  created_at date DEFAULT SYSDATE NOT NULL,
+  CONSTRAINT PK_EVALUATION_AWARD_SOURCES PRIMARY KEY (evaluation_id, award_application_id),
+  CONSTRAINT CK_EVALUATION_AWARD_SOURCES_SCORE CHECK (award_score BETWEEN 0 AND 100)
 );
 
 CREATE TABLE NOTICES (
@@ -540,11 +751,53 @@ ALTER TABLE MATERIAL_BORROWS ADD FOREIGN KEY (club_id) REFERENCES CLUBS (club_id
 
 ALTER TABLE MATERIAL_BORROWS ADD FOREIGN KEY (borrower_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
 
+ALTER TABLE AWARD_SCHEMES ADD CONSTRAINT FK_AWARD_SCHEMES_CLUB FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_SCHEMES ADD CONSTRAINT FK_AWARD_SCHEMES_CREATOR FOREIGN KEY (created_by_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_LEVELS ADD CONSTRAINT FK_AWARD_LEVELS_SCHEME FOREIGN KEY (award_scheme_id) REFERENCES AWARD_SCHEMES (award_scheme_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_CLUB FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_SCHEME FOREIGN KEY (club_id, award_scheme_id) REFERENCES AWARD_SCHEMES (club_id, award_scheme_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_LEVEL FOREIGN KEY (award_scheme_id, award_level_id) REFERENCES AWARD_LEVELS (award_scheme_id, award_level_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_APPLICANT FOREIGN KEY (applicant_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_RECOMMENDER FOREIGN KEY (recommender_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_APPLICATIONS ADD CONSTRAINT FK_AWARD_APPLICATIONS_SUBMITTER FOREIGN KEY (submitter_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_REVIEW_RECORDS ADD CONSTRAINT FK_AWARD_REVIEWS_APPLICATION FOREIGN KEY (award_application_id) REFERENCES AWARD_APPLICATIONS (award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_REVIEW_RECORDS ADD CONSTRAINT FK_AWARD_REVIEWS_REVIEWER FOREIGN KEY (reviewer_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_ATTACHMENTS ADD CONSTRAINT FK_AWARD_ATTACHMENTS_APPLICATION FOREIGN KEY (award_application_id) REFERENCES AWARD_APPLICATIONS (award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_ATTACHMENTS ADD CONSTRAINT FK_AWARD_ATTACHMENTS_UPLOADER FOREIGN KEY (uploaded_by_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_PUBLICITY_BATCHES ADD CONSTRAINT FK_AWARD_PUBLICITY_CLUB FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_PUBLICITY_BATCHES ADD CONSTRAINT FK_AWARD_PUBLICITY_PUBLISHER FOREIGN KEY (publisher_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_PUBLICITY_ITEMS ADD CONSTRAINT FK_AWARD_PUBLICITY_ITEMS_BATCH FOREIGN KEY (club_id, publicity_batch_id) REFERENCES AWARD_PUBLICITY_BATCHES (club_id, publicity_batch_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_PUBLICITY_ITEMS ADD CONSTRAINT FK_AWARD_PUBLICITY_ITEMS_APP FOREIGN KEY (club_id, award_application_id) REFERENCES AWARD_APPLICATIONS (club_id, award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_RULE_DOCUMENTS ADD CONSTRAINT FK_AWARD_RULE_DOCS_CLUB FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE AWARD_RULE_DOCUMENTS ADD CONSTRAINT FK_AWARD_RULE_DOCS_PUBLISHER FOREIGN KEY (published_by_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
 ALTER TABLE EVALUATIONS ADD FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE EVALUATIONS ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE EVALUATIONS ADD FOREIGN KEY (evaluator_user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_EVALUATION FOREIGN KEY (club_id, user_id, evaluation_id) REFERENCES EVALUATIONS (club_id, user_id, evaluation_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE EVALUATION_AWARD_SOURCES ADD CONSTRAINT FK_EAS_APPLICATION FOREIGN KEY (club_id, user_id, award_application_id) REFERENCES AWARD_APPLICATIONS (club_id, applicant_user_id, award_application_id) DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE NOTICES ADD FOREIGN KEY (club_id) REFERENCES CLUBS (club_id) DEFERRABLE INITIALLY IMMEDIATE;
 

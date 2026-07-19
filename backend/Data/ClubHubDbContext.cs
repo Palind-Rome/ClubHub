@@ -13,6 +13,14 @@ public class ClubHubDbContext : DbContext
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<ClubDepartment> ClubDepartments => Set<ClubDepartment>();
     public DbSet<ClubGroup> ClubGroups => Set<ClubGroup>();
+    public DbSet<AwardScheme> AwardSchemes => Set<AwardScheme>();
+    public DbSet<AwardLevel> AwardLevels => Set<AwardLevel>();
+    public DbSet<AwardApplication> AwardApplications => Set<AwardApplication>();
+    public DbSet<AwardReviewRecord> AwardReviewRecords => Set<AwardReviewRecord>();
+    public DbSet<AwardAttachment> AwardAttachments => Set<AwardAttachment>();
+    public DbSet<AwardPublicityBatch> AwardPublicityBatches => Set<AwardPublicityBatch>();
+    public DbSet<AwardPublicityItem> AwardPublicityItems => Set<AwardPublicityItem>();
+    public DbSet<AwardRuleDocument> AwardRuleDocuments => Set<AwardRuleDocument>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityParticipation> ActivityParticipations => Set<ActivityParticipation>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
@@ -30,6 +38,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<VenueReservation> VenueReservations => Set<VenueReservation>();
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
+    public DbSet<EvaluationAwardSource> EvaluationAwardSources => Set<EvaluationAwardSource>();
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<MaterialBorrow> MaterialBorrows => Set<MaterialBorrow>();
@@ -124,6 +133,22 @@ public class ClubHubDbContext : DbContext
              .WithOne(g => g.Club)
              .HasForeignKey(g => g.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.AwardSchemes)
+             .WithOne(s => s.Club)
+             .HasForeignKey(s => s.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.AwardApplications)
+             .WithOne(a => a.Club)
+             .HasForeignKey(a => a.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.AwardPublicityBatches)
+             .WithOne(b => b.Club)
+             .HasForeignKey(b => b.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasMany(c => c.AwardRuleDocuments)
+             .WithOne(d => d.Club)
+             .HasForeignKey(d => d.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ClubDepartment>(e =>
@@ -182,6 +207,234 @@ public class ClubHubDbContext : DbContext
              .WithMany(d => d.Groups)
              .HasForeignKey(g => new { g.ClubId, g.DepartmentId })
              .HasPrincipalKey(d => new { d.ClubId, d.DepartmentId })
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardScheme>(e =>
+        {
+            e.HasKey(s => s.AwardSchemeId);
+            e.HasAlternateKey(s => new { s.ClubId, s.AwardSchemeId })
+             .HasName("UQ_AWARD_SCHEMES_SCOPE");
+            e.Property(s => s.AwardSchemeId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_SCHEMES.NEXTVAL");
+            e.Property(s => s.AwardName).HasMaxLength(255);
+            e.Property(s => s.AwardCategory).HasMaxLength(100).HasDefaultValue("honor");
+            e.Property(s => s.AcademicYear).HasMaxLength(50);
+            e.Property(s => s.TermName).HasMaxLength(80);
+            e.Property(s => s.SponsorUnit).HasMaxLength(255);
+            e.Property(s => s.RewardLevel).HasMaxLength(100);
+            e.Property(s => s.FundingSource).HasMaxLength(255);
+            e.Property(s => s.IsRanked).HasDefaultValue(1);
+            e.Property(s => s.IsFixedAmount).HasDefaultValue(1);
+            e.Property(s => s.Description).HasColumnType("CLOB");
+            e.Property(s => s.MaterialDescription).HasColumnType("CLOB");
+            e.Property(s => s.SchemeStatus).HasMaxLength(30).HasDefaultValue("draft");
+            e.Property(s => s.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(s => s.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(s => new { s.ClubId, s.SchemeStatus, s.ApplicationStartAt })
+             .HasDatabaseName("IX_AWARD_SCHEMES_CLUB_STATUS");
+            e.HasOne(s => s.CreatedByUser)
+             .WithMany()
+             .HasForeignKey(s => s.CreatedByUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardLevel>(e =>
+        {
+            e.HasKey(l => l.AwardLevelId);
+            e.HasAlternateKey(l => new { l.AwardSchemeId, l.AwardLevelId })
+             .HasName("UQ_AWARD_LEVELS_SCOPE");
+            e.Property(l => l.AwardLevelId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_LEVELS.NEXTVAL");
+            e.Property(l => l.LevelName).HasMaxLength(255);
+            e.Property(l => l.AwardScore).HasDefaultValue(0);
+            e.Property(l => l.DisplayOrder).HasDefaultValue(0);
+            e.Property(l => l.LevelStatus).HasMaxLength(30).HasDefaultValue("active");
+            e.Property(l => l.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(l => l.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(l => new { l.AwardSchemeId, l.LevelName })
+             .IsUnique()
+             .HasDatabaseName("UQ_AWARD_LEVELS_NAME");
+            e.HasIndex(l => new { l.AwardSchemeId, l.DisplayOrder, l.LevelName })
+             .HasDatabaseName("IX_AWARD_LEVELS_ORDER");
+            e.HasOne(l => l.Scheme)
+             .WithMany(s => s.Levels)
+             .HasForeignKey(l => l.AwardSchemeId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardApplication>(e =>
+        {
+            e.HasKey(a => a.AwardApplicationId);
+            e.HasAlternateKey(a => new { a.ClubId, a.AwardApplicationId })
+             .HasName("UQ_AWARD_APPLICATIONS_SCOPE");
+            e.HasAlternateKey(a => new { a.ClubId, a.ApplicantUserId, a.AwardApplicationId })
+             .HasName("UQ_AWARD_APPLICATIONS_MEMBER_SCOPE");
+            e.Property(a => a.AwardApplicationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_APPLICATIONS.NEXTVAL");
+            e.Property(a => a.ApplicationType).HasMaxLength(30).HasDefaultValue("self");
+            e.Property(a => a.ApplicationReason).HasColumnType("CLOB");
+            e.Property(a => a.MaterialUrl).HasMaxLength(1000);
+            e.Property(a => a.CurrentStep).HasMaxLength(30).HasDefaultValue("student_submit");
+            e.Property(a => a.ApplicationStatus).HasMaxLength(30).HasDefaultValue("draft");
+            e.Property(a => a.PublicStatus).HasMaxLength(30).HasDefaultValue("none");
+            e.Property(a => a.ReviewRound).HasDefaultValue(1);
+            e.Property(a => a.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(a => a.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(a => new { a.AwardSchemeId, a.ApplicantUserId })
+             .IsUnique()
+             .HasDatabaseName("UQ_AWARD_APPLICATIONS_APPLICANT");
+            e.HasIndex(a => new { a.ClubId, a.ApplicationStatus, a.CurrentStep })
+             .HasDatabaseName("IX_AWARD_APPLICATIONS_STATUS");
+            e.HasIndex(a => new { a.ApplicantUserId, a.ClubId, a.AwardSchemeId })
+             .HasDatabaseName("IX_AWARD_APPLICATIONS_USER");
+            e.HasOne(a => a.Scheme)
+             .WithMany(s => s.Applications)
+             .HasForeignKey(a => new { a.ClubId, a.AwardSchemeId })
+             .HasPrincipalKey(s => new { s.ClubId, s.AwardSchemeId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Level)
+             .WithMany(l => l.Applications)
+             .HasForeignKey(a => new { a.AwardSchemeId, a.AwardLevelId })
+             .HasPrincipalKey(l => new { l.AwardSchemeId, l.AwardLevelId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Applicant)
+             .WithMany()
+             .HasForeignKey(a => a.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Recommender)
+             .WithMany()
+             .HasForeignKey(a => a.RecommenderUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.Submitter)
+             .WithMany()
+             .HasForeignKey(a => a.SubmitterUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardReviewRecord>(e =>
+        {
+            e.HasKey(r => r.ReviewId);
+            e.Property(r => r.ReviewId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_REVIEW_RECORDS.NEXTVAL");
+            e.Property(r => r.ReviewRound).HasDefaultValue(1);
+            e.Property(r => r.ReviewStep).HasMaxLength(30);
+            e.Property(r => r.ReviewResult).HasMaxLength(30);
+            e.Property(r => r.ReviewComment).HasColumnType("CLOB");
+            e.Property(r => r.FromStatus).HasMaxLength(30);
+            e.Property(r => r.ToStatus).HasMaxLength(30);
+            e.Property(r => r.ReviewedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(r => new { r.AwardApplicationId, r.ReviewRound, r.ReviewedAt })
+             .HasDatabaseName("IX_AWARD_REVIEWS_APPLICATION");
+            e.HasOne(r => r.Application)
+             .WithMany(a => a.ReviewRecords)
+             .HasForeignKey(r => r.AwardApplicationId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.Reviewer)
+             .WithMany()
+             .HasForeignKey(r => r.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardAttachment>(e =>
+        {
+            e.HasKey(a => a.AttachmentId);
+            e.Property(a => a.AttachmentId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_ATTACHMENTS.NEXTVAL");
+            e.Property(a => a.AttachmentName).HasMaxLength(255);
+            e.Property(a => a.AttachmentUrl).HasMaxLength(1000);
+            e.Property(a => a.AttachmentType).HasMaxLength(100);
+            e.Property(a => a.UploadedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(a => new { a.AwardApplicationId, a.UploadedAt })
+             .HasDatabaseName("IX_AWARD_ATTACHMENTS_APP");
+            e.HasOne(a => a.Application)
+             .WithMany(application => application.Attachments)
+             .HasForeignKey(a => a.AwardApplicationId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(a => a.UploadedByUser)
+             .WithMany()
+             .HasForeignKey(a => a.UploadedByUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardPublicityBatch>(e =>
+        {
+            e.HasKey(b => b.PublicityBatchId);
+            e.HasAlternateKey(b => new { b.ClubId, b.PublicityBatchId })
+             .HasName("UQ_AWARD_PUBLICITY_BATCH_SCOPE");
+            e.Property(b => b.PublicityBatchId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_PUBLICITY_BATCHES.NEXTVAL");
+            e.Property(b => b.Title).HasMaxLength(255);
+            e.Property(b => b.Description).HasColumnType("CLOB");
+            e.Property(b => b.PublicityStatus).HasMaxLength(30).HasDefaultValue("draft");
+            e.Property(b => b.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(b => b.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(b => new { b.ClubId, b.PublicityStatus, b.PublicityStartAt })
+             .HasDatabaseName("IX_AWARD_PUBLICITY_CLUB");
+            e.HasOne(b => b.Publisher)
+             .WithMany()
+             .HasForeignKey(b => b.PublisherUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardPublicityItem>(e =>
+        {
+            e.HasKey(i => i.PublicityItemId);
+            e.Property(i => i.PublicityItemId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_PUBLICITY_ITEMS.NEXTVAL");
+            e.Property(i => i.DisplayOrder).HasDefaultValue(0);
+            e.Property(i => i.PublicityResult).HasMaxLength(30).HasDefaultValue("normal");
+            e.Property(i => i.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(i => new { i.PublicityBatchId, i.AwardApplicationId })
+             .IsUnique()
+             .HasDatabaseName("UQ_AWARD_PUBLICITY_ITEMS_APP");
+            e.HasIndex(i => new { i.PublicityBatchId, i.DisplayOrder })
+             .HasDatabaseName("IX_AWARD_PUBLICITY_ITEMS_ORDER");
+            e.HasOne(i => i.Batch)
+             .WithMany(b => b.Items)
+             .HasForeignKey(i => new { i.ClubId, i.PublicityBatchId })
+             .HasPrincipalKey(b => new { b.ClubId, b.PublicityBatchId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(i => i.Application)
+             .WithMany(a => a.PublicityItems)
+             .HasForeignKey(i => new { i.ClubId, i.AwardApplicationId })
+             .HasPrincipalKey(a => new { a.ClubId, a.AwardApplicationId })
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<AwardRuleDocument>(e =>
+        {
+            e.HasKey(d => d.RuleDocumentId);
+            e.Property(d => d.RuleDocumentId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_AWARD_RULE_DOCUMENTS.NEXTVAL");
+            e.Property(d => d.RuleTitle).HasMaxLength(255);
+            e.Property(d => d.RuleScope).HasMaxLength(30).HasDefaultValue("club");
+            e.Property(d => d.AcademicYear).HasMaxLength(50);
+            e.Property(d => d.TermName).HasMaxLength(80);
+            e.Property(d => d.IssuerName).HasMaxLength(255);
+            e.Property(d => d.Summary).HasColumnType("CLOB");
+            e.Property(d => d.ContentText).HasColumnType("CLOB");
+            e.Property(d => d.MaterialUrl).HasMaxLength(1000);
+            e.Property(d => d.MaterialName).HasMaxLength(255);
+            e.Property(d => d.VersionNo).HasMaxLength(50).HasDefaultValue("1.0");
+            e.Property(d => d.RuleStatus).HasMaxLength(30).HasDefaultValue("draft");
+            e.Property(d => d.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(d => d.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(d => new { d.ClubId, d.RuleStatus, d.AcademicYear, d.TermName })
+             .HasDatabaseName("IX_AWARD_RULE_DOCS_SCOPE");
+            e.HasIndex(d => new { d.RuleScope, d.RuleStatus, d.EffectiveStartAt })
+             .HasDatabaseName("IX_AWARD_RULE_DOCS_STATUS");
+            e.HasOne(d => d.PublishedByUser)
+             .WithMany()
+             .HasForeignKey(d => d.PublishedByUserId)
              .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -479,6 +732,8 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Evaluation>(e =>
         {
             e.HasKey(ev => ev.EvaluationId);
+            e.HasAlternateKey(ev => new { ev.ClubId, ev.UserId, ev.EvaluationId })
+             .HasName("UQ_EVALUATIONS_SOURCE_SCOPE");
             e.Property(ev => ev.EvaluationId)
              .ValueGeneratedOnAdd()
              .HasDefaultValueSql("SEQ_EVALUATIONS.NEXTVAL");
@@ -493,6 +748,23 @@ public class ClubHubDbContext : DbContext
             e.HasOne(ev => ev.Evaluator)
              .WithMany()
              .HasForeignKey(ev => ev.EvaluatorUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<EvaluationAwardSource>(e =>
+        {
+            e.HasKey(source => new { source.EvaluationId, source.AwardApplicationId });
+            e.Property(source => source.AwardScore).HasDefaultValue(0);
+            e.Property(source => source.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasOne(source => source.Evaluation)
+             .WithMany(evaluation => evaluation.AwardSources)
+             .HasForeignKey(source => new { source.ClubId, source.UserId, source.EvaluationId })
+             .HasPrincipalKey(evaluation => new { evaluation.ClubId, evaluation.UserId, evaluation.EvaluationId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(source => source.Application)
+             .WithMany(application => application.EvaluationSources)
+             .HasForeignKey(source => new { source.ClubId, source.UserId, source.AwardApplicationId })
+             .HasPrincipalKey(application => new { application.ClubId, application.ApplicantUserId, application.AwardApplicationId })
              .OnDelete(DeleteBehavior.NoAction);
         });
 
