@@ -48,6 +48,7 @@ public class LearningController : ControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly ILearningObjectStorage _objectStorage;
     private readonly LearningPreviewService _previewService;
+    private readonly LearningPreviewSessionStore _previewSessionStore;
     private readonly AuthTokenService _authTokenService;
     private readonly ILogger<LearningController> _logger;
 
@@ -57,6 +58,7 @@ public class LearningController : ControllerBase
         IWebHostEnvironment environment,
         ILearningObjectStorage objectStorage,
         LearningPreviewService previewService,
+        LearningPreviewSessionStore previewSessionStore,
         AuthTokenService authTokenService,
         ILogger<LearningController> logger)
     {
@@ -65,6 +67,7 @@ public class LearningController : ControllerBase
         _environment = environment;
         _objectStorage = objectStorage;
         _previewService = previewService;
+        _previewSessionStore = previewSessionStore;
         _authTokenService = authTokenService;
         _logger = logger;
     }
@@ -478,13 +481,19 @@ public class LearningController : ControllerBase
                 access.Item.FileUrl,
                 HttpContext.RequestAborted);
             var previewToken = _authTokenService.CreatePreviewToken(access.UserId, itemId);
+            _previewSessionStore.Store(
+                previewToken,
+                access.UserId,
+                itemId,
+                preview,
+                _authTokenService.PreviewSessionLifetime);
             Response.Cookies.Append(
                 AuthTokenService.PreviewCookieName,
                 previewToken,
                 new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = Request.IsHttps,
+                    Secure = !_environment.IsDevelopment() || Request.IsHttps,
                     SameSite = SameSiteMode.Strict,
                     Path = $"/api/learning/items/{itemId}/preview",
                     MaxAge = _authTokenService.PreviewSessionLifetime,
@@ -522,23 +531,28 @@ public class LearningController : ControllerBase
         PreparedLearningPreview? preview = null;
         try
         {
-            preview = await _previewService.PrepareAsync(
-                access.Item!.ItemId,
-                access.Item.ClubId,
-                access.Item.FileUrl,
-                HttpContext.RequestAborted);
+            if (!Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var previewToken) ||
+                !_previewSessionStore.TryGet(
+                    previewToken,
+                    access.UserId,
+                    itemId,
+                    out preview) || preview is null)
+            {
+                return Unauthorized("在线预览会话已失效，请重新打开预览。");
+            }
+            var preparedPreview = preview!;
             LearningPreviewHttpPolicy.Apply(
                 Response,
-                preview.ContentType,
-                BuildPreviewFileName(access.Item.Title, preview));
+                preparedPreview.ContentType,
+                BuildPreviewFileName(access.Item.Title, preparedPreview));
 
             var content = await _previewService.OpenAsync(
-                preview,
+                preparedPreview,
                 Request.Headers.Range.ToString(),
                 HttpContext.RequestAborted);
             if (content.PhysicalPath is not null)
             {
-                return new PhysicalFileResult(content.PhysicalPath, preview.ContentType)
+                return new PhysicalFileResult(content.PhysicalPath, preparedPreview.ContentType)
                 {
                     EnableRangeProcessing = true
                 };
@@ -551,7 +565,7 @@ public class LearningController : ControllerBase
                     $"bytes {content.Range.Start}-{content.Range.End}/{content.Range.TotalLength}";
             }
             Response.ContentLength = content.ContentLength;
-            return File(content.Content!, preview.ContentType);
+            return File(content.Content!, preparedPreview.ContentType);
         }
         catch (LearningPreviewException exception)
         {

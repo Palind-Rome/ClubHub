@@ -99,6 +99,8 @@ const previewKind = ref<"image" | "video" | "pdf">("pdf");
 const previewConverted = ref(false);
 const previewUrl = ref("");
 const previewItem = ref<LearningItem | null>(null);
+let previewRequestId = 0;
+let previewObjectUrl: string | null = null;
 const statistics = ref<LearningItemStatistics | null>(null);
 const statisticsLoading = ref(false);
 const learningSection = ref<"course" | "resource">("course");
@@ -553,6 +555,16 @@ function openItemDetail(item: LearningItem) {
   detailDrawerVisible.value = true;
 }
 
+function revokePreviewObjectUrl() {
+  if (!previewObjectUrl) return;
+  URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = null;
+}
+
+function isCurrentPreviewRequest(requestId: number, itemId: number) {
+  return requestId === previewRequestId && previewItem.value?.id === itemId;
+}
+
 /** 建立短时预览会话；内容请求只携带 HttpOnly Cookie，不暴露登录令牌或 OSS 地址。 */
 async function openPreview(item: LearningItem) {
   if (isCourseItem(item)) {
@@ -560,6 +572,8 @@ async function openPreview(item: LearningItem) {
     return;
   }
 
+  const requestId = ++previewRequestId;
+  revokePreviewObjectUrl();
   previewItem.value = item;
   previewError.value = "";
   previewConverted.value = false;
@@ -572,16 +586,44 @@ async function openPreview(item: LearningItem) {
       credentials: "same-origin",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
     });
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
     if (!response.ok) {
       const message = (await response.text()).replace(/^"|"$/g, "");
+      if (!isCurrentPreviewRequest(requestId, item.id)) return;
       throw new Error(message || `在线预览准备失败：HTTP ${response.status}`);
     }
 
     const kind = response.headers.get("X-ClubHub-Preview-Kind");
-    previewKind.value = kind === "image" || kind === "video" ? kind : "pdf";
+    const resolvedKind = kind === "image" || kind === "video" ? kind : "pdf";
+    previewKind.value = resolvedKind;
     previewConverted.value = response.headers.get("X-ClubHub-Preview-Converted") === "true";
-    previewUrl.value = `/api/learning/items/${item.id}/preview?v=${Date.now()}`;
+    const contentUrl = `/api/learning/items/${item.id}/preview?v=${Date.now()}`;
+    if (resolvedKind !== "pdf") {
+      previewUrl.value = contentUrl;
+      return;
+    }
+
+    const previewResponse = await fetch(contentUrl, { credentials: "same-origin" });
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    if (!previewResponse.ok) {
+      throw new Error(`预览内容加载失败：HTTP ${previewResponse.status}`);
+    }
+
+    const previewBlob = await previewResponse.blob();
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    if (previewBlob.type && previewBlob.type !== "application/pdf") {
+      throw new Error("预览服务返回了非 PDF 内容");
+    }
+
+    const objectUrl = URL.createObjectURL(previewBlob);
+    if (!isCurrentPreviewRequest(requestId, item.id)) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+    previewObjectUrl = objectUrl;
+    previewUrl.value = objectUrl;
   } catch (error) {
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
     previewLoading.value = false;
     previewError.value = toErrorMessage(error, "在线预览准备失败，请稍后重试");
   }
@@ -599,6 +641,8 @@ function markPreviewFailed() {
 }
 
 function clearPreview() {
+  previewRequestId += 1;
+  revokePreviewObjectUrl();
   previewUrl.value = "";
   previewItem.value = null;
   previewError.value = "";
@@ -1218,6 +1262,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  previewRequestId += 1;
+  revokePreviewObjectUrl();
   stopSessionChange?.();
 });
 </script>

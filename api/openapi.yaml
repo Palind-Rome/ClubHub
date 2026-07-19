@@ -4411,7 +4411,7 @@ paths:
   /api/learning/items/{itemId}/preview-session:
     post:
       summary: 准备学习资源在线预览会话
-      description: 重新校验登录状态、发布状态、资源可见范围和管理权限；Office 文件首次访问时在受限服务端进程中转换并缓存为私有 OSS PDF。成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。
+      description: 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
       operationId: createLearningPreviewSession
       security:
         - bearerAuth: []
@@ -4442,7 +4442,7 @@ paths:
         "404":
           description: 用户、资源或文件不存在。
         "415":
-          description: 文件格式不受支持，或文件签名与扩展名不一致。
+          description: 文件格式不受支持、文件签名与扩展名不一致，或 Office 在线转换尚未启用。
         "422":
           description: Office 文件转换失败、超时、超出大小或内存限制。
         "503":
@@ -4451,7 +4451,7 @@ paths:
   /api/learning/items/{itemId}/preview:
     get:
       summary: 获取受保护的学习资源在线预览内容
-      description: 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF，DOC、DOCX、PPT、PPTX 返回缓存的 PDF 副本。该操作不会写入下载时间或下载 IP。
+      description: 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
       operationId: getLearningPreview
       security:
         - previewSessionCookie: []
@@ -4512,7 +4512,31 @@ paths:
         "206":
           description: 符合请求范围的部分预览内容。
           content:
-            application/octet-stream:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
               schema:
                 type: string
                 format: binary

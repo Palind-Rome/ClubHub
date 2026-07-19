@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
@@ -7,24 +6,33 @@ using Microsoft.Extensions.Options;
 
 namespace ClubHub.Api.Services;
 
-public sealed class LearningPreviewService
+public sealed class LearningPreviewService : IDisposable
 {
     private const string LocalFileUrlPrefix = "/api/learning/items/";
     private const int SignatureBytes = 512;
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> ConversionLocks = new();
+    private const int ConversionLockStripeCount = 64;
 
     private readonly ILearningObjectStorage _objectStorage;
     private readonly IWebHostEnvironment _environment;
     private readonly OfficePreviewConverter _converter;
+    private readonly OfficeConversionLimiter _conversionLimiter;
+    private readonly bool _officeConversionEnabled;
+    private readonly SemaphoreSlim[] _conversionLocks = Enumerable.Range(0, ConversionLockStripeCount)
+        .Select(_ => new SemaphoreSlim(1, 1))
+        .ToArray();
 
     public LearningPreviewService(
         ILearningObjectStorage objectStorage,
         IWebHostEnvironment environment,
-        OfficePreviewConverter converter)
+        OfficePreviewConverter converter,
+        OfficeConversionLimiter conversionLimiter,
+        IOptions<LearningPreviewOptions> options)
     {
         _objectStorage = objectStorage;
         _environment = environment;
         _converter = converter;
+        _conversionLimiter = conversionLimiter;
+        _officeConversionEnabled = environment.IsDevelopment() && options.Value.EnableOfficeConversion;
     }
 
     public async Task<PreparedLearningPreview> PrepareAsync(
@@ -43,6 +51,13 @@ public sealed class LearningPreviewService
                 source.StorageReference,
                 source.PhysicalPath,
                 false);
+        }
+
+        if (!_officeConversionEnabled)
+        {
+            throw new LearningPreviewException(
+                LearningPreviewFailure.Unsupported,
+                "Office 在线转换在独立隔离服务完成前暂不可用，请在获得权限后下载查看。");
         }
 
         return source.StorageReference is not null
@@ -198,7 +213,7 @@ public sealed class LearningPreviewService
         CancellationToken cancellationToken)
     {
         var previewReference = BuildPreviewReference(clubId, itemId);
-        var gate = ConversionLocks.GetOrAdd(previewReference, _ => new SemaphoreSlim(1, 1));
+        var gate = GetConversionLock(previewReference);
         await gate.WaitAsync(cancellationToken);
         try
         {
@@ -209,7 +224,7 @@ public sealed class LearningPreviewService
                     null,
                     cancellationToken);
                 await using var sourceStream = storedObject.Content;
-                await using var artifact = await _converter.ConvertAsync(
+                await using var artifact = await ConvertWithLimitAsync(
                     sourceStream,
                     source.Length,
                     source.Format.Extension,
@@ -259,7 +274,7 @@ public sealed class LearningPreviewService
         CancellationToken cancellationToken)
     {
         var previewPath = GetLocalPreviewPath(clubId, itemId);
-        var gate = ConversionLocks.GetOrAdd(previewPath, _ => new SemaphoreSlim(1, 1));
+        var gate = GetConversionLock(previewPath);
         await gate.WaitAsync(cancellationToken);
         try
         {
@@ -273,7 +288,7 @@ public sealed class LearningPreviewService
                     FileShare.Read,
                     64 * 1024,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await using var artifact = await _converter.ConvertAsync(
+                await using var artifact = await ConvertWithLimitAsync(
                     sourceStream,
                     source.Length,
                     source.Format.Extension,
@@ -349,6 +364,32 @@ public sealed class LearningPreviewService
 
     private static string BuildPreviewReference(int clubId, int itemId) =>
         $"clubs/{clubId}/learning/{itemId}/preview/converted.pdf";
+
+    private SemaphoreSlim GetConversionLock(string key)
+    {
+        var index = (key.GetHashCode(StringComparison.Ordinal) & int.MaxValue) % _conversionLocks.Length;
+        return _conversionLocks[index];
+    }
+
+    private Task<OfficePreviewArtifact> ConvertWithLimitAsync(
+        Stream source,
+        long sourceLength,
+        string extension,
+        CancellationToken cancellationToken) =>
+        _conversionLimiter.RunAsync(
+            token => _converter.ConvertAsync(source, sourceLength, extension, token),
+            cancellationToken);
+
+    /// <summary>
+    /// 释放固定数量的转换互斥锁。
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var conversionLock in _conversionLocks)
+        {
+            conversionLock.Dispose();
+        }
+    }
 
     private static LearningPreviewException InvalidRange(long contentLength) => new(
         LearningPreviewFailure.InvalidRange,

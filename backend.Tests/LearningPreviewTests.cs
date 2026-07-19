@@ -150,6 +150,69 @@ public class LearningPreviewTests
         Assert.False(service.TryValidatePreviewToken(token, 144, out _));
     }
 
+    [Fact]
+    public void Preview_session_store_reuses_metadata_only_for_matching_token_user_and_item()
+    {
+        using var store = new LearningPreviewSessionStore();
+        var preview = new PreparedLearningPreview(
+            LearningPreviewKind.Pdf,
+            "application/pdf",
+            1024,
+            "clubs/7/learning/144/preview.pdf",
+            null,
+            false);
+
+        store.Store("signed-preview-token", 21, 144, preview, TimeSpan.FromMinutes(30));
+
+        Assert.True(store.TryGet("signed-preview-token", 21, 144, out var stored));
+        Assert.Same(preview, stored);
+        Assert.False(store.TryGet("different-token", 21, 144, out _));
+        Assert.False(store.TryGet("signed-preview-token", 22, 144, out _));
+        Assert.False(store.TryGet("signed-preview-token", 21, 145, out _));
+    }
+
+    [Fact]
+    public async Task Conversion_limiter_never_exceeds_configured_concurrency()
+    {
+        using var limiter = new OfficeConversionLimiter(2);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstWaveStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sync = new object();
+        var active = 0;
+        var maximumActive = 0;
+        var started = 0;
+
+        var operations = Enumerable.Range(0, 6).Select(_ => limiter.RunAsync(
+            async cancellationToken =>
+            {
+                lock (sync)
+                {
+                    active += 1;
+                    maximumActive = Math.Max(maximumActive, active);
+                    started += 1;
+                    if (started == limiter.MaxConcurrency) firstWaveStarted.TrySetResult();
+                }
+
+                await release.Task.WaitAsync(cancellationToken);
+                lock (sync)
+                {
+                    active -= 1;
+                }
+                return true;
+            },
+            CancellationToken.None)).ToArray();
+
+        await firstWaveStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        lock (sync)
+        {
+            Assert.Equal(limiter.MaxConcurrency, active);
+        }
+
+        release.TrySetResult();
+        await Task.WhenAll(operations);
+        Assert.Equal(limiter.MaxConcurrency, maximumActive);
+    }
+
     private static AuthTokenService CreateTokenService()
     {
         var configuration = new ConfigurationBuilder()
