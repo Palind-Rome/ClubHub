@@ -15,6 +15,7 @@ services:
       Oss__Endpoint: ${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
       Oss__Bucket: ${OSS_BUCKET:-clubhub-learning-prod-2026-c7h2}
       Oss__RoleName: ${OSS_ROLE_NAME:-ClubHubOssProdRole}
+      LearningPreview__MaxConcurrentConversions: ${LEARNING_PREVIEW_MAX_CONCURRENT_CONVERSIONS:-2}
     expose:
       - "5000"
     networks:

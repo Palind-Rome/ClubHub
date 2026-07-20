@@ -92,6 +92,15 @@ const progressSavingId = ref<number | null>(null);
 const learningId = ref<number | null>(null);
 const downloadingId = ref<number | null>(null);
 const deletingId = ref<number | null>(null);
+const previewDialogVisible = ref(false);
+const previewLoading = ref(false);
+const previewError = ref("");
+const previewKind = ref<"image" | "video" | "pdf">("pdf");
+const previewConverted = ref(false);
+const previewUrl = ref("");
+const previewItem = ref<LearningItem | null>(null);
+let previewRequestId = 0;
+let previewObjectUrl: string | null = null;
 const statistics = ref<LearningItemStatistics | null>(null);
 const statisticsLoading = ref(false);
 const learningSection = ref<"course" | "resource">("course");
@@ -546,6 +555,100 @@ function openItemDetail(item: LearningItem) {
   detailDrawerVisible.value = true;
 }
 
+function revokePreviewObjectUrl() {
+  if (!previewObjectUrl) return;
+  URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = null;
+}
+
+function isCurrentPreviewRequest(requestId: number, itemId: number) {
+  return requestId === previewRequestId && previewItem.value?.id === itemId;
+}
+
+/** 建立短时预览会话；内容请求只携带 HttpOnly Cookie，不暴露登录令牌或 OSS 地址。 */
+async function openPreview(item: LearningItem) {
+  if (isCourseItem(item)) {
+    ElMessage.warning("培训课程没有可在线预览的资源文件");
+    return;
+  }
+
+  const requestId = ++previewRequestId;
+  revokePreviewObjectUrl();
+  previewItem.value = item;
+  previewError.value = "";
+  previewConverted.value = false;
+  previewUrl.value = "";
+  previewLoading.value = true;
+  previewDialogVisible.value = true;
+  try {
+    const response = await fetch(`/api/learning/items/${item.id}/preview-session`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+    });
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    if (!response.ok) {
+      const message = (await response.text()).replace(/^"|"$/g, "");
+      if (!isCurrentPreviewRequest(requestId, item.id)) return;
+      throw new Error(message || `在线预览准备失败：HTTP ${response.status}`);
+    }
+
+    const kind = response.headers.get("X-ClubHub-Preview-Kind");
+    const resolvedKind = kind === "image" || kind === "video" ? kind : "pdf";
+    previewKind.value = resolvedKind;
+    previewConverted.value = response.headers.get("X-ClubHub-Preview-Converted") === "true";
+    const contentUrl = `/api/learning/items/${item.id}/preview?v=${Date.now()}`;
+    if (resolvedKind !== "pdf") {
+      previewUrl.value = contentUrl;
+      return;
+    }
+
+    const previewResponse = await fetch(contentUrl, { credentials: "same-origin" });
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    if (!previewResponse.ok) {
+      throw new Error(`预览内容加载失败：HTTP ${previewResponse.status}`);
+    }
+
+    const previewBlob = await previewResponse.blob();
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    if (previewBlob.type && previewBlob.type !== "application/pdf") {
+      throw new Error("预览服务返回了非 PDF 内容");
+    }
+
+    const objectUrl = URL.createObjectURL(previewBlob);
+    if (!isCurrentPreviewRequest(requestId, item.id)) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+    previewObjectUrl = objectUrl;
+    previewUrl.value = objectUrl;
+  } catch (error) {
+    if (!isCurrentPreviewRequest(requestId, item.id)) return;
+    previewLoading.value = false;
+    previewError.value = toErrorMessage(error, "在线预览准备失败，请稍后重试");
+  }
+}
+
+function markPreviewReady() {
+  previewLoading.value = false;
+}
+
+function markPreviewFailed() {
+  previewLoading.value = false;
+  previewError.value = previewConverted.value
+    ? "Office 文档转换后的预览加载失败，请稍后重试或在获得权限后下载查看。"
+    : "预览内容加载失败，请检查网络后重试。";
+}
+
+function clearPreview() {
+  previewRequestId += 1;
+  revokePreviewObjectUrl();
+  previewUrl.value = "";
+  previewItem.value = null;
+  previewError.value = "";
+  previewLoading.value = false;
+}
+
 /** 确认后删除有权管理的课程或资源，并刷新当前列表。 */
 async function deleteResource(item: LearningItem) {
   if (!canDeleteItem(item)) return;
@@ -987,9 +1090,9 @@ async function startLearning(item: LearningItem) {
   learningId.value = item.id;
   try {
     await api.startLearningItem({ itemId: item.id });
-    ElMessage.success("学习记录已创建，可继续更新进度和时长");
+    ElMessage.success("学习记录已创建，正在打开资源内容");
     await loadLearningItems();
-    await openRecords(item);
+    await openPreview(item);
   } catch (error) {
     ElMessage.error(toErrorMessage(error, "开始学习失败"));
   } finally {
@@ -1159,6 +1262,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  previewRequestId += 1;
+  revokePreviewObjectUrl();
   stopSessionChange?.();
 });
 </script>
@@ -1356,6 +1461,9 @@ onUnmounted(() => {
           >
             退出课程
           </el-button>
+          <el-button v-if="!isCourseItem(row)" size="small" @click="openPreview(row)">
+            在线预览
+          </el-button>
           <el-button
             v-if="!isCourseItem(row)"
             size="small"
@@ -1470,8 +1578,94 @@ onUnmounted(() => {
             {{ detailItem.currentEnrollments }}
           </el-descriptions-item>
         </el-descriptions>
+        <div v-if="!isCourseItem(detailItem)" class="detail-actions">
+          <el-button type="primary" plain @click="openPreview(detailItem)">在线预览</el-button>
+          <el-button
+            type="primary"
+            :disabled="!detailItem.canStartLearning"
+            :loading="learningId === detailItem.id"
+            @click="startLearning(detailItem)"
+          >
+            {{ detailItem.currentUserRecordStatus === "none" ? "开始学习" : "继续学习" }}
+          </el-button>
+          <el-button
+            type="success"
+            :disabled="!detailItem.canDownload"
+            :loading="downloadingId === detailItem.id"
+            @click="downloadItem(detailItem)"
+          >
+            下载
+          </el-button>
+        </div>
       </template>
     </el-drawer>
+
+    <el-dialog
+      v-model="previewDialogVisible"
+      :title="previewItem ? `在线预览 · ${previewItem.title}` : '在线预览'"
+      width="min(1100px, 96vw)"
+      destroy-on-close
+      @closed="clearPreview"
+    >
+      <div
+        class="preview-stage"
+        v-loading="previewLoading"
+        :element-loading-text="
+          previewConverted ? '正在转换并加载 Office 文档…' : '正在安全加载预览内容…'
+        "
+      >
+        <el-alert
+          v-if="previewError"
+          :title="previewError"
+          type="error"
+          :closable="false"
+          show-icon
+        />
+        <img
+          v-else-if="previewUrl && previewKind === 'image'"
+          class="preview-image"
+          :src="previewUrl"
+          :alt="previewItem?.title ?? '学习资源图片'"
+          referrerpolicy="no-referrer"
+          @load="markPreviewReady"
+          @error="markPreviewFailed"
+        />
+        <video
+          v-else-if="previewUrl && previewKind === 'video'"
+          class="preview-video"
+          :src="previewUrl"
+          controls
+          preload="metadata"
+          @loadedmetadata="markPreviewReady"
+          @error="markPreviewFailed"
+        >
+          当前浏览器不支持该视频格式。
+        </video>
+        <iframe
+          v-else-if="previewUrl"
+          class="preview-document"
+          :src="previewUrl"
+          :title="previewItem?.title ?? '学习资源文档'"
+          referrerpolicy="no-referrer"
+          @load="markPreviewReady"
+        />
+      </div>
+      <p class="preview-security-tip">
+        在线预览与下载权限相互独立，不会记录下载时间或
+        IP。浏览器必须接收内容才能展示，在线预览不能作为 DRM，也无法完全阻止截图、抓包或另存。
+      </p>
+      <template #footer>
+        <el-button @click="previewDialogVisible = false">关闭</el-button>
+        <el-button
+          v-if="previewItem?.canDownload"
+          type="success"
+          :loading="downloadingId === previewItem.id"
+          @click="previewItem && downloadItem(previewItem)"
+        >
+          下载原文件
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="uploadDialogVisible" title="资源上传" width="620px">
       <el-form label-width="100px">
@@ -1898,6 +2092,50 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.preview-stage {
+  display: flex;
+  min-height: 520px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}
+
+.preview-video {
+  width: 100%;
+  max-height: 72vh;
+  background: #000;
+}
+
+.preview-document {
+  width: 100%;
+  height: 72vh;
+  border: 0;
+  background: #fff;
+}
+
+.preview-security-tip {
+  margin: 12px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .field-tip {
   margin-left: 10px;
   color: var(--el-text-color-secondary);
@@ -1940,6 +2178,14 @@ onUnmounted(() => {
 
   .toolbar-spacer {
     display: none;
+  }
+
+  .preview-stage {
+    min-height: 360px;
+  }
+
+  .preview-document {
+    height: 60vh;
   }
 }
 </style>

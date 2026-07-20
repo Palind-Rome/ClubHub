@@ -125,8 +125,35 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
         }
     }
 
+    public async Task<bool> ExistsAsync(
+        string storageReference,
+        CancellationToken cancellationToken)
+    {
+        var client = GetClient();
+        var objectName = ParseOwnedReference(storageReference);
+        try
+        {
+            return await client.IsObjectExistAsync(
+                _options.Bucket,
+                objectName,
+                null,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException(
+                "Failed to check the learning preview in object storage.",
+                exception);
+        }
+    }
+
     public async Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
+        StoredObjectRange? range,
         CancellationToken cancellationToken)
     {
         var client = GetClient();
@@ -137,7 +164,8 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
                 new OSS.Models.GetObjectRequest
                 {
                     Bucket = _options.Bucket,
-                    Key = objectName
+                    Key = objectName,
+                    Range = range is null ? null : $"bytes={range.Start}-{range.End}"
                 },
                 HttpCompletionOption.ResponseHeadersRead,
                 cancellationToken: cancellationToken);
@@ -159,6 +187,42 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
         catch (Exception exception)
         {
             throw new LearningObjectStorageException("Failed to read the learning resource from OSS.", exception);
+        }
+    }
+
+    public async Task SaveAsync(
+        string storageReference,
+        Stream content,
+        long contentLength,
+        string contentType,
+        string contentDisposition,
+        CancellationToken cancellationToken)
+    {
+        _ = contentLength;
+        var client = GetClient();
+        var objectName = ParseOwnedReference(storageReference);
+        try
+        {
+            await client.PutObjectAsync(
+                new OSS.Models.PutObjectRequest
+                {
+                    Bucket = _options.Bucket,
+                    Key = objectName,
+                    Body = content,
+                    ContentType = contentType,
+                    ContentDisposition = contentDisposition
+                },
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException(
+                "Failed to save the generated learning preview to OSS.",
+                exception);
         }
     }
 

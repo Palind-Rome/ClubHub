@@ -4408,6 +4408,153 @@ paths:
         "503":
           description: OSS、ECS RAM 角色临时凭据或对象读取暂不可用。
 
+  /api/learning/items/{itemId}/preview-session:
+    post:
+      summary: 准备学习资源在线预览会话
+      description: 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+      operationId: createLearningPreviewSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 预览已准备完成，响应设置短时预览 Cookie。
+          headers:
+            X-ClubHub-Preview-Kind:
+              description: 前端展示类型。
+              schema:
+                type: string
+                enum: [image, video, pdf]
+            X-ClubHub-Preview-Converted:
+              description: 是否使用 Office 转换后的 PDF 副本。
+              schema:
+                type: boolean
+        "400":
+          description: 资源 ID 无效或课程没有可预览文件。
+        "403":
+          description: 当前用户不在可见范围内，或没有预览非公开资源的管理权限。
+        "404":
+          description: 用户、资源或文件不存在。
+        "415":
+          description: 文件格式不受支持、文件签名与扩展名不一致，或 Office 在线转换尚未启用。
+        "422":
+          description: Office 文件转换失败、超时、超出大小或内存限制。
+        "503":
+          description: 私有 OSS 或预览缓存暂不可用。
+
+  /api/learning/items/{itemId}/preview:
+    get:
+      summary: 获取受保护的学习资源在线预览内容
+      description: 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+      operationId: getLearningPreview
+      security:
+        - previewSessionCookie: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: Range
+          in: header
+          required: false
+          description: 单段字节范围，例如 bytes=0-1048575。
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 完整预览内容。
+          headers:
+            Accept-Ranges:
+              schema:
+                type: string
+                example: bytes
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: nosniff
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: 符合请求范围的部分预览内容。
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: 预览会话缺失或已过期。
+        "403":
+          description: 当前用户不再具备资源预览权限。
+        "404":
+          description: 资源、原文件或预览副本不存在。
+        "415":
+          description: 文件格式不受支持，或文件签名与扩展名不一致。
+        "416":
+          description: Range 请求无效或包含多个范围。
+        "422":
+          description: Office 文件转换失败。
+        "503":
+          description: 私有 OSS 或预览缓存暂不可用。
+
   /api/learning/items/{itemId}:
     put:
       summary: 更新课程或学习资源
@@ -5074,6 +5221,11 @@ components:
       scheme: bearer
       bearerFormat: ClubHub-HMAC
       description: 登录或注册成功后返回的 ClubHub Bearer 令牌。
+    previewSessionCookie:
+      type: apiKey
+      in: cookie
+      name: clubhub-preview
+      description: 由预览会话接口设置、仅对指定资源预览路径有效的短时 HttpOnly Cookie。
 
   schemas:
     ApiError:
