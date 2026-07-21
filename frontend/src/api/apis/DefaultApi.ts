@@ -57,6 +57,31 @@ import {
   AuthResponseToJSON,
 } from "../models/AuthResponse";
 import {
+  type AwardApplicationRecord,
+  AwardApplicationRecordFromJSON,
+  AwardApplicationRecordToJSON,
+} from "../models/AwardApplicationRecord";
+import {
+  type AwardPublicityBatchRecord,
+  AwardPublicityBatchRecordFromJSON,
+  AwardPublicityBatchRecordToJSON,
+} from "../models/AwardPublicityBatchRecord";
+import {
+  type AwardRuleDocumentRecord,
+  AwardRuleDocumentRecordFromJSON,
+  AwardRuleDocumentRecordToJSON,
+} from "../models/AwardRuleDocumentRecord";
+import {
+  type AwardSchemeRecord,
+  AwardSchemeRecordFromJSON,
+  AwardSchemeRecordToJSON,
+} from "../models/AwardSchemeRecord";
+import {
+  type BorrowMaterialRequest,
+  BorrowMaterialRequestFromJSON,
+  BorrowMaterialRequestToJSON,
+} from "../models/BorrowMaterialRequest";
+import {
   type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
@@ -68,10 +93,25 @@ import {
   ClubApplicationToJSON,
 } from "../models/ClubApplication";
 import {
+  type ClubDepartmentRecord,
+  ClubDepartmentRecordFromJSON,
+  ClubDepartmentRecordToJSON,
+} from "../models/ClubDepartmentRecord";
+import {
   type ClubEvaluationRecord,
   ClubEvaluationRecordFromJSON,
   ClubEvaluationRecordToJSON,
 } from "../models/ClubEvaluationRecord";
+import {
+  type ClubEvaluationScorePreview,
+  ClubEvaluationScorePreviewFromJSON,
+  ClubEvaluationScorePreviewToJSON,
+} from "../models/ClubEvaluationScorePreview";
+import {
+  type ClubGroupRecord,
+  ClubGroupRecordFromJSON,
+  ClubGroupRecordToJSON,
+} from "../models/ClubGroupRecord";
 import {
   type ClubMemberRecord,
   ClubMemberRecordFromJSON,
@@ -83,15 +123,45 @@ import {
   CreateActivityRequestToJSON,
 } from "../models/CreateActivityRequest";
 import {
+  type CreateAwardApplicationRequest,
+  CreateAwardApplicationRequestFromJSON,
+  CreateAwardApplicationRequestToJSON,
+} from "../models/CreateAwardApplicationRequest";
+import {
+  type CreateAwardPublicityBatchRequest,
+  CreateAwardPublicityBatchRequestFromJSON,
+  CreateAwardPublicityBatchRequestToJSON,
+} from "../models/CreateAwardPublicityBatchRequest";
+import {
+  type CreateAwardRuleDocumentRequest,
+  CreateAwardRuleDocumentRequestFromJSON,
+  CreateAwardRuleDocumentRequestToJSON,
+} from "../models/CreateAwardRuleDocumentRequest";
+import {
+  type CreateAwardSchemeRequest,
+  CreateAwardSchemeRequestFromJSON,
+  CreateAwardSchemeRequestToJSON,
+} from "../models/CreateAwardSchemeRequest";
+import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
   CreateClubApplicationRequestToJSON,
 } from "../models/CreateClubApplicationRequest";
 import {
+  type CreateClubDepartmentRequest,
+  CreateClubDepartmentRequestFromJSON,
+  CreateClubDepartmentRequestToJSON,
+} from "../models/CreateClubDepartmentRequest";
+import {
   type CreateClubEvaluationRequest,
   CreateClubEvaluationRequestFromJSON,
   CreateClubEvaluationRequestToJSON,
 } from "../models/CreateClubEvaluationRequest";
+import {
+  type CreateClubGroupRequest,
+  CreateClubGroupRequestFromJSON,
+  CreateClubGroupRequestToJSON,
+} from "../models/CreateClubGroupRequest";
 import {
   type CreateClubMemberTermRequest,
   CreateClubMemberTermRequestFromJSON,
@@ -108,6 +178,11 @@ import {
   CreateLearningItemRequestToJSON,
 } from "../models/CreateLearningItemRequest";
 import {
+  type CreateMaterialRequest,
+  CreateMaterialRequestFromJSON,
+  CreateMaterialRequestToJSON,
+} from "../models/CreateMaterialRequest";
+import {
   type CreateNoticeRequest,
   CreateNoticeRequestFromJSON,
   CreateNoticeRequestToJSON,
@@ -117,6 +192,11 @@ import {
   CreateProjectRequestFromJSON,
   CreateProjectRequestToJSON,
 } from "../models/CreateProjectRequest";
+import {
+  type CreateProjectTaskRequest,
+  CreateProjectTaskRequestFromJSON,
+  CreateProjectTaskRequestToJSON,
+} from "../models/CreateProjectTaskRequest";
 import {
   type CreateRecruitmentApplicationRequest,
   CreateRecruitmentApplicationRequestFromJSON,
@@ -148,25 +228,40 @@ import {
   DissolveClubRequestToJSON,
 } from "../models/DissolveClubRequest";
 import {
-  type EnrollLearningItemRequest,
-  EnrollLearningItemRequestFromJSON,
-  EnrollLearningItemRequestToJSON,
-} from "../models/EnrollLearningItemRequest";
-import {
   type ExitClubMemberRequest,
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
 } from "../models/ExitClubMemberRequest";
+import {
+  type GenerateClubEvaluationsRequest,
+  GenerateClubEvaluationsRequestFromJSON,
+  GenerateClubEvaluationsRequestToJSON,
+} from "../models/GenerateClubEvaluationsRequest";
+import {
+  type GenerateClubEvaluationsResult,
+  GenerateClubEvaluationsResultFromJSON,
+  GenerateClubEvaluationsResultToJSON,
+} from "../models/GenerateClubEvaluationsResult";
 import {
   type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
 } from "../models/HealthStatus";
 import {
+  type LearningDownloadResult,
+  LearningDownloadResultFromJSON,
+  LearningDownloadResultToJSON,
+} from "../models/LearningDownloadResult";
+import {
   type LearningItem,
   LearningItemFromJSON,
   LearningItemToJSON,
 } from "../models/LearningItem";
+import {
+  type LearningItemStatistics,
+  LearningItemStatisticsFromJSON,
+  LearningItemStatisticsToJSON,
+} from "../models/LearningItemStatistics";
 import {
   type LearningRecord,
   LearningRecordFromJSON,
@@ -182,11 +277,12 @@ import {
   LoginRequestFromJSON,
   LoginRequestToJSON,
 } from "../models/LoginRequest";
+import { type Material, MaterialFromJSON, MaterialToJSON } from "../models/Material";
 import {
-  type MarkNoticeReadRequest,
-  MarkNoticeReadRequestFromJSON,
-  MarkNoticeReadRequestToJSON,
-} from "../models/MarkNoticeReadRequest";
+  type MaterialBorrow,
+  MaterialBorrowFromJSON,
+  MaterialBorrowToJSON,
+} from "../models/MaterialBorrow";
 import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
 import {
   type NoticeReadResult,
@@ -214,12 +310,23 @@ import {
   ProjectMemberCandidateFromJSON,
   ProjectMemberCandidateToJSON,
 } from "../models/ProjectMemberCandidate";
+import { type ProjectTask, ProjectTaskFromJSON, ProjectTaskToJSON } from "../models/ProjectTask";
+import {
+  type ProjectTaskProgressReport,
+  ProjectTaskProgressReportFromJSON,
+  ProjectTaskProgressReportToJSON,
+} from "../models/ProjectTaskProgressReport";
 import { type Recruitment, RecruitmentFromJSON, RecruitmentToJSON } from "../models/Recruitment";
 import {
   type RecruitmentApplication,
   RecruitmentApplicationFromJSON,
   RecruitmentApplicationToJSON,
 } from "../models/RecruitmentApplication";
+import {
+  type RegisterMaterialDamageRequest,
+  RegisterMaterialDamageRequestFromJSON,
+  RegisterMaterialDamageRequestToJSON,
+} from "../models/RegisterMaterialDamageRequest";
 import {
   type RegisterRequest,
   RegisterRequestFromJSON,
@@ -236,15 +343,30 @@ import {
   ReviewActivityRequestToJSON,
 } from "../models/ReviewActivityRequest";
 import {
+  type ReviewAwardApplicationRequest,
+  ReviewAwardApplicationRequestFromJSON,
+  ReviewAwardApplicationRequestToJSON,
+} from "../models/ReviewAwardApplicationRequest";
+import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
 } from "../models/ReviewClubApplicationRequest";
 import {
+  type ReviewLearningItemRequest,
+  ReviewLearningItemRequestFromJSON,
+  ReviewLearningItemRequestToJSON,
+} from "../models/ReviewLearningItemRequest";
+import {
   type ReviewProjectRequest,
   ReviewProjectRequestFromJSON,
   ReviewProjectRequestToJSON,
 } from "../models/ReviewProjectRequest";
+import {
+  type ReviewProjectTaskDeliverableRequest,
+  ReviewProjectTaskDeliverableRequestFromJSON,
+  ReviewProjectTaskDeliverableRequestToJSON,
+} from "../models/ReviewProjectTaskDeliverableRequest";
 import {
   type ReviewRecruitmentApplicationRequest,
   ReviewRecruitmentApplicationRequestFromJSON,
@@ -271,15 +393,45 @@ import {
   RoleDefinitionToJSON,
 } from "../models/RoleDefinition";
 import {
+  type SubmitProjectTaskDeliverableRequest,
+  SubmitProjectTaskDeliverableRequestFromJSON,
+  SubmitProjectTaskDeliverableRequestToJSON,
+} from "../models/SubmitProjectTaskDeliverableRequest";
+import {
+  type UpdateAwardApplicationRequest,
+  UpdateAwardApplicationRequestFromJSON,
+  UpdateAwardApplicationRequestToJSON,
+} from "../models/UpdateAwardApplicationRequest";
+import {
+  type UpdateAwardRuleDocumentRequest,
+  UpdateAwardRuleDocumentRequestFromJSON,
+  UpdateAwardRuleDocumentRequestToJSON,
+} from "../models/UpdateAwardRuleDocumentRequest";
+import {
+  type UpdateAwardSchemeRequest,
+  UpdateAwardSchemeRequestFromJSON,
+  UpdateAwardSchemeRequestToJSON,
+} from "../models/UpdateAwardSchemeRequest";
+import {
   type UpdateCheckinSettingsRequest,
   UpdateCheckinSettingsRequestFromJSON,
   UpdateCheckinSettingsRequestToJSON,
 } from "../models/UpdateCheckinSettingsRequest";
 import {
+  type UpdateClubDepartmentRequest,
+  UpdateClubDepartmentRequestFromJSON,
+  UpdateClubDepartmentRequestToJSON,
+} from "../models/UpdateClubDepartmentRequest";
+import {
   type UpdateClubEvaluationRequest,
   UpdateClubEvaluationRequestFromJSON,
   UpdateClubEvaluationRequestToJSON,
 } from "../models/UpdateClubEvaluationRequest";
+import {
+  type UpdateClubGroupRequest,
+  UpdateClubGroupRequestFromJSON,
+  UpdateClubGroupRequestToJSON,
+} from "../models/UpdateClubGroupRequest";
 import {
   type UpdateClubMemberGroupingRequest,
   UpdateClubMemberGroupingRequestFromJSON,
@@ -310,6 +462,16 @@ import {
   UpdateLearningProgressRequestFromJSON,
   UpdateLearningProgressRequestToJSON,
 } from "../models/UpdateLearningProgressRequest";
+import {
+  type UpdateMaterialRequest,
+  UpdateMaterialRequestFromJSON,
+  UpdateMaterialRequestToJSON,
+} from "../models/UpdateMaterialRequest";
+import {
+  type UpdateProjectTaskProgressRequest,
+  UpdateProjectTaskProgressRequestFromJSON,
+  UpdateProjectTaskProgressRequestToJSON,
+} from "../models/UpdateProjectTaskProgressRequest";
 import {
   type UpdateRecruitmentRequest,
   UpdateRecruitmentRequestFromJSON,
@@ -348,6 +510,11 @@ export interface ApplyActivityBudgetOperationRequest {
   applyActivityBudgetRequest: ApplyActivityBudgetRequest;
 }
 
+export interface ArchiveClubAwardPublicityBatchRequest {
+  clubId: number;
+  publicityBatchId: number;
+}
+
 export interface AssignProjectLeaderOperationRequest {
   projectId: number;
   assignProjectLeaderRequest: AssignProjectLeaderRequest;
@@ -357,9 +524,12 @@ export interface AssignUserRoleRequest {
   assignRoleRequest: AssignRoleRequest;
 }
 
+export interface BorrowMaterialOperationRequest {
+  borrowMaterialRequest: BorrowMaterialRequest;
+}
+
 export interface CancelLearningEnrollmentRequest {
   itemId: number;
-  enrollLearningItemRequest: EnrollLearningItemRequest;
 }
 
 export interface CancelProjectOperationRequest {
@@ -395,9 +565,40 @@ export interface CreateClubApplicationOperationRequest {
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
+export interface CreateClubAwardApplicationRequest {
+  clubId: number;
+  createAwardApplicationRequest: CreateAwardApplicationRequest;
+}
+
+export interface CreateClubAwardPublicityBatchRequest {
+  clubId: number;
+  createAwardPublicityBatchRequest: CreateAwardPublicityBatchRequest;
+}
+
+export interface CreateClubAwardRuleDocumentRequest {
+  clubId: number;
+  createAwardRuleDocumentRequest: CreateAwardRuleDocumentRequest;
+}
+
+export interface CreateClubAwardSchemeRequest {
+  clubId: number;
+  createAwardSchemeRequest: CreateAwardSchemeRequest;
+}
+
+export interface CreateClubDepartmentOperationRequest {
+  clubId: number;
+  createClubDepartmentRequest: CreateClubDepartmentRequest;
+}
+
 export interface CreateClubEvaluationOperationRequest {
   clubId: number;
   createClubEvaluationRequest: CreateClubEvaluationRequest;
+}
+
+export interface CreateClubGroupOperationRequest {
+  clubId: number;
+  departmentId: number;
+  createClubGroupRequest: CreateClubGroupRequest;
 }
 
 export interface CreateClubMemberTermOperationRequest {
@@ -409,12 +610,25 @@ export interface CreateLearningItemOperationRequest {
   createLearningItemRequest: CreateLearningItemRequest;
 }
 
+export interface CreateLearningPreviewSessionRequest {
+  itemId: number;
+}
+
+export interface CreateMaterialOperationRequest {
+  createMaterialRequest: CreateMaterialRequest;
+}
+
 export interface CreateNoticeOperationRequest {
   createNoticeRequest: CreateNoticeRequest;
 }
 
 export interface CreateProjectOperationRequest {
   createProjectRequest: CreateProjectRequest;
+}
+
+export interface CreateProjectTaskOperationRequest {
+  projectId: number;
+  createProjectTaskRequest: CreateProjectTaskRequest;
 }
 
 export interface CreateRecruitmentOperationRequest {
@@ -432,6 +646,25 @@ export interface CreateVenueOperationRequest {
 
 export interface CreateVenueReservationOperationRequest {
   createVenueReservationRequest: CreateVenueReservationRequest;
+}
+
+export interface DamageMaterialBorrowRequest {
+  borrowId: number;
+  registerMaterialDamageRequest: RegisterMaterialDamageRequest;
+}
+
+export interface DeleteLearningResourceRequest {
+  itemId: number;
+}
+
+export interface DeleteNoticeDraftRequest {
+  noticeId: number;
+  ifUnmodifiedSince: string;
+}
+
+export interface DeleteProjectTaskRequest {
+  projectId: number;
+  taskId: number;
 }
 
 export interface DeleteRecruitmentRequest {
@@ -453,14 +686,22 @@ export interface DissolveClubOperationRequest {
   dissolveClubRequest: DissolveClubRequest;
 }
 
-export interface EnrollLearningItemOperationRequest {
+export interface DownloadLearningItemRequest {
   itemId: number;
-  enrollLearningItemRequest: EnrollLearningItemRequest;
+}
+
+export interface EnrollLearningItemRequest {
+  itemId: number;
 }
 
 export interface ExitCurrentClubMemberRequest {
   clubId: number;
   exitClubMemberRequest: ExitClubMemberRequest;
+}
+
+export interface GenerateClubEvaluationsOperationRequest {
+  clubId: number;
+  generateClubEvaluationsRequest: GenerateClubEvaluationsRequest;
 }
 
 export interface GetActivitiesRequest {
@@ -478,10 +719,59 @@ export interface GetActivityParticipationsRequest {
 
 export interface GetClubApplicationsRequest {
   auditStatus?: GetClubApplicationsAuditStatusEnum;
+  keyword?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface GetClubAwardApplicationRequest {
+  clubId: number;
+  awardApplicationId: number;
+}
+
+export interface GetClubAwardApplicationAttachmentFileRequest {
+  clubId: number;
+  awardApplicationId: number;
+  attachmentId: number;
+}
+
+export interface GetClubAwardApplicationsRequest {
+  clubId: number;
+  awardSchemeId?: number;
+  applicantUserId?: number;
+  status?: GetClubAwardApplicationsStatusEnum;
+  currentStep?: GetClubAwardApplicationsCurrentStepEnum;
+}
+
+export interface GetClubAwardPublicityBatchesRequest {
+  clubId: number;
+  status?: GetClubAwardPublicityBatchesStatusEnum;
+}
+
+export interface GetClubAwardRuleDocumentFileRequest {
+  clubId: number;
+  ruleDocumentId: number;
+}
+
+export interface GetClubAwardRuleDocumentsRequest {
+  clubId: number;
+  status?: GetClubAwardRuleDocumentsStatusEnum;
+  keyword?: string;
+}
+
+export interface GetClubAwardSchemesRequest {
+  clubId: number;
+  status?: GetClubAwardSchemesStatusEnum;
+  keyword?: string;
 }
 
 export interface GetClubByIdRequest {
   clubId: number;
+}
+
+export interface GetClubDepartmentsRequest {
+  clubId: number;
+  includeInactive?: boolean;
 }
 
 export interface GetClubEvaluationsRequest {
@@ -493,28 +783,52 @@ export interface GetClubEvaluationsRequest {
 export interface GetClubMembersRequest {
   clubId: number;
   includeHistory?: boolean;
+  departmentId?: number;
+  groupId?: number;
   departmentName?: string;
   groupName?: string;
   termName?: string;
 }
 
+export interface GetLearningInstructorByUserNumberRequest {
+  clubId: number;
+  userNumber: string;
+}
+
+export interface GetLearningItemStatisticsRequest {
+  itemId: number;
+}
+
 export interface GetLearningItemsRequest {
-  currentUserId: number;
   clubId?: number;
 }
 
+export interface GetLearningPreviewRequest {
+  itemId: number;
+  range?: string;
+}
+
 export interface GetLearningRecordsRequest {
-  currentUserId: number;
   itemId?: number;
 }
 
-export interface GetLearningTeacherCandidatesRequest {
-  currentUserId: number;
-  clubId: number;
+export interface GetLearningResourceFileRequest {
+  itemId: number;
+}
+
+export interface GetMaterialBorrowsRequest {
+  clubId?: number;
+  materialId?: number;
+  borrowerUserId?: number;
+  status?: GetMaterialBorrowsStatusEnum;
+}
+
+export interface GetMaterialsRequest {
+  clubId?: number;
+  status?: GetMaterialsStatusEnum;
 }
 
 export interface GetNoticesRequest {
-  viewerUserId: number;
   noticeStatus?: GetNoticesNoticeStatusEnum;
   targetType?: GetNoticesTargetTypeEnum;
   clubId?: number;
@@ -532,6 +846,16 @@ export interface GetProjectMemberCandidatesRequest {
 export interface GetProjectMembersRequest {
   projectId: number;
   includeInactive?: boolean;
+}
+
+export interface GetProjectTaskProgressReportsRequest {
+  projectId: number;
+  taskId: number;
+}
+
+export interface GetProjectTasksRequest {
+  projectId: number;
+  completedOnly?: boolean;
 }
 
 export interface GetProjectsRequest {
@@ -583,9 +907,24 @@ export interface LoginUserRequest {
   loginRequest: LoginRequest;
 }
 
-export interface MarkNoticeReadOperationRequest {
+export interface MarkNoticeReadRequest {
   noticeId: number;
-  markNoticeReadRequest: MarkNoticeReadRequest;
+}
+
+export interface PreviewClubEvaluationScoresRequest {
+  clubId: number;
+  userId: number;
+  termName: string;
+}
+
+export interface PublishClubAwardPublicityBatchRequest {
+  clubId: number;
+  publicityBatchId: number;
+}
+
+export interface PublishClubAwardRuleDocumentRequest {
+  clubId: number;
+  ruleDocumentId: number;
 }
 
 export interface RegisterActivityRequest {
@@ -607,6 +946,15 @@ export interface RemoveProjectMemberRequest {
   projectMemberId: number;
 }
 
+export interface ResubmitClubApplicationRequest {
+  clubId: number;
+  createClubApplicationRequest: CreateClubApplicationRequest;
+}
+
+export interface ReturnMaterialBorrowRequest {
+  borrowId: number;
+}
+
 export interface ReviewActivityOperationRequest {
   activityId: number;
   reviewActivityRequest: ReviewActivityRequest;
@@ -622,9 +970,26 @@ export interface ReviewClubApplicationOperationRequest {
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
 }
 
+export interface ReviewClubAwardApplicationRequest {
+  clubId: number;
+  awardApplicationId: number;
+  reviewAwardApplicationRequest: ReviewAwardApplicationRequest;
+}
+
+export interface ReviewLearningItemOperationRequest {
+  itemId: number;
+  reviewLearningItemRequest: ReviewLearningItemRequest;
+}
+
 export interface ReviewProjectOperationRequest {
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
+}
+
+export interface ReviewProjectTaskDeliverableOperationRequest {
+  projectId: number;
+  taskId: number;
+  reviewProjectTaskDeliverableRequest: ReviewProjectTaskDeliverableRequest;
 }
 
 export interface ReviewRecruitmentOperationRequest {
@@ -642,6 +1007,21 @@ export interface ReviewVenueReservationOperationRequest {
   reviewVenueReservationRequest: ReviewVenueReservationRequest;
 }
 
+export interface StartLearningItemRequest {
+  itemId: number;
+}
+
+export interface SubmitClubAwardApplicationRequest {
+  clubId: number;
+  awardApplicationId: number;
+}
+
+export interface SubmitProjectTaskDeliverableOperationRequest {
+  projectId: number;
+  taskId: number;
+  submitProjectTaskDeliverableRequest: SubmitProjectTaskDeliverableRequest;
+}
+
 export interface UpdateActivityCheckinSettingsRequest {
   activityId: number;
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
@@ -652,10 +1032,40 @@ export interface UpdateClubOperationRequest {
   updateClubRequest: UpdateClubRequest;
 }
 
+export interface UpdateClubAwardApplicationRequest {
+  clubId: number;
+  awardApplicationId: number;
+  updateAwardApplicationRequest: UpdateAwardApplicationRequest;
+}
+
+export interface UpdateClubAwardRuleDocumentRequest {
+  clubId: number;
+  ruleDocumentId: number;
+  updateAwardRuleDocumentRequest: UpdateAwardRuleDocumentRequest;
+}
+
+export interface UpdateClubAwardSchemeRequest {
+  clubId: number;
+  awardSchemeId: number;
+  updateAwardSchemeRequest: UpdateAwardSchemeRequest;
+}
+
+export interface UpdateClubDepartmentOperationRequest {
+  clubId: number;
+  departmentId: number;
+  updateClubDepartmentRequest: UpdateClubDepartmentRequest;
+}
+
 export interface UpdateClubEvaluationOperationRequest {
   clubId: number;
   evaluationId: number;
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
+}
+
+export interface UpdateClubGroupOperationRequest {
+  clubId: number;
+  groupId: number;
+  updateClubGroupRequest: UpdateClubGroupRequest;
 }
 
 export interface UpdateClubMemberGroupingOperationRequest {
@@ -685,6 +1095,23 @@ export interface UpdateLearningProgressOperationRequest {
   updateLearningProgressRequest: UpdateLearningProgressRequest;
 }
 
+export interface UpdateMaterialOperationRequest {
+  materialId: number;
+  updateMaterialRequest: UpdateMaterialRequest;
+}
+
+export interface UpdateNoticeDraftRequest {
+  noticeId: number;
+  ifUnmodifiedSince: string;
+  createNoticeRequest: CreateNoticeRequest;
+}
+
+export interface UpdateProjectTaskProgressOperationRequest {
+  projectId: number;
+  taskId: number;
+  updateProjectTaskProgressRequest: UpdateProjectTaskProgressRequest;
+}
+
 export interface UpdateRecruitmentOperationRequest {
   recruitId: number;
   updateRecruitmentRequest: UpdateRecruitmentRequest;
@@ -698,6 +1125,29 @@ export interface UpdateVenueOperationRequest {
 export interface UpdateVenueStatusOperationRequest {
   venueId: number;
   updateVenueStatusRequest: UpdateVenueStatusRequest;
+}
+
+export interface UploadClubAwardApplicationAttachmentRequest {
+  clubId: number;
+  awardApplicationId: number;
+  file: Blob;
+  attachmentType?: string | null;
+}
+
+export interface UploadClubAwardRuleDocumentFileRequest {
+  clubId: number;
+  ruleDocumentId: number;
+  file: Blob;
+}
+
+export interface UploadLearningResourceRequest {
+  clubId: number;
+  file: Blob;
+  visibility: UploadLearningResourceVisibilityEnum;
+  downloadPermission: UploadLearningResourceDownloadPermissionEnum;
+  title?: string | null;
+  categoryName?: string | null;
+  description?: string | null;
 }
 
 /**
@@ -755,7 +1205,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
    * 添加项目成员
    */
   async addProjectMemberRaw(
@@ -769,7 +1219,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+   * 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
    * 添加项目成员
    */
   async addProjectMember(
@@ -848,6 +1298,73 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for archiveClubAwardPublicityBatch without sending the request
+   */
+  async archiveClubAwardPublicityBatchRequestOpts(
+    requestParameters: ArchiveClubAwardPublicityBatchRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling archiveClubAwardPublicityBatch().',
+      );
+    }
+
+    if (requestParameters["publicityBatchId"] == null) {
+      throw new runtime.RequiredError(
+        "publicityBatchId",
+        'Required parameter "publicityBatchId" was null or undefined when calling archiveClubAwardPublicityBatch().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-publicity/{publicityBatchId}/archive`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{publicityBatchId}",
+      encodeURIComponent(String(requestParameters["publicityBatchId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 将已公示结束的批次归档，并把批次内申请标记为已归档；归档后的申请成为成员考核奖项分的权威来源。
+   * 归档评奖评优公示批次
+   */
+  async archiveClubAwardPublicityBatchRaw(
+    requestParameters: ArchiveClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardPublicityBatchRecord>> {
+    const requestOptions = await this.archiveClubAwardPublicityBatchRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardPublicityBatchRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 将已公示结束的批次归档，并把批次内申请标记为已归档；归档后的申请成为成员考核奖项分的权威来源。
+   * 归档评奖评优公示批次
+   */
+  async archiveClubAwardPublicityBatch(
+    requestParameters: ArchiveClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardPublicityBatchRecord> {
+    const response = await this.archiveClubAwardPublicityBatchRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for assignProjectLeader without sending the request
    */
   async assignProjectLeaderRequestOpts(
@@ -872,6 +1389,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects/{projectId}/leader`;
     urlPath = urlPath.replace(
@@ -969,6 +1495,69 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for borrowMaterial without sending the request
+   */
+  async borrowMaterialRequestOpts(
+    requestParameters: BorrowMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "borrowMaterialRequest",
+        'Required parameter "borrowMaterialRequest" was null or undefined when calling borrowMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: BorrowMaterialRequestToJSON(requestParameters["borrowMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Register a material borrow
+   */
+  async borrowMaterialRaw(
+    requestParameters: BorrowMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.borrowMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register a material borrow
+   */
+  async borrowMaterial(
+    requestParameters: BorrowMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.borrowMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for cancelLearningEnrollment without sending the request
    */
   async cancelLearningEnrollmentRequestOpts(
@@ -981,18 +1570,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["enrollLearningItemRequest"] == null) {
-      throw new runtime.RequiredError(
-        "enrollLearningItemRequest",
-        'Required parameter "enrollLearningItemRequest" was null or undefined when calling cancelLearningEnrollment().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
@@ -1002,13 +1591,12 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
     };
   }
 
   /**
-   * ???????????????????????????????????????
-   * ??????
+   * 当前登录用户在课程结束前退出尚未完成的课程。
+   * 退出培训课程
    */
   async cancelLearningEnrollmentRaw(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -1021,8 +1609,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ???????????????????????????????????????
-   * ??????
+   * 当前登录用户在课程结束前退出尚未完成的课程。
+   * 退出培训课程
    */
   async cancelLearningEnrollment(
     requestParameters: CancelLearningEnrollmentRequest,
@@ -1057,6 +1645,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects/{projectId}/cancel`;
     urlPath = urlPath.replace(
@@ -1503,6 +2100,340 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createClubAwardApplication without sending the request
+   */
+  async createClubAwardApplicationRequestOpts(
+    requestParameters: CreateClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["createAwardApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardApplicationRequest",
+        'Required parameter "createAwardApplicationRequest" was null or undefined when calling createClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-applications`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardApplicationRequestToJSON(requestParameters["createAwardApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
+   * 创建评奖评优申请或负责人推荐
+   */
+  async createClubAwardApplicationRaw(
+    requestParameters: CreateClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.createClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
+   * 创建评奖评优申请或负责人推荐
+   */
+  async createClubAwardApplication(
+    requestParameters: CreateClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.createClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubAwardPublicityBatch without sending the request
+   */
+  async createClubAwardPublicityBatchRequestOpts(
+    requestParameters: CreateClubAwardPublicityBatchRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubAwardPublicityBatch().',
+      );
+    }
+
+    if (requestParameters["createAwardPublicityBatchRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardPublicityBatchRequest",
+        'Required parameter "createAwardPublicityBatchRequest" was null or undefined when calling createClubAwardPublicityBatch().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-publicity`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardPublicityBatchRequestToJSON(
+        requestParameters["createAwardPublicityBatchRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员从已通过的申请中创建公示批次。
+   * 创建评奖评优公示批次
+   */
+  async createClubAwardPublicityBatchRaw(
+    requestParameters: CreateClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardPublicityBatchRecord>> {
+    const requestOptions = await this.createClubAwardPublicityBatchRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardPublicityBatchRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员从已通过的申请中创建公示批次。
+   * 创建评奖评优公示批次
+   */
+  async createClubAwardPublicityBatch(
+    requestParameters: CreateClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardPublicityBatchRecord> {
+    const response = await this.createClubAwardPublicityBatchRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubAwardRuleDocument without sending the request
+   */
+  async createClubAwardRuleDocumentRequestOpts(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["createAwardRuleDocumentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardRuleDocumentRequest",
+        'Required parameter "createAwardRuleDocumentRequest" was null or undefined when calling createClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardRuleDocumentRequestToJSON(
+        requestParameters["createAwardRuleDocumentRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+   * 上传评奖评优评定细则
+   */
+  async createClubAwardRuleDocumentRaw(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.createClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+   * 上传评奖评优评定细则
+   */
+  async createClubAwardRuleDocument(
+    requestParameters: CreateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.createClubAwardRuleDocumentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubAwardScheme without sending the request
+   */
+  async createClubAwardSchemeRequestOpts(
+    requestParameters: CreateClubAwardSchemeRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubAwardScheme().',
+      );
+    }
+
+    if (requestParameters["createAwardSchemeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createAwardSchemeRequest",
+        'Required parameter "createAwardSchemeRequest" was null or undefined when calling createClubAwardScheme().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-schemes`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateAwardSchemeRequestToJSON(requestParameters["createAwardSchemeRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员创建奖项批次及等级，作为成员申请、负责人推荐和后续奖项分计算的规则来源。
+   * 创建社团评奖评优奖项配置
+   */
+  async createClubAwardSchemeRaw(
+    requestParameters: CreateClubAwardSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardSchemeRecord>> {
+    const requestOptions = await this.createClubAwardSchemeRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardSchemeRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员创建奖项批次及等级，作为成员申请、负责人推荐和后续奖项分计算的规则来源。
+   * 创建社团评奖评优奖项配置
+   */
+  async createClubAwardScheme(
+    requestParameters: CreateClubAwardSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardSchemeRecord> {
+    const response = await this.createClubAwardSchemeRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubDepartment without sending the request
+   */
+  async createClubDepartmentRequestOpts(
+    requestParameters: CreateClubDepartmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubDepartment().',
+      );
+    }
+
+    if (requestParameters["createClubDepartmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubDepartmentRequest",
+        'Required parameter "createClubDepartmentRequest" was null or undefined when calling createClubDepartment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubDepartmentRequestToJSON(requestParameters["createClubDepartmentRequest"]),
+    };
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+   * 新增社团部门
+   */
+  async createClubDepartmentRaw(
+    requestParameters: CreateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubDepartmentRecord>> {
+    const requestOptions = await this.createClubDepartmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubDepartmentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+   * 新增社团部门
+   */
+  async createClubDepartment(
+    requestParameters: CreateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubDepartmentRecord> {
+    const response = await this.createClubDepartmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClubEvaluation without sending the request
    */
   async createClubEvaluationRequestOpts(
@@ -1565,6 +2496,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubGroup without sending the request
+   */
+  async createClubGroupRequestOpts(
+    requestParameters: CreateClubGroupOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    if (requestParameters["departmentId"] == null) {
+      throw new runtime.RequiredError(
+        "departmentId",
+        'Required parameter "departmentId" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    if (requestParameters["createClubGroupRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubGroupRequest",
+        'Required parameter "createClubGroupRequest" was null or undefined when calling createClubGroup().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}/groups`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{departmentId}",
+      encodeURIComponent(String(requestParameters["departmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubGroupRequestToJSON(requestParameters["createClubGroupRequest"]),
+    };
+  }
+
+  /**
+   * 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+   * 新增社团小组
+   */
+  async createClubGroupRaw(
+    requestParameters: CreateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubGroupRecord>> {
+    const requestOptions = await this.createClubGroupRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubGroupRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+   * 新增社团小组
+   */
+  async createClubGroup(
+    requestParameters: CreateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubGroupRecord> {
+    const response = await this.createClubGroupRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1653,6 +2659,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/items`;
 
     return {
@@ -1665,8 +2680,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ?????????
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
+   * 发布课程或上传学习资源
    */
   async createLearningItemRaw(
     requestParameters: CreateLearningItemOperationRequest,
@@ -1679,14 +2694,139 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ?????????
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
+   * 发布课程或上传学习资源
    */
   async createLearningItem(
     requestParameters: CreateLearningItemOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningItem> {
     const response = await this.createLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createLearningPreviewSession without sending the request
+   */
+  async createLearningPreviewSessionRequestOpts(
+    requestParameters: CreateLearningPreviewSessionRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling createLearningPreviewSession().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/preview-session`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+   * 准备学习资源在线预览会话
+   */
+  async createLearningPreviewSessionRaw(
+    requestParameters: CreateLearningPreviewSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.createLearningPreviewSessionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+   * 准备学习资源在线预览会话
+   */
+  async createLearningPreviewSession(
+    requestParameters: CreateLearningPreviewSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.createLearningPreviewSessionRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for createMaterial without sending the request
+   */
+  async createMaterialRequestOpts(
+    requestParameters: CreateMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createMaterialRequest",
+        'Required parameter "createMaterialRequest" was null or undefined when calling createMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateMaterialRequestToJSON(requestParameters["createMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Create an activity material
+   */
+  async createMaterialRaw(
+    requestParameters: CreateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Material>> {
+    const requestOptions = await this.createMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialFromJSON(jsonValue));
+  }
+
+  /**
+   * Create an activity material
+   */
+  async createMaterial(
+    requestParameters: CreateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Material> {
+    const response = await this.createMaterialRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1709,6 +2849,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -1721,8 +2870,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 新建公告通知
    */
   async createNoticeRaw(
     requestParameters: CreateNoticeOperationRequest,
@@ -1735,8 +2884,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
-   * 发布公告通知
+   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 新建公告通知
    */
   async createNotice(
     requestParameters: CreateNoticeOperationRequest,
@@ -1764,6 +2913,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects`;
 
@@ -1797,6 +2955,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Project> {
     const response = await this.createProjectRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createProjectTask without sending the request
+   */
+  async createProjectTaskRequestOpts(
+    requestParameters: CreateProjectTaskOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling createProjectTask().',
+      );
+    }
+
+    if (requestParameters["createProjectTaskRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createProjectTaskRequest",
+        'Required parameter "createProjectTaskRequest" was null or undefined when calling createProjectTask().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateProjectTaskRequestToJSON(requestParameters["createProjectTaskRequest"]),
+    };
+  }
+
+  /**
+   * 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
+   * 创建项目任务
+   */
+  async createProjectTaskRaw(
+    requestParameters: CreateProjectTaskOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.createProjectTaskRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
+   * 创建项目任务
+   */
+  async createProjectTask(
+    requestParameters: CreateProjectTaskOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.createProjectTaskRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2044,6 +3278,291 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<VenueReservation> {
     const response = await this.createVenueReservationRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for damageMaterialBorrow without sending the request
+   */
+  async damageMaterialBorrowRequestOpts(
+    requestParameters: DamageMaterialBorrowRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowId"] == null) {
+      throw new runtime.RequiredError(
+        "borrowId",
+        'Required parameter "borrowId" was null or undefined when calling damageMaterialBorrow().',
+      );
+    }
+
+    if (requestParameters["registerMaterialDamageRequest"] == null) {
+      throw new runtime.RequiredError(
+        "registerMaterialDamageRequest",
+        'Required parameter "registerMaterialDamageRequest" was null or undefined when calling damageMaterialBorrow().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows/{borrowId}/damage`;
+    urlPath = urlPath.replace(
+      "{borrowId}",
+      encodeURIComponent(String(requestParameters["borrowId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: RegisterMaterialDamageRequestToJSON(requestParameters["registerMaterialDamageRequest"]),
+    };
+  }
+
+  /**
+   * Register material damage
+   */
+  async damageMaterialBorrowRaw(
+    requestParameters: DamageMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.damageMaterialBorrowRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register material damage
+   */
+  async damageMaterialBorrow(
+    requestParameters: DamageMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.damageMaterialBorrowRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for deleteLearningResource without sending the request
+   */
+  async deleteLearningResourceRequestOpts(
+    requestParameters: DeleteLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling deleteLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
+   */
+  async deleteLearningResourceRaw(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+   * 删除课程或学习资源
+   */
+  async deleteLearningResource(
+    requestParameters: DeleteLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteLearningResourceRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteNoticeDraft without sending the request
+   */
+  async deleteNoticeDraftRequestOpts(
+    requestParameters: DeleteNoticeDraftRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["noticeId"] == null) {
+      throw new runtime.RequiredError(
+        "noticeId",
+        'Required parameter "noticeId" was null or undefined when calling deleteNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["ifUnmodifiedSince"] == null) {
+      throw new runtime.RequiredError(
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling deleteNoticeDraft().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/notices/{noticeId}`;
+    urlPath = urlPath.replace(
+      "{noticeId}",
+      encodeURIComponent(String(requestParameters["noticeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 删除通知草稿
+   */
+  async deleteNoticeDraftRaw(
+    requestParameters: DeleteNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteNoticeDraftRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 删除通知草稿
+   */
+  async deleteNoticeDraft(
+    requestParameters: DeleteNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteNoticeDraftRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteProjectTask without sending the request
+   */
+  async deleteProjectTaskRequestOpts(
+    requestParameters: DeleteProjectTaskRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling deleteProjectTask().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling deleteProjectTask().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅项目负责人可删除任务；关联的执行人关系与进度提交记录会一并删除。
+   * 删除项目任务
+   */
+  async deleteProjectTaskRaw(
+    requestParameters: DeleteProjectTaskRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteProjectTaskRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 仅项目负责人可删除任务；关联的执行人关系与进度提交记录会一并删除。
+   * 删除项目任务
+   */
+  async deleteProjectTask(
+    requestParameters: DeleteProjectTaskRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteProjectTaskRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -2304,10 +3823,75 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for downloadLearningItem without sending the request
+   */
+  async downloadLearningItemRequestOpts(
+    requestParameters: DownloadLearningItemRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling downloadLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/download`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
+   * 校验权限并记录学习资源下载
+   */
+  async downloadLearningItemRaw(
+    requestParameters: DownloadLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningDownloadResult>> {
+    const requestOptions = await this.downloadLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningDownloadResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
+   * 校验权限并记录学习资源下载
+   */
+  async downloadLearningItem(
+    requestParameters: DownloadLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningDownloadResult> {
+    const response = await this.downloadLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for enrollLearningItem without sending the request
    */
   async enrollLearningItemRequestOpts(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
@@ -2316,18 +3900,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["enrollLearningItemRequest"] == null) {
-      throw new runtime.RequiredError(
-        "enrollLearningItemRequest",
-        'Required parameter "enrollLearningItemRequest" was null or undefined when calling enrollLearningItem().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
@@ -2337,16 +3921,15 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: EnrollLearningItemRequestToJSON(requestParameters["enrollLearningItemRequest"]),
     };
   }
 
   /**
-   * ??????????????????????????????????????????????????????
-   * ??????
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
+   * 加入培训课程
    */
   async enrollLearningItemRaw(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<LearningRecord>> {
     const requestOptions = await this.enrollLearningItemRequestOpts(requestParameters);
@@ -2356,11 +3939,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????????????????????
-   * ??????
+   * 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
+   * 加入培训课程
    */
   async enrollLearningItem(
-    requestParameters: EnrollLearningItemOperationRequest,
+    requestParameters: EnrollLearningItemRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningRecord> {
     const response = await this.enrollLearningItemRaw(requestParameters, initOverrides);
@@ -2428,6 +4011,74 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.exitCurrentClubMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for generateClubEvaluations without sending the request
+   */
+  async generateClubEvaluationsRequestOpts(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    if (requestParameters["generateClubEvaluationsRequest"] == null) {
+      throw new runtime.RequiredError(
+        "generateClubEvaluationsRequest",
+        'Required parameter "generateClubEvaluationsRequest" was null or undefined when calling generateClubEvaluations().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/generate`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: GenerateClubEvaluationsRequestToJSON(
+        requestParameters["generateClubEvaluationsRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluationsRaw(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<GenerateClubEvaluationsResult>> {
+    const requestOptions = await this.generateClubEvaluationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      GenerateClubEvaluationsResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+   * 批量生成成员考核草稿
+   */
+  async generateClubEvaluations(
+    requestParameters: GenerateClubEvaluationsOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<GenerateClubEvaluationsResult> {
+    const response = await this.generateClubEvaluationsRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**
@@ -2606,6 +4257,50 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubAdvisorCandidates without sending the request
+   */
+  async getClubAdvisorCandidatesRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/advisor-candidates`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidatesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
+    const requestOptions = await this.getClubAdvisorCandidatesRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(LearningTeacherCandidateFromJSON),
+    );
+  }
+
+  /**
+   * 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
+   * 查询社团注册可选指导老师
+   */
+  async getClubAdvisorCandidates(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<LearningTeacherCandidate>> {
+    const response = await this.getClubAdvisorCandidatesRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubApplications without sending the request
    */
   async getClubApplicationsRequestOpts(
@@ -2615,6 +4310,22 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    if (requestParameters["startDate"] != null) {
+      queryParameters["startDate"] = (requestParameters["startDate"] as any)
+        .toISOString()
+        .substring(0, 10);
+    }
+
+    if (requestParameters["endDate"] != null) {
+      queryParameters["endDate"] = (requestParameters["endDate"] as any)
+        .toISOString()
+        .substring(0, 10);
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
@@ -2652,6 +4363,478 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ClubApplication>> {
     const response = await this.getClubApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardApplication without sending the request
+   */
+  async getClubAwardApplicationRequestOpts(
+    requestParameters: GetClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling getClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+   * 获取评奖评优申请详情
+   */
+  async getClubAwardApplicationRaw(
+    requestParameters: GetClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.getClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+   * 获取评奖评优申请详情
+   */
+  async getClubAwardApplication(
+    requestParameters: GetClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.getClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardApplicationAttachmentFile without sending the request
+   */
+  async getClubAwardApplicationAttachmentFileRequestOpts(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    if (requestParameters["attachmentId"] == null) {
+      throw new runtime.RequiredError(
+        "attachmentId",
+        'Required parameter "attachmentId" was null or undefined when calling getClubAwardApplicationAttachmentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+    urlPath = urlPath.replace(
+      "{attachmentId}",
+      encodeURIComponent(String(requestParameters["attachmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优申请材料
+   */
+  async getClubAwardApplicationAttachmentFileRaw(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions =
+      await this.getClubAwardApplicationAttachmentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优申请材料
+   */
+  async getClubAwardApplicationAttachmentFile(
+    requestParameters: GetClubAwardApplicationAttachmentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getClubAwardApplicationAttachmentFileRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardApplications without sending the request
+   */
+  async getClubAwardApplicationsRequestOpts(
+    requestParameters: GetClubAwardApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardApplications().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["awardSchemeId"] != null) {
+      queryParameters["awardSchemeId"] = requestParameters["awardSchemeId"];
+    }
+
+    if (requestParameters["applicantUserId"] != null) {
+      queryParameters["applicantUserId"] = requestParameters["applicantUserId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["currentStep"] != null) {
+      queryParameters["currentStep"] = requestParameters["currentStep"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 普通成员查看自己的申请；社团负责人、指导老师、系统管理员可按审核步骤、状态、奖项、成员筛选本社团申请。
+   * 查询社团评奖评优申请
+   */
+  async getClubAwardApplicationsRaw(
+    requestParameters: GetClubAwardApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardApplicationRecord>>> {
+    const requestOptions = await this.getClubAwardApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardApplicationRecordFromJSON),
+    );
+  }
+
+  /**
+   * 普通成员查看自己的申请；社团负责人、指导老师、系统管理员可按审核步骤、状态、奖项、成员筛选本社团申请。
+   * 查询社团评奖评优申请
+   */
+  async getClubAwardApplications(
+    requestParameters: GetClubAwardApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardApplicationRecord>> {
+    const response = await this.getClubAwardApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardPublicityBatches without sending the request
+   */
+  async getClubAwardPublicityBatchesRequestOpts(
+    requestParameters: GetClubAwardPublicityBatchesRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardPublicityBatches().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-publicity`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 公开查看已公示批次；维护人可查看草稿、公示中、已结束和已归档批次。
+   * 查询评奖评优公示批次
+   */
+  async getClubAwardPublicityBatchesRaw(
+    requestParameters: GetClubAwardPublicityBatchesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardPublicityBatchRecord>>> {
+    const requestOptions = await this.getClubAwardPublicityBatchesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardPublicityBatchRecordFromJSON),
+    );
+  }
+
+  /**
+   * 公开查看已公示批次；维护人可查看草稿、公示中、已结束和已归档批次。
+   * 查询评奖评优公示批次
+   */
+  async getClubAwardPublicityBatches(
+    requestParameters: GetClubAwardPublicityBatchesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardPublicityBatchRecord>> {
+    const response = await this.getClubAwardPublicityBatchesRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardRuleDocumentFile without sending the request
+   */
+  async getClubAwardRuleDocumentFileRequestOpts(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling getClubAwardRuleDocumentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优评定细则附件
+   */
+  async getClubAwardRuleDocumentFileRaw(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getClubAwardRuleDocumentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+   * 下载评奖评优评定细则附件
+   */
+  async getClubAwardRuleDocumentFile(
+    requestParameters: GetClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getClubAwardRuleDocumentFileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardRuleDocuments without sending the request
+   */
+  async getClubAwardRuleDocumentsRequestOpts(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardRuleDocuments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+   * 查询评奖评优评定细则
+   */
+  async getClubAwardRuleDocumentsRaw(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardRuleDocumentRecord>>> {
+    const requestOptions = await this.getClubAwardRuleDocumentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardRuleDocumentRecordFromJSON),
+    );
+  }
+
+  /**
+   * 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+   * 查询评奖评优评定细则
+   */
+  async getClubAwardRuleDocuments(
+    requestParameters: GetClubAwardRuleDocumentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardRuleDocumentRecord>> {
+    const response = await this.getClubAwardRuleDocumentsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubAwardSchemes without sending the request
+   */
+  async getClubAwardSchemesRequestOpts(
+    requestParameters: GetClubAwardSchemesRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubAwardSchemes().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["keyword"] != null) {
+      queryParameters["keyword"] = requestParameters["keyword"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-schemes`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+   * 查询社团评奖评优奖项配置
+   */
+  async getClubAwardSchemesRaw(
+    requestParameters: GetClubAwardSchemesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<AwardSchemeRecord>>> {
+    const requestOptions = await this.getClubAwardSchemesRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(AwardSchemeRecordFromJSON),
+    );
+  }
+
+  /**
+   * 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+   * 查询社团评奖评优奖项配置
+   */
+  async getClubAwardSchemes(
+    requestParameters: GetClubAwardSchemesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<AwardSchemeRecord>> {
+    const response = await this.getClubAwardSchemesRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2704,6 +4887,66 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Club> {
     const response = await this.getClubByIdRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getClubDepartments without sending the request
+   */
+  async getClubDepartmentsRequestOpts(
+    requestParameters: GetClubDepartmentsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubDepartments().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["includeInactive"] != null) {
+      queryParameters["includeInactive"] = requestParameters["includeInactive"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/departments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+   * 查询社团部门和小组
+   */
+  async getClubDepartmentsRaw(
+    requestParameters: GetClubDepartmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ClubDepartmentRecord>>> {
+    const requestOptions = await this.getClubDepartmentsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ClubDepartmentRecordFromJSON),
+    );
+  }
+
+  /**
+   * 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+   * 查询社团部门和小组
+   */
+  async getClubDepartments(
+    requestParameters: GetClubDepartmentsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ClubDepartmentRecord>> {
+    const response = await this.getClubDepartmentsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2788,6 +5031,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["includeHistory"] != null) {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
+    }
+
+    if (requestParameters["departmentId"] != null) {
+      queryParameters["departmentId"] = requestParameters["departmentId"];
+    }
+
+    if (requestParameters["groupId"] != null) {
+      queryParameters["groupId"] = requestParameters["groupId"];
     }
 
     if (requestParameters["departmentName"] != null) {
@@ -2882,29 +5133,175 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for getLearningItems without sending the request
+   * Creates request options for getLearningInstructorByUserNumber without sending the request
    */
-  async getLearningItemsRequestOpts(
-    requestParameters: GetLearningItemsRequest,
+  async getLearningInstructorByUserNumberRequestOpts(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
+    if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningItems().',
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getLearningInstructorByUserNumber().',
+      );
+    }
+
+    if (requestParameters["userNumber"] == null) {
+      throw new runtime.RequiredError(
+        "userNumber",
+        'Required parameter "userNumber" was null or undefined when calling getLearningInstructorByUserNumber().',
       );
     }
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
     }
+
+    if (requestParameters["userNumber"] != null) {
+      queryParameters["userNumber"] = requestParameters["userNumber"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/instructor-lookup`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumberRaw(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningTeacherCandidate>> {
+    const requestOptions =
+      await this.getLearningInstructorByUserNumberRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningTeacherCandidateFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+   * 按学工号查询课程授课人
+   */
+  async getLearningInstructorByUserNumber(
+    requestParameters: GetLearningInstructorByUserNumberRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningTeacherCandidate> {
+    const response = await this.getLearningInstructorByUserNumberRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItemStatistics without sending the request
+   */
+  async getLearningItemStatisticsRequestOpts(
+    requestParameters: GetLearningItemStatisticsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningItemStatistics().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/statistics`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
+   * 获取学习资源统计
+   */
+  async getLearningItemStatisticsRaw(
+    requestParameters: GetLearningItemStatisticsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItemStatistics>> {
+    const requestOptions = await this.getLearningItemStatisticsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningItemStatisticsFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
+   * 获取学习资源统计
+   */
+  async getLearningItemStatistics(
+    requestParameters: GetLearningItemStatisticsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItemStatistics> {
+    const response = await this.getLearningItemStatisticsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningItems without sending the request
+   */
+  async getLearningItemsRequestOpts(
+    requestParameters: GetLearningItemsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
 
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/items`;
 
@@ -2917,8 +5314,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????
-   * ????????
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
+   * 获取可见的课程与学习资源
    */
   async getLearningItemsRaw(
     requestParameters: GetLearningItemsRequest,
@@ -2933,14 +5330,72 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????
-   * ????????
+   * 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
+   * 获取可见的课程与学习资源
    */
   async getLearningItems(
-    requestParameters: GetLearningItemsRequest,
+    requestParameters: GetLearningItemsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningItem>> {
     const response = await this.getLearningItemsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getLearningPreview without sending the request
+   */
+  async getLearningPreviewRequestOpts(
+    requestParameters: GetLearningPreviewRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningPreview().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["range"] != null) {
+      headerParameters["Range"] = String(requestParameters["range"]);
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/preview`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+   * 获取受保护的学习资源在线预览内容
+   */
+  async getLearningPreviewRaw(
+    requestParameters: GetLearningPreviewRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getLearningPreviewRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+   * 获取受保护的学习资源在线预览内容
+   */
+  async getLearningPreview(
+    requestParameters: GetLearningPreviewRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getLearningPreviewRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2950,24 +5405,22 @@ export class DefaultApi extends runtime.BaseAPI {
   async getLearningRecordsRequestOpts(
     requestParameters: GetLearningRecordsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
-      throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningRecords().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
-    }
 
     if (requestParameters["itemId"] != null) {
       queryParameters["itemId"] = requestParameters["itemId"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/learning/records`;
 
@@ -2980,8 +5433,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????
-   * ??????
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
+   * 获取学习记录
    */
   async getLearningRecordsRaw(
     requestParameters: GetLearningRecordsRequest,
@@ -2996,11 +5449,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????
-   * ??????
+   * 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
+   * 获取学习记录
    */
   async getLearningRecords(
-    requestParameters: GetLearningRecordsRequest,
+    requestParameters: GetLearningRecordsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningRecord>> {
     const response = await this.getLearningRecordsRaw(requestParameters, initOverrides);
@@ -3008,38 +5461,33 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for getLearningTeacherCandidates without sending the request
+   * Creates request options for getLearningResourceFile without sending the request
    */
-  async getLearningTeacherCandidatesRequestOpts(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getLearningResourceFileRequestOpts(
+    requestParameters: GetLearningResourceFileRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
+    if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling getLearningTeacherCandidates().',
-      );
-    }
-
-    if (requestParameters["clubId"] == null) {
-      throw new runtime.RequiredError(
-        "clubId",
-        'Required parameter "clubId" was null or undefined when calling getLearningTeacherCandidates().',
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling getLearningResourceFile().',
       );
     }
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
-    }
-
-    if (requestParameters["clubId"] != null) {
-      queryParameters["clubId"] = requestParameters["clubId"];
-    }
-
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/learning/teacher-candidates`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/file`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
       path: urlPath,
@@ -3050,30 +5498,160 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????????????????????????????????
-   * ????????
+   * 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
+   * 获取受保护的学习资源文件
    */
-  async getLearningTeacherCandidatesRaw(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getLearningResourceFileRaw(
+    requestParameters: GetLearningResourceFileRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
-    const requestOptions = await this.getLearningTeacherCandidatesRequestOpts(requestParameters);
+  ): Promise<runtime.ApiResponse<Blob>> {
+    const requestOptions = await this.getLearningResourceFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.BlobApiResponse(response);
+  }
+
+  /**
+   * 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
+   * 获取受保护的学习资源文件
+   */
+  async getLearningResourceFile(
+    requestParameters: GetLearningResourceFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Blob> {
+    const response = await this.getLearningResourceFileRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getMaterialBorrows without sending the request
+   */
+  async getMaterialBorrowsRequestOpts(
+    requestParameters: GetMaterialBorrowsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["materialId"] != null) {
+      queryParameters["materialId"] = requestParameters["materialId"];
+    }
+
+    if (requestParameters["borrowerUserId"] != null) {
+      queryParameters["borrowerUserId"] = requestParameters["borrowerUserId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * List material borrow records
+   */
+  async getMaterialBorrowsRaw(
+    requestParameters: GetMaterialBorrowsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<MaterialBorrow>>> {
+    const requestOptions = await this.getMaterialBorrowsRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      jsonValue.map(LearningTeacherCandidateFromJSON),
+      jsonValue.map(MaterialBorrowFromJSON),
     );
   }
 
   /**
-   * ?????????????????????????????????????????????
-   * ????????
+   * List material borrow records
    */
-  async getLearningTeacherCandidates(
-    requestParameters: GetLearningTeacherCandidatesRequest,
+  async getMaterialBorrows(
+    requestParameters: GetMaterialBorrowsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<Array<LearningTeacherCandidate>> {
-    const response = await this.getLearningTeacherCandidatesRaw(requestParameters, initOverrides);
+  ): Promise<Array<MaterialBorrow>> {
+    const response = await this.getMaterialBorrowsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getMaterials without sending the request
+   */
+  async getMaterialsRequestOpts(
+    requestParameters: GetMaterialsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * List activity materials
+   */
+  async getMaterialsRaw(
+    requestParameters: GetMaterialsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<Material>>> {
+    const requestOptions = await this.getMaterialsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MaterialFromJSON));
+  }
+
+  /**
+   * List activity materials
+   */
+  async getMaterials(
+    requestParameters: GetMaterialsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Material>> {
+    const response = await this.getMaterialsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -3081,18 +5659,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for getNotices without sending the request
    */
   async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getNotices().',
-      );
-    }
-
     const queryParameters: any = {};
-
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
-    }
 
     if (requestParameters["noticeStatus"] != null) {
       queryParameters["noticeStatus"] = requestParameters["noticeStatus"];
@@ -3112,6 +5679,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/notices`;
 
     return {
@@ -3123,7 +5699,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNoticesRaw(
@@ -3137,11 +5713,11 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
    * 查询公告通知
    */
   async getNotices(
-    requestParameters: GetNoticesRequest,
+    requestParameters: GetNoticesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Notice>> {
     const response = await this.getNoticesRaw(requestParameters, initOverrides);
@@ -3286,7 +5862,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidatesRaw(
@@ -3302,7 +5878,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidates(
@@ -3358,7 +5934,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
    * 获取项目成员列表
    */
   async getProjectMembersRaw(
@@ -3374,7 +5950,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+   * 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
    * 获取项目成员列表
    */
   async getProjectMembers(
@@ -3382,6 +5958,152 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ProjectMember>> {
     const response = await this.getProjectMembersRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getProjectTaskProgressReports without sending the request
+   */
+  async getProjectTaskProgressReportsRequestOpts(
+    requestParameters: GetProjectTaskProgressReportsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectTaskProgressReports().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling getProjectTaskProgressReports().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/progress-reports`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 项目负责人可查看项目全部任务的记录；任务执行人仅可查看分配给自己的任务记录。
+   * 获取项目任务进度提交记录
+   */
+  async getProjectTaskProgressReportsRaw(
+    requestParameters: GetProjectTaskProgressReportsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ProjectTaskProgressReport>>> {
+    const requestOptions = await this.getProjectTaskProgressReportsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(ProjectTaskProgressReportFromJSON),
+    );
+  }
+
+  /**
+   * 项目负责人可查看项目全部任务的记录；任务执行人仅可查看分配给自己的任务记录。
+   * 获取项目任务进度提交记录
+   */
+  async getProjectTaskProgressReports(
+    requestParameters: GetProjectTaskProgressReportsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ProjectTaskProgressReport>> {
+    const response = await this.getProjectTaskProgressReportsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getProjectTasks without sending the request
+   */
+  async getProjectTasksRequestOpts(
+    requestParameters: GetProjectTasksRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling getProjectTasks().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["completedOnly"] != null) {
+      queryParameters["completedOnly"] = requestParameters["completedOnly"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。默认不返回已完成任务，可显式查看已完成任务。
+   * 获取项目任务列表
+   */
+  async getProjectTasksRaw(
+    requestParameters: GetProjectTasksRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ProjectTask>>> {
+    const requestOptions = await this.getProjectTasksRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ProjectTaskFromJSON));
+  }
+
+  /**
+   * 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。默认不返回已完成任务，可显式查看已完成任务。
+   * 获取项目任务列表
+   */
+  async getProjectTasks(
+    requestParameters: GetProjectTasksRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ProjectTask>> {
+    const response = await this.getProjectTasksRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4072,7 +6794,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for markNoticeRead without sending the request
    */
   async markNoticeReadRequestOpts(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["noticeId"] == null) {
       throw new runtime.RequiredError(
@@ -4081,18 +6803,18 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["markNoticeReadRequest"] == null) {
-      throw new runtime.RequiredError(
-        "markNoticeReadRequest",
-        'Required parameter "markNoticeReadRequest" was null or undefined when calling markNoticeRead().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/notices/{noticeId}/reads`;
     urlPath = urlPath.replace(
@@ -4105,7 +6827,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "POST",
       headers: headerParameters,
       query: queryParameters,
-      body: MarkNoticeReadRequestToJSON(requestParameters["markNoticeReadRequest"]),
     };
   }
 
@@ -4114,7 +6835,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeReadRaw(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<NoticeReadResult>> {
     const requestOptions = await this.markNoticeReadRequestOpts(requestParameters);
@@ -4130,10 +6851,222 @@ export class DefaultApi extends runtime.BaseAPI {
    * 标记通知已读
    */
   async markNoticeRead(
-    requestParameters: MarkNoticeReadOperationRequest,
+    requestParameters: MarkNoticeReadRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for previewClubEvaluationScores without sending the request
+   */
+  async previewClubEvaluationScoresRequestOpts(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    if (requestParameters["termName"] == null) {
+      throw new runtime.RequiredError(
+        "termName",
+        'Required parameter "termName" was null or undefined when calling previewClubEvaluationScores().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["userId"] != null) {
+      queryParameters["userId"] = requestParameters["userId"];
+    }
+
+    if (requestParameters["termName"] != null) {
+      queryParameters["termName"] = requestParameters["termName"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/evaluations/score-preview`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScoresRaw(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubEvaluationScorePreview>> {
+    const requestOptions = await this.previewClubEvaluationScoresRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubEvaluationScorePreviewFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+   * 预览成员考核系统生成分
+   */
+  async previewClubEvaluationScores(
+    requestParameters: PreviewClubEvaluationScoresRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubEvaluationScorePreview> {
+    const response = await this.previewClubEvaluationScoresRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for publishClubAwardPublicityBatch without sending the request
+   */
+  async publishClubAwardPublicityBatchRequestOpts(
+    requestParameters: PublishClubAwardPublicityBatchRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling publishClubAwardPublicityBatch().',
+      );
+    }
+
+    if (requestParameters["publicityBatchId"] == null) {
+      throw new runtime.RequiredError(
+        "publicityBatchId",
+        'Required parameter "publicityBatchId" was null or undefined when calling publishClubAwardPublicityBatch().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-publicity/{publicityBatchId}/publish`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{publicityBatchId}",
+      encodeURIComponent(String(requestParameters["publicityBatchId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 将公示批次发布到公示列表，并把批次内申请标记为公示中。
+   * 发布评奖评优公示批次
+   */
+  async publishClubAwardPublicityBatchRaw(
+    requestParameters: PublishClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardPublicityBatchRecord>> {
+    const requestOptions = await this.publishClubAwardPublicityBatchRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardPublicityBatchRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 将公示批次发布到公示列表，并把批次内申请标记为公示中。
+   * 发布评奖评优公示批次
+   */
+  async publishClubAwardPublicityBatch(
+    requestParameters: PublishClubAwardPublicityBatchRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardPublicityBatchRecord> {
+    const response = await this.publishClubAwardPublicityBatchRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for publishClubAwardRuleDocument without sending the request
+   */
+  async publishClubAwardRuleDocumentRequestOpts(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling publishClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling publishClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+   * 发布评奖评优评定细则
+   */
+  async publishClubAwardRuleDocumentRaw(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.publishClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+   * 发布评奖评优评定细则
+   */
+  async publishClubAwardRuleDocument(
+    requestParameters: PublishClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.publishClubAwardRuleDocumentRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4461,6 +7394,134 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for resubmitClubApplication without sending the request
+   */
+  async resubmitClubApplicationRequestOpts(
+    requestParameters: ResubmitClubApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    if (requestParameters["createClubApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createClubApplicationRequest",
+        'Required parameter "createClubApplicationRequest" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/applications/{clubId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateClubApplicationRequestToJSON(requestParameters["createClubApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplicationRaw(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubApplication>> {
+    const requestOptions = await this.resubmitClubApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubApplicationFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+   * 修改退回的社团注册申请并重新提交
+   */
+  async resubmitClubApplication(
+    requestParameters: ResubmitClubApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubApplication> {
+    const response = await this.resubmitClubApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for returnMaterialBorrow without sending the request
+   */
+  async returnMaterialBorrowRequestOpts(
+    requestParameters: ReturnMaterialBorrowRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["borrowId"] == null) {
+      throw new runtime.RequiredError(
+        "borrowId",
+        'Required parameter "borrowId" was null or undefined when calling returnMaterialBorrow().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/material-borrows/{borrowId}/return`;
+    urlPath = urlPath.replace(
+      "{borrowId}",
+      encodeURIComponent(String(requestParameters["borrowId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * Register material return
+   */
+  async returnMaterialBorrowRaw(
+    requestParameters: ReturnMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<MaterialBorrow>> {
+    const requestOptions = await this.returnMaterialBorrowRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialBorrowFromJSON(jsonValue));
+  }
+
+  /**
+   * Register material return
+   */
+  async returnMaterialBorrow(
+    requestParameters: ReturnMaterialBorrowRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<MaterialBorrow> {
+    const response = await this.returnMaterialBorrowRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewActivity without sending the request
    */
   async reviewActivityRequestOpts(
@@ -4666,6 +7727,156 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewClubAwardApplication without sending the request
+   */
+  async reviewClubAwardApplicationRequestOpts(
+    requestParameters: ReviewClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling reviewClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling reviewClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["reviewAwardApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewAwardApplicationRequest",
+        'Required parameter "reviewAwardApplicationRequest" was null or undefined when calling reviewClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/review`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewAwardApplicationRequestToJSON(requestParameters["reviewAwardApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
+   * 审核评奖评优申请
+   */
+  async reviewClubAwardApplicationRaw(
+    requestParameters: ReviewClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.reviewClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
+   * 审核评奖评优申请
+   */
+  async reviewClubAwardApplication(
+    requestParameters: ReviewClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.reviewClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewLearningItem without sending the request
+   */
+  async reviewLearningItemRequestOpts(
+    requestParameters: ReviewLearningItemOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    if (requestParameters["reviewLearningItemRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewLearningItemRequest",
+        'Required parameter "reviewLearningItemRequest" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/review`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewLearningItemRequestToJSON(requestParameters["reviewLearningItemRequest"]),
+    };
+  }
+
+  /**
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItemRaw(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.reviewLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+   * 审核课程或学习资源
+   */
+  async reviewLearningItem(
+    requestParameters: ReviewLearningItemOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.reviewLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewProject without sending the request
    */
   async reviewProjectRequestOpts(
@@ -4690,6 +7901,15 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/projects/{projectId}/review`;
     urlPath = urlPath.replace(
@@ -4729,6 +7949,92 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Project> {
     const response = await this.reviewProjectRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewProjectTaskDeliverable without sending the request
+   */
+  async reviewProjectTaskDeliverableRequestOpts(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["reviewProjectTaskDeliverableRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewProjectTaskDeliverableRequest",
+        'Required parameter "reviewProjectTaskDeliverableRequest" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable/review`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewProjectTaskDeliverableRequestToJSON(
+        requestParameters["reviewProjectTaskDeliverableRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+   * 审核项目任务成果
+   */
+  async reviewProjectTaskDeliverableRaw(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.reviewProjectTaskDeliverableRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+   * 审核项目任务成果
+   */
+  async reviewProjectTaskDeliverable(
+    requestParameters: ReviewProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.reviewProjectTaskDeliverableRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4947,6 +8253,222 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for startLearningItem without sending the request
+   */
+  async startLearningItemRequestOpts(
+    requestParameters: StartLearningItemRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling startLearningItem().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/learning/items/{itemId}/learning`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+   * 开始或继续学习资源
+   */
+  async startLearningItemRaw(
+    requestParameters: StartLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningRecord>> {
+    const requestOptions = await this.startLearningItemRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+   * 开始或继续学习资源
+   */
+  async startLearningItem(
+    requestParameters: StartLearningItemRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningRecord> {
+    const response = await this.startLearningItemRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for submitClubAwardApplication without sending the request
+   */
+  async submitClubAwardApplicationRequestOpts(
+    requestParameters: SubmitClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling submitClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling submitClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/submit`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
+   * 提交或重新提交评奖评优申请
+   */
+  async submitClubAwardApplicationRaw(
+    requestParameters: SubmitClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.submitClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
+   * 提交或重新提交评奖评优申请
+   */
+  async submitClubAwardApplication(
+    requestParameters: SubmitClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.submitClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for submitProjectTaskDeliverable without sending the request
+   */
+  async submitProjectTaskDeliverableRequestOpts(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    if (requestParameters["submitProjectTaskDeliverableRequest"] == null) {
+      throw new runtime.RequiredError(
+        "submitProjectTaskDeliverableRequest",
+        'Required parameter "submitProjectTaskDeliverableRequest" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: SubmitProjectTaskDeliverableRequestToJSON(
+        requestParameters["submitProjectTaskDeliverableRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+   * 提交项目任务成果
+   */
+  async submitProjectTaskDeliverableRaw(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.submitProjectTaskDeliverableRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+   * 提交项目任务成果
+   */
+  async submitProjectTaskDeliverable(
+    requestParameters: SubmitProjectTaskDeliverableOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.submitProjectTaskDeliverableRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateActivityCheckinSettings without sending the request
    */
   async updateActivityCheckinSettingsRequestOpts(
@@ -5085,6 +8607,316 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for updateClubAwardApplication without sending the request
+   */
+  async updateClubAwardApplicationRequestOpts(
+    requestParameters: UpdateClubAwardApplicationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling updateClubAwardApplication().',
+      );
+    }
+
+    if (requestParameters["updateAwardApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateAwardApplicationRequest",
+        'Required parameter "updateAwardApplicationRequest" was null or undefined when calling updateClubAwardApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateAwardApplicationRequestToJSON(requestParameters["updateAwardApplicationRequest"]),
+    };
+  }
+
+  /**
+   * 申请人可修改草稿或退回状态的申请材料；负责人推荐记录可由推荐人或更高权限维护人修改。
+   * 更新评奖评优申请草稿
+   */
+  async updateClubAwardApplicationRaw(
+    requestParameters: UpdateClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions = await this.updateClubAwardApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人可修改草稿或退回状态的申请材料；负责人推荐记录可由推荐人或更高权限维护人修改。
+   * 更新评奖评优申请草稿
+   */
+  async updateClubAwardApplication(
+    requestParameters: UpdateClubAwardApplicationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.updateClubAwardApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubAwardRuleDocument without sending the request
+   */
+  async updateClubAwardRuleDocumentRequestOpts(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    if (requestParameters["updateAwardRuleDocumentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateAwardRuleDocumentRequest",
+        'Required parameter "updateAwardRuleDocumentRequest" was null or undefined when calling updateClubAwardRuleDocument().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateAwardRuleDocumentRequestToJSON(
+        requestParameters["updateAwardRuleDocumentRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+   * 更新评奖评优评定细则
+   */
+  async updateClubAwardRuleDocumentRaw(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.updateClubAwardRuleDocumentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+   * 更新评奖评优评定细则
+   */
+  async updateClubAwardRuleDocument(
+    requestParameters: UpdateClubAwardRuleDocumentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.updateClubAwardRuleDocumentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubAwardScheme without sending the request
+   */
+  async updateClubAwardSchemeRequestOpts(
+    requestParameters: UpdateClubAwardSchemeRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubAwardScheme().',
+      );
+    }
+
+    if (requestParameters["awardSchemeId"] == null) {
+      throw new runtime.RequiredError(
+        "awardSchemeId",
+        'Required parameter "awardSchemeId" was null or undefined when calling updateClubAwardScheme().',
+      );
+    }
+
+    if (requestParameters["updateAwardSchemeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateAwardSchemeRequest",
+        'Required parameter "updateAwardSchemeRequest" was null or undefined when calling updateClubAwardScheme().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/award-schemes/{awardSchemeId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardSchemeId}",
+      encodeURIComponent(String(requestParameters["awardSchemeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateAwardSchemeRequestToJSON(requestParameters["updateAwardSchemeRequest"]),
+    };
+  }
+
+  /**
+   * 在不破坏既有申请外键的前提下更新奖项配置、等级、开放时间和状态；已归档奖项不允许再修改核心规则。
+   * 更新社团评奖评优奖项配置
+   */
+  async updateClubAwardSchemeRaw(
+    requestParameters: UpdateClubAwardSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardSchemeRecord>> {
+    const requestOptions = await this.updateClubAwardSchemeRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardSchemeRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 在不破坏既有申请外键的前提下更新奖项配置、等级、开放时间和状态；已归档奖项不允许再修改核心规则。
+   * 更新社团评奖评优奖项配置
+   */
+  async updateClubAwardScheme(
+    requestParameters: UpdateClubAwardSchemeRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardSchemeRecord> {
+    const response = await this.updateClubAwardSchemeRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubDepartment without sending the request
+   */
+  async updateClubDepartmentRequestOpts(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    if (requestParameters["departmentId"] == null) {
+      throw new runtime.RequiredError(
+        "departmentId",
+        'Required parameter "departmentId" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    if (requestParameters["updateClubDepartmentRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubDepartmentRequest",
+        'Required parameter "updateClubDepartmentRequest" was null or undefined when calling updateClubDepartment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{departmentId}",
+      encodeURIComponent(String(requestParameters["departmentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubDepartmentRequestToJSON(requestParameters["updateClubDepartmentRequest"]),
+    };
+  }
+
+  /**
+   * 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+   * 更新社团部门
+   */
+  async updateClubDepartmentRaw(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubDepartmentRecord>> {
+    const requestOptions = await this.updateClubDepartmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ClubDepartmentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+   * 更新社团部门
+   */
+  async updateClubDepartment(
+    requestParameters: UpdateClubDepartmentOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubDepartmentRecord> {
+    const response = await this.updateClubDepartmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for updateClubEvaluation without sending the request
    */
   async updateClubEvaluationRequestOpts(
@@ -5134,7 +8966,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluationRaw(
@@ -5150,7 +8982,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+   * 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
    * 更新社团成员评价考核或评优评奖结果
    */
   async updateClubEvaluation(
@@ -5158,6 +8990,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.updateClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateClubGroup without sending the request
+   */
+  async updateClubGroupRequestOpts(
+    requestParameters: UpdateClubGroupOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    if (requestParameters["groupId"] == null) {
+      throw new runtime.RequiredError(
+        "groupId",
+        'Required parameter "groupId" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    if (requestParameters["updateClubGroupRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateClubGroupRequest",
+        'Required parameter "updateClubGroupRequest" was null or undefined when calling updateClubGroup().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    let urlPath = `/api/clubs/{clubId}/groups/{groupId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{groupId}",
+      encodeURIComponent(String(requestParameters["groupId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateClubGroupRequestToJSON(requestParameters["updateClubGroupRequest"]),
+    };
+  }
+
+  /**
+   * 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+   * 更新社团小组
+   */
+  async updateClubGroupRaw(
+    requestParameters: UpdateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ClubGroupRecord>> {
+    const requestOptions = await this.updateClubGroupRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ClubGroupRecordFromJSON(jsonValue));
+  }
+
+  /**
+   * 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+   * 更新社团小组
+   */
+  async updateClubGroup(
+    requestParameters: UpdateClubGroupOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ClubGroupRecord> {
+    const response = await this.updateClubGroupRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5407,6 +9314,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/items/{itemId}`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
@@ -5420,8 +9336,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ??????
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
+   * 更新课程或学习资源
    */
   async updateLearningItemRaw(
     requestParameters: UpdateLearningItemOperationRequest,
@@ -5434,8 +9350,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ??????????????????????????????????????
-   * ??????
+   * 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
+   * 更新课程或学习资源
    */
   async updateLearningItem(
     requestParameters: UpdateLearningItemOperationRequest,
@@ -5471,6 +9387,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/learning/records/{recordId}/progress`;
     urlPath = urlPath.replace(
       "{recordId}",
@@ -5487,8 +9412,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????? 100 ????????
-   * ??????
+   * 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
+   * 更新学习进度和累计时长
    */
   async updateLearningProgressRaw(
     requestParameters: UpdateLearningProgressOperationRequest,
@@ -5501,14 +9426,261 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * ?????????????????? 100 ????????
-   * ??????
+   * 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
+   * 更新学习进度和累计时长
    */
   async updateLearningProgress(
     requestParameters: UpdateLearningProgressOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<LearningRecord> {
     const response = await this.updateLearningProgressRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateMaterial without sending the request
+   */
+  async updateMaterialRequestOpts(
+    requestParameters: UpdateMaterialOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["materialId"] == null) {
+      throw new runtime.RequiredError(
+        "materialId",
+        'Required parameter "materialId" was null or undefined when calling updateMaterial().',
+      );
+    }
+
+    if (requestParameters["updateMaterialRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateMaterialRequest",
+        'Required parameter "updateMaterialRequest" was null or undefined when calling updateMaterial().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/materials/{materialId}`;
+    urlPath = urlPath.replace(
+      "{materialId}",
+      encodeURIComponent(String(requestParameters["materialId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateMaterialRequestToJSON(requestParameters["updateMaterialRequest"]),
+    };
+  }
+
+  /**
+   * Update an activity material
+   */
+  async updateMaterialRaw(
+    requestParameters: UpdateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Material>> {
+    const requestOptions = await this.updateMaterialRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => MaterialFromJSON(jsonValue));
+  }
+
+  /**
+   * Update an activity material
+   */
+  async updateMaterial(
+    requestParameters: UpdateMaterialOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Material> {
+    const response = await this.updateMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateNoticeDraft without sending the request
+   */
+  async updateNoticeDraftRequestOpts(
+    requestParameters: UpdateNoticeDraftRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["noticeId"] == null) {
+      throw new runtime.RequiredError(
+        "noticeId",
+        'Required parameter "noticeId" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["ifUnmodifiedSince"] == null) {
+      throw new runtime.RequiredError(
+        "ifUnmodifiedSince",
+        'Required parameter "ifUnmodifiedSince" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    if (requestParameters["createNoticeRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createNoticeRequest",
+        'Required parameter "createNoticeRequest" was null or undefined when calling updateNoticeDraft().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["ifUnmodifiedSince"] != null) {
+      headerParameters["If-Unmodified-Since"] = String(requestParameters["ifUnmodifiedSince"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/notices/{noticeId}`;
+    urlPath = urlPath.replace(
+      "{noticeId}",
+      encodeURIComponent(String(requestParameters["noticeId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateNoticeRequestToJSON(requestParameters["createNoticeRequest"]),
+    };
+  }
+
+  /**
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 编辑或发布通知草稿
+   */
+  async updateNoticeDraftRaw(
+    requestParameters: UpdateNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Notice>> {
+    const requestOptions = await this.updateNoticeDraftRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => NoticeFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 编辑或发布通知草稿
+   */
+  async updateNoticeDraft(
+    requestParameters: UpdateNoticeDraftRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Notice> {
+    const response = await this.updateNoticeDraftRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateProjectTaskProgress without sending the request
+   */
+  async updateProjectTaskProgressRequestOpts(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["projectId"] == null) {
+      throw new runtime.RequiredError(
+        "projectId",
+        'Required parameter "projectId" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    if (requestParameters["taskId"] == null) {
+      throw new runtime.RequiredError(
+        "taskId",
+        'Required parameter "taskId" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    if (requestParameters["updateProjectTaskProgressRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateProjectTaskProgressRequest",
+        'Required parameter "updateProjectTaskProgressRequest" was null or undefined when calling updateProjectTaskProgress().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/progress`;
+    urlPath = urlPath.replace(
+      "{projectId}",
+      encodeURIComponent(String(requestParameters["projectId"])),
+    );
+    urlPath = urlPath.replace("{taskId}", encodeURIComponent(String(requestParameters["taskId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateProjectTaskProgressRequestToJSON(
+        requestParameters["updateProjectTaskProgressRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
+   * 更新项目任务进度
+   */
+  async updateProjectTaskProgressRaw(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ProjectTask>> {
+    const requestOptions = await this.updateProjectTaskProgressRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ProjectTaskFromJSON(jsonValue));
+  }
+
+  /**
+   * 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
+   * 更新项目任务进度
+   */
+  async updateProjectTaskProgress(
+    requestParameters: UpdateProjectTaskProgressOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ProjectTask> {
+    const response = await this.updateProjectTaskProgressRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5708,6 +9880,328 @@ export class DefaultApi extends runtime.BaseAPI {
     const response = await this.updateVenueStatusRaw(requestParameters, initOverrides);
     return await response.value();
   }
+
+  /**
+   * Creates request options for uploadClubAwardApplicationAttachment without sending the request
+   */
+  async uploadClubAwardApplicationAttachmentRequestOpts(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    if (requestParameters["awardApplicationId"] == null) {
+      throw new runtime.RequiredError(
+        "awardApplicationId",
+        'Required parameter "awardApplicationId" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadClubAwardApplicationAttachment().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    if (requestParameters["attachmentType"] != null) {
+      formParams.append("attachmentType", requestParameters["attachmentType"] as any);
+    }
+
+    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{awardApplicationId}",
+      encodeURIComponent(String(requestParameters["awardApplicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+   * 上传评奖评优申请材料
+   */
+  async uploadClubAwardApplicationAttachmentRaw(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardApplicationRecord>> {
+    const requestOptions =
+      await this.uploadClubAwardApplicationAttachmentRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardApplicationRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+   * 上传评奖评优申请材料
+   */
+  async uploadClubAwardApplicationAttachment(
+    requestParameters: UploadClubAwardApplicationAttachmentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardApplicationRecord> {
+    const response = await this.uploadClubAwardApplicationAttachmentRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for uploadClubAwardRuleDocumentFile without sending the request
+   */
+  async uploadClubAwardRuleDocumentFileRequestOpts(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["ruleDocumentId"] == null) {
+      throw new runtime.RequiredError(
+        "ruleDocumentId",
+        'Required parameter "ruleDocumentId" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadClubAwardRuleDocumentFile().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace(
+      "{ruleDocumentId}",
+      encodeURIComponent(String(requestParameters["ruleDocumentId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+   * 上传评奖评优评定细则附件
+   */
+  async uploadClubAwardRuleDocumentFileRaw(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AwardRuleDocumentRecord>> {
+    const requestOptions = await this.uploadClubAwardRuleDocumentFileRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AwardRuleDocumentRecordFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+   * 上传评奖评优评定细则附件
+   */
+  async uploadClubAwardRuleDocumentFile(
+    requestParameters: UploadClubAwardRuleDocumentFileRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AwardRuleDocumentRecord> {
+    const response = await this.uploadClubAwardRuleDocumentFileRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for uploadLearningResource without sending the request
+   */
+  async uploadLearningResourceRequestOpts(
+    requestParameters: UploadLearningResourceRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["file"] == null) {
+      throw new runtime.RequiredError(
+        "file",
+        'Required parameter "file" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["visibility"] == null) {
+      throw new runtime.RequiredError(
+        "visibility",
+        'Required parameter "visibility" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    if (requestParameters["downloadPermission"] == null) {
+      throw new runtime.RequiredError(
+        "downloadPermission",
+        'Required parameter "downloadPermission" was null or undefined when calling uploadLearningResource().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["clubId"] != null) {
+      formParams.append("clubId", requestParameters["clubId"] as any);
+    }
+
+    if (requestParameters["file"] != null) {
+      formParams.append("file", requestParameters["file"] as any);
+    }
+
+    if (requestParameters["title"] != null) {
+      formParams.append("title", requestParameters["title"] as any);
+    }
+
+    if (requestParameters["categoryName"] != null) {
+      formParams.append("categoryName", requestParameters["categoryName"] as any);
+    }
+
+    if (requestParameters["description"] != null) {
+      formParams.append("description", requestParameters["description"] as any);
+    }
+
+    if (requestParameters["visibility"] != null) {
+      formParams.append("visibility", requestParameters["visibility"] as any);
+    }
+
+    if (requestParameters["downloadPermission"] != null) {
+      formParams.append("downloadPermission", requestParameters["downloadPermission"] as any);
+    }
+
+    let urlPath = `/api/learning/resources/upload`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResourceRaw(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningItem>> {
+    const requestOptions = await this.uploadLearningResourceRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => LearningItemFromJSON(jsonValue));
+  }
+
+  /**
+   * 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+   * 上传社团学习资源
+   */
+  async uploadLearningResource(
+    requestParameters: UploadLearningResourceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningItem> {
+    const response = await this.uploadLearningResourceRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
 }
 
 /**
@@ -5723,12 +10217,97 @@ export type GetClubApplicationsAuditStatusEnum =
 /**
  * @export
  */
+export const GetClubAwardApplicationsStatusEnum = {
+  Draft: "draft",
+  Submitted: "submitted",
+  ClubReview: "club_review",
+  AdvisorReview: "advisor_review",
+  SchoolReview: "school_review",
+  Returned: "returned",
+  Rejected: "rejected",
+  Approved: "approved",
+  Publicizing: "publicizing",
+  Publicized: "publicized",
+  Archived: "archived",
+  Withdrawn: "withdrawn",
+} as const;
+export type GetClubAwardApplicationsStatusEnum =
+  (typeof GetClubAwardApplicationsStatusEnum)[keyof typeof GetClubAwardApplicationsStatusEnum];
+/**
+ * @export
+ */
+export const GetClubAwardApplicationsCurrentStepEnum = {
+  StudentSubmit: "student_submit",
+  ClubReview: "club_review",
+  AdvisorReview: "advisor_review",
+  SchoolReview: "school_review",
+  Publicity: "publicity",
+  Archived: "archived",
+} as const;
+export type GetClubAwardApplicationsCurrentStepEnum =
+  (typeof GetClubAwardApplicationsCurrentStepEnum)[keyof typeof GetClubAwardApplicationsCurrentStepEnum];
+/**
+ * @export
+ */
+export const GetClubAwardPublicityBatchesStatusEnum = {
+  Draft: "draft",
+  Publicizing: "publicizing",
+  Closed: "closed",
+  Archived: "archived",
+} as const;
+export type GetClubAwardPublicityBatchesStatusEnum =
+  (typeof GetClubAwardPublicityBatchesStatusEnum)[keyof typeof GetClubAwardPublicityBatchesStatusEnum];
+/**
+ * @export
+ */
+export const GetClubAwardRuleDocumentsStatusEnum = {
+  Draft: "draft",
+  Published: "published",
+  Archived: "archived",
+} as const;
+export type GetClubAwardRuleDocumentsStatusEnum =
+  (typeof GetClubAwardRuleDocumentsStatusEnum)[keyof typeof GetClubAwardRuleDocumentsStatusEnum];
+/**
+ * @export
+ */
+export const GetClubAwardSchemesStatusEnum = {
+  Draft: "draft",
+  Open: "open",
+  Reviewing: "reviewing",
+  Publicizing: "publicizing",
+  Archived: "archived",
+  Closed: "closed",
+} as const;
+export type GetClubAwardSchemesStatusEnum =
+  (typeof GetClubAwardSchemesStatusEnum)[keyof typeof GetClubAwardSchemesStatusEnum];
+/**
+ * @export
+ */
 export const GetClubEvaluationsEvaluationTypeEnum = {
   Semester: "semester",
   Award: "award",
 } as const;
 export type GetClubEvaluationsEvaluationTypeEnum =
   (typeof GetClubEvaluationsEvaluationTypeEnum)[keyof typeof GetClubEvaluationsEvaluationTypeEnum];
+/**
+ * @export
+ */
+export const GetMaterialBorrowsStatusEnum = {
+  Borrowed: "borrowed",
+  Returned: "returned",
+  Damaged: "damaged",
+} as const;
+export type GetMaterialBorrowsStatusEnum =
+  (typeof GetMaterialBorrowsStatusEnum)[keyof typeof GetMaterialBorrowsStatusEnum];
+/**
+ * @export
+ */
+export const GetMaterialsStatusEnum = {
+  Active: "active",
+  Disabled: "disabled",
+} as const;
+export type GetMaterialsStatusEnum =
+  (typeof GetMaterialsStatusEnum)[keyof typeof GetMaterialsStatusEnum];
 /**
  * @export
  */
@@ -5782,3 +10361,23 @@ export const GetVenuesStatusEnum = {
   Maintenance: "maintenance",
 } as const;
 export type GetVenuesStatusEnum = (typeof GetVenuesStatusEnum)[keyof typeof GetVenuesStatusEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceVisibilityEnum = {
+  Public: "public",
+  Club: "club",
+  Department: "department",
+} as const;
+export type UploadLearningResourceVisibilityEnum =
+  (typeof UploadLearningResourceVisibilityEnum)[keyof typeof UploadLearningResourceVisibilityEnum];
+/**
+ * @export
+ */
+export const UploadLearningResourceDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type UploadLearningResourceDownloadPermissionEnum =
+  (typeof UploadLearningResourceDownloadPermissionEnum)[keyof typeof UploadLearningResourceDownloadPermissionEnum];

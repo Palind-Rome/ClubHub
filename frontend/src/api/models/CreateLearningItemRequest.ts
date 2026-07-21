@@ -15,79 +15,85 @@
 
 import { mapValues } from "../runtime";
 /**
- * Request body for creating a club training course.
+ * 创建课程或上传学习资源的请求。
  * @export
  * @interface CreateLearningItemRequest
  */
 export interface CreateLearningItemRequest {
   /**
-   * Current operator user id.
-   * @type {number}
-   * @memberof CreateLearningItemRequest
-   */
-  currentUserId: number;
-  /**
-   * Club that publishes the course.
+   * 发布资源的社团。
    * @type {number}
    * @memberof CreateLearningItemRequest
    */
   clubId: number;
   /**
-   * Course title.
+   * 课程或资源标题。
    * @type {string}
    * @memberof CreateLearningItemRequest
    */
   title: string;
   /**
-   * Course introduction.
+   * 课程或资源说明。
    * @type {string}
    * @memberof CreateLearningItemRequest
    */
   description?: string | null;
   /**
-   * Instructor user id.
+   * 可选的课程授课人，可以是教师或学生；非课程资源可为空。
    * @type {number}
    * @memberof CreateLearningItemRequest
    */
-  teacherUserId: number;
+  instructorUserId?: number | null;
   /**
-   * Course type.
+   * 支持 course、lecture、training、video、document、material。
    * @type {string}
    * @memberof CreateLearningItemRequest
    */
   itemType: string;
   /**
-   * Course category.
+   * 资源分类。
    * @type {string}
    * @memberof CreateLearningItemRequest
    */
   categoryName?: string | null;
   /**
-   * Required course start time.
+   * 视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。
+   * @type {string}
+   * @memberof CreateLearningItemRequest
+   */
+  fileUrl?: string | null;
+  /**
+   * 课程开始时间；课程类型必填。
    * @type {Date}
    * @memberof CreateLearningItemRequest
    */
-  startAt: Date;
+  startAt?: Date | null;
   /**
-   * Optional course end time; omit it for a long-running course.
+   * 课程结束时间。
    * @type {Date}
    * @memberof CreateLearningItemRequest
    */
   endAt?: Date | null;
   /**
-   * Enrollment capacity.
+   * 课程容量；课程类型必填。
    * @type {number}
    * @memberof CreateLearningItemRequest
    */
-  capacity: number;
+  capacity?: number | null;
   /**
-   * Course audience; club or public.
+   * 公开、社团内或上传人所在部门内可见。
    * @type {CreateLearningItemRequestVisibilityEnum}
    * @memberof CreateLearningItemRequest
    */
   visibility: CreateLearningItemRequestVisibilityEnum;
   /**
-   * Initial course status.
+   * 是否允许直接下载；课程无文件时建议 deny。
+   * @type {CreateLearningItemRequestDownloadPermissionEnum}
+   * @memberof CreateLearningItemRequest
+   */
+  downloadPermission: CreateLearningItemRequestDownloadPermissionEnum;
+  /**
+   * 初始发布状态。
    * @type {CreateLearningItemRequestItemStatusEnum}
    * @memberof CreateLearningItemRequest
    */
@@ -98,11 +104,23 @@ export interface CreateLearningItemRequest {
  * @export
  */
 export const CreateLearningItemRequestVisibilityEnum = {
-  Club: "club",
   Public: "public",
+  Club: "club",
+  Department: "department",
 } as const;
 export type CreateLearningItemRequestVisibilityEnum =
   (typeof CreateLearningItemRequestVisibilityEnum)[keyof typeof CreateLearningItemRequestVisibilityEnum];
+
+/**
+ * @export
+ */
+export const CreateLearningItemRequestDownloadPermissionEnum = {
+  Allow: "allow",
+  Deny: "deny",
+  Approval: "approval",
+} as const;
+export type CreateLearningItemRequestDownloadPermissionEnum =
+  (typeof CreateLearningItemRequestDownloadPermissionEnum)[keyof typeof CreateLearningItemRequestDownloadPermissionEnum];
 
 /**
  * @export
@@ -120,14 +138,11 @@ export type CreateLearningItemRequestItemStatusEnum =
 export function instanceOfCreateLearningItemRequest(
   value: object,
 ): value is CreateLearningItemRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
-  if (!("teacherUserId" in value) || value["teacherUserId"] === undefined) return false;
   if (!("itemType" in value) || value["itemType"] === undefined) return false;
-  if (!("startAt" in value) || value["startAt"] === undefined) return false;
-  if (!("capacity" in value) || value["capacity"] === undefined) return false;
   if (!("visibility" in value) || value["visibility"] === undefined) return false;
+  if (!("downloadPermission" in value) || value["downloadPermission"] === undefined) return false;
   if (!("itemStatus" in value) || value["itemStatus"] === undefined) return false;
   return true;
 }
@@ -144,17 +159,18 @@ export function CreateLearningItemRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     clubId: json["clubId"],
     title: json["title"],
     description: json["description"] == null ? undefined : json["description"],
-    teacherUserId: json["teacherUserId"],
+    instructorUserId: json["instructorUserId"] == null ? undefined : json["instructorUserId"],
     itemType: json["itemType"],
     categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
-    startAt: new Date(json["startAt"]),
+    fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
+    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
     endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    capacity: json["capacity"],
+    capacity: json["capacity"] == null ? undefined : json["capacity"],
     visibility: json["visibility"],
+    downloadPermission: json["downloadPermission"],
     itemStatus: json["itemStatus"],
   };
 }
@@ -172,17 +188,18 @@ export function CreateLearningItemRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     clubId: value["clubId"],
     title: value["title"],
     description: value["description"],
-    teacherUserId: value["teacherUserId"],
+    instructorUserId: value["instructorUserId"],
     itemType: value["itemType"],
     categoryName: value["categoryName"],
-    startAt: value["startAt"].toISOString(),
+    fileUrl: value["fileUrl"],
+    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
     endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
     capacity: value["capacity"],
     visibility: value["visibility"],
+    downloadPermission: value["downloadPermission"],
     itemStatus: value["itemStatus"],
   };
 }

@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
@@ -6,8 +8,16 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.OpenAPITools.Converters;
+using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
+using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
+using CreateClubMemberTermRequest = Org.OpenAPITools.Models.CreateClubMemberTermRequest;
 using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
+using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
+using UpdateClubDepartmentRequest = Org.OpenAPITools.Models.UpdateClubDepartmentRequest;
+using UpdateClubGroupRequest = Org.OpenAPITools.Models.UpdateClubGroupRequest;
 using UpdateClubMemberGroupingRequest = Org.OpenAPITools.Models.UpdateClubMemberGroupingRequest;
+using UpdateClubMemberTermRequest = Org.OpenAPITools.Models.UpdateClubMemberTermRequest;
 
 namespace ClubHub.Api.Controllers;
 
@@ -26,6 +36,8 @@ public class ClubsController : ControllerBase
     private const string MemberActive = "active";
     private const string MemberEnded = "ended";
     private const string MemberSuspended = "suspended";
+    private const string OrganizationActive = "active";
+    private const string OrganizationInactive = "inactive";
     private const string ApplicationAccepted = "accepted";
     private const string ApplicationRejected = "rejected";
     private const string ClubMemberRoleCode = "CLUB_MEMBER";
@@ -38,8 +50,15 @@ public class ClubsController : ControllerBase
     private const string EvaluationAward = "award";
     private const string EvaluationDraft = "draft";
     private const string EvaluationPublished = "published";
+    private const string AwardApplicationArchived = "archived";
+    private const string AwardPublicized = "publicized";
+    private const decimal MaxEvaluationScore = 100m;
+    private const decimal ActivityCheckedOutScore = 10m;
+    private const decimal ActivityCheckedInScore = 8m;
+    private const decimal ActivityAcceptedScore = 5m;
 
     private readonly ClubHubDbContext _db;
+    private static readonly JsonSerializerOptions RequestJsonOptions = CreateRequestJsonOptions();
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
     private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -78,6 +97,59 @@ public class ClubsController : ControllerBase
 
     public ClubsController(ClubHubDbContext db) => _db = db;
 
+    [HttpGet("advisor-candidates")]
+    public async Task<IActionResult> GetAdvisorCandidates()
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var viewer = await LoadUserAsync(currentUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能选择指导老师。" });
+        }
+
+        var candidates = await _db.Users
+            .AsNoTracking()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(u =>
+                u.AccountStatus == null ||
+                u.AccountStatus == string.Empty ||
+                u.AccountStatus.ToLower() == "active" ||
+                u.AccountStatus.ToLower() == "normal" ||
+                u.AccountStatus.ToLower() == "enabled")
+            .Where(u =>
+                (u.StudentNo != null && u.StudentNo.Length == 5) ||
+                u.UserRoles.Any(ur =>
+                    ur.Role != null &&
+                    ((ur.Role.RoleCode != null &&
+                      ur.Role.RoleCode.ToUpper() == "TEACHER") ||
+                     (ur.Role.RoleName != null &&
+                      (ur.Role.RoleName.Contains("教师") ||
+                       ur.Role.RoleName.Contains("老师"))))))
+            .OrderBy(u => u.RealName)
+            .ThenBy(u => u.StudentNo)
+            .ThenBy(u => u.UserId)
+            .ToListAsync();
+
+        return Ok(candidates
+            .Where(IsTeacherCandidate)
+            .Select(user => new ApiLearningTeacherCandidate
+            {
+                Id = user.UserId,
+                RealName = user.RealName,
+                StudentNo = user.StudentNo,
+                DisplayName = AdvisorCandidateDisplayName(user)
+            }));
+    }
+
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> GetAll()
@@ -106,7 +178,10 @@ public class ClubsController : ControllerBase
 
     [HttpGet("applications")]
     public async Task<IActionResult> GetApplications(
-        [FromQuery] string? auditStatus)
+        [FromQuery] string? auditStatus,
+        [FromQuery] string? keyword,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -132,6 +207,34 @@ public class ClubsController : ControllerBase
             }
 
             query = query.Where(c => c.AuditStatus == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var normalizedKeyword = keyword.Trim().ToUpperInvariant();
+            query = query.Where(c =>
+                c.ClubName.ToUpper().Contains(normalizedKeyword) ||
+                (c.Applicant != null &&
+                 ((c.Applicant.RealName ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.Username ?? string.Empty).ToUpper().Contains(normalizedKeyword) ||
+                  (c.Applicant.StudentNo ?? string.Empty).ToUpper().Contains(normalizedKeyword))));
+        }
+
+        if (startDate is not null && endDate is not null && startDate.Value.Date > endDate.Value.Date)
+        {
+            return BadRequest(new { message = "提交开始日期不能晚于结束日期。" });
+        }
+
+        if (startDate is not null)
+        {
+            var start = BusinessDateBoundaryUtc(startDate.Value.Date);
+            query = query.Where(c => c.CreatedAt >= start);
+        }
+
+        if (endDate is not null)
+        {
+            var endExclusive = BusinessDateBoundaryUtc(endDate.Value.Date.AddDays(1));
+            query = query.Where(c => c.CreatedAt < endExclusive);
         }
 
         var applications = await query
@@ -233,6 +336,109 @@ public class ClubsController : ControllerBase
         }
 
         return CreatedAtAction(nameof(GetById), new { clubId = club.ClubId }, ToApplicationDto(club));
+    }
+
+    [HttpPatch("applications/{clubId:int}")]
+    public async Task<IActionResult> ResubmitApplication(int clubId, [FromBody] CreateClubApplicationRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var validationError = ValidateApplicationRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var applicant = await LoadUserAsync(currentUserId.Value);
+        if (applicant is null)
+        {
+            return NotFound(new { message = "当前用户不存在，请先选择有效的学生用户。" });
+        }
+
+        if (!UsersController.IsActive(applicant.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能重新提交社团注册申请。" });
+        }
+
+        if (UsersController.IsPlatformAdmin(applicant) || !UsersController.IsStudent(applicant))
+        {
+            return StatusCode(403, new { message = "只有原学生申请人可以修改后重新提交社团注册申请。" });
+        }
+
+        var club = await _db.Clubs
+            .Include(c => c.Applicant)
+            .Include(c => c.Reviewer)
+            .FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null || club.ApplicantUserId is null || club.AuditStatus is null)
+        {
+            return NotFound(new { message = "社团注册申请不存在。" });
+        }
+
+        if (club.ApplicantUserId != applicant.UserId)
+        {
+            return StatusCode(403, new { message = "只能修改并重新提交自己的社团注册申请。" });
+        }
+
+        if (club.AuditStatus != AuditRejected)
+        {
+            return Conflict(new { message = "只有已退回的社团注册申请可以修改后重新提交。" });
+        }
+
+        var name = req.Name.Trim();
+        var category = req.Category.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.Clubs.AnyAsync(c =>
+            c.ClubId != clubId &&
+            c.ClubName.ToUpper() == normalizedName &&
+            (c.AuditStatus == null || c.AuditStatus != AuditRejected) &&
+            (c.ClubStatus == null || c.ClubStatus != ClubRejected));
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团名称已存在，或已有待审核/已通过的注册申请。" });
+        }
+
+        var advisor = await ValidateAdvisorAsync(req.AdvisorUserId);
+        if (advisor.Result is not null) return advisor.Result;
+
+        var now = DateTime.UtcNow;
+        club.ClubName = name;
+        club.Category = category;
+        club.Description = EmptyToNull(req.Description);
+        club.AdvisorName = advisor.User is null ? null : DisplayUser(advisor.User);
+        club.ContactPhone = EmptyToNull(req.ContactPhone);
+        club.ApplyReason = req.ApplyReason.Trim();
+        club.MaterialUrl = req.MaterialUrl.Trim();
+        club.AuditStatus = AuditPending;
+        club.ClubStatus = ClubPending;
+        club.PresidentUserId = null;
+        club.FoundedAt = null;
+        club.UpdatedAt = now;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            if (advisor.User is not null)
+            {
+                await EnsureSingleClubAdvisorRoleAsync(club.ClubId, advisor.User.UserId, now);
+            }
+            else
+            {
+                await RemoveClubAdvisorRolesExceptAsync(club.ClubId, null);
+            }
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        var updated = await ClubQuery().FirstAsync(c => c.ClubId == club.ClubId);
+        return Ok(ToApplicationDto(updated));
     }
 
     [HttpPatch("applications/{clubId:int}/review")]
@@ -487,11 +693,328 @@ public class ClubsController : ControllerBase
         return Ok(ToClubDto(updated));
     }
 
+    [HttpGet("{clubId:int}/departments")]
+    public async Task<IActionResult> GetDepartments(
+        int clubId,
+        [FromQuery] bool includeInactive = false)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanViewMembersAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var query = DepartmentQuery(includeInactive)
+            .Where(d => d.ClubId == clubId);
+
+        var departments = await query
+            .OrderBy(d => d.DisplayOrder)
+            .ThenBy(d => d.DepartmentName)
+            .ToListAsync();
+
+        return Ok(departments.Select(department => ToDepartmentRecordDto(department, includeInactive)));
+    }
+
+    [HttpPost("{clubId:int}/departments")]
+    public async Task<IActionResult> CreateDepartment(int clubId, [FromBody] CreateClubDepartmentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护部门。" });
+        }
+
+        var validationError = ValidateDepartmentRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var name = req.DepartmentName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubDepartments.AnyAsync(d =>
+            d.ClubId == clubId &&
+            d.DepartmentName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var now = DateTime.UtcNow;
+        var department = new ClubDepartment
+        {
+            ClubId = clubId,
+            DepartmentName = name,
+            DepartmentCode = EmptyToNull(req.DepartmentCode),
+            Description = EmptyToNull(req.Description),
+            Responsibilities = EmptyToNull(req.Responsibilities),
+            ContactPhone = EmptyToNull(req.ContactPhone),
+            ContactEmail = EmptyToNull(req.ContactEmail),
+            OfficeLocation = EmptyToNull(req.OfficeLocation),
+            DisplayOrder = req.DisplayOrder ?? 0,
+            DepartmentStatus = ToOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.ClubDepartments.Add(department);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var created = await DepartmentQuery(includeInactive: true)
+            .FirstAsync(d => d.DepartmentId == department.DepartmentId);
+        return Created(
+            $"/api/clubs/{clubId}/departments/{department.DepartmentId}",
+            ToDepartmentRecordDto(created, includeInactive: true));
+    }
+
+    [HttpPatch("{clubId:int}/departments/{departmentId:int}")]
+    public async Task<IActionResult> UpdateDepartment(
+        int clubId,
+        int departmentId,
+        [FromBody] UpdateClubDepartmentRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainClubAsync(clubId, currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var club = access.Club!;
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以维护部门。" });
+        }
+
+        var validationError = ValidateDepartmentRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var department = await _db.ClubDepartments
+            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
+        if (department is null)
+        {
+            return NotFound(new { message = "社团部门不存在。" });
+        }
+
+        var name = req.DepartmentName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubDepartments.AnyAsync(d =>
+            d.ClubId == clubId &&
+            d.DepartmentId != departmentId &&
+            d.DepartmentName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var previousName = department.DepartmentName;
+        department.DepartmentName = name;
+        department.DepartmentCode = EmptyToNull(req.DepartmentCode);
+        department.Description = EmptyToNull(req.Description);
+        department.Responsibilities = EmptyToNull(req.Responsibilities);
+        department.ContactPhone = EmptyToNull(req.ContactPhone);
+        department.ContactEmail = EmptyToNull(req.ContactEmail);
+        department.OfficeLocation = EmptyToNull(req.OfficeLocation);
+        department.DisplayOrder = req.DisplayOrder ?? 0;
+        department.DepartmentStatus = ToOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
+        department.UpdatedAt = DateTime.UtcNow;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+
+            if (!string.Equals(previousName, department.DepartmentName, StringComparison.Ordinal))
+            {
+                await _db.ClubMembers
+                    .Where(cm => cm.ClubId == clubId && cm.DepartmentId == departmentId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(cm => cm.DepartmentName, department.DepartmentName));
+            }
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该社团下已存在同名部门。" });
+        }
+
+        var updated = await DepartmentQuery(includeInactive: true)
+            .FirstAsync(d => d.DepartmentId == departmentId);
+        return Ok(ToDepartmentRecordDto(updated, includeInactive: true));
+    }
+
+    [HttpPost("{clubId:int}/departments/{departmentId:int}/groups")]
+    public async Task<IActionResult> CreateGroup(
+        int clubId,
+        int departmentId,
+        [FromBody] CreateClubGroupRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var access = await EnsureCanMaintainDepartmentGroupsAsync(
+            clubId,
+            departmentId,
+            currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var validationError = ValidateGroupRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var name = req.GroupName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubGroups.AnyAsync(g =>
+            g.ClubId == clubId &&
+            g.DepartmentId == departmentId &&
+            g.GroupName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var now = DateTime.UtcNow;
+        var group = new ClubGroup
+        {
+            ClubId = clubId,
+            DepartmentId = departmentId,
+            GroupName = name,
+            GroupCode = EmptyToNull(req.GroupCode),
+            Description = EmptyToNull(req.Description),
+            Responsibilities = EmptyToNull(req.Responsibilities),
+            ContactPhone = EmptyToNull(req.ContactPhone),
+            ContactEmail = EmptyToNull(req.ContactEmail),
+            ActivityLocation = EmptyToNull(req.ActivityLocation),
+            DisplayOrder = req.DisplayOrder ?? 0,
+            GroupStatus = ToOrganizationStatus(req.GroupStatus) ?? OrganizationActive,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _db.ClubGroups.Add(group);
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var created = await _db.ClubGroups
+            .AsNoTracking()
+            .FirstAsync(g => g.GroupId == group.GroupId);
+        return Created(
+            $"/api/clubs/{clubId}/groups/{group.GroupId}",
+            ToGroupRecordDto(created));
+    }
+
+    [HttpPatch("{clubId:int}/groups/{groupId:int}")]
+    public async Task<IActionResult> UpdateGroup(
+        int clubId,
+        int groupId,
+        [FromBody] UpdateClubGroupRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var group = await _db.ClubGroups
+            .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == groupId);
+        if (group is null)
+        {
+            return NotFound(new { message = "社团小组不存在。" });
+        }
+
+        var access = await EnsureCanMaintainDepartmentGroupsAsync(
+            clubId,
+            group.DepartmentId,
+            currentUserId.Value);
+        if (access.Result is not null) return access.Result;
+
+        var validationError = ValidateGroupRequest(req);
+        if (validationError is not null)
+        {
+            return BadRequest(new { message = validationError });
+        }
+
+        var name = req.GroupName.Trim();
+        var normalizedName = name.ToUpperInvariant();
+        var hasConflict = await _db.ClubGroups.AnyAsync(g =>
+            g.ClubId == clubId &&
+            g.DepartmentId == group.DepartmentId &&
+            g.GroupId != groupId &&
+            g.GroupName.ToUpper() == normalizedName);
+        if (hasConflict)
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var previousName = group.GroupName;
+        group.GroupName = name;
+        group.GroupCode = EmptyToNull(req.GroupCode);
+        group.Description = EmptyToNull(req.Description);
+        group.Responsibilities = EmptyToNull(req.Responsibilities);
+        group.ContactPhone = EmptyToNull(req.ContactPhone);
+        group.ContactEmail = EmptyToNull(req.ContactEmail);
+        group.ActivityLocation = EmptyToNull(req.ActivityLocation);
+        group.DisplayOrder = req.DisplayOrder ?? 0;
+        group.GroupStatus = ToOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
+        group.UpdatedAt = DateTime.UtcNow;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+
+            if (!string.Equals(previousName, group.GroupName, StringComparison.Ordinal))
+            {
+                await _db.ClubMembers
+                    .Where(cm => cm.ClubId == clubId && cm.GroupId == groupId)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(cm => cm.GroupName, group.GroupName));
+            }
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return Conflict(new { message = "该部门下已存在同名小组。" });
+        }
+
+        var updated = await _db.ClubGroups
+            .AsNoTracking()
+            .FirstAsync(g => g.GroupId == groupId);
+        return Ok(ToGroupRecordDto(updated));
+    }
+
     [HttpGet("{clubId:int}/members")]
     public async Task<IActionResult> GetMembers(
         int clubId,
         [FromQuery] bool includeHistory = false,
         [FromQuery] string? termName = null,
+        [FromQuery] int? departmentId = null,
+        [FromQuery] int? groupId = null,
         [FromQuery] string? departmentName = null,
         [FromQuery] string? groupName = null)
     {
@@ -507,6 +1030,8 @@ public class ClubsController : ControllerBase
             .AsNoTracking()
             .Include(cm => cm.Club)
             .Include(cm => cm.User)
+            .Include(cm => cm.Department)
+            .Include(cm => cm.Group)
             .Where(cm => cm.ClubId == clubId);
 
         if (!includeHistory)
@@ -517,14 +1042,30 @@ public class ClubsController : ControllerBase
                 (cm.TermEnd == null || cm.TermEnd >= today));
         }
 
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null)
+        {
+            return BadRequest(new { message = organizationIdError });
+        }
+
+        if (departmentId is not null)
+        {
+            query = query.Where(cm => cm.DepartmentId == departmentId.Value);
+        }
+
+        if (groupId is not null)
+        {
+            query = query.Where(cm => cm.GroupId == groupId.Value);
+        }
+
         var departmentFilter = EmptyToNull(departmentName);
-        if (departmentFilter is not null)
+        if (departmentId is null && departmentFilter is not null)
         {
             query = query.Where(cm => cm.DepartmentName == departmentFilter);
         }
 
         var groupFilter = EmptyToNull(groupName);
-        if (groupFilter is not null)
+        if (groupId is null && groupFilter is not null)
         {
             query = query.Where(cm => cm.GroupName == groupFilter);
         }
@@ -536,7 +1077,11 @@ public class ClubsController : ControllerBase
         }
 
         var members = await query
-            .OrderBy(cm => cm.DepartmentName)
+            .OrderBy(cm => cm.DepartmentId == null ? 1 : 0)
+            .ThenBy(cm => cm.Department!.DisplayOrder)
+            .ThenBy(cm => cm.DepartmentName)
+            .ThenBy(cm => cm.GroupId == null ? 1 : 0)
+            .ThenBy(cm => cm.Group!.DisplayOrder)
             .ThenBy(cm => cm.GroupName)
             .ThenBy(cm => cm.PositionName)
             .ThenByDescending(cm => cm.TermStart)
@@ -560,8 +1105,7 @@ public class ClubsController : ControllerBase
         if (access.Result is not null) return access.Result;
 
         var member = access.Member!;
-        member.DepartmentName = EmptyToNull(req.DepartmentName);
-        member.GroupName = EmptyToNull(req.GroupName);
+        ApplyMemberOrganization(member, access.Organization);
 
         await _db.SaveChangesAsync();
 
@@ -593,11 +1137,22 @@ public class ClubsController : ControllerBase
             req.TermName,
             req.TermStart,
             req.TermEnd,
-            req.MemberStatus,
+            ToMemberStatus(req.MemberStatus),
             req.ContributionScore);
         if (validationError is not null)
         {
             return BadRequest(new { message = validationError });
+        }
+
+        var organization = await ResolveMemberOrganizationAsync(
+            clubId,
+            req.DepartmentId,
+            req.GroupId,
+            req.DepartmentName,
+            req.GroupName);
+        if (organization.Result is not null)
+        {
+            return organization.Result;
         }
 
         var targetUser = await _db.Users.FindAsync(req.UserId);
@@ -614,9 +1169,9 @@ public class ClubsController : ControllerBase
         var now = DateTime.UtcNow;
         var termStart = req.TermStart.Date;
         var termEnd = req.TermEnd?.Date;
-        var memberStatus = NormalizeMemberStatus(req.MemberStatus) ?? MemberActive;
+        var memberStatus = ToMemberStatus(req.MemberStatus) ?? MemberActive;
 
-        if (req.CloseCurrentTerm)
+        if (req.CloseCurrentTerm ?? true)
         {
             var closeDate = termStart.AddDays(-1);
             var activeTerms = await _db.ClubMembers
@@ -640,8 +1195,6 @@ public class ClubsController : ControllerBase
         {
             ClubId = clubId,
             UserId = req.UserId,
-            DepartmentName = EmptyToNull(req.DepartmentName),
-            GroupName = EmptyToNull(req.GroupName),
             PositionName = req.PositionName.Trim(),
             TermName = req.TermName.Trim(),
             TermStart = termStart,
@@ -650,6 +1203,7 @@ public class ClubsController : ControllerBase
             JoinAt = now,
             ContributionScore = req.ContributionScore ?? 0
         };
+        ApplyMemberOrganization(member, organization.Selection);
 
         if (IsCurrentMemberTerm(member) &&
             await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
@@ -683,8 +1237,29 @@ public class ClubsController : ControllerBase
     public async Task<IActionResult> UpdateMemberTerm(
         int clubId,
         int memberId,
-        [FromBody] UpdateClubMemberTermRequest req)
+        [FromBody] JsonElement requestBody)
     {
+        if (requestBody.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        UpdateClubMemberTermRequest? req;
+        try
+        {
+            req = requestBody.Deserialize<UpdateClubMemberTermRequest>(RequestJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        if (req is null)
+        {
+            return BadRequest(new { message = "Invalid member term update request." });
+        }
+
+        var organizationFields = MemberTermOrganizationPatchFields.FromJson(requestBody);
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
             return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
@@ -699,31 +1274,61 @@ public class ClubsController : ControllerBase
         }
 
         var member = access.Member!;
+        var hasRequestedMemberStatus = IsSpecified(req.MemberStatus);
+        var requestedMemberStatus = hasRequestedMemberStatus ? ToMemberStatus(req.MemberStatus) : null;
 
         var termStart = req.TermStart?.Date ?? member.TermStart?.Date;
         var termEnd = req.TermEnd?.Date ?? member.TermEnd?.Date;
+        var organizationPatch = MemberTermOrganizationPatchPlanner.Plan(
+            organizationFields,
+            req.DepartmentId,
+            req.DepartmentName,
+            req.GroupId,
+            req.GroupName,
+            member.DepartmentId,
+            member.DepartmentName,
+            member.GroupId,
+            member.GroupName);
         var validationError = ValidateMemberTermRequest(
             member.UserId,
-            req.DepartmentName ?? member.DepartmentName,
-            req.GroupName ?? member.GroupName,
+            organizationPatch.ValidationDepartmentName,
+            organizationPatch.ValidationGroupName,
             req.PositionName ?? member.PositionName,
             req.TermName ?? member.TermName,
             termStart,
             termEnd,
-            req.MemberStatus ?? member.MemberStatus,
+            hasRequestedMemberStatus ? requestedMemberStatus : member.MemberStatus,
             req.ContributionScore ?? member.ContributionScore);
         if (validationError is not null)
         {
             return BadRequest(new { message = validationError });
         }
 
-        if (req.DepartmentName is not null) member.DepartmentName = EmptyToNull(req.DepartmentName);
-        if (req.GroupName is not null) member.GroupName = EmptyToNull(req.GroupName);
+        MemberOrganizationSelection? organization = null;
+        if (organizationPatch.OrganizationRequested)
+        {
+            var resolved = await ResolveMemberOrganizationAsync(
+                clubId,
+                organizationPatch.DepartmentId,
+                organizationPatch.GroupId,
+                organizationPatch.DepartmentName,
+                organizationPatch.GroupName,
+                organizationPatch.PreservedGroupId,
+                organizationPatch.PreservedGroupName);
+            if (resolved.Result is not null)
+            {
+                return resolved.Result;
+            }
+
+            organization = resolved.Selection;
+        }
+
+        if (organizationPatch.OrganizationRequested) ApplyMemberOrganization(member, organization);
         if (req.PositionName is not null) member.PositionName = req.PositionName.Trim();
         if (req.TermName is not null) member.TermName = req.TermName.Trim();
         if (req.TermStart is not null) member.TermStart = req.TermStart.Value.Date;
         if (req.TermEnd is not null) member.TermEnd = req.TermEnd.Value.Date;
-        if (req.MemberStatus is not null) member.MemberStatus = NormalizeMemberStatus(req.MemberStatus);
+        if (hasRequestedMemberStatus) member.MemberStatus = requestedMemberStatus;
         if (req.ContributionScore is not null) member.ContributionScore = req.ContributionScore;
 
         var now = DateTime.UtcNow;
@@ -831,6 +1436,229 @@ public class ClubsController : ControllerBase
         return Ok(visible);
     }
 
+    [HttpGet("{clubId:int}/evaluations/score-preview")]
+    public async Task<IActionResult> PreviewEvaluationScores(
+        int clubId,
+        [FromQuery] int userId,
+        [FromQuery] string termName)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        if (userId <= 0)
+        {
+            return BadRequest(new { message = "请选择被考核成员。" });
+        }
+
+        if (string.IsNullOrWhiteSpace(termName))
+        {
+            return BadRequest(new { message = "考核学期不能为空。" });
+        }
+
+        var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, userId);
+        if (access.Result is not null) return access.Result;
+
+        var normalizedTermName = termName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(normalizedTermName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
+        var scores = await CalculateSemesterEvaluationScoresAsync(clubId, userId, normalizedTermName);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
+
+        return Ok(new ClubEvaluationScorePreviewDto(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore,
+            totalScore,
+            EvaluationGrade(totalScore)));
+    }
+
+    [HttpPost("{clubId:int}/evaluations/generate")]
+    public async Task<IActionResult> GenerateEvaluations(
+        int clubId,
+        [FromBody] GenerateClubEvaluationsRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null)
+            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        if (string.IsNullOrWhiteSpace(req.TermName))
+        {
+            return BadRequest(new { message = "考核学期不能为空。" });
+        }
+
+        if (TextTooLong(req.TermName))
+        {
+            return BadRequest(new { message = "考核学期不能超过 255 个字符。" });
+        }
+
+        var viewer = await LoadUserAsync(currentUserId.Value);
+        if (viewer is null)
+        {
+            return NotFound(new { message = "当前用户不存在。" });
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return BadRequest(new { message = "当前用户账号不可用，不能生成成员考核。" });
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return NotFound(new { message = "社团不存在。" });
+        }
+
+        if (!IsMaintainableClub(club))
+        {
+            return Conflict(new { message = "只有已通过审核且正在运营的社团可以生成成员考核。" });
+        }
+
+        if (!IsClubEvaluationPrincipal(viewer, clubId))
+        {
+            return StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以批量生成成员考核。" });
+        }
+
+        var termName = req.TermName.Trim();
+        var termValidationError = ValidateSemesterEvaluationTermName(termName);
+        if (termValidationError is not null)
+        {
+            return BadRequest(new { message = termValidationError });
+        }
+
+        var today = BusinessToday();
+        var members = await _db.ClubMembers
+            .Include(cm => cm.User)
+            .Where(cm => cm.ClubId == clubId)
+            .Where(cm => cm.TermStart == null || cm.TermStart <= today)
+            .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
+            .OrderByDescending(cm => cm.TermStart)
+            .ThenByDescending(cm => cm.JoinAt)
+            .ToListAsync();
+        members = members
+            .Where(IsCurrentMemberTerm)
+            .GroupBy(cm => cm.UserId)
+            .Select(group => group.First())
+            .ToList();
+
+        var existingEvaluations = await _db.Evaluations
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                ev.EvaluationType == EvaluationSemester &&
+                ev.TermName == termName)
+            .OrderByDescending(ev => ev.CreatedAt)
+            .ToListAsync();
+        var existingByUser = existingEvaluations
+            .GroupBy(ev => ev.UserId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var now = BusinessNow();
+        var createdCount = 0;
+        var refreshedCount = 0;
+        var skippedPublishedCount = 0;
+        var sourceSyncs = new List<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)>();
+        var scoreByUser = await CalculateSemesterEvaluationScoresForUsersAsync(
+            clubId,
+            members.Select(member => member.UserId).ToList(),
+            termName);
+
+        foreach (var member in members)
+        {
+            var scores = scoreByUser[member.UserId];
+            var totalScore = CalculateEvaluationTotal(
+                scores.ActivityScore,
+                scores.TaskScore,
+                scores.LearningScore,
+                scores.AwardScore);
+
+            if (existingByUser.TryGetValue(member.UserId, out var existing))
+            {
+                if (NormalizeEvaluationPublicStatus(existing.PublicStatus) == EvaluationPublished)
+                {
+                    skippedPublishedCount++;
+                    continue;
+                }
+
+                if (!req.OverwriteDrafts)
+                {
+                    continue;
+                }
+
+                existing.ActivityScore = scores.ActivityScore;
+                existing.TaskScore = scores.TaskScore;
+                existing.LearningScore = scores.LearningScore;
+                existing.AwardScore = scores.AwardScore;
+                existing.TotalScore = totalScore;
+                existing.Grade = EvaluationGrade(totalScore);
+                existing.PublicStatus = EvaluationDraft;
+                existing.EvaluatorUserId = currentUserId.Value;
+                existing.CommentText = EmptyToNull(existing.CommentText) ?? "系统自动生成，待负责人或指导老师确认。";
+                sourceSyncs.Add((existing, scores.AwardSources));
+                refreshedCount++;
+                continue;
+            }
+
+            var evaluation = new Evaluation
+            {
+                EvaluationType = EvaluationSemester,
+                ClubId = clubId,
+                UserId = member.UserId,
+                EvaluatorUserId = currentUserId.Value,
+                TermName = termName,
+                ActivityScore = scores.ActivityScore,
+                TaskScore = scores.TaskScore,
+                LearningScore = scores.LearningScore,
+                AwardScore = scores.AwardScore,
+                TotalScore = totalScore,
+                Grade = EvaluationGrade(totalScore),
+                PublicStatus = EvaluationDraft,
+                CommentText = "系统自动生成，待负责人或指导老师确认。",
+                CreatedAt = now
+            };
+            _db.Evaluations.Add(evaluation);
+            sourceSyncs.Add((evaluation, scores.AwardSources));
+            createdCount++;
+        }
+
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
+            if (sourceSyncs.Count > 0)
+            {
+                await _db.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+
+        var records = await EvaluationQuery()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                ev.EvaluationType == EvaluationSemester &&
+                ev.TermName == termName)
+            .OrderBy(ev => ev.User!.RealName ?? ev.User!.Username)
+            .ThenBy(ev => ev.UserId)
+            .ToListAsync();
+
+        return Ok(new GenerateClubEvaluationsResultDto(
+            termName,
+            members.Count,
+            createdCount,
+            refreshedCount,
+            skippedPublishedCount,
+            records.Select(ToEvaluationRecordDto).ToList()));
+    }
+
     [HttpPost("{clubId:int}/evaluations")]
     public async Task<IActionResult> CreateEvaluation(
         int clubId,
@@ -863,25 +1691,36 @@ public class ClubsController : ControllerBase
         }
 
         var now = DateTime.UtcNow;
-        var activityScore = req.ActivityScore!.Value;
-        var taskScore = req.TaskScore!.Value;
-        var learningScore = req.LearningScore!.Value;
-        var awardScore = req.AwardScore!.Value;
-        var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
+        var normalizedType = NormalizeEvaluationType(req.EvaluationType)!;
+        var termName = req.TermName.Trim();
+        var scores = await ResolveEvaluationScoresAsync(
+            clubId,
+            req.UserId,
+            termName,
+            normalizedType,
+            req.ActivityScore,
+            req.TaskScore,
+            req.LearningScore,
+            req.AwardScore);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
         var evaluation = new Evaluation
         {
-            EvaluationType = NormalizeEvaluationType(req.EvaluationType)!,
+            EvaluationType = normalizedType,
             ClubId = clubId,
             UserId = req.UserId,
             EvaluatorUserId = currentUserId.Value,
-            TermName = req.TermName.Trim(),
+            TermName = termName,
             AwardTitle = EmptyToNull(req.AwardTitle),
             AwardLevel = EmptyToNull(req.AwardLevel),
             AwardReason = EmptyToNull(req.AwardReason),
-            ActivityScore = activityScore,
-            TaskScore = taskScore,
-            LearningScore = learningScore,
-            AwardScore = awardScore,
+            ActivityScore = scores.ActivityScore,
+            TaskScore = scores.TaskScore,
+            LearningScore = scores.LearningScore,
+            AwardScore = scores.AwardScore,
             TotalScore = totalScore,
             Grade = EvaluationGrade(totalScore),
             PublicStatus = NormalizeEvaluationPublicStatus(req.PublicStatus) ?? EvaluationDraft,
@@ -889,8 +1728,16 @@ public class ClubsController : ControllerBase
             CreatedAt = now
         };
 
-        _db.Evaluations.Add(evaluation);
-        await _db.SaveChangesAsync();
+        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            _db.Evaluations.Add(evaluation);
+            await _db.SaveChangesAsync();
+            await ReplaceEvaluationAwardSourcesAsync(
+                new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
+                now);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
 
         var created = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluation.EvaluationId);
         return Created(
@@ -920,13 +1767,19 @@ public class ClubsController : ControllerBase
 
         var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
         var nextTermName = req.TermName ?? evaluation.TermName;
-        var nextAwardTitle = req.AwardTitle ?? evaluation.AwardTitle;
-        var nextAwardLevel = req.AwardLevel ?? evaluation.AwardLevel;
-        var nextAwardReason = req.AwardReason ?? evaluation.AwardReason;
-        var nextActivityScore = req.ActivityScore ?? evaluation.ActivityScore;
-        var nextTaskScore = req.TaskScore ?? evaluation.TaskScore;
-        var nextLearningScore = req.LearningScore ?? evaluation.LearningScore;
-        var nextAwardScore = req.AwardScore ?? evaluation.AwardScore;
+        var existingEvaluationType = NormalizeEvaluationType(evaluation.EvaluationType) ?? EvaluationSemester;
+        var normalizedNextEvaluationType = NormalizeEvaluationType(nextEvaluationType);
+        var isEvaluationTypeChanged =
+            normalizedNextEvaluationType is not null &&
+            !string.Equals(existingEvaluationType, normalizedNextEvaluationType, StringComparison.Ordinal);
+
+        var nextAwardTitle = isEvaluationTypeChanged ? req.AwardTitle : req.AwardTitle ?? evaluation.AwardTitle;
+        var nextAwardLevel = isEvaluationTypeChanged ? req.AwardLevel : req.AwardLevel ?? evaluation.AwardLevel;
+        var nextAwardReason = isEvaluationTypeChanged ? req.AwardReason : req.AwardReason ?? evaluation.AwardReason;
+        var nextActivityScore = isEvaluationTypeChanged ? req.ActivityScore : req.ActivityScore ?? evaluation.ActivityScore;
+        var nextTaskScore = isEvaluationTypeChanged ? req.TaskScore : req.TaskScore ?? evaluation.TaskScore;
+        var nextLearningScore = isEvaluationTypeChanged ? req.LearningScore : req.LearningScore ?? evaluation.LearningScore;
+        var nextAwardScore = isEvaluationTypeChanged ? req.AwardScore : req.AwardScore ?? evaluation.AwardScore;
         var nextPublicStatus = req.PublicStatus ?? evaluation.PublicStatus;
         var nextCommentText = req.CommentText ?? evaluation.CommentText;
 
@@ -949,27 +1802,42 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = validationError });
         }
 
-        var activityScore = nextActivityScore!.Value;
-        var taskScore = nextTaskScore!.Value;
-        var learningScore = nextLearningScore!.Value;
-        var awardScore = nextAwardScore!.Value;
-        var totalScore = CalculateEvaluationTotal(activityScore, taskScore, learningScore, awardScore);
+        var normalizedType = normalizedNextEvaluationType!;
+        var termName = nextTermName!.Trim();
+        var scores = await ResolveEvaluationScoresAsync(
+            clubId,
+            evaluation.UserId,
+            termName,
+            normalizedType,
+            nextActivityScore,
+            nextTaskScore,
+            nextLearningScore,
+            nextAwardScore,
+            evaluationId);
+        var totalScore = CalculateEvaluationTotal(
+            scores.ActivityScore,
+            scores.TaskScore,
+            scores.LearningScore,
+            scores.AwardScore);
 
-        evaluation.EvaluationType = NormalizeEvaluationType(nextEvaluationType)!;
-        evaluation.TermName = nextTermName!.Trim();
+        evaluation.EvaluationType = normalizedType;
+        evaluation.TermName = termName;
         evaluation.AwardTitle = EmptyToNull(nextAwardTitle);
         evaluation.AwardLevel = EmptyToNull(nextAwardLevel);
         evaluation.AwardReason = EmptyToNull(nextAwardReason);
-        evaluation.ActivityScore = activityScore;
-        evaluation.TaskScore = taskScore;
-        evaluation.LearningScore = learningScore;
-        evaluation.AwardScore = awardScore;
+        evaluation.ActivityScore = scores.ActivityScore;
+        evaluation.TaskScore = scores.TaskScore;
+        evaluation.LearningScore = scores.LearningScore;
+        evaluation.AwardScore = scores.AwardScore;
         evaluation.TotalScore = totalScore;
         evaluation.Grade = EvaluationGrade(totalScore);
         evaluation.PublicStatus = NormalizeEvaluationPublicStatus(nextPublicStatus) ?? EvaluationDraft;
         evaluation.CommentText = EmptyToNull(nextCommentText);
         evaluation.EvaluatorUserId = currentUserId.Value;
 
+        await ReplaceEvaluationAwardSourcesAsync(
+            new[] { (evaluation, normalizedType == EvaluationSemester ? scores.AwardSources : Array.Empty<AwardScoreSource>()) },
+            BusinessNow());
         await _db.SaveChangesAsync();
 
         var updated = await EvaluationQuery().FirstAsync(ev => ev.EvaluationId == evaluationId);
@@ -1055,6 +1923,69 @@ public class ClubsController : ControllerBase
         }
 
         return (null, club, viewer);
+    }
+
+    private async Task<(IActionResult? Result, Club? Club, User? Viewer, ClubDepartment? Department)>
+        EnsureCanMaintainDepartmentGroupsAsync(
+            int clubId,
+            int departmentId,
+            int currentUserId)
+    {
+        if (currentUserId <= 0)
+        {
+            return (BadRequest(new { message = "请选择当前操作用户。" }), null, null, null);
+        }
+
+        var viewer = await LoadUserAsync(currentUserId);
+        if (viewer is null)
+        {
+            return (NotFound(new { message = "当前用户不存在。" }), null, null, null);
+        }
+
+        if (!UsersController.IsActive(viewer.AccountStatus))
+        {
+            return (BadRequest(new { message = "当前用户账号不可用，不能维护小组。" }), null, viewer, null);
+        }
+
+        var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
+        if (club is null)
+        {
+            return (NotFound(new { message = "社团不存在。" }), null, viewer, null);
+        }
+
+        if (!IsMaintainableClub(club))
+        {
+            return (Conflict(new { message = "只有已通过审核且正在运营的社团可以维护小组。" }), club, viewer, null);
+        }
+
+        var department = await _db.ClubDepartments
+            .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId);
+        if (department is null)
+        {
+            return (NotFound(new { message = "社团部门不存在。" }), club, viewer, null);
+        }
+
+        if (UsersController.IsSystemAdmin(viewer) ||
+            IsClubPrincipal(viewer, club) ||
+            IsClubAdvisor(viewer, clubId))
+        {
+            return (null, club, viewer, department);
+        }
+
+        var canMaintainDepartment = GetCadreGroupingScopes(viewer, clubId)
+            .Any(scope =>
+                string.IsNullOrWhiteSpace(scope.GroupName) &&
+                GroupingMatchesScope(
+                    department.DepartmentName,
+                    null,
+                    scope.DepartmentName,
+                    scope.GroupName));
+        if (!canMaintainDepartment)
+        {
+            return (StatusCode(403, new { message = "部长只能维护自己部门下的小组。" }), club, viewer, department);
+        }
+
+        return (null, club, viewer, department);
     }
 
     private async Task<(IActionResult? Result, Club? Club, User? Viewer, ClubMember? Member)>
@@ -1217,7 +2148,7 @@ public class ClubsController : ControllerBase
         return NoContent();
     }
 
-    private async Task<(IActionResult? Result, ClubMember? Member)> EnsureCanUpdateMemberGroupingAsync(
+    private async Task<(IActionResult? Result, ClubMember? Member, MemberOrganizationSelection? Organization)> EnsureCanUpdateMemberGroupingAsync(
         int clubId,
         int memberId,
         int currentUserId,
@@ -1226,56 +2157,67 @@ public class ClubsController : ControllerBase
         var viewer = await LoadUserAsync(currentUserId);
         if (viewer is null)
         {
-            return (NotFound(new { message = "当前用户不存在。" }), null);
+            return (NotFound(new { message = "当前用户不存在。" }), null, null);
         }
 
         if (!UsersController.IsActive(viewer.AccountStatus))
         {
-            return (BadRequest(new { message = "当前用户账号不可用，不能维护成员分组。" }), null);
+            return (BadRequest(new { message = "当前用户账号不可用，不能维护成员分组。" }), null, null);
         }
 
         var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
         if (club is null)
         {
-            return (NotFound(new { message = "社团不存在。" }), null);
+            return (NotFound(new { message = "社团不存在。" }), null, null);
         }
 
         if (!IsMaintainableClub(club))
         {
-            return (Conflict(new { message = "只有已通过审核且正在运营的社团可以维护成员分组。" }), null);
+            return (Conflict(new { message = "只有已通过审核且正在运营的社团可以维护成员分组。" }), null, null);
         }
 
         var member = await _db.ClubMembers.FirstOrDefaultAsync(cm =>
             cm.ClubId == clubId && cm.MemberId == memberId);
         if (member is null)
         {
-            return (NotFound(new { message = "社团成员任期记录不存在。" }), null);
+            return (NotFound(new { message = "社团成员任期记录不存在。" }), null, null);
         }
 
-        var validationError = ValidateMemberGroupingRequest(req.DepartmentName, req.GroupName);
+        var validationError = ValidateMemberGroupingRequest(req.DepartmentId, req.GroupId, req.DepartmentName, req.GroupName);
         if (validationError is not null)
         {
-            return (BadRequest(new { message = validationError }), null);
+            return (BadRequest(new { message = validationError }), null, null);
+        }
+
+        var organization = await ResolveMemberOrganizationAsync(
+            clubId,
+            req.DepartmentId,
+            req.GroupId,
+            req.DepartmentName,
+            req.GroupName);
+        if (organization.Result is not null)
+        {
+            return (organization.Result, null, null);
         }
 
         if (UsersController.IsSystemAdmin(viewer) ||
             IsClubPrincipal(viewer, club) ||
             IsClubAdvisor(viewer, clubId))
         {
-            return (null, member);
+            return (null, member, organization.Selection);
         }
 
         if (!IsCurrentMemberTerm(member))
         {
-            return (Conflict(new { message = "干部只能调整当前有效成员的分组。" }), null);
+            return (Conflict(new { message = "干部只能调整当前有效成员的分组。" }), null, null);
         }
 
-        var targetDepartment = EmptyToNull(req.DepartmentName);
-        var targetGroup = EmptyToNull(req.GroupName);
+        var targetDepartment = organization.Selection.DepartmentName;
+        var targetGroup = organization.Selection.GroupName;
         var scopes = GetCadreGroupingScopes(viewer, clubId).ToList();
         if (scopes.Count == 0)
         {
-            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null);
+            return (StatusCode(403, new { message = "只有系统管理员、本社团负责人、指导老师或已登记部门、小组的干部可以维护成员分组。" }), null, null);
         }
 
         var canAssignToOwnGroup = scopes.Any(scope => GroupingMatchesScope(
@@ -1290,10 +2232,10 @@ public class ClubsController : ControllerBase
             scope.GroupName));
         if (!canAssignToOwnGroup || !canManageCurrentGroup)
         {
-            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在小组，部长只能维护本部门小组。" }), null);
+            return (StatusCode(403, new { message = "干部只能将成员纳入自己所在小组，部长只能维护本部门小组。" }), null, null);
         }
 
-        return (null, member);
+        return (null, member, organization.Selection);
     }
 
     private async Task<(IActionResult? Result, Club? Club, User? Viewer)> EnsureCanViewEvaluationsAsync(
@@ -1420,7 +2362,15 @@ public class ClubsController : ControllerBase
         _db.ClubMembers
             .AsNoTracking()
             .Include(cm => cm.Club)
-            .Include(cm => cm.User);
+            .Include(cm => cm.User)
+            .Include(cm => cm.Department)
+            .Include(cm => cm.Group);
+
+    private IQueryable<ClubDepartment> DepartmentQuery(bool includeInactive = false) =>
+        _db.ClubDepartments
+            .AsNoTracking()
+            .Include(d => d.Groups)
+            .Where(d => includeInactive || d.DepartmentStatus == OrganizationActive);
 
     private IQueryable<Evaluation> EvaluationQuery() =>
         _db.Evaluations
@@ -1623,7 +2573,7 @@ public class ClubsController : ControllerBase
         var role = await EnsureClubRoleAsync(
             ClubAdvisorRoleCode,
             "指导老师",
-            "指定社团指导角色，可查看社团运营并审核活动、项目、经费和评价。",
+            "指定社团指导角色，可查看社团运营、维护并审核学习资源，以及审核活动、项目、经费和评价。",
             now);
         await RemoveClubAdvisorRolesExceptAsync(clubId, userId);
 
@@ -1660,7 +2610,15 @@ public class ClubsController : ControllerBase
     private async Task<Role> EnsureClubRoleAsync(string roleCode, string roleName, string permissionDesc, DateTime now)
     {
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleCode.ToUpper() == roleCode);
-        if (role is not null) return role;
+        if (role is not null)
+        {
+            if (!string.Equals(role.PermissionDesc, permissionDesc, StringComparison.Ordinal))
+            {
+                role.PermissionDesc = permissionDesc;
+            }
+
+            return role;
+        }
 
         role = new Role
         {
@@ -1801,25 +2759,33 @@ public class ClubsController : ControllerBase
             club.UpdatedAt);
     }
 
-    private static ClubApplicationDto ToApplicationDto(Club club) => new(
-        club.ClubId,
-        club.ClubName,
-        club.Category,
-        club.Description,
-        club.ApplicantUserId,
-        DisplayUser(club.Applicant),
-        club.ApplyReason ?? string.Empty,
-        club.MaterialUrl ?? string.Empty,
-        club.AuditStatus ?? AuditPending,
-        AuditStatusText(club.AuditStatus),
-        club.ReviewerUserId,
-        DisplayUser(club.Reviewer),
-        club.ReviewComment,
-        club.ClubStatus,
-        ClubStatusText(club.ClubStatus),
-        club.FoundedAt,
-        club.CreatedAt,
-        club.UpdatedAt);
+    private static ClubApplicationDto ToApplicationDto(Club club)
+    {
+        var advisor = CurrentAdvisorAssignment(club);
+
+        return new ClubApplicationDto(
+            club.ClubId,
+            club.ClubName,
+            club.Category,
+            club.Description,
+            club.ApplicantUserId,
+            DisplayUser(club.Applicant),
+            advisor?.UserId,
+            advisor is null ? club.AdvisorName : DisplayUser(advisor.User),
+            club.ApplyReason ?? string.Empty,
+            club.MaterialUrl ?? string.Empty,
+            club.AuditStatus ?? AuditPending,
+            AuditStatusText(club.AuditStatus),
+            club.ReviewerUserId,
+            DisplayUser(club.Reviewer),
+            club.ReviewComment,
+            club.ContactPhone,
+            club.ClubStatus,
+            ClubStatusText(club.ClubStatus),
+            club.FoundedAt,
+            club.CreatedAt,
+            club.UpdatedAt);
+    }
 
     private static string? ValidateApplicationRequest(CreateClubApplicationRequest req)
     {
@@ -1830,6 +2796,45 @@ public class ClubsController : ControllerBase
         return null;
     }
 
+    private static ClubDepartmentRecordDto ToDepartmentRecordDto(
+        ClubDepartment department,
+        bool includeInactive = false) => new(
+        department.DepartmentId,
+        department.ClubId,
+        department.DepartmentName,
+        department.DepartmentCode,
+        department.Description,
+        department.Responsibilities,
+        department.ContactPhone,
+        department.ContactEmail,
+        department.OfficeLocation,
+        department.DisplayOrder,
+        department.DepartmentStatus,
+        department.CreatedAt,
+        department.UpdatedAt,
+        department.Groups
+            .Where(group => includeInactive || group.GroupStatus == OrganizationActive)
+            .OrderBy(group => group.DisplayOrder)
+            .ThenBy(group => group.GroupName)
+            .Select(ToGroupRecordDto)
+            .ToArray());
+
+    private static ClubGroupRecordDto ToGroupRecordDto(ClubGroup group) => new(
+        group.GroupId,
+        group.ClubId,
+        group.DepartmentId,
+        group.GroupName,
+        group.GroupCode,
+        group.Description,
+        group.Responsibilities,
+        group.ContactPhone,
+        group.ContactEmail,
+        group.ActivityLocation,
+        group.DisplayOrder,
+        group.GroupStatus,
+        group.CreatedAt,
+        group.UpdatedAt);
+
     private static ClubMemberRecordDto ToMemberRecordDto(ClubMember member) => new(
         member.MemberId,
         member.ClubId,
@@ -1837,8 +2842,10 @@ public class ClubsController : ControllerBase
         member.UserId,
         DisplayUser(member.User) ?? $"用户 {member.UserId}",
         member.User?.StudentNo,
-        member.DepartmentName,
-        member.GroupName,
+        member.DepartmentId,
+        member.Department?.DepartmentName ?? member.DepartmentName,
+        member.GroupId,
+        member.Group?.GroupName ?? member.GroupName,
         member.PositionName,
         member.TermName,
         member.TermStart,
@@ -1847,6 +2854,176 @@ public class ClubsController : ControllerBase
         member.JoinAt,
         member.ContributionScore,
         IsCurrentMemberTerm(member));
+
+    private async Task<(IActionResult? Result, MemberOrganizationSelection Selection)> ResolveMemberOrganizationAsync(
+        int clubId,
+        int? departmentId,
+        int? groupId,
+        string? departmentName,
+        string? groupName,
+        int? preservedGroupId = null,
+        string? preservedGroupName = null)
+    {
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null)
+        {
+            return (BadRequest(new { message = organizationIdError }), MemberOrganizationSelection.Empty);
+        }
+
+        var requestedDepartmentName = EmptyToNull(departmentName);
+        var requestedGroupName = EmptyToNull(groupName);
+        var requestedPreservedGroupName = EmptyToNull(preservedGroupName);
+        if (departmentId is null && groupId is null && requestedDepartmentName is null && requestedGroupName is null)
+        {
+            return (null, MemberOrganizationSelection.Empty);
+        }
+
+        ClubDepartment? department = null;
+        ClubGroup? group = null;
+
+        if (groupId is not null)
+        {
+            group = await _db.ClubGroups
+                .Include(g => g.Department)
+                .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == groupId.Value);
+            if (group is null)
+            {
+                return (NotFound(new { message = "社团小组不存在。" }), MemberOrganizationSelection.Empty);
+            }
+
+            if (departmentId is not null && group.DepartmentId != departmentId.Value)
+            {
+                return (BadRequest(new { message = "所选小组不属于所选部门。" }), MemberOrganizationSelection.Empty);
+            }
+
+            department = group.Department;
+            if (department is null)
+            {
+                department = await _db.ClubDepartments.FirstOrDefaultAsync(d =>
+                    d.ClubId == clubId &&
+                    d.DepartmentId == group.DepartmentId);
+            }
+
+            if (department is null)
+            {
+                return (Conflict(new { message = "所选小组缺少有效的所属部门，请先检查组织架构数据。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (department is null && departmentId is not null)
+        {
+            department = await _db.ClubDepartments
+                .FirstOrDefaultAsync(d => d.ClubId == clubId && d.DepartmentId == departmentId.Value);
+            if (department is null)
+            {
+                return (NotFound(new { message = "社团部门不存在。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (department is null && requestedDepartmentName is not null)
+        {
+            var normalizedDepartmentName = requestedDepartmentName.ToUpperInvariant();
+            department = await _db.ClubDepartments
+                .FirstOrDefaultAsync(d =>
+                    d.ClubId == clubId &&
+                    d.DepartmentName.ToUpper() == normalizedDepartmentName);
+            if (department is null)
+            {
+                return (BadRequest(new { message = "部门不存在，请先在组织架构中维护部门后再选择。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (requestedGroupName is not null && group is null)
+        {
+            if (department is null)
+            {
+                return (BadRequest(new { message = "选择小组前请先选择部门。" }), MemberOrganizationSelection.Empty);
+            }
+
+            var normalizedGroupName = requestedGroupName.ToUpperInvariant();
+            group = await _db.ClubGroups
+                .FirstOrDefaultAsync(g =>
+                    g.ClubId == clubId &&
+                    g.DepartmentId == department.DepartmentId &&
+                    g.GroupName.ToUpper() == normalizedGroupName);
+            if (group is null)
+            {
+                return (BadRequest(new { message = "小组不存在，请先在组织架构中维护小组后再选择。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (group is null && preservedGroupId is not null)
+        {
+            group = await _db.ClubGroups
+                .Include(g => g.Department)
+                .FirstOrDefaultAsync(g => g.ClubId == clubId && g.GroupId == preservedGroupId.Value);
+            if (group is null)
+            {
+                return (BadRequest(new { message = "原小组不存在，请重新选择小组。" }), MemberOrganizationSelection.Empty);
+            }
+
+            if (department is not null && group.DepartmentId != department.DepartmentId)
+            {
+                return (BadRequest(new { message = "原小组不属于所选部门，请同时选择该部门下的小组。" }), MemberOrganizationSelection.Empty);
+            }
+
+            department ??= group.Department;
+            if (department is null)
+            {
+                department = await _db.ClubDepartments.FirstOrDefaultAsync(d =>
+                    d.ClubId == clubId &&
+                    d.DepartmentId == group.DepartmentId);
+            }
+
+            if (department is null)
+            {
+                return (Conflict(new { message = "原小组缺少有效的所属部门，请先检查组织架构数据。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (group is null && requestedPreservedGroupName is not null)
+        {
+            if (department is null)
+            {
+                return (BadRequest(new { message = "保留原小组前请先选择部门。" }), MemberOrganizationSelection.Empty);
+            }
+
+            var normalizedPreservedGroupName = requestedPreservedGroupName.ToUpperInvariant();
+            group = await _db.ClubGroups
+                .FirstOrDefaultAsync(g =>
+                    g.ClubId == clubId &&
+                    g.DepartmentId == department.DepartmentId &&
+                    g.GroupName.ToUpper() == normalizedPreservedGroupName);
+            if (group is null)
+            {
+                return (BadRequest(new { message = "原小组不属于所选部门，请同时选择该部门下的小组。" }), MemberOrganizationSelection.Empty);
+            }
+        }
+
+        if (department is not null && department.DepartmentStatus != OrganizationActive)
+        {
+            return (BadRequest(new { message = "已停用的部门不能分配成员。" }), MemberOrganizationSelection.Empty);
+        }
+
+        if (group is not null && group.GroupStatus != OrganizationActive)
+        {
+            return (BadRequest(new { message = "已停用的小组不能分配成员。" }), MemberOrganizationSelection.Empty);
+        }
+
+        return (null, new MemberOrganizationSelection(
+            department?.DepartmentId,
+            group?.GroupId,
+            department?.DepartmentName,
+            group?.GroupName));
+    }
+
+    private static void ApplyMemberOrganization(ClubMember member, MemberOrganizationSelection? organization)
+    {
+        member.DepartmentId = organization?.DepartmentId;
+        member.GroupId = organization?.GroupId;
+        member.DepartmentName = organization?.DepartmentName;
+        member.GroupName = organization?.GroupName;
+    }
 
     private static ClubEvaluationRecordDto ToEvaluationRecordDto(Evaluation evaluation)
     {
@@ -1939,6 +3116,12 @@ public class ClubsController : ControllerBase
         if (normalizedType is null) return "评价类型只能是 semester 或 award。";
         if (string.IsNullOrWhiteSpace(termName)) return "考核学期不能为空。";
         if (TextTooLong(termName)) return "考核学期不能超过 255 个字符。";
+        if (normalizedType == EvaluationSemester)
+        {
+            var termValidationError = ValidateSemesterEvaluationTermName(termName.Trim());
+            if (termValidationError is not null) return termValidationError;
+        }
+
         if (TextTooLong(awardTitle)) return "奖项标题不能超过 255 个字符。";
         if (TextTooLong(awardLevel)) return "奖项等级不能超过 255 个字符。";
         if (TextTooLong(awardReason)) return "获奖原因不能超过 255 个字符。";
@@ -1956,24 +3139,115 @@ public class ClubsController : ControllerBase
 
         if (requireScores)
         {
-            if (activityScore is null) return "活动分不能为空。";
-            if (taskScore is null) return "任务分不能为空。";
-            if (learningScore is null) return "学习分不能为空。";
-            if (awardScore is null) return "奖项分不能为空。";
+            if (normalizedType == EvaluationAward && awardScore is null)
+            {
+                return "奖项分不能为空。";
+            }
         }
 
-        var scoreError =
-            ValidateEvaluationScore(activityScore, "活动分") ??
-            ValidateEvaluationScore(taskScore, "任务分") ??
-            ValidateEvaluationScore(learningScore, "学习分") ??
-            ValidateEvaluationScore(awardScore, "奖项分");
-        return scoreError;
+        return ValidateEvaluationScore(activityScore, "参与分") ??
+               ValidateEvaluationScore(taskScore, "任务分") ??
+               ValidateEvaluationScore(learningScore, "学习分") ??
+               ValidateEvaluationScore(awardScore, "奖项分");
     }
 
-    private static string? ValidateMemberGroupingRequest(string? departmentName, string? groupName)
+    private static string? ValidateOrganizationIds(int? departmentId, int? groupId)
     {
+        if (departmentId is <= 0) return "部门 ID 不合法。";
+        if (groupId is <= 0) return "小组 ID 不合法。";
+        return null;
+    }
+
+    private static string? ValidateMemberGroupingRequest(
+        int? departmentId,
+        int? groupId,
+        string? departmentName,
+        string? groupName)
+    {
+        var organizationIdError = ValidateOrganizationIds(departmentId, groupId);
+        if (organizationIdError is not null) return organizationIdError;
         if (TextTooLong(departmentName)) return "部门名称不能超过 255 个字符。";
         if (TextTooLong(groupName)) return "小组名称不能超过 255 个字符。";
+        return null;
+    }
+
+    private static string? ValidateDepartmentRequest(CreateClubDepartmentRequest req) =>
+        ValidateDepartmentRequest(
+            req.DepartmentName,
+            req.DepartmentCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.OfficeLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.DepartmentStatus));
+
+    private static string? ValidateDepartmentRequest(UpdateClubDepartmentRequest req) =>
+        ValidateDepartmentRequest(
+            req.DepartmentName,
+            req.DepartmentCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.OfficeLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.DepartmentStatus));
+
+    private static string? ValidateDepartmentRequest(
+        string? departmentName,
+        string? departmentCode,
+        string? contactPhone,
+        string? contactEmail,
+        string? officeLocation,
+        int? displayOrder,
+        string? departmentStatus)
+    {
+        if (string.IsNullOrWhiteSpace(departmentName)) return "部门名称不能为空。";
+        if (TextTooLong(departmentName)) return "部门名称不能超过 255 个字符。";
+        if (TextTooLong(departmentCode, 100)) return "部门编码不能超过 100 个字符。";
+        if (TextTooLong(contactPhone)) return "部门联系电话不能超过 255 个字符。";
+        if (TextTooLong(contactEmail)) return "部门联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(officeLocation)) return "部门办公地点不能超过 255 个字符。";
+        if (displayOrder is < 0) return "部门排序不能为负数。";
+        if (departmentStatus is null) return "部门状态只能是 active 或 inactive。";
+        return null;
+    }
+
+    private static string? ValidateGroupRequest(CreateClubGroupRequest req) =>
+        ValidateGroupRequest(
+            req.GroupName,
+            req.GroupCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.ActivityLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.GroupStatus));
+
+    private static string? ValidateGroupRequest(UpdateClubGroupRequest req) =>
+        ValidateGroupRequest(
+            req.GroupName,
+            req.GroupCode,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.ActivityLocation,
+            req.DisplayOrder,
+            ToOrganizationStatus(req.GroupStatus));
+
+    private static string? ValidateGroupRequest(
+        string? groupName,
+        string? groupCode,
+        string? contactPhone,
+        string? contactEmail,
+        string? activityLocation,
+        int? displayOrder,
+        string? groupStatus)
+    {
+        if (string.IsNullOrWhiteSpace(groupName)) return "小组名称不能为空。";
+        if (TextTooLong(groupName)) return "小组名称不能超过 255 个字符。";
+        if (TextTooLong(groupCode, 100)) return "小组编码不能超过 100 个字符。";
+        if (TextTooLong(contactPhone)) return "小组联系电话不能超过 255 个字符。";
+        if (TextTooLong(contactEmail)) return "小组联系邮箱不能超过 255 个字符。";
+        if (TextTooLong(activityLocation)) return "小组活动地点不能超过 255 个字符。";
+        if (displayOrder is < 0) return "小组排序不能为负数。";
+        if (groupStatus is null) return "小组状态只能是 active 或 inactive。";
         return null;
     }
 
@@ -2112,6 +3386,28 @@ public class ClubsController : ControllerBase
         club.PresidentUserId == viewer.UserId || UsersController.IsClubPrincipal(viewer, club.ClubId);
 
     private sealed record GroupingScope(string? DepartmentName, string? GroupName);
+    private sealed record MemberOrganizationSelection(
+        int? DepartmentId,
+        int? GroupId,
+        string? DepartmentName,
+        string? GroupName)
+    {
+        public static MemberOrganizationSelection Empty { get; } = new(null, null, null, null);
+    }
+
+    private sealed record EvaluationScoreSnapshot(
+        decimal ActivityScore,
+        decimal TaskScore,
+        decimal LearningScore,
+        decimal AwardScore,
+        IReadOnlyList<AwardScoreSource> AwardSources);
+    private sealed record AwardScoreSnapshot(
+        decimal Score,
+        IReadOnlyList<AwardScoreSource> Sources);
+    private sealed record AwardScoreSource(
+        int AwardApplicationId,
+        decimal AwardScore);
+    private sealed record EvaluationTermWindow(DateTime Start, DateTime End);
 
     private static ClubMember? CurrentMembershipForUser(User? user, int clubId) =>
         user?.ClubMemberships
@@ -2128,6 +3424,814 @@ public class ClubsController : ControllerBase
         decimal awardScore) =>
         activityScore + taskScore + learningScore + awardScore;
 
+    private async Task<EvaluationScoreSnapshot> ResolveEvaluationScoresAsync(
+        int clubId,
+        int userId,
+        string termName,
+        string normalizedType,
+        decimal? activityScore,
+        decimal? taskScore,
+        decimal? learningScore,
+        decimal? awardScore,
+        int? ignoredEvaluationId = null)
+    {
+        if (normalizedType == EvaluationAward)
+        {
+            return new EvaluationScoreSnapshot(
+                ClampEvaluationScore(activityScore ?? 0),
+                ClampEvaluationScore(taskScore ?? 0),
+                ClampEvaluationScore(learningScore ?? 0),
+                ClampEvaluationScore(awardScore ?? 0),
+                Array.Empty<AwardScoreSource>());
+        }
+
+        if (activityScore is not null &&
+            taskScore is not null &&
+            learningScore is not null &&
+            awardScore is not null)
+        {
+            return new EvaluationScoreSnapshot(
+                ClampEvaluationScore(activityScore.Value),
+                ClampEvaluationScore(taskScore.Value),
+                ClampEvaluationScore(learningScore.Value),
+                ClampEvaluationScore(awardScore.Value),
+                Array.Empty<AwardScoreSource>());
+        }
+
+        var generated = await CalculateSemesterEvaluationScoresAsync(clubId, userId, termName, ignoredEvaluationId);
+        return new EvaluationScoreSnapshot(
+            ClampEvaluationScore(activityScore ?? generated.ActivityScore),
+            ClampEvaluationScore(taskScore ?? generated.TaskScore),
+            ClampEvaluationScore(learningScore ?? generated.LearningScore),
+            ClampEvaluationScore(awardScore ?? generated.AwardScore),
+            awardScore is null ? generated.AwardSources : Array.Empty<AwardScoreSource>());
+    }
+
+    private async Task<EvaluationScoreSnapshot> CalculateSemesterEvaluationScoresAsync(
+        int clubId,
+        int userId,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
+        var activityScore = await CalculateSemesterActivityScoreAsync(clubId, userId, termWindow);
+        var taskScore = await CalculateSemesterTaskScoreAsync(clubId, userId, termWindow);
+        var learningScore = await CalculateSemesterLearningScoreAsync(clubId, userId, termWindow);
+        var awardScore = await CalculateSemesterAwardScoreAsync(
+            clubId,
+            userId,
+            termName,
+            ignoredEvaluationId);
+
+        return new EvaluationScoreSnapshot(
+            activityScore,
+            taskScore,
+            learningScore,
+            awardScore.Score,
+            awardScore.Sources);
+    }
+
+    private async Task<Dictionary<int, EvaluationScoreSnapshot>> CalculateSemesterEvaluationScoresForUsersAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, EvaluationScoreSnapshot>();
+        }
+
+        var termWindow = ResolveEvaluationTermWindow(termName)
+            ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
+        var activityScores = await CalculateSemesterActivityScoresAsync(clubId, ids, termWindow);
+        var taskScores = await CalculateSemesterTaskScoresAsync(clubId, ids, termWindow);
+        var learningScores = await CalculateSemesterLearningScoresAsync(clubId, ids, termWindow);
+        var awardScores = await CalculateSemesterAwardScoresAsync(clubId, ids, termName);
+
+        return ids.ToDictionary(
+            userId => userId,
+            userId => new EvaluationScoreSnapshot(
+                activityScores.GetValueOrDefault(userId),
+                taskScores.GetValueOrDefault(userId),
+                learningScores.GetValueOrDefault(userId),
+                awardScores.GetValueOrDefault(userId)?.Score ?? 0,
+                awardScores.GetValueOrDefault(userId)?.Sources ?? Array.Empty<AwardScoreSource>()));
+    }
+
+    private async Task<decimal> CalculateSemesterActivityScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from participation in _db.ActivityParticipations.AsNoTracking()
+            join activity in _db.Activities.AsNoTracking()
+                on participation.ActivityId equals activity.ActivityId
+            where activity.ClubId == clubId && participation.UserId == userId
+            select new
+            {
+                activity.StartAt,
+                activity.EndAt,
+                activity.CreatedAt,
+                participation.RegisterStatus,
+                participation.SignStatus,
+                participation.CheckinAt,
+                participation.CheckoutAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row =>
+                (row.StartAt ?? row.CreatedAt) <= termWindow.End &&
+                (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
+        }
+
+        var participations = await query.ToListAsync();
+        return ClampEvaluationScore(participations.Sum(row => ActivityParticipationScore(
+            row.RegisterStatus,
+            row.SignStatus,
+            row.CheckinAt,
+            row.CheckoutAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterActivityScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from participation in _db.ActivityParticipations.AsNoTracking()
+            join activity in _db.Activities.AsNoTracking()
+                on participation.ActivityId equals activity.ActivityId
+            where activity.ClubId == clubId && userIds.Contains(participation.UserId)
+            select new
+            {
+                participation.UserId,
+                activity.StartAt,
+                activity.EndAt,
+                activity.CreatedAt,
+                participation.RegisterStatus,
+                participation.SignStatus,
+                participation.CheckinAt,
+                participation.CheckoutAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row =>
+                (row.StartAt ?? row.CreatedAt) <= termWindow.End &&
+                (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
+        }
+
+        var participations = await query.ToListAsync();
+        return participations
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => ClampEvaluationScore(group.Sum(row => ActivityParticipationScore(
+                    row.RegisterStatus,
+                    row.SignStatus,
+                    row.CheckinAt,
+                    row.CheckoutAt))));
+    }
+
+    private async Task<decimal> CalculateSemesterTaskScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  (task.AssigneeUserId == userId ||
+                   task.DeliverableSubmitterId == userId ||
+                   _db.ProjectTaskAssignees
+                       .AsNoTracking()
+                       .Any(assignee => assignee.TaskId == task.TaskId && assignee.UserId == userId))
+            select new
+            {
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var taskScores = await query
+            .Select(row => new
+            {
+                row.TaskStatus,
+                row.DeliverableStatus,
+                row.Progress,
+                row.FinishDate,
+                row.DeliverableSubmittedAt
+            })
+            .ToListAsync();
+
+        return AverageEvaluationScore(taskScores.Select(row => ProjectTaskScore(
+            row.TaskStatus,
+            row.DeliverableStatus,
+            row.Progress,
+            row.FinishDate,
+            row.DeliverableSubmittedAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterTaskScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var assigneeTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.AssigneeUserId != null &&
+                  userIds.Contains(task.AssigneeUserId.Value)
+            select new
+            {
+                UserId = task.AssigneeUserId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var deliverableTaskQuery =
+            from task in _db.ProjectTasks.AsNoTracking()
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId &&
+                  task.DeliverableSubmitterId != null &&
+                  userIds.Contains(task.DeliverableSubmitterId.Value)
+            select new
+            {
+                UserId = task.DeliverableSubmitterId ?? 0,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var extraAssigneeTaskQuery =
+            from assignee in _db.ProjectTaskAssignees.AsNoTracking()
+            join task in _db.ProjectTasks.AsNoTracking()
+                on assignee.TaskId equals task.TaskId
+            join project in _db.Projects.AsNoTracking()
+                on task.ProjectId equals (int?)project.ProjectId
+            where project.ClubId == clubId && userIds.Contains(assignee.UserId)
+            select new
+            {
+                assignee.UserId,
+                task.TaskId,
+                StartAt = task.StartDate ?? project.StartDate ?? project.CreatedAt,
+                EndAt = task.FinishDate ??
+                    task.DueDate ??
+                    project.EndDate ??
+                    project.StartDate ??
+                    project.CreatedAt,
+                task.TaskStatus,
+                task.DeliverableStatus,
+                task.Progress,
+                task.FinishDate,
+                task.DeliverableSubmittedAt
+            };
+
+        var query = assigneeTaskQuery
+            .Concat(deliverableTaskQuery)
+            .Concat(extraAssigneeTaskQuery);
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var taskScores = await query.ToListAsync();
+        return taskScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group
+                    .GroupBy(row => row.TaskId)
+                    .Select(taskGroup =>
+                    {
+                        var row = taskGroup.First();
+                        return ProjectTaskScore(
+                            row.TaskStatus,
+                            row.DeliverableStatus,
+                            row.Progress,
+                            row.FinishDate,
+                            row.DeliverableSubmittedAt);
+                    })));
+    }
+
+    private async Task<decimal> CalculateSemesterLearningScoreAsync(
+        int clubId,
+        int userId,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from record in _db.LearningRecords.AsNoTracking()
+            join item in _db.LearningItems.AsNoTracking()
+                on record.ItemId equals item.ItemId
+            where item.ClubId == clubId && record.UserId == userId
+            select new
+            {
+                StartAt = item.StartAt ?? record.EnrolledAt ?? item.CreatedAt,
+                EndAt = item.EndAt ??
+                    record.CompletedAt ??
+                    record.LastLearnAt ??
+                    record.EnrolledAt ??
+                    item.StartAt ??
+                    item.CreatedAt,
+                record.EnrollStatus,
+                record.Progress,
+                record.CompletedAt,
+                record.DownloadedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var recordScores = await query
+            .Select(row => new
+            {
+                row.EnrollStatus,
+                row.Progress,
+                row.CompletedAt,
+                row.DownloadedAt
+            })
+            .ToListAsync();
+
+        return AverageEvaluationScore(recordScores.Select(row => LearningRecordScore(
+            row.EnrollStatus,
+            row.Progress,
+            row.CompletedAt,
+            row.DownloadedAt)));
+    }
+
+    private async Task<Dictionary<int, decimal>> CalculateSemesterLearningScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        EvaluationTermWindow? termWindow)
+    {
+        var query =
+            from record in _db.LearningRecords.AsNoTracking()
+            join item in _db.LearningItems.AsNoTracking()
+                on record.ItemId equals item.ItemId
+            where item.ClubId == clubId && userIds.Contains(record.UserId)
+            select new
+            {
+                record.UserId,
+                StartAt = item.StartAt ?? record.EnrolledAt ?? item.CreatedAt,
+                EndAt = item.EndAt ??
+                    record.CompletedAt ??
+                    record.LastLearnAt ??
+                    record.EnrolledAt ??
+                    item.StartAt ??
+                    item.CreatedAt,
+                record.EnrollStatus,
+                record.Progress,
+                record.CompletedAt,
+                record.DownloadedAt
+            };
+
+        if (termWindow is not null)
+        {
+            query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
+        }
+
+        var recordScores = await query.ToListAsync();
+        return recordScores
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => AverageEvaluationScore(group.Select(row => LearningRecordScore(
+                    row.EnrollStatus,
+                    row.Progress,
+                    row.CompletedAt,
+                    row.DownloadedAt))));
+    }
+
+    private async Task<AwardScoreSnapshot> CalculateSemesterAwardScoreAsync(
+        int clubId,
+        int userId,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var snapshots = await CalculateSemesterAwardScoresAsync(
+            clubId,
+            new[] { userId },
+            termName,
+            ignoredEvaluationId);
+        return snapshots.GetValueOrDefault(userId) ??
+               new AwardScoreSnapshot(0, Array.Empty<AwardScoreSource>());
+    }
+
+    private async Task<Dictionary<int, AwardScoreSnapshot>> CalculateSemesterAwardScoresAsync(
+        int clubId,
+        IReadOnlyCollection<int> userIds,
+        string termName,
+        int? ignoredEvaluationId = null)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, AwardScoreSnapshot>();
+        }
+
+        var normalizedTerm = termName.Trim();
+        var termWindow = ResolveEvaluationTermWindow(normalizedTerm);
+        var awardApplicationRows = await _db.AwardApplications
+            .AsNoTracking()
+            .Where(application =>
+                application.ClubId == clubId &&
+                ids.Contains(application.ApplicantUserId) &&
+                (application.ApplicationStatus == AwardApplicationArchived ||
+                 application.PublicStatus == AwardPublicized))
+            .Select(application => new
+            {
+                application.ApplicantUserId,
+                application.AwardApplicationId,
+                application.FinalAwardScore,
+                LevelAwardScore = application.Level == null
+                    ? (decimal?)null
+                    : application.Level.AwardScore,
+                AcademicYear = application.Scheme == null
+                    ? null
+                    : application.Scheme.AcademicYear,
+                TermName = application.Scheme == null
+                    ? null
+                    : application.Scheme.TermName
+            })
+            .ToListAsync();
+
+        var result = awardApplicationRows
+            .Where(row => AwardSchemeMatchesEvaluationTerm(
+                row.AcademicYear,
+                row.TermName,
+                normalizedTerm,
+                termWindow))
+            .Select(row => new
+            {
+                row.ApplicantUserId,
+                Source = new AwardScoreSource(
+                    row.AwardApplicationId,
+                    ClampEvaluationScore(row.FinalAwardScore ?? row.LevelAwardScore ?? 0))
+            })
+            .GroupBy(row => row.ApplicantUserId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var sources = group
+                        .Select(row => row.Source)
+                        .GroupBy(source => source.AwardApplicationId)
+                        .Select(sourceGroup => sourceGroup.First())
+                        .OrderBy(source => source.AwardApplicationId)
+                        .ToArray();
+                    return new AwardScoreSnapshot(
+                        ClampEvaluationScore(sources.Sum(source => source.AwardScore)),
+                        sources);
+                });
+
+        var legacyUserIds = ids
+            .Where(userId => !result.ContainsKey(userId))
+            .ToList();
+        if (legacyUserIds.Count == 0)
+        {
+            return result;
+        }
+
+        var legacyQuery = _db.Evaluations
+            .AsNoTracking()
+            .Where(ev =>
+                ev.ClubId == clubId &&
+                legacyUserIds.Contains(ev.UserId) &&
+                ev.EvaluationType == EvaluationAward &&
+                ev.TermName == normalizedTerm &&
+                ev.PublicStatus == EvaluationPublished);
+
+        if (ignoredEvaluationId is not null)
+        {
+            legacyQuery = legacyQuery.Where(ev => ev.EvaluationId != ignoredEvaluationId.Value);
+        }
+
+        var legacyAwardScores = await legacyQuery
+            .GroupBy(ev => ev.UserId)
+            .Select(group => new
+            {
+                UserId = group.Key,
+                Score = group.Sum(ev => ev.AwardScore ?? 0)
+            })
+            .ToListAsync();
+
+        foreach (var row in legacyAwardScores)
+        {
+            result[row.UserId] = new AwardScoreSnapshot(
+                ClampEvaluationScore(row.Score),
+                Array.Empty<AwardScoreSource>());
+        }
+
+        return result;
+    }
+
+    private async Task ReplaceEvaluationAwardSourcesAsync(
+        IEnumerable<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)> syncs,
+        DateTime now)
+    {
+        var materialized = syncs
+            .Where(sync => sync.Evaluation.EvaluationId > 0)
+            .GroupBy(sync => sync.Evaluation.EvaluationId)
+            .Select(group => group.Last())
+            .ToList();
+        if (materialized.Count == 0)
+        {
+            return;
+        }
+
+        var evaluationIds = materialized
+            .Select(sync => sync.Evaluation.EvaluationId)
+            .ToList();
+        var existingSources = await _db.EvaluationAwardSources
+            .Where(source => evaluationIds.Contains(source.EvaluationId))
+            .ToListAsync();
+        _db.EvaluationAwardSources.RemoveRange(existingSources);
+
+        foreach (var sync in materialized)
+        {
+            var sources = sync.Sources
+                .GroupBy(source => source.AwardApplicationId)
+                .Select(group => group.First())
+                .Where(source => source.AwardScore > 0)
+                .ToList();
+            foreach (var source in sources)
+            {
+                _db.EvaluationAwardSources.Add(new EvaluationAwardSource
+                {
+                    ClubId = sync.Evaluation.ClubId,
+                    UserId = sync.Evaluation.UserId,
+                    EvaluationId = sync.Evaluation.EvaluationId,
+                    AwardApplicationId = source.AwardApplicationId,
+                    AwardScore = source.AwardScore,
+                    CreatedAt = now
+                });
+            }
+        }
+    }
+
+    private static decimal ActivityParticipationScore(
+        string? registerStatus,
+        string? signStatus,
+        DateTime? checkinAt,
+        DateTime? checkoutAt)
+    {
+        var normalizedSignStatus = NormalizeScoreStatus(signStatus);
+        var normalizedRegisterStatus = NormalizeScoreStatus(registerStatus);
+
+        if (checkoutAt is not null || normalizedSignStatus is "checked_out" or "checkout" or "signed_out")
+        {
+            return ActivityCheckedOutScore;
+        }
+
+        if (checkinAt is not null ||
+            normalizedSignStatus is "checked_in" or "checkin" or "signed_in" or "onsite" ||
+            normalizedRegisterStatus == "onsite")
+        {
+            return ActivityCheckedInScore;
+        }
+
+        return normalizedRegisterStatus is "accepted" or "approved"
+            ? ActivityAcceptedScore
+            : 0;
+    }
+
+    private static decimal ProjectTaskScore(
+        string? taskStatus,
+        string? deliverableStatus,
+        decimal? progress,
+        DateTime? finishDate,
+        DateTime? deliverableSubmittedAt)
+    {
+        var normalizedTaskStatus = NormalizeScoreStatus(taskStatus);
+        var normalizedDeliverableStatus = NormalizeScoreStatus(deliverableStatus);
+
+        if (finishDate is not null ||
+            normalizedTaskStatus is "finished" or "completed" or "done" or "closed" ||
+            normalizedDeliverableStatus is "approved" or "accepted" or "passed")
+        {
+            return MaxEvaluationScore;
+        }
+
+        if (progress is not null)
+        {
+            return ClampEvaluationScore(progress.Value);
+        }
+
+        if (deliverableSubmittedAt is not null ||
+            normalizedDeliverableStatus is "submitted" or "pending" or "reviewing")
+        {
+            return 80m;
+        }
+
+        return normalizedTaskStatus is "running" or "ongoing" or "in_progress" ? 50m : 0;
+    }
+
+    private static decimal LearningRecordScore(
+        string? enrollStatus,
+        decimal? progress,
+        DateTime? completedAt,
+        DateTime? downloadedAt)
+    {
+        var normalizedStatus = LearningWorkflow.NormalizeRecordStatus(enrollStatus);
+        if (completedAt is not null || normalizedStatus == LearningWorkflow.RecordStatusCompleted)
+        {
+            return MaxEvaluationScore;
+        }
+
+        if (progress is not null)
+        {
+            return ClampEvaluationScore(progress.Value);
+        }
+
+        if (downloadedAt is not null)
+        {
+            return 10m;
+        }
+
+        return 0;
+    }
+
+    private static decimal AverageEvaluationScore(IEnumerable<decimal> scores)
+    {
+        var materialized = scores.ToList();
+        if (materialized.Count == 0) return 0;
+        return ClampEvaluationScore(materialized.Average());
+    }
+
+    private static decimal ClampEvaluationScore(decimal score) =>
+        decimal.Round(Math.Clamp(score, 0, MaxEvaluationScore), 1, MidpointRounding.AwayFromZero);
+
+    private static bool AwardSchemeMatchesEvaluationTerm(
+        string? academicYear,
+        string? schemeTermName,
+        string evaluationTermName,
+        EvaluationTermWindow? evaluationTermWindow)
+    {
+        var compositeTerm = $"{academicYear ?? string.Empty}{schemeTermName ?? string.Empty}";
+        var schemeTermWindow = ResolveEvaluationTermWindow(compositeTerm);
+        if (schemeTermWindow is not null && evaluationTermWindow is not null)
+        {
+            return schemeTermWindow.Start == evaluationTermWindow.Start &&
+                   schemeTermWindow.End == evaluationTermWindow.End;
+        }
+
+        var normalizedEvaluationTerm = NormalizeTermKey(evaluationTermName);
+        var normalizedAcademicYear = NormalizeTermKey(academicYear);
+        var normalizedSchemeTerm = NormalizeTermKey(schemeTermName);
+        if (string.IsNullOrWhiteSpace(normalizedSchemeTerm))
+        {
+            return normalizedEvaluationTerm == normalizedAcademicYear;
+        }
+
+        return normalizedEvaluationTerm.Contains(normalizedAcademicYear, StringComparison.Ordinal) &&
+               normalizedEvaluationTerm.Contains(normalizedSchemeTerm, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeTermKey(string? term) =>
+        (term ?? string.Empty)
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .Replace("　", string.Empty, StringComparison.Ordinal)
+            .Replace("学年", string.Empty, StringComparison.Ordinal)
+            .Replace("年度", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("—", string.Empty, StringComparison.Ordinal)
+            .Replace("~", string.Empty, StringComparison.Ordinal)
+            .Replace("至", string.Empty, StringComparison.Ordinal)
+            .Trim()
+            .ToLowerInvariant();
+
+    private static string? ValidateSemesterEvaluationTermName(string termName) =>
+        ResolveEvaluationTermWindow(termName) is null
+            ? "考核学期格式无法识别，请填写如 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间必须为相邻学年。"
+            : null;
+
+    private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
+    {
+        var normalized = termName.Trim();
+        var hasSpring = normalized.Contains("春", StringComparison.Ordinal);
+        var hasFall = normalized.Contains("秋", StringComparison.Ordinal);
+        var hasAcademicYear = normalized.Contains("学年", StringComparison.Ordinal);
+
+        if (hasSpring && hasFall)
+        {
+            return null;
+        }
+
+        var yearRange = Regex.Match(normalized, @"(?<start>20\d{2})\s*[-—~至]\s*(?<end>20\d{2})");
+        if (!yearRange.Success && hasAcademicYear && (hasSpring || hasFall))
+        {
+            return null;
+        }
+
+        if (yearRange.Success &&
+            int.TryParse(yearRange.Groups["start"].Value, out var startYear) &&
+            int.TryParse(yearRange.Groups["end"].Value, out var endYear))
+        {
+            if (endYear != startYear + 1)
+            {
+                return null;
+            }
+
+            if (hasSpring)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(endYear, 2, 1),
+                    EndOfDay(new DateTime(endYear, 7, 31)));
+            }
+
+            if (hasFall)
+            {
+                return new EvaluationTermWindow(
+                    new DateTime(startYear, 9, 1),
+                    EndOfDay(new DateTime(endYear, 1, 31)));
+            }
+
+            return new EvaluationTermWindow(
+                new DateTime(startYear, 9, 1),
+                EndOfDay(new DateTime(endYear, 6, 30)));
+        }
+
+        var yearMatch = Regex.Match(normalized, @"20\d{2}");
+        if (!yearMatch.Success || !int.TryParse(yearMatch.Value, out var year))
+        {
+            return null;
+        }
+
+        if (hasSpring)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 2, 1),
+                EndOfDay(new DateTime(year, 7, 31)));
+        }
+
+        if (hasFall)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 9, 1),
+                EndOfDay(new DateTime(year + 1, 1, 31)));
+        }
+
+        if (hasAcademicYear)
+        {
+            return new EvaluationTermWindow(
+                new DateTime(year, 9, 1),
+                EndOfDay(new DateTime(year + 1, 6, 30)));
+        }
+
+        return new EvaluationTermWindow(
+            new DateTime(year, 1, 1),
+            EndOfDay(new DateTime(year, 12, 31)));
+    }
+
+    private static DateTime EndOfDay(DateTime date) => date.Date.AddDays(1).AddTicks(-1);
+
+    private static string NormalizeScoreStatus(string? status) =>
+        (status ?? string.Empty).Trim().ToLowerInvariant();
+
     private static string EvaluationGrade(decimal totalScore)
     {
         if (totalScore >= 320) return "优秀";
@@ -2140,7 +4244,7 @@ public class ClubsController : ControllerBase
     {
         if (score is null) return null;
         if (score < 0) return $"{fieldName}不能为负数。";
-        if (score > 100) return $"{fieldName}不能超过 100。";
+        if (score > MaxEvaluationScore) return $"{fieldName}不能超过 100。";
         return null;
     }
 
@@ -2187,7 +4291,10 @@ public class ClubsController : ControllerBase
     };
 
     private static bool TextTooLong(string? value) =>
-        !string.IsNullOrWhiteSpace(value) && value.Trim().Length > ClubMemberTextMaxLength;
+        TextTooLong(value, ClubMemberTextMaxLength);
+
+    private static bool TextTooLong(string? value, int maxLength) =>
+        !string.IsNullOrWhiteSpace(value) && value.Trim().Length > maxLength;
 
     private static DateTime BusinessToday() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
@@ -2201,6 +4308,19 @@ public class ClubsController : ControllerBase
             ? utcDateTime
             : DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
         return TimeZoneInfo.ConvertTimeFromUtc(utc, BusinessTimeZone).Date;
+    }
+
+    private static DateTime BusinessDateBoundaryUtc(DateTime businessDate)
+    {
+        var localBoundary = DateTime.SpecifyKind(businessDate.Date, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localBoundary, BusinessTimeZone);
+    }
+
+    private static JsonSerializerOptions CreateRequestJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumMemberConverter());
+        return options;
     }
 
     private static TimeZoneInfo ResolveBusinessTimeZone()
@@ -2221,15 +4341,20 @@ public class ClubsController : ControllerBase
 
     private static bool IsTeacherCandidate(User user)
     {
+        if (IsStudentNumber(user.StudentNo)) return false;
         if (IsStaffNumber(user.StudentNo)) return true;
 
         return user.UserRoles.Any(ur =>
             ur.Role is not null &&
             ((ur.Role.RoleCode ?? string.Empty).Equals("TEACHER", StringComparison.OrdinalIgnoreCase) ||
-             (ur.Role.RoleCode ?? string.Empty).Equals(ClubAdvisorRoleCode, StringComparison.OrdinalIgnoreCase) ||
              (ur.Role.RoleName ?? string.Empty).Contains("教师", StringComparison.Ordinal) ||
              (ur.Role.RoleName ?? string.Empty).Contains("老师", StringComparison.Ordinal)));
     }
+
+    private static bool IsStudentNumber(string? studentNo) =>
+        !string.IsNullOrWhiteSpace(studentNo) &&
+        studentNo.Trim().Length == 7 &&
+        studentNo.Trim().All(char.IsDigit);
 
     private static bool IsStaffNumber(string? studentNo) =>
         !string.IsNullOrWhiteSpace(studentNo) &&
@@ -2258,6 +4383,86 @@ public class ClubsController : ControllerBase
         };
     }
 
+    private static bool IsSpecified(UpdateClubMemberTermRequest.MemberStatusEnum status) =>
+        !EqualityComparer<UpdateClubMemberTermRequest.MemberStatusEnum>.Default.Equals(status, default);
+
+    private static string? ToMemberStatus(CreateClubMemberTermRequest.MemberStatusEnum status) =>
+        status switch
+        {
+            CreateClubMemberTermRequest.MemberStatusEnum.ActiveEnum => MemberActive,
+            CreateClubMemberTermRequest.MemberStatusEnum.EndedEnum => MemberEnded,
+            CreateClubMemberTermRequest.MemberStatusEnum.SuspendedEnum => MemberSuspended,
+            _ => null
+        };
+
+    private static string? ToMemberStatus(UpdateClubMemberTermRequest.MemberStatusEnum status) =>
+        status switch
+        {
+            UpdateClubMemberTermRequest.MemberStatusEnum.ActiveEnum => MemberActive,
+            UpdateClubMemberTermRequest.MemberStatusEnum.EndedEnum => MemberEnded,
+            UpdateClubMemberTermRequest.MemberStatusEnum.SuspendedEnum => MemberSuspended,
+            _ => null
+        };
+
+    private static string? NormalizeOrganizationStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return OrganizationActive;
+
+        return status.Trim().ToLowerInvariant() switch
+        {
+            "active" or "enabled" or "启用" or "正常" => OrganizationActive,
+            "inactive" or "disabled" or "停用" => OrganizationInactive,
+            _ => null
+        };
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+        {
+            var message = current.Message;
+            if (message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string? ToOrganizationStatus(CreateClubDepartmentRequest.DepartmentStatusEnum status) =>
+        status switch
+        {
+            CreateClubDepartmentRequest.DepartmentStatusEnum.ActiveEnum => OrganizationActive,
+            CreateClubDepartmentRequest.DepartmentStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(UpdateClubDepartmentRequest.DepartmentStatusEnum status) =>
+        status switch
+        {
+            UpdateClubDepartmentRequest.DepartmentStatusEnum.ActiveEnum => OrganizationActive,
+            UpdateClubDepartmentRequest.DepartmentStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(CreateClubGroupRequest.GroupStatusEnum status) =>
+        status switch
+        {
+            CreateClubGroupRequest.GroupStatusEnum.ActiveEnum => OrganizationActive,
+            CreateClubGroupRequest.GroupStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
+    private static string? ToOrganizationStatus(UpdateClubGroupRequest.GroupStatusEnum status) =>
+        status switch
+        {
+            UpdateClubGroupRequest.GroupStatusEnum.ActiveEnum => OrganizationActive,
+            UpdateClubGroupRequest.GroupStatusEnum.InactiveEnum => OrganizationInactive,
+            _ => null
+        };
+
     private static bool IsKnownAuditStatus(string status) =>
         status is AuditPending or AuditApproved or AuditRejected;
 
@@ -2284,6 +4489,13 @@ public class ClubsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(user.RealName)) return user.RealName;
         if (!string.IsNullOrWhiteSpace(user.Username)) return user.Username;
         return $"用户 {user.UserId}";
+    }
+
+    private static string AdvisorCandidateDisplayName(User user)
+    {
+        var name = DisplayUser(user) ?? $"用户 {user.UserId}";
+        var staffNumber = user.StudentNo?.Trim();
+        return string.IsNullOrWhiteSpace(staffNumber) ? name : $"{name}（{staffNumber}）";
     }
 
     private static string? EmptyToNull(string? value) =>
@@ -2347,6 +4559,8 @@ public record ClubApplicationDto(
     string? Description,
     int? ApplicantUserId,
     string? ApplicantName,
+    int? AdvisorUserId,
+    string? AdvisorName,
     string ApplyReason,
     string MaterialUrl,
     string AuditStatus,
@@ -2354,6 +4568,7 @@ public record ClubApplicationDto(
     int? ReviewerUserId,
     string? ReviewerName,
     string? ReviewComment,
+    string? ContactPhone,
     string? ClubStatus,
     string ClubStatusText,
     DateTime? FoundedAt,
@@ -2406,7 +4621,9 @@ public record ClubMemberRecordDto(
     int UserId,
     string UserName,
     string? StudentNo,
+    int? DepartmentId,
     string? DepartmentName,
+    int? GroupId,
     string? GroupName,
     string? PositionName,
     string? TermName,
@@ -2417,33 +4634,37 @@ public record ClubMemberRecordDto(
     decimal? ContributionScore,
     bool IsCurrent);
 
-public class CreateClubMemberTermRequest
-{
-    public int CurrentUserId { get; set; }
-    public int UserId { get; set; }
-    public string? DepartmentName { get; set; }
-    public string? GroupName { get; set; }
-    public string PositionName { get; set; } = string.Empty;
-    public string TermName { get; set; } = string.Empty;
-    public DateTime TermStart { get; set; }
-    public DateTime? TermEnd { get; set; }
-    public string? MemberStatus { get; set; } = "active";
-    public decimal? ContributionScore { get; set; }
-    public bool CloseCurrentTerm { get; set; } = true;
-}
+public record ClubGroupRecordDto(
+    int GroupId,
+    int ClubId,
+    int DepartmentId,
+    string GroupName,
+    string? GroupCode,
+    string? Description,
+    string? Responsibilities,
+    string? ContactPhone,
+    string? ContactEmail,
+    string? ActivityLocation,
+    int DisplayOrder,
+    string GroupStatus,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
 
-public class UpdateClubMemberTermRequest
-{
-    public int CurrentUserId { get; set; }
-    public string? DepartmentName { get; set; }
-    public string? GroupName { get; set; }
-    public string? PositionName { get; set; }
-    public string? TermName { get; set; }
-    public DateTime? TermStart { get; set; }
-    public DateTime? TermEnd { get; set; }
-    public string? MemberStatus { get; set; }
-    public decimal? ContributionScore { get; set; }
-}
+public record ClubDepartmentRecordDto(
+    int DepartmentId,
+    int ClubId,
+    string DepartmentName,
+    string? DepartmentCode,
+    string? Description,
+    string? Responsibilities,
+    string? ContactPhone,
+    string? ContactEmail,
+    string? OfficeLocation,
+    int DisplayOrder,
+    string DepartmentStatus,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    IReadOnlyCollection<ClubGroupRecordDto> Groups);
 
 public record ClubEvaluationRecordDto(
     int EvaluationId,
@@ -2473,6 +4694,28 @@ public record ClubEvaluationRecordDto(
     string PublicStatusText,
     string? CommentText,
     DateTime? CreatedAt);
+
+public record ClubEvaluationScorePreviewDto(
+    decimal ActivityScore,
+    decimal TaskScore,
+    decimal LearningScore,
+    decimal AwardScore,
+    decimal TotalScore,
+    string Grade);
+
+public class GenerateClubEvaluationsRequest
+{
+    public string TermName { get; set; } = string.Empty;
+    public bool OverwriteDrafts { get; set; } = true;
+}
+
+public record GenerateClubEvaluationsResultDto(
+    string TermName,
+    int TotalMembers,
+    int CreatedCount,
+    int RefreshedCount,
+    int SkippedPublishedCount,
+    List<ClubEvaluationRecordDto> Records);
 
 public class CreateClubEvaluationRequest
 {

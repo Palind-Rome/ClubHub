@@ -15,7 +15,7 @@
 
 import { mapValues } from "../runtime";
 /**
- * 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+ * 创建社团成员评价考核或评优评奖结果记录；学期考核通常先由批量生成接口生成草稿，维护人可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
  * @export
  * @interface CreateClubEvaluationRequest
  */
@@ -40,7 +40,7 @@ export interface CreateClubEvaluationRequest {
    */
   userId: number;
   /**
-   * 考核或评奖所属学期。
+   * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
    * @type {string}
    * @memberof CreateClubEvaluationRequest
    */
@@ -64,29 +64,29 @@ export interface CreateClubEvaluationRequest {
    */
   awardReason?: string | null;
   /**
-   * 活动参与得分。
+   * 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  activityScore: number;
+  activityScore?: number | null;
   /**
-   * 项目任务得分。
+   * 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  taskScore: number;
+  taskScore?: number | null;
   /**
-   * 学习记录得分。
+   * 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  learningScore: number;
+  learningScore?: number | null;
   /**
-   * 奖项或附加贡献得分。
+   * 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
    * @type {number}
    * @memberof CreateClubEvaluationRequest
    */
-  awardScore: number;
+  awardScore?: number | null;
   /**
    * 公示状态；默认保存为草稿。
    * @type {CreateClubEvaluationRequestPublicStatusEnum}
@@ -130,10 +130,6 @@ export function instanceOfCreateClubEvaluationRequest(
   if (!("evaluationType" in value) || value["evaluationType"] === undefined) return false;
   if (!("userId" in value) || value["userId"] === undefined) return false;
   if (!("termName" in value) || value["termName"] === undefined) return false;
-  if (!("activityScore" in value) || value["activityScore"] === undefined) return false;
-  if (!("taskScore" in value) || value["taskScore"] === undefined) return false;
-  if (!("learningScore" in value) || value["learningScore"] === undefined) return false;
-  if (!("awardScore" in value) || value["awardScore"] === undefined) return false;
   return true;
 }
 
@@ -156,10 +152,10 @@ export function CreateClubEvaluationRequestFromJSONTyped(
     awardTitle: json["awardTitle"] == null ? undefined : json["awardTitle"],
     awardLevel: json["awardLevel"] == null ? undefined : json["awardLevel"],
     awardReason: json["awardReason"] == null ? undefined : json["awardReason"],
-    activityScore: json["activityScore"],
-    taskScore: json["taskScore"],
-    learningScore: json["learningScore"],
-    awardScore: json["awardScore"],
+    activityScore: json["activityScore"] == null ? undefined : json["activityScore"],
+    taskScore: json["taskScore"] == null ? undefined : json["taskScore"],
+    learningScore: json["learningScore"] == null ? undefined : json["learningScore"],
+    awardScore: json["awardScore"] == null ? undefined : json["awardScore"],
     publicStatus: json["publicStatus"] == null ? undefined : json["publicStatus"],
     commentText: json["commentText"] == null ? undefined : json["commentText"],
   };

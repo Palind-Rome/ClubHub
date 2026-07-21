@@ -1,0 +1,78 @@
+-- PR #141 / Issue #142：保证通知已读写入在并发请求下幂等。
+--
+-- 执行前（强制前置条件）：
+--   1. 备份目标 schema。
+--   2. 使用 CLUBHUB schema 所有者执行。
+--   3. 进入维护窗口并停止通知已读写入，直至迁移和 verify.sql 完成。
+--
+-- 迁移内容：
+--   1. 同一通知、同一用户存在历史重复记录时保留 READ_ID 最小的一条。
+--   2. 新增唯一约束 UQ_NOTICE_READS_NOTICE_USER。
+--   3. 新增 SEQ_NOTICE_READS，并将 READ_ID 默认值改为该序列的 NEXTVAL。
+--
+-- 回滚方案（Oracle DDL 会隐式提交，请在停写状态下执行）：
+--   ALTER TABLE NOTICE_READS MODIFY (READ_ID DEFAULT NULL);
+--   ALTER TABLE NOTICE_READS DROP CONSTRAINT UQ_NOTICE_READS_NOTICE_USER;
+--   DROP SEQUENCE SEQ_NOTICE_READS;
+-- 随后回退到仍由应用层生成 READ_ID 的后端版本，或从执行前备份恢复。
+
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
+
+DELETE FROM NOTICE_READS
+WHERE READ_ID NOT IN (
+  SELECT MIN(READ_ID)
+  FROM NOTICE_READS
+  GROUP BY NOTICE_ID, USER_ID
+);
+
+DECLARE
+  constraint_count NUMBER;
+BEGIN
+  SELECT COUNT(*)
+  INTO constraint_count
+  FROM user_constraints
+  WHERE constraint_name = 'UQ_NOTICE_READS_NOTICE_USER'
+    AND table_name = 'NOTICE_READS';
+
+  IF constraint_count = 0 THEN
+    EXECUTE IMMEDIATE
+      'ALTER TABLE NOTICE_READS ADD CONSTRAINT UQ_NOTICE_READS_NOTICE_USER UNIQUE (NOTICE_ID, USER_ID)';
+  END IF;
+END;
+/
+
+DECLARE
+  max_id NUMBER;
+  target_id NUMBER;
+  sequence_value NUMBER;
+BEGIN
+  SELECT NVL(MAX(READ_ID), 0) INTO max_id FROM NOTICE_READS;
+  target_id := GREATEST(max_id + 1, 1000000);
+
+  BEGIN
+    EXECUTE IMMEDIATE
+      'CREATE SEQUENCE SEQ_NOTICE_READS START WITH ' ||
+      TO_CHAR(target_id, 'FM99999999999999999990') ||
+      ' INCREMENT BY 1 NOCACHE NOCYCLE';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLCODE != -955 THEN
+        RAISE;
+      END IF;
+  END;
+
+  EXECUTE IMMEDIATE 'SELECT SEQ_NOTICE_READS.NEXTVAL FROM dual' INTO sequence_value;
+  IF sequence_value < target_id THEN
+    EXECUTE IMMEDIATE
+      'ALTER SEQUENCE SEQ_NOTICE_READS INCREMENT BY ' ||
+      TO_CHAR(target_id - sequence_value, 'FM99999999999999999990');
+    EXECUTE IMMEDIATE 'SELECT SEQ_NOTICE_READS.NEXTVAL FROM dual' INTO sequence_value;
+  END IF;
+
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_NOTICE_READS INCREMENT BY 1';
+END;
+/
+
+ALTER TABLE NOTICE_READS MODIFY (READ_ID DEFAULT SEQ_NOTICE_READS.NEXTVAL);
+
+COMMIT;

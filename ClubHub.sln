@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClubHub.Api", "backend\ClubHub.Api.csproj", "{5DF8F527-8002-4868-93AE-48D01F4DE5CA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend.Tests", "backend.Tests", "{C0C6E044-CB20-653A-D6C2-4CA8FE87111B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClubHub.Api.Tests", "backend.Tests\ClubHub.Api.Tests.csproj", "{CABFEE30-4383-4246-B64D-E82CB8099C3D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,11 +33,24 @@ Global
 		{5DF8F527-8002-4868-93AE-48D01F4DE5CA}.Release|x64.Build.0 = Release|Any CPU
 		{5DF8F527-8002-4868-93AE-48D01F4DE5CA}.Release|x86.ActiveCfg = Release|Any CPU
 		{5DF8F527-8002-4868-93AE-48D01F4DE5CA}.Release|x86.Build.0 = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|x64.Build.0 = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Debug|x86.Build.0 = Debug|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|x64.ActiveCfg = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|x64.Build.0 = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|x86.ActiveCfg = Release|Any CPU
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5DF8F527-8002-4868-93AE-48D01F4DE5CA} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
+		{CABFEE30-4383-4246-B64D-E82CB8099C3D} = {C0C6E044-CB20-653A-D6C2-4CA8FE87111B}
 	EndGlobalSection
 EndGlobal

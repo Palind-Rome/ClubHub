@@ -27,7 +27,7 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
         var authorization = Request.Headers.Authorization.ToString();
         if (string.IsNullOrWhiteSpace(authorization))
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return Task.FromResult(TryAuthenticatePreviewCookie());
         }
 
         const string bearerPrefix = "Bearer ";
@@ -42,6 +42,26 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
             return Task.FromResult(AuthenticateResult.Fail("Invalid ClubHub token."));
         }
 
+        return Task.FromResult(CreateSuccessResult(principal));
+    }
+
+    private AuthenticateResult TryAuthenticatePreviewCookie()
+    {
+        if (!HttpMethods.IsGet(Request.Method) ||
+            Request.Path.Value?.EndsWith("/preview", StringComparison.OrdinalIgnoreCase) != true ||
+            !int.TryParse(Request.RouteValues["itemId"]?.ToString(), out var itemId) ||
+            itemId <= 0 ||
+            !Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var token) ||
+            !_authTokenService.TryValidatePreviewToken(token, itemId, out var principal))
+        {
+            return AuthenticateResult.NoResult();
+        }
+
+        return CreateSuccessResult(principal);
+    }
+
+    private static AuthenticateResult CreateSuccessResult(AuthTokenPrincipal principal)
+    {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, principal.UserId.ToString())
@@ -54,7 +74,7 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        return AuthenticateResult.Success(ticket);
     }
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)

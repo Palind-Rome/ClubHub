@@ -8,8 +8,14 @@ namespace ClubHub.Api.Services;
 public sealed class AuthTokenService
 {
     private const int TokenLifetimeHours = 12;
+    private const string PreviewTokenPrefix = "preview";
     private const string LocalDevelopmentSigningKey = "ClubHub.LocalDevelopment.TokenSigningKey.ChangeForProduction";
     private readonly byte[] _signingKey;
+    private readonly int _previewSessionLifetimeMinutes;
+
+    public const string PreviewCookieName = "clubhub-preview";
+
+    public TimeSpan PreviewSessionLifetime => TimeSpan.FromMinutes(_previewSessionLifetimeMinutes);
 
     public AuthTokenService(IConfiguration configuration, IHostEnvironment environment)
     {
@@ -27,6 +33,10 @@ public sealed class AuthTokenService
         }
 
         _signingKey = Encoding.UTF8.GetBytes(signingKey);
+        _previewSessionLifetimeMinutes = Math.Clamp(
+            configuration.GetValue<int?>("LearningPreview:SessionLifetimeMinutes") ?? 30,
+            1,
+            120);
     }
 
     public string CreateToken(User user)
@@ -87,6 +97,59 @@ public sealed class AuthTokenService
         return true;
     }
 
+    public string CreatePreviewToken(int userId, int itemId)
+    {
+        var payload = new PreviewTokenPayload(
+            userId,
+            itemId,
+            DateTimeOffset.UtcNow.AddMinutes(_previewSessionLifetimeMinutes).ToUnixTimeSeconds());
+        var payloadJson = JsonSerializer.Serialize(payload);
+        var payloadPart = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
+        var signedPart = $"{PreviewTokenPrefix}.{payloadPart}";
+        return $"{signedPart}.{Sign(signedPart)}";
+    }
+
+    public bool TryValidatePreviewToken(
+        string token,
+        int expectedItemId,
+        out AuthTokenPrincipal principal)
+    {
+        principal = default;
+        var parts = token.Split('.', 3);
+        if (parts.Length != 3 || parts[0] != PreviewTokenPrefix ||
+            string.IsNullOrWhiteSpace(parts[1]) || string.IsNullOrWhiteSpace(parts[2]))
+        {
+            return false;
+        }
+
+        var signedPart = $"{parts[0]}.{parts[1]}";
+        if (!FixedTimeEquals(parts[2], Sign(signedPart))) return false;
+
+        PreviewTokenPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<PreviewTokenPayload>(
+                Encoding.UTF8.GetString(Base64UrlDecode(parts[1])));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        if (payload is null || payload.UserId <= 0 || payload.ItemId != expectedItemId ||
+            payload.ExpiresAtUnix <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+        {
+            return false;
+        }
+
+        principal = new AuthTokenPrincipal(payload.UserId, null);
+        return true;
+    }
+
     private string Sign(string payloadPart)
     {
         using var hmac = new HMACSHA256(_signingKey);
@@ -115,6 +178,8 @@ public sealed class AuthTokenService
     }
 
     private sealed record AuthTokenPayload(int UserId, string? Username, long ExpiresAtUnix);
+
+    private sealed record PreviewTokenPayload(int UserId, int ItemId, long ExpiresAtUnix);
 }
 
 public readonly record struct AuthTokenPrincipal(int UserId, string? Username);

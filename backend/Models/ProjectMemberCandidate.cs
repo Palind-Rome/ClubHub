@@ -20,7 +20,7 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 可加入项目的所属社团 active 成员。
+    /// 可加入项目的所属社团当前有效成员。
     /// </summary>
     [DataContract]
     public partial class ProjectMemberCandidate 

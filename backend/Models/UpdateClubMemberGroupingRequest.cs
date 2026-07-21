@@ -26,17 +26,33 @@ namespace Org.OpenAPITools.Models
     public partial class UpdateClubMemberGroupingRequest 
     {
         /// <summary>
-        /// 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+        /// 成员调整后的部门 ID；传 null 表示不归属任何部门。
         /// </summary>
-        /// <value>成员调整后的部门名称；传空或 null 表示不归属任何部门。</value>
+        /// <value>成员调整后的部门 ID；传 null 表示不归属任何部门。</value>
+        /* <example>1001</example> */
+        [DataMember(Name="departmentId", EmitDefaultValue=true)]
+        public int? DepartmentId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程优先使用 departmentId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程优先使用 departmentId。</value>
         /* <example>技术部</example> */
         [DataMember(Name="departmentName", EmitDefaultValue=true)]
         public string? DepartmentName { get; set; }
 
         /// <summary>
-        /// 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+        /// 成员调整后的小组 ID；传 null 表示不归属任何小组。
         /// </summary>
-        /// <value>成员调整后的小组名称；传空或 null 表示不归属任何小组。</value>
+        /// <value>成员调整后的小组 ID；传 null 表示不归属任何小组。</value>
+        /* <example>2001</example> */
+        [DataMember(Name="groupId", EmitDefaultValue=true)]
+        public int? GroupId { get; set; }
+
+        /// <summary>
+        /// 历史兼容字段；新流程优先使用 groupId。
+        /// </summary>
+        /// <value>历史兼容字段；新流程优先使用 groupId。</value>
         /* <example>后端组</example> */
         [DataMember(Name="groupName", EmitDefaultValue=true)]
         public string? GroupName { get; set; }

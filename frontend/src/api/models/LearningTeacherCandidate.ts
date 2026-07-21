@@ -15,31 +15,31 @@
 
 import { mapValues } from "../runtime";
 /**
- * User-facing instructor option used by the learning course form.
+ * 课程表单使用的授课人候选项；授课人可以是教师或学生。
  * @export
  * @interface LearningTeacherCandidate
  */
 export interface LearningTeacherCandidate {
   /**
-   * Internal user id submitted by the client after the user selects an instructor.
+   * 选择授课人后提交的内部用户 ID。
    * @type {number}
    * @memberof LearningTeacherCandidate
    */
   id: number;
   /**
-   * Instructor real name.
+   * 授课人姓名。
    * @type {string}
    * @memberof LearningTeacherCandidate
    */
   realName?: string | null;
   /**
-   * Instructor staff number.
+   * 授课人的学号或工号。
    * @type {string}
    * @memberof LearningTeacherCandidate
    */
   studentNo?: string | null;
   /**
-   * User-facing label containing the instructor name and staff number.
+   * 包含教师或学生身份、姓名及学工号的展示文本。
    * @type {string}
    * @memberof LearningTeacherCandidate
    */

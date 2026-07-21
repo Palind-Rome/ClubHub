@@ -21,13 +21,25 @@ import { mapValues } from "../runtime";
  */
 export interface UpdateClubMemberGroupingRequest {
   /**
-   * 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+   * 成员调整后的部门 ID；传 null 表示不归属任何部门。
+   * @type {number}
+   * @memberof UpdateClubMemberGroupingRequest
+   */
+  departmentId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 departmentId。
    * @type {string}
    * @memberof UpdateClubMemberGroupingRequest
    */
   departmentName?: string | null;
   /**
-   * 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+   * 成员调整后的小组 ID；传 null 表示不归属任何小组。
+   * @type {number}
+   * @memberof UpdateClubMemberGroupingRequest
+   */
+  groupId?: number | null;
+  /**
+   * 历史兼容字段；新流程优先使用 groupId。
    * @type {string}
    * @memberof UpdateClubMemberGroupingRequest
    */
@@ -57,7 +69,9 @@ export function UpdateClubMemberGroupingRequestFromJSONTyped(
     return json;
   }
   return {
+    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
     departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
+    groupId: json["groupId"] == null ? undefined : json["groupId"],
     groupName: json["groupName"] == null ? undefined : json["groupName"],
   };
 }
@@ -75,7 +89,9 @@ export function UpdateClubMemberGroupingRequestToJSONTyped(
   }
 
   return {
+    departmentId: value["departmentId"],
     departmentName: value["departmentName"],
+    groupId: value["groupId"],
     groupName: value["groupName"],
   };
 }

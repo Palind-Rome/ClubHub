@@ -3,7 +3,7 @@
 本目录保存 ClubHub 的 Oracle 数据库脚本。
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
-- `verify.sql`：验证当前用户、23 张核心表、项目成员约束、重复关系和负责人回填。
+- `verify.sql`：验证当前用户、36 张核心表、项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示和细则约束。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
@@ -26,8 +26,30 @@
    sequence 推进到现有最大主键之后，并保持至少从 `1000000` 起步；脚本可重复执行，
    中断后修复原因即可重跑。执行期间必须停止仍按 `MAX(id)+1` 写入的旧后端，
    并在 `verify.sql` 验证默认值后再恢复写入。
+4. `20260714_add_club_departments_groups.sql`：为 `CLUB_DEPARTMENTS`、
+   `CLUB_GROUPS` 增加数据库生成主键和组织架构实体，并为 `CLUB_MEMBERS`
+   增加可空 `department_id`、`group_id`。脚本会从现有 `department_name`、
+   `group_name` 去重生成部门和小组并回填成员任期；若存在“有小组但没有部门”
+   的历史记录，脚本会停止，需要先清理数据再迁移。迁移完成后会添加组合外键，
+   保证成员不能跨社团引用部门或小组，小组也不能跨社团或跨部门引用。
+5. `20260717_add_award_application_workflow.sql`：新增 `AWARD_SCHEMES`、
+   `AWARD_LEVELS`、`AWARD_APPLICATIONS`、`AWARD_REVIEW_RECORDS`、
+   `AWARD_ATTACHMENTS`、`AWARD_PUBLICITY_BATCHES`、`AWARD_PUBLICITY_ITEMS`
+   和 `EVALUATION_AWARD_SOURCES`，把评奖评优从直接录入结果扩展为奖项配置、
+   申请、社团负责人初审、指导老师审核、校级终审、公示和归档流程。表间保留
+   社团、奖项、申请人、审核人和考核记录外键，避免跨社团误挂数据。
+6. `20260717_add_award_rule_documents.sql`：新增 `AWARD_RULE_DOCUMENTS`，
+   用于维护校级通用细则和社团细则。系统管理员可发布校级通用细则，社团负责人
+   或指导老师可维护本社团细则，表中保留社团和发布人外键。
+7. `20260718_harden_award_application_constraints.sql`：硬化已有库里的
+   `AWARD_APPLICATIONS` 外键。脚本会先检查是否存在跨社团或缺失奖项/等级的
+   申请数据，若有脏数据会停止；通过检查后，会把旧的同名单列外键替换为
+   `(club_id, award_scheme_id)` 和 `(award_scheme_id, award_level_id)` 复合外键。
+8. `20260718_harden_evaluation_award_sources.sql`：硬化成员考核奖项分来源，为
+   `EVALUATION_AWARD_SOURCES` 回填并强制保存 `club_id`、`user_id`，再通过
+   组合外键保证考核记录只能引用同一社团、同一成员的评奖评优申请。
 
-迁移完成后执行 `verify.sql`，确认 sequence、唯一索引及列默认值均已生效。
+迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码和回填结果均已生效。
 
 ### 演示数据脚本
 
@@ -38,6 +60,9 @@
 3. `002_sample_activities.sql`：活动样例。
 4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
+6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
+7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新演示信息。
+8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
 
 样例账号统一密码为 `123456`：
 
@@ -50,6 +75,12 @@
 | `member_liu`     | `2450004` | 计算机协会成员，查看本人社团身份                 |
 | `zhang_guoxiong` | `2350007` | 多社团学生，在不同社团分别担任成员、干部、负责人 |
 | `advisor_zhang`  | `06005`   | 计算机协会指导老师，查看社团成员任期             |
+| `zhao_rui`       | `2450020` | 计算机协会技术部部长，有上一学年干事任期         |
+| `he_yuqing`      | `2350021` | 计算机协会宣传部部长，有上一学年社员任期         |
+| `lin_kexin`      | `2250023` | 摄影社现任社长，有上一学年副社长任期             |
+| `chen_moyang`    | `2350024` | 摄影社外拍部部长，有上一学年干事任期             |
+| `shen_yiming`    | `2350028` | 羽毛球协会竞训部部长，有上一学年干事任期         |
+| `ye_qingyang`    | `2450029` | 羽毛球协会赛事部裁判组组长，有上一学年社员任期   |
 
 ## 已有开发库迁移
 
@@ -59,7 +90,14 @@
 2. 确认 `PROJECTS`、`USERS` 已存在且 `PROJECT_MEMBERS` 尚不存在；若目标表已经存在，立即停止并检查当前结构。
 3. 使用 SQL*Plus、SQLcl 或 SQL Developer 执行 `migrations/001_add_project_members.sql`。脚本会创建关系表，并将现有项目负责人回填为 active leader。
 4. 再执行 `migrations/002_harden_project_members_constraints.sql`。脚本将备注列改为 255 个字符语义，并在确认无重复有效负责人后创建唯一函数索引。
-5. 执行 `verify.sql`；23 张核心表计数应为 23，重复关系、非法角色/状态、缺失负责人关系和多有效负责人查询均应返回 0 行。
+5. 执行 `migrations/003_add_project_task_assignees.sql`。脚本创建多人任务执行人关系，并从既有单人任务回填数据。
+6. 执行 `migrations/004_add_project_task_progress_reports.sql`。脚本创建任务进度提交记录表；既有任务不会伪造历史记录。
+7. 执行 `migrations/20260714_add_club_departments_groups.sql`。若脚本提示存在没有部门的小组历史数据，先补齐或清理 `CLUB_MEMBERS.department_name` 后再重跑。
+8. 执行 `migrations/20260717_add_award_application_workflow.sql`，新增评奖评优申请审批和公示归档相关结构。
+9. 执行 `migrations/20260717_add_award_rule_documents.sql`，新增评奖评优细则维护相关结构。
+10. 执行 `migrations/20260718_harden_award_application_constraints.sql`，确认已有库里的评奖评优申请外键是复合外键，不允许申请跨社团挂到别的社团奖项。
+11. 执行 `migrations/20260718_harden_evaluation_award_sources.sql`，确认成员考核奖项分来源表已带上社团和成员范围，并替换为组合外键。
+12. 执行 `verify.sql`；36 张核心表计数应为 36，重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评奖评优申请复合外键列定义、评定细则范围/外键和考核奖项分来源错挂查询均应返回 0 行。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 

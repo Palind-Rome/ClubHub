@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -154,9 +155,9 @@ namespace Org.OpenAPITools.Models
         public string? TargetName { get; set; }
 
         /// <summary>
-        /// 发布时间。
+        /// 已发布通知的发布时间；草稿状态下表示最近保存时间。
         /// </summary>
-        /// <value>发布时间。</value>
+        /// <value>已发布通知的发布时间；草稿状态下表示最近保存时间。</value>
         [Required]
         [DataMember(Name="publishAt", EmitDefaultValue=true)]
         public DateTime PublishAt { get; set; }
@@ -209,6 +210,7 @@ namespace Org.OpenAPITools.Models
         /// 当前查看用户是否已读。
         /// </summary>
         /// <value>当前查看用户是否已读。</value>
+        [JsonRequired]
         [Required]
         [DataMember(Name="isRead", EmitDefaultValue=true)]
         public bool IsRead { get; set; }

@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface AddProjectMemberRequest {
   /**
-   * 所属社团 active 成员的用户 ID。
+   * 所属社团当前有效成员的用户 ID。
    * @type {number}
    * @memberof AddProjectMemberRequest
    */

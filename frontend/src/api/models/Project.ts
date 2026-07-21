@@ -81,6 +81,12 @@ export interface Project {
    */
   reviewComment?: string | null;
   /**
+   * 当前登录用户是否可以进入该项目的任务空间。
+   * @type {boolean}
+   * @memberof Project
+   */
+  canViewTasks: boolean;
+  /**
    * Project application creation time.
    * @type {Date}
    * @memberof Project
@@ -110,6 +116,7 @@ export function instanceOfProject(value: object): value is Project {
   if (!("projectName" in value) || value["projectName"] === undefined) return false;
   if (!("startDate" in value) || value["startDate"] === undefined) return false;
   if (!("projectStatus" in value) || value["projectStatus"] === undefined) return false;
+  if (!("canViewTasks" in value) || value["canViewTasks"] === undefined) return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
   return true;
 }
@@ -133,6 +140,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
     projectStatus: json["projectStatus"],
     reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    canViewTasks: json["canViewTasks"],
     createdAt: new Date(json["createdAt"]),
   };
 }
@@ -160,6 +168,7 @@ export function ProjectToJSONTyped(
     projectStatus: value["projectStatus"],
     reviewerUserId: value["reviewerUserId"],
     reviewComment: value["reviewComment"],
+    canViewTasks: value["canViewTasks"],
     createdAt: value["createdAt"].toISOString(),
   };
 }

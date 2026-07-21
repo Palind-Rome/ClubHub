@@ -31,6 +31,12 @@ export function clearSession() {
   notifySessionChange();
 }
 
+export function clearExpiredSession() {
+  if (readAuth()) {
+    clearSession();
+  }
+}
+
 export function hasCompletedSession() {
   return Boolean(readAuth());
 }

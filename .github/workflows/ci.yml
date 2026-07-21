@@ -138,15 +138,8 @@ jobs:
           set -euo pipefail
           dotnet restore "${{ steps.detect.outputs.path }}"
           dotnet build "${{ steps.detect.outputs.path }}" --configuration Release --no-restore
+          dotnet test "${{ steps.detect.outputs.path }}" --configuration Release --no-build
           echo "后端构建通过。"
-
-      # TODO: 项目建立后取消注释以下测试步骤
-      # - name: 运行后端测试
-      #   if: steps.detect.outputs.exists == 'true'
-      #   shell: bash
-      #   run: |
-      #     set -euo pipefail
-      #     dotnet test "${{ steps.detect.outputs.path }}" --configuration Release --no-build
 
   # ============================================================
   # 前端构建（仅 frontend/** 有变更时运行）

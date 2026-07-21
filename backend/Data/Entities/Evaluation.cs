@@ -65,4 +65,7 @@ public class Evaluation
 
     [ForeignKey(nameof(EvaluatorUserId))]
     public User? Evaluator { get; set; }
+
+    public ICollection<EvaluationAwardSource> AwardSources { get; set; } =
+        new List<EvaluationAwardSource>();
 }

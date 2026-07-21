@@ -57,6 +57,18 @@ export interface ClubApplication {
    */
   applicantName?: string | null;
   /**
+   * 拟邀请的指导老师用户 ID。
+   * @type {number}
+   * @memberof ClubApplication
+   */
+  advisorUserId?: number | null;
+  /**
+   * 拟邀请的指导老师姓名。
+   * @type {string}
+   * @memberof ClubApplication
+   */
+  advisorName?: string | null;
+  /**
    *
    * @type {string}
    * @memberof ClubApplication
@@ -98,6 +110,12 @@ export interface ClubApplication {
    * @memberof ClubApplication
    */
   reviewComment?: string | null;
+  /**
+   * 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+   * @type {string}
+   * @memberof ClubApplication
+   */
+  contactPhone?: string | null;
   /**
    *
    * @type {string}
@@ -174,6 +192,8 @@ export function ClubApplicationFromJSONTyped(
     description: json["description"] == null ? undefined : json["description"],
     applicantUserId: json["applicantUserId"] == null ? undefined : json["applicantUserId"],
     applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
+    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
+    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
     applyReason: json["applyReason"],
     materialUrl: json["materialUrl"],
     auditStatus: json["auditStatus"],
@@ -181,6 +201,7 @@ export function ClubApplicationFromJSONTyped(
     reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
     reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
     reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
     clubStatus: json["clubStatus"] == null ? undefined : json["clubStatus"],
     clubStatusText: json["clubStatusText"],
     foundedAt: json["foundedAt"] == null ? undefined : new Date(json["foundedAt"]),
@@ -208,6 +229,8 @@ export function ClubApplicationToJSONTyped(
     description: value["description"],
     applicantUserId: value["applicantUserId"],
     applicantName: value["applicantName"],
+    advisorUserId: value["advisorUserId"],
+    advisorName: value["advisorName"],
     applyReason: value["applyReason"],
     materialUrl: value["materialUrl"],
     auditStatus: value["auditStatus"],
@@ -215,6 +238,7 @@ export function ClubApplicationToJSONTyped(
     reviewerUserId: value["reviewerUserId"],
     reviewerName: value["reviewerName"],
     reviewComment: value["reviewComment"],
+    contactPhone: value["contactPhone"],
     clubStatus: value["clubStatus"],
     clubStatusText: value["clubStatusText"],
     foundedAt: value["foundedAt"] == null ? value["foundedAt"] : value["foundedAt"].toISOString(),

@@ -233,16 +233,11 @@ paths:
   /api/notices:
     get:
       summary: 查询公告通知
-      description: 按当前用户权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      description: 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
       operationId: getNotices
+      security:
+        - bearerAuth: []
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前登录用户 ID（临时兼容，待 NoticesController 迁移至 JWT 后移除）。
-          schema:
-            type: integer
-            minimum: 1
         - name: noticeStatus
           in: query
           required: false
@@ -285,6 +280,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 当前用户不存在
           content:
@@ -292,24 +293,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
     post:
-      summary: 发布公告通知
-      description: 发布面向全校、指定社团、指定部门或指定成员的通知，并校验发布人权限和目标对象。
+      summary: 新建公告通知
+      description: 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
       operationId: createNotice
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateNoticeRequest"
+            example:
+              noticeType: announcement
+              title: 本周例会通知
+              content: 请各位成员准时参加本周例会。
+              targetType: club
+              targetId: 1
+              expireAt: null
+              noticeStatus: draft
       responses:
         "201":
-          description: 公告通知已发布
+          description: 通知草稿已保存或公告通知已发布
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Notice"
         "400":
           description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -327,23 +344,152 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/notices/{noticeId}/reads:
-    post:
-      summary: 标记通知已读
-      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
-      operationId: markNoticeRead
+  /api/notices/{noticeId}:
+    patch:
+      summary: 编辑或发布通知草稿
+      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+      operationId: updateNoticeDraft
+      security:
+        - bearerAuth: []
       parameters:
         - name: noticeId
           in: path
           required: true
+          description: 待编辑或发布的通知草稿 ID。
           schema:
             type: integer
+            minimum: 1
+            example: 12
+        - name: If-Unmodified-Since
+          in: header
+          required: true
+          description: 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+          schema:
+            type: string
+            example: Fri, 17 Jul 2026 08:00:00 GMT
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MarkNoticeReadRequest"
+              $ref: "#/components/schemas/CreateNoticeRequest"
+            example:
+              noticeType: announcement
+              title: 本周例会通知（时间调整）
+              content: 例会调整至周五 19:00，请准时参加。
+              targetType: club
+              targetId: 1
+              expireAt: null
+              noticeStatus: published
+      responses:
+        "200":
+          description: 草稿已更新或已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notice"
+        "400":
+          description: 请求内容不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有维护该草稿的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户、草稿或目标对象不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 草稿版本已变化，或通知已经发布、过期或删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      summary: 删除通知草稿
+      description: 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+      operationId: deleteNoticeDraft
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          description: 待删除的通知草稿 ID。
+          schema:
+            type: integer
+            minimum: 1
+            example: 12
+        - name: If-Unmodified-Since
+          in: header
+          required: true
+          description: 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+          schema:
+            type: string
+            example: Fri, 17 Jul 2026 08:00:00 GMT
+      responses:
+        "204":
+          description: 草稿已删除
+        "400":
+          description: 草稿版本请求头缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Bearer Token 缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有删除该草稿的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户或草稿不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 草稿版本已变化，或通知已经发布、过期或删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/notices/{noticeId}/reads:
+    post:
+      summary: 标记通知已读
+      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+      operationId: markNoticeRead
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          description: 待读取并标记为已读的通知 ID。
+          schema:
+            type: integer
+            minimum: 1
+            example: 12
       responses:
         "200":
           description: 已读记录已存在或已写入
@@ -351,8 +497,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NoticeReadResult"
-        "400":
-          description: 当前用户缺失
+        "401":
+          description: Bearer Token 缺失或无效
           content:
             application/json:
               schema:
@@ -365,6 +511,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 当前用户或通知不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 通知仍是草稿，不能标记已读
           content:
             application/json:
               schema:
@@ -408,6 +560,27 @@ paths:
         "409":
           description: 社团名称已存在或已有有效注册申请
 
+  /api/clubs/advisor-candidates:
+    get:
+      summary: 查询社团注册可选指导老师
+      description: 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
+      operationId: getClubAdvisorCandidates
+      responses:
+        "200":
+          description: 可选指导老师列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: 当前用户账号不可用
+        "401":
+          description: 登录状态已失效
+        "404":
+          description: 当前用户不存在
+
   /api/clubs/applications:
     get:
       summary: 按当前用户权限查询社团注册申请
@@ -419,6 +592,30 @@ paths:
           schema:
             type: string
             enum: [pending, approved, rejected]
+          example: pending
+        - name: keyword
+          in: query
+          required: false
+          description: 按社团名称、申请人姓名、用户名或学号模糊搜索。
+          schema:
+            type: string
+          example: 计算机协会
+        - name: startDate
+          in: query
+          required: false
+          description: 申请提交开始日期，按业务时区当天 00:00 起过滤。
+          schema:
+            type: string
+            format: date
+          example: "2026-07-01"
+        - name: endDate
+          in: query
+          required: false
+          description: 申请提交结束日期，按业务时区包含当天。
+          schema:
+            type: string
+            format: date
+          example: "2026-07-13"
       responses:
         "200":
           description: 社团注册申请列表
@@ -457,6 +654,39 @@ paths:
           description: 当前用户不是学生申请人或无权提交申请
         "409":
           description: 社团名称已存在或已有待审核申请
+
+  /api/clubs/applications/{clubId}:
+    patch:
+      summary: 修改退回的社团注册申请并重新提交
+      description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
+      operationId: resubmitClubApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubApplicationRequest"
+      responses:
+        "200":
+          description: 社团注册申请已重新提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubApplication"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户不是原申请人或无权提交申请
+        "404":
+          description: 当前用户或申请不存在
+        "409":
+          description: 当前申请状态不允许重新提交，或社团名称已被占用
 
   /api/clubs/applications/{clubId}/review:
     patch:
@@ -608,20 +838,36 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: departmentId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 1001
+          description: 按 CLUB_MEMBERS.department_id 精确筛选；新流程优先使用该字段。
+        - name: groupId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 2001
+          description: 按 CLUB_MEMBERS.group_id 精确筛选；需要与 departmentId 对应的小组。
         - name: departmentName
           in: query
           required: false
           schema:
             type: string
             example: "宣传部"
-          description: 按 CLUB_MEMBERS.department_name 精确筛选。
+          description: 按 CLUB_MEMBERS.department_name 精确筛选；保留用于历史兼容。
         - name: groupName
           in: query
           required: false
           schema:
             type: string
             example: "摄影组"
-          description: 按 CLUB_MEMBERS.group_name 精确筛选。
+          description: 按 CLUB_MEMBERS.group_name 精确筛选；保留用于历史兼容。
         - name: termName
           in: query
           required: false
@@ -642,6 +888,184 @@ paths:
           description: 当前用户没有查看该社团成员的权限
         "404":
           description: 当前用户或社团不存在
+
+  /api/clubs/{clubId}/departments:
+    get:
+      summary: 查询社团部门和小组
+      description: 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
+      operationId: getClubDepartments
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: includeInactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: 是否包含已停用的部门和小组。
+      responses:
+        "200":
+          description: 社团部门与小组列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubDepartmentRecord"
+        "403":
+          description: 当前用户没有查看该社团组织架构的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 新增社团部门
+      description: 社团负责人、指导老师或系统管理员维护社团部门；部门属于社团，名称在同一社团内唯一。
+      operationId: createClubDepartment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubDepartmentRequest"
+      responses:
+        "201":
+          description: 社团部门已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDepartmentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护或部门名称冲突
+
+  /api/clubs/{clubId}/departments/{departmentId}:
+    patch:
+      summary: 更新社团部门
+      description: 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
+      operationId: updateClubDepartment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubDepartmentRequest"
+      responses:
+        "200":
+          description: 社团部门已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDepartmentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或部门不存在
+        "409":
+          description: 社团状态不允许维护或部门名称冲突
+
+  /api/clubs/{clubId}/departments/{departmentId}/groups:
+    post:
+      summary: 新增社团小组
+      description: 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
+      operationId: createClubGroup
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClubGroupRequest"
+      responses:
+        "201":
+          description: 社团小组已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubGroupRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或部门不存在
+        "409":
+          description: 社团状态不允许维护或小组名称冲突
+
+  /api/clubs/{clubId}/groups/{groupId}:
+    patch:
+      summary: 更新社团小组
+      description: 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
+      operationId: updateClubGroup
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClubGroupRequest"
+      responses:
+        "200":
+          description: 社团小组已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubGroupRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团组织架构的权限
+        "404":
+          description: 当前用户、社团或小组不存在
+        "409":
+          description: 社团状态不允许维护或小组名称冲突
 
   /api/clubs/{clubId}/members/terms:
     post:
@@ -823,6 +1247,780 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/award-rule-documents:
+    get:
+      summary: 查询评奖评优评定细则
+      description: 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
+      operationId: getClubAwardRuleDocuments
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, published, archived]
+          description: 按细则状态筛选。
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按标题、发布单位、摘要或正文搜索。
+      responses:
+        "200":
+          description: 评定细则列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有查看该社团评奖评优细则的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 上传评奖评优评定细则
+      description: 系统管理员可上传校级通用细则；本社团负责人、指导老师或系统管理员可上传本社团细则。发布状态为 published 时会写入发布时间和发布人。
+      operationId: createClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
+      responses:
+        "201":
+          description: 评定细则已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有上传该范围细则的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护或同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}:
+    patch:
+      summary: 更新评奖评优评定细则
+      description: 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
+      operationId: updateClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardRuleDocumentRequest"
+      responses:
+        "200":
+          description: 评定细则已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+        "409":
+          description: 同一范围下存在重复标题细则
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish:
+    post:
+      summary: 发布评奖评优评定细则
+      description: 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
+      operationId: publishClubAwardRuleDocument
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评定细则已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "403":
+          description: 当前用户没有发布该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+
+  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file:
+    post:
+      summary: 上传评奖评优评定细则附件
+      description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
+      operationId: uploadClubAwardRuleDocumentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的评定细则附件。
+              required:
+                - file
+      responses:
+        "200":
+          description: 附件已上传并绑定到评定细则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardRuleDocumentRecord"
+        "400":
+          description: 文件为空、过大或文件类型不允许
+        "403":
+          description: 当前用户没有维护该细则的权限
+        "404":
+          description: 当前用户、社团或细则不存在
+        "503":
+          description: 文件存储暂不可用
+
+    get:
+      summary: 下载评奖评优评定细则附件
+      description: 校验当前用户对评定细则的可见权限后，从私有对象存储读取文件并流式返回；历史外部地址数据仅作兼容处理。
+      operationId: getClubAwardRuleDocumentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ruleDocumentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "302":
+          description: 历史外部地址型附件的兼容跳转
+        "403":
+          description: 当前用户没有下载该附件的权限
+        "404":
+          description: 细则或附件不存在
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-schemes:
+    get:
+      summary: 查询社团评奖评优奖项配置
+      description: 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
+      operationId: getClubAwardSchemes
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, open, reviewing, publicizing, archived, closed]
+          description: 按奖项配置状态筛选。
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 按奖项名称、等级名称或设立单位搜索。
+      responses:
+        "200":
+          description: 奖项配置列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardSchemeRecord"
+        "403":
+          description: 当前用户没有查看该社团奖项配置的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建社团评奖评优奖项配置
+      description: 社团负责人、指导老师或系统管理员创建奖项批次及等级，作为成员申请、负责人推荐和后续奖项分计算的规则来源。
+      operationId: createClubAwardScheme
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardSchemeRequest"
+      responses:
+        "201":
+          description: 奖项配置已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardSchemeRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团奖项配置的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 同一社团、学年、学期下已存在同名奖项
+
+  /api/clubs/{clubId}/award-schemes/{awardSchemeId}:
+    patch:
+      summary: 更新社团评奖评优奖项配置
+      description: 在不破坏既有申请外键的前提下更新奖项配置、等级、开放时间和状态；已归档奖项不允许再修改核心规则。
+      operationId: updateClubAwardScheme
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardSchemeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardSchemeRequest"
+      responses:
+        "200":
+          description: 奖项配置已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardSchemeRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该社团奖项配置的权限
+        "404":
+          description: 当前用户、社团或奖项配置不存在
+        "409":
+          description: 奖项配置状态不允许修改
+
+  /api/clubs/{clubId}/award-applications:
+    get:
+      summary: 查询社团评奖评优申请
+      description: 普通成员查看自己的申请；社团负责人、指导老师、系统管理员可按审核步骤、状态、奖项、成员筛选本社团申请。
+      operationId: getClubAwardApplications
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardSchemeId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按奖项配置筛选。
+        - name: applicantUserId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按申请成员筛选；普通成员只能传本人。
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              [
+                draft,
+                submitted,
+                club_review,
+                advisor_review,
+                school_review,
+                returned,
+                rejected,
+                approved,
+                publicizing,
+                publicized,
+                archived,
+                withdrawn,
+              ]
+          description: 按申请状态筛选。
+        - name: currentStep
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              [
+                student_submit,
+                club_review,
+                advisor_review,
+                school_review,
+                publicity,
+                archived,
+              ]
+          description: 按当前审核步骤筛选。
+      responses:
+        "200":
+          description: 评奖评优申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户没有查看该社团评奖评优申请的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建评奖评优申请或负责人推荐
+      description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
+      operationId: createClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardApplicationRequest"
+      responses:
+        "201":
+          description: 评奖评优申请已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有创建该申请的权限
+        "404":
+          description: 当前用户、社团、奖项配置或申请成员不存在
+        "409":
+          description: 奖项不属于当前社团、不在可申请状态或申请时间窗内、成员不在社团内或该成员已有同奖项申请
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}:
+    get:
+      summary: 获取评奖评优申请详情
+      description: 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
+      operationId: getClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 评奖评优申请详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "403":
+          description: 当前用户没有查看该申请详情的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+
+    patch:
+      summary: 更新评奖评优申请草稿
+      description: 申请人可修改草稿或退回状态的申请材料；负责人推荐记录可由推荐人或更高权限维护人修改。
+      operationId: updateClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAwardApplicationRequest"
+      responses:
+        "200":
+          description: 评奖评优申请已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有维护该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许修改
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments:
+    post:
+      summary: 上传评奖评优申请材料
+      description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
+      operationId: uploadClubAwardApplicationAttachment
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的申请材料文件。
+                attachmentType:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  description: 材料类型，例如个人总结、获奖证明、作品集。
+              required:
+                - file
+      responses:
+        "200":
+          description: 材料已上传并绑定到申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 文件为空、过大或文件类型不允许
+        "403":
+          description: 当前用户没有维护该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许补充材料
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file:
+    get:
+      summary: 下载评奖评优申请材料
+      description: 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
+      operationId: getClubAwardApplicationAttachmentFile
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 文件内容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "302":
+          description: 历史外部地址型材料的兼容跳转
+        "403":
+          description: 当前用户没有下载该材料的权限
+        "404":
+          description: 申请或材料不存在
+        "503":
+          description: 文件存储暂不可用
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/submit:
+    post:
+      summary: 提交或重新提交评奖评优申请
+      description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
+      operationId: submitClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 申请已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 申请材料不完整
+        "403":
+          description: 当前用户没有提交该申请的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态不允许提交
+
+  /api/clubs/{clubId}/award-applications/{awardApplicationId}/review:
+    post:
+      summary: 审核评奖评优申请
+      description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
+      operationId: reviewClubAwardApplication
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: awardApplicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAwardApplicationRequest"
+      responses:
+        "200":
+          description: 审核动作已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardApplicationRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有执行该审核步骤的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 当前申请状态与审核动作不匹配
+
+  /api/clubs/{clubId}/award-publicity:
+    get:
+      summary: 查询评奖评优公示批次
+      description: 公开查看已公示批次；维护人可查看草稿、公示中、已结束和已归档批次。
+      operationId: getClubAwardPublicityBatches
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, publicizing, closed, archived]
+      responses:
+        "200":
+          description: 公示批次列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有查看该社团公示的权限
+        "404":
+          description: 当前用户或社团不存在
+
+    post:
+      summary: 创建评奖评优公示批次
+      description: 社团负责人、指导老师或系统管理员从已通过的申请中创建公示批次。
+      operationId: createClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAwardPublicityBatchRequest"
+      responses:
+        "201":
+          description: 公示批次已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有创建公示批次的权限
+        "404":
+          description: 当前用户、社团或申请不存在
+        "409":
+          description: 申请状态不允许进入公示
+
+  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/publish:
+    post:
+      summary: 发布评奖评优公示批次
+      description: 将公示批次发布到公示列表，并把批次内申请标记为公示中。
+      operationId: publishClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: publicityBatchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 公示批次已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有发布公示的权限
+        "404":
+          description: 当前用户、社团或公示批次不存在
+        "409":
+          description: 公示批次状态不允许发布
+
+  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/archive:
+    post:
+      summary: 归档评奖评优公示批次
+      description: 将已公示结束的批次归档，并把批次内申请标记为已归档；归档后的申请成为成员考核奖项分的权威来源。
+      operationId: archiveClubAwardPublicityBatch
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: publicityBatchId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 公示批次已归档
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwardPublicityBatchRecord"
+        "403":
+          description: 当前用户没有归档公示的权限
+        "404":
+          description: 当前用户、社团或公示批次不存在
+        "409":
+          description: 公示批次状态不允许归档
+
   /api/clubs/{clubId}/evaluations:
     get:
       summary: 查询社团成员评价考核记录
@@ -893,10 +2091,84 @@ paths:
         "409":
           description: 社团状态不允许维护
 
+  /api/clubs/{clubId}/evaluations/score-preview:
+    get:
+      summary: 预览成员考核系统生成分
+      description: 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
+      operationId: previewClubEvaluationScores
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: 被考核成员用户 ID。
+        - name: termName
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: 考核学期；后端会解析为时间窗口并匹配活动、任务、学习和评优记录，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
+      responses:
+        "200":
+          description: 系统生成的成员考核分预览
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubEvaluationScorePreview"
+        "400":
+          description: 请求参数不符合业务规则
+        "403":
+          description: 当前用户没有预览该成员考核分的权限
+        "404":
+          description: 当前用户、社团或目标成员不存在
+        "409":
+          description: 社团状态不允许维护
+
+  /api/clubs/{clubId}/evaluations/generate:
+    post:
+      summary: 批量生成成员考核草稿
+      description: 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
+      operationId: generateClubEvaluations
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateClubEvaluationsRequest"
+      responses:
+        "200":
+          description: 成员考核草稿生成结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateClubEvaluationsResult"
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有批量生成该社团考核的权限
+        "404":
+          description: 当前用户或社团不存在
+        "409":
+          description: 社团状态不允许维护
+
   /api/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
       summary: 更新社团成员评价考核或评优评奖结果
-      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。总分和等级由后端重新计算，公示状态用于控制评优评奖结果展示。
+      description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
       operationId: updateClubEvaluation
       parameters:
         - name: clubId
@@ -1610,6 +2882,8 @@ paths:
     post:
       summary: 社团负责人或指导老师提交项目立项申请
       operationId: createProject
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1625,6 +2899,28 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 请求参数或业务校验失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权为该社团提交项目立项申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团或当前用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}:
     get:
@@ -1650,6 +2946,8 @@ paths:
     put:
       summary: 分配或调整项目负责人
       operationId: assignProjectLeader
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1671,16 +2969,42 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 负责人不是有效用户或社团成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是本社团负责人或干部，无权分配项目负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目已关闭，不能再调整负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/review:
     post:
       summary: 指导老师审核项目立项申请
       description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
       operationId: reviewProject
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1702,16 +3026,36 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 审核状态或指导老师无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是本社团指导老师，无权审核项目立项申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/cancel:
     post:
       summary: 撤销待审核或进行中的项目
       description: 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
       operationId: cancelProject
+      security:
+        - bearerAuth: []
       parameters:
         - name: projectId
           in: path
@@ -1733,15 +3077,33 @@ paths:
                 $ref: "#/components/schemas/Project"
         "400":
           description: 项目不是待审核/进行中状态或当前用户无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户无权撤销该项目申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/projects/{projectId}/members:
     get:
       summary: 获取项目成员列表
-      description: 项目 active 成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
+      description: 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
       operationId: getProjectMembers
       security:
         - bearerAuth: []
@@ -1775,7 +3137,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "403":
-          description: 当前用户不是项目 active 成员或无权查看历史成员
+          description: 当前用户未参与该项目或无权查看历史成员
           content:
             application/json:
               schema:
@@ -1788,7 +3150,7 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 添加项目成员
-      description: 项目负责人或本社团负责人、干部可以从所属社团 active 成员中添加项目成员；已移除或已退出成员会恢复为 active。
+      description: 项目负责人或本社团负责人、干部可以从所属社团当前有效成员中添加项目成员；已移除或已退出成员会恢复为正在参与状态。
       operationId: addProjectMember
       security:
         - bearerAuth: []
@@ -1813,7 +3175,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectMember"
         "400":
-          description: 请求参数无效，或候选用户不是所属社团 active 成员
+          description: 请求参数无效，或候选用户不是所属社团当前有效成员
           content:
             application/json:
               schema:
@@ -1846,7 +3208,7 @@ paths:
   /api/projects/{projectId}/member-candidates:
     get:
       summary: 获取项目成员候选人
-      description: 仅返回账号正常、属于项目所属社团且当前不是项目 active 成员的用户。
+      description: 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
       operationId: getProjectMemberCandidates
       security:
         - bearerAuth: []
@@ -1934,6 +3296,452 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "409":
           description: 项目已关闭、当前项目负责人不能被移除，或成员仍有未完成任务
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks:
+    get:
+      summary: 获取项目任务列表
+      description: 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。默认不返回已完成任务，可显式查看已完成任务。
+      operationId: getProjectTasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: completedOnly
+          in: query
+          required: false
+          description: 是否仅返回已完成任务，默认 false。
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 当前用户有权查看的项目任务列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectTask"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是正在参与该项目的成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 创建项目任务
+      description: 仅进行中项目的负责人可以创建任务，且全部执行人必须是正在参与该项目的成员。
+      operationId: createProjectTask
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectTaskRequest"
+      responses:
+        "201":
+          description: 项目任务已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+        "400":
+          description: 请求参数或任务日期无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人，或存在未参与该项目的执行人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或执行人不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目不是进行中状态，或任务创建发生并发冲突
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}:
+    delete:
+      summary: 删除项目任务
+      description: 仅项目负责人可删除任务；关联的执行人关系与进度提交记录会一并删除。
+      operationId: deleteProjectTask
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 项目任务已删除
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/progress:
+    patch:
+      summary: 更新项目任务进度
+      description: 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
+      operationId: updateProjectTaskProgress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectTaskProgressRequest"
+      responses:
+        "200":
+          description: 项目任务进度已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+        "400":
+          description: 进度、状态、完成日期或延期原因不符合业务规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该任务仍在参与项目的执行人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 已完成任务不能重新打开，或成员关系发生并发变化
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/deliverable:
+    post:
+      summary: 提交项目任务成果
+      description: 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
+      operationId: submitProjectTaskDeliverable
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitProjectTaskDeliverableRequest"
+            example:
+              deliverableTitle: 阶段成果报告
+              deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+              deliverableUrl: https://example.com/project/stage-report.pdf
+      responses:
+        "200":
+          description: 项目任务成果已提交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+              example:
+                id: 2001
+                projectId: 1001
+                assignees:
+                  - userId: 12
+                    displayName: 王同学（2450004）
+                title: 完成阶段成果报告
+                content: 汇总项目执行材料并提交审核。
+                priority: high
+                startDate: "2026-07-15T09:00:00Z"
+                dueDate: "2026-07-20T18:00:00Z"
+                finishDate: null
+                progress: 90
+                taskStatus: in_progress
+                delayReason: null
+                deliverableTitle: 阶段成果报告
+                deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+                deliverableUrl: https://example.com/project/stage-report.pdf
+                deliverableStatus: pending
+                reviewerUserId: null
+                reviewerDisplayName: null
+                reviewComment: null
+                deliverableSubmitterId: 12
+                deliverableSubmitterDisplayName: 王同学（2450004）
+                deliverableSubmittedAt: "2026-07-19T10:00:00Z"
+                deliverableReviewedAt: null
+        "400":
+          description: 成果标题、说明或链接不符合要求
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是项目负责人或该任务执行人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目状态不允许提交、成果已通过或成果正在审核中
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/deliverable/review:
+    post:
+      summary: 审核项目任务成果
+      description: 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
+      operationId: reviewProjectTaskDeliverable
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewProjectTaskDeliverableRequest"
+            example:
+              approved: true
+              reviewComment: 成果完整，同意通过。
+      responses:
+        "200":
+          description: 项目任务成果审核结果已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTask"
+              example:
+                id: 2001
+                projectId: 1001
+                assignees:
+                  - userId: 12
+                    displayName: 王同学（2450004）
+                title: 完成阶段成果报告
+                content: 汇总项目执行材料并提交审核。
+                priority: high
+                startDate: "2026-07-15T09:00:00Z"
+                dueDate: "2026-07-20T18:00:00Z"
+                finishDate: "2026-07-19T12:00:00Z"
+                progress: 100
+                taskStatus: completed
+                delayReason: null
+                deliverableTitle: 阶段成果报告
+                deliverableDesc: 已完成活动策划、物资清单和阶段复盘材料。
+                deliverableUrl: https://example.com/project/stage-report.pdf
+                deliverableStatus: approved
+                reviewerUserId: 3
+                reviewerDisplayName: 李老师（05001）
+                reviewComment: 成果完整，同意通过。
+                deliverableSubmitterId: 12
+                deliverableSubmitterDisplayName: 王同学（2450004）
+                deliverableSubmittedAt: "2026-07-19T10:00:00Z"
+                deliverableReviewedAt: "2026-07-19T12:00:00Z"
+        "400":
+          description: 审核请求无效，或成果不是待审核状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权审核该任务成果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目或项目任务不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 项目状态不允许审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/projects/{projectId}/tasks/{taskId}/progress-reports:
+    get:
+      summary: 获取项目任务进度提交记录
+      description: 项目负责人可查看项目全部任务的记录；任务执行人仅可查看分配给自己的任务记录。
+      operationId: getProjectTaskProgressReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 按提交时间倒序排列的进度记录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectTaskProgressReport"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权查看该任务记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目任务不存在
           content:
             application/json:
               schema:
@@ -2413,65 +4221,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/learning/teacher-candidates:
+  /api/learning/instructor-lookup:
     get:
-      summary: ????????
-      description: ?????????????????????????????????????????????
-      operationId: getLearningTeacherCandidates
+      summary: 按学工号查询课程授课人
+      description: 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
+      operationId: getLearningInstructorByUserNumber
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-          description: ?????? ID???????????????????????????
         - name: clubId
           in: query
           required: true
           schema:
             type: integer
             minimum: 1
-          description: ????????? ID?
-      responses:
-        "200":
-          description: ????????
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LearningTeacherCandidate"
-        "400":
-          description: ?????????????????
-        "403":
-          description: ?????????????
-        "404":
-          description: ??????????
-
-  /api/learning/items:
-    get:
-      summary: ????????
-      description: ?????????????????????????????????????
-      operationId: getLearningItems
-      parameters:
-        - name: currentUserId
+          description: 需要发布或维护课程的社团 ID。
+        - name: userNumber
           in: query
           required: true
           schema:
-            type: integer
-            minimum: 1
-          description: ?????? ID??????????????????????
+            type: string
+            minLength: 1
+            maxLength: 30
+          description: 要查询的学号或工号。
+      responses:
+        "200":
+          description: 已找到的授课人。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningTeacherCandidate"
+        "400":
+          description: 社团 ID、学工号或账号状态无效。
+        "403":
+          description: 当前用户无权维护该社团的课程。
+        "404":
+          description: 当前用户、社团或对应的正常状态教师/学生不存在。
+
+  /api/learning/items:
+    get:
+      summary: 获取可见的课程与学习资源
+      description: 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
+      operationId: getLearningItems
+      security:
+        - bearerAuth: []
+      parameters:
         - name: clubId
           in: query
           required: false
           schema:
             type: integer
             minimum: 1
-          description: ??? ID ?????
+          description: 可选的社团 ID 筛选条件。
       responses:
         "200":
-          description: ??????
+          description: 当前用户可见的课程与学习资源列表。
           content:
             application/json:
               schema:
@@ -2479,13 +4283,15 @@ paths:
                 items:
                   $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ???? ID??? ID ???????
+          description: 社团 ID 或资源筛选参数无效。
         "404":
-          description: ???????
+          description: 当前用户不存在。
     post:
-      summary: ?????????
-      description: ??????????????????????????????????????
+      summary: 发布课程或上传学习资源
+      description: 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可创建课程、视频、文档和资料资源。
       operationId: createLearningItem
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -2494,21 +4300,268 @@ paths:
               $ref: "#/components/schemas/CreateLearningItemRequest"
       responses:
         "201":
-          description: ???????
+          description: 课程或学习资源创建成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ?????????????
+          description: 请求参数、资源类型或排期无效。
         "403":
-          description: ?????????????
+          description: 当前用户无权为目标社团发布内容。
+
+  /api/learning/resources/upload:
+    post:
+      summary: 上传社团学习资源
+      description: 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
+      operationId: uploadLearningResource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - clubId
+                - file
+                - visibility
+                - downloadPermission
+              properties:
+                clubId:
+                  type: integer
+                  minimum: 1
+                  description: 文件所属社团。
+                file:
+                  type: string
+                  format: binary
+                  description: 最大 50 MB 的资源文件。
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  nullable: true
+                  description: 可选的资源标题；未填写时使用原文件名。
+                categoryName:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                  description: 可选的资源分类。
+                description:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+                  description: 可选的资源内容摘要、用途、版本或注意事项。
+                visibility:
+                  type: string
+                  enum: [public, club, department]
+                  description: 资源可见范围。
+                downloadPermission:
+                  type: string
+                  enum: [allow, deny, approval]
+                  description: 资源下载设置。
+      responses:
+        "201":
+          description: 文件上传并创建资源成功。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: 文件、社团或权限参数无效。
+        "403":
+          description: 当前用户无权为该社团上传资源。
+        "404":
+          description: 当前用户或社团不存在。
+        "413":
+          description: 文件超过 50 MB。
+        "503":
+          description: OSS、ECS RAM 角色临时凭据或存储桶不可用。
+
+  /api/learning/items/{itemId}/file:
+    get:
+      summary: 获取受保护的学习资源文件
+      description: 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
+      operationId: getLearningResourceFile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 文件内容。
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: 当前用户无权查看该资源。
+        "404":
+          description: 资源或物理文件不存在。
+        "503":
+          description: OSS、ECS RAM 角色临时凭据或对象读取暂不可用。
+
+  /api/learning/items/{itemId}/preview-session:
+    post:
+      summary: 准备学习资源在线预览会话
+      description: 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+      operationId: createLearningPreviewSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 预览已准备完成，响应设置短时预览 Cookie。
+          headers:
+            X-ClubHub-Preview-Kind:
+              description: 前端展示类型。
+              schema:
+                type: string
+                enum: [image, video, pdf]
+            X-ClubHub-Preview-Converted:
+              description: 是否使用 Office 转换后的 PDF 副本。
+              schema:
+                type: boolean
+        "400":
+          description: 资源 ID 无效或课程没有可预览文件。
+        "403":
+          description: 当前用户不在可见范围内，或没有预览非公开资源的管理权限。
+        "404":
+          description: 用户、资源或文件不存在。
+        "415":
+          description: 文件格式不受支持、文件签名与扩展名不一致，或 Office 在线转换尚未启用。
+        "422":
+          description: Office 文件转换失败、超时、超出大小或内存限制。
+        "503":
+          description: 私有 OSS 或预览缓存暂不可用。
+
+  /api/learning/items/{itemId}/preview:
+    get:
+      summary: 获取受保护的学习资源在线预览内容
+      description: 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+      operationId: getLearningPreview
+      security:
+        - previewSessionCookie: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: Range
+          in: header
+          required: false
+          description: 单段字节范围，例如 bytes=0-1048575。
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 完整预览内容。
+          headers:
+            Accept-Ranges:
+              schema:
+                type: string
+                example: bytes
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: nosniff
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: 符合请求范围的部分预览内容。
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: 预览会话缺失或已过期。
+        "403":
+          description: 当前用户不再具备资源预览权限。
+        "404":
+          description: 资源、原文件或预览副本不存在。
+        "415":
+          description: 文件格式不受支持，或文件签名与扩展名不一致。
+        "416":
+          description: Range 请求无效或包含多个范围。
+        "422":
+          description: Office 文件转换失败。
+        "503":
+          description: 私有 OSS 或预览缓存暂不可用。
 
   /api/learning/items/{itemId}:
     put:
-      summary: ??????
-      description: ??????????????????????????????????????
+      summary: 更新课程或学习资源
+      description: 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
       operationId: updateLearningItem
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2524,25 +4577,87 @@ paths:
               $ref: "#/components/schemas/UpdateLearningItemRequest"
       responses:
         "200":
-          description: ???????
+          description: 课程或学习资源更新成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningItem"
         "400":
-          description: ?????????????????
+          description: 请求参数、资源类型、排期或状态无效。
         "403":
-          description: ???????????
+          description: 当前用户无权维护该内容。
         "404":
-          description: ?????
+          description: 课程、学习资源或当前用户不存在。
         "409":
-          description: ?????????????
+          description: 当前状态不允许执行本次更新。
+    delete:
+      summary: 删除课程或学习资源
+      description: 当前拥有目标社团 resource:upload 权限的负责人、干部、指导老师，以及拥有 resource:delete 权限的社团管理员或系统管理员可删除课程或资源，并同步清理相关学习记录、OSS 对象或历史本地文件。
+      operationId: deleteLearningResource
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 资源已删除。
+        "400":
+          description: 目标是课程或资源编号无效。
+        "403":
+          description: 当前用户无权删除该资源。
+        "404":
+          description: 资源或当前用户不存在。
+        "503":
+          description: OSS、ECS RAM 角色临时凭据或对象删除暂不可用，数据库记录保持不变。
+
+  /api/learning/items/{itemId}/review:
+    post:
+      summary: 审核课程或学习资源
+      description: 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
+      operationId: reviewLearningItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewLearningItemRequest"
+      responses:
+        "200":
+          description: 审核结果已保存。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItem"
+        "400":
+          description: 审核结果无效。
+        "403":
+          description: 当前用户没有审核权限或不能审核自己提交的内容。
+        "404":
+          description: 课程、资源或审核用户不存在。
+        "409":
+          description: 当前状态不允许审核。
 
   /api/learning/items/{itemId}/enrollments:
     post:
-      summary: ??????
-      description: ??????????????????????????????????????????????????????
+      summary: 加入培训课程
+      description: 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
       operationId: enrollLearningItem
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2550,31 +4665,27 @@ paths:
           schema:
             type: integer
             minimum: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "201":
-          description: ????????????
+          description: 已成功加入课程并创建学习记录。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ????????????????
+          description: 目标不是可报名课程或报名参数无效。
         "403":
-          description: ???????????????????????????
+          description: 当前用户没有课程报名权限、不可见该课程或不能报名本人授课的课程。
         "409":
-          description: ????????????
+          description: 已报名、课程名额已满或课程状态不允许报名。
         "404":
-          description: ??????????
+          description: 课程或当前用户不存在。
     delete:
-      summary: ??????
-      description: ???????????????????????????????????????
+      summary: 退出培训课程
+      description: 当前登录用户在课程结束前退出尚未完成的课程。
       operationId: cancelLearningEnrollment
+      security:
+        - bearerAuth: []
       parameters:
         - name: itemId
           in: path
@@ -2582,38 +4693,116 @@ paths:
           schema:
             type: integer
             minimum: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnrollLearningItemRequest"
       responses:
         "200":
-          description: ?????
+          description: 已退出课程。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ??????????????????????
+          description: 目标不是可退出的课程，或课程已结束、学习已完成。
         "403":
-          description: ?????????????
+          description: 当前用户无权退出该课程。
         "404":
-          description: ??????????
+          description: 课程、报名记录或当前用户不存在。
+
+  /api/learning/items/{itemId}/learning:
+    post:
+      summary: 开始或继续学习资源
+      description: 为当前登录用户创建或恢复视频、文档、资料的学习记录。
+      operationId: startLearningItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 已存在的学习记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "201":
+          description: 新建或恢复的学习记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRecord"
+        "400":
+          description: 资源状态或类型不允许开始学习
+        "403":
+          description: 当前用户不在资源可见范围内
+        "404":
+          description: 学习资源不存在
+
+  /api/learning/items/{itemId}/download:
+    post:
+      summary: 校验权限并记录学习资源下载
+      description: 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
+      operationId: downloadLearningItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 下载权限校验通过且行为已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningDownloadResult"
+        "400":
+          description: 资源没有有效文件地址
+        "403":
+          description: 当前用户不可见该资源或资源不允许直接下载
+        "404":
+          description: 学习资源不存在
+
+  /api/learning/items/{itemId}/statistics:
+    get:
+      summary: 获取学习资源统计
+      description: 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
+      operationId: getLearningItemStatistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 学习资源统计
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningItemStatistics"
+        "403":
+          description: 当前用户无权查看该资源统计
+        "404":
+          description: 学习资源不存在
 
   /api/learning/records:
     get:
-      summary: ??????
-      description: ?????????????????????????????????
+      summary: 获取学习记录
+      description: 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
       operationId: getLearningRecords
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
         - name: itemId
           in: query
           required: false
@@ -2622,7 +4811,7 @@ paths:
             minimum: 1
       responses:
         "200":
-          description: ??????
+          description: 符合查询条件的学习记录列表。
           content:
             application/json:
               schema:
@@ -2630,13 +4819,15 @@ paths:
                 items:
                   $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ???? ID ??
+          description: 资源 ID 无效。
 
   /api/learning/records/{recordId}/progress:
     put:
-      summary: ??????
-      description: ?????????????????? 100 ????????
+      summary: 更新学习进度和累计时长
+      description: 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
       operationId: updateLearningProgress
+      security:
+        - bearerAuth: []
       parameters:
         - name: recordId
           in: path
@@ -2652,17 +4843,377 @@ paths:
               $ref: "#/components/schemas/UpdateLearningProgressRequest"
       responses:
         "200":
-          description: ???????
+          description: 学习进度更新成功。
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningRecord"
         "400":
-          description: ????????????
+          description: 进度、学习时长或记录状态无效。
         "403":
-          description: ?????????????
+          description: 当前用户无权更新该学习记录。
         "404":
-          description: ???????
+          description: 学习记录或当前用户不存在。
+  /api/materials:
+    get:
+      summary: List activity materials
+      operationId: getMaterials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, disabled]
+      responses:
+        "200":
+          description: Materials visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material status (`material_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Create an activity material
+      operationId: createMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMaterialRequest"
+      responses:
+        "201":
+          description: Material created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/materials/{materialId}:
+    put:
+      summary: Update an activity material
+      operationId: updateMaterial
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: materialId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMaterialRequest"
+      responses:
+        "200":
+          description: Material updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Material"
+        "400":
+          description: Invalid material payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material inventory permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent material write conflict (`material_write_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows:
+    get:
+      summary: List material borrow records
+      operationId: getMaterialBorrows
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: materialId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: borrowerUserId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [borrowed, returned, damaged]
+      responses:
+        "200":
+          description: Borrow records visible to the current material manager.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow status (`borrow_status_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: Register a material borrow
+      operationId: borrowMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowMaterialRequest"
+      responses:
+        "201":
+          description: Borrow registered and available quantity reduced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid borrow payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Material or borrower not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Available stock is insufficient (`material_stock_not_enough`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/return:
+    post:
+      summary: Register material return
+      operationId: returnMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Return registered and available quantity restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Borrow record is not in borrowed status (`borrow_status_not_borrowed`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record or material not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Concurrent borrow write conflict (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/material-borrows/{borrowId}/damage:
+    post:
+      summary: Register material damage
+      operationId: damageMaterialBorrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMaterialDamageRequest"
+      responses:
+        "200":
+          description: Damage registered with compensation amount.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialBorrow"
+        "400":
+          description: Invalid damage payload (`damage_description_required`, `compensation_amount_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Material management permission required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Borrow record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Borrow status changed (`borrow_status_changed`) or a concurrent write conflict occurred (`borrow_concurrent_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2670,6 +5221,11 @@ components:
       scheme: bearer
       bearerFormat: ClubHub-HMAC
       description: 登录或注册成功后返回的 ClubHub Bearer 令牌。
+    previewSessionCookie:
+      type: apiKey
+      in: cookie
+      name: clubhub-preview
+      description: 由预览会话接口设置、仅对指定资源预览路径有效的短时 HttpOnly Cookie。
 
   schemas:
     ApiError:
@@ -3080,7 +5636,7 @@ components:
         publishAt:
           type: string
           format: date-time
-          description: 发布时间。
+          description: 已发布通知的发布时间；草稿状态下表示最近保存时间。
         expireAt:
           type: string
           format: date-time
@@ -3122,12 +5678,8 @@ components:
 
     CreateNoticeRequest:
       type: object
-      description: 发布公告通知请求。
+      description: 新建、编辑或发布公告通知请求；操作人身份只从 Bearer Token 获取。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 2
         noticeType:
           type: string
           description: 通知类型，例如 announcement、urgent、event。
@@ -3168,27 +5720,16 @@ components:
           nullable: true
         noticeStatus:
           type: string
-          description: 通知状态；默认 published。
+          description: 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
           enum: [draft, published]
           default: published
           example: published
       required:
-        - currentUserId
         - noticeType
         - title
         - content
         - targetType
 
-    MarkNoticeReadRequest:
-      type: object
-      description: 标记通知已读请求。
-      properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 3
-      required:
-        - currentUserId
     NoticeReadResult:
       type: object
       description: 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
@@ -3210,7 +5751,6 @@ components:
           format: date-time
           description: 已读时间。
       required:
-        - currentUserId
         - noticeId
         - userId
         - isRead
@@ -3320,6 +5860,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
         auditStatus:
           type: string
           nullable: true
@@ -3427,6 +5969,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 社团对外联系电话或负责人联系电话。
+          example: "021-65980000"
       required:
         - name
         - category
@@ -3447,6 +5991,283 @@ components:
           deprecated: true
           description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
+    ClubGroupRecord:
+      type: object
+      description: 社团小组记录，对应 CLUB_GROUPS 表。
+      properties:
+        groupId:
+          type: integer
+          description: 小组 ID。
+          example: 2001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        departmentId:
+          type: integer
+          description: 所属部门 ID。
+          example: 1001
+        groupName:
+          type: string
+          description: 小组名称，同一部门下唯一。
+          example: 开发组
+        groupCode:
+          type: string
+          nullable: true
+          description: 小组内部编码，可用于后端或导入识别。
+          example: DEV
+        description:
+          type: string
+          nullable: true
+          description: 小组简介。
+          example: 负责协会项目开发与代码维护。
+        responsibilities:
+          type: string
+          nullable: true
+          description: 小组职责范围。
+          example: 维护社团官网、组织技术分享和项目协作。
+        contactPhone:
+          type: string
+          nullable: true
+          description: 小组联系电话。
+          example: "13800000000"
+        contactEmail:
+          type: string
+          nullable: true
+          description: 小组联系邮箱。
+          example: dev@clubhub.example
+        activityLocation:
+          type: string
+          nullable: true
+          description: 小组常用活动地点。
+          example: 嘉定校区创新实验室
+        displayOrder:
+          type: integer
+          description: 小组展示顺序，数值越小越靠前。
+          example: 10
+        groupStatus:
+          type: string
+          enum: [active, inactive]
+          description: 小组状态，active 表示启用，inactive 表示停用。
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: 小组创建时间。
+          example: "2026-07-14T08:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 小组最后更新时间。
+          example: "2026-07-14T08:30:00Z"
+      required:
+        - groupId
+        - clubId
+        - departmentId
+        - groupName
+        - displayOrder
+        - groupStatus
+        - createdAt
+        - updatedAt
+
+    ClubDepartmentRecord:
+      type: object
+      description: 社团部门记录，对应 CLUB_DEPARTMENTS 表，并携带下属小组。
+      properties:
+        departmentId:
+          type: integer
+          description: 部门 ID。
+          example: 1001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        departmentName:
+          type: string
+          description: 部门名称，同一社团下唯一。
+          example: 技术部
+        departmentCode:
+          type: string
+          nullable: true
+          description: 部门内部编码，可用于后端或导入识别。
+          example: TECH
+        description:
+          type: string
+          nullable: true
+          description: 部门简介。
+          example: 负责协会技术建设和项目孵化。
+        responsibilities:
+          type: string
+          nullable: true
+          description: 部门职责范围。
+          example: 统筹技术培训、项目协作和竞赛支持。
+        contactPhone:
+          type: string
+          nullable: true
+          description: 部门联系电话。
+          example: "13800000000"
+        contactEmail:
+          type: string
+          nullable: true
+          description: 部门联系邮箱。
+          example: tech@clubhub.example
+        officeLocation:
+          type: string
+          nullable: true
+          description: 部门常用办公或活动地点。
+          example: 嘉定校区学生创新中心 301
+        displayOrder:
+          type: integer
+          description: 部门展示顺序，数值越小越靠前。
+          example: 10
+        departmentStatus:
+          type: string
+          enum: [active, inactive]
+          description: 部门状态，active 表示启用，inactive 表示停用。
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: 部门创建时间。
+          example: "2026-07-14T08:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 部门最后更新时间。
+          example: "2026-07-14T08:30:00Z"
+        groups:
+          type: array
+          description: 部门下属小组列表。
+          items:
+            $ref: "#/components/schemas/ClubGroupRecord"
+      required:
+        - departmentId
+        - clubId
+        - departmentName
+        - displayOrder
+        - departmentStatus
+        - createdAt
+        - updatedAt
+        - groups
+
+    CreateClubDepartmentRequest:
+      type: object
+      description: 创建社团部门的请求体。
+      properties:
+        departmentName:
+          type: string
+          minLength: 1
+          description: 部门名称，同一社团下唯一。
+          example: 技术部
+        departmentCode:
+          type: string
+          nullable: true
+          description: 部门内部编码，可用于后端或导入识别。
+          example: TECH
+        description:
+          type: string
+          nullable: true
+          description: 部门简介。
+          example: 负责协会技术建设和项目孵化。
+        responsibilities:
+          type: string
+          nullable: true
+          description: 部门职责范围。
+          example: 统筹技术培训、项目协作和竞赛支持。
+        contactPhone:
+          type: string
+          nullable: true
+          description: 部门联系电话。
+          example: "13800000000"
+        contactEmail:
+          type: string
+          nullable: true
+          description: 部门联系邮箱。
+          example: tech@clubhub.example
+        officeLocation:
+          type: string
+          nullable: true
+          description: 部门常用办公或活动地点。
+          example: 嘉定校区学生创新中心 301
+        displayOrder:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 部门展示顺序，数值越小越靠前。
+          example: 10
+        departmentStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+          description: 部门状态，active 表示启用，inactive 表示停用。
+          example: active
+      required:
+        - departmentName
+
+    UpdateClubDepartmentRequest:
+      description: 更新社团部门的请求体，字段含义与创建部门一致。
+      allOf:
+        - $ref: "#/components/schemas/CreateClubDepartmentRequest"
+
+    CreateClubGroupRequest:
+      type: object
+      description: 创建社团小组的请求体。
+      properties:
+        groupName:
+          type: string
+          minLength: 1
+          description: 小组名称，同一部门下唯一。
+          example: 开发组
+        groupCode:
+          type: string
+          nullable: true
+          description: 小组内部编码，可用于后端或导入识别。
+          example: DEV
+        description:
+          type: string
+          nullable: true
+          description: 小组简介。
+          example: 负责协会项目开发与代码维护。
+        responsibilities:
+          type: string
+          nullable: true
+          description: 小组职责范围。
+          example: 维护社团官网、组织技术分享和项目协作。
+        contactPhone:
+          type: string
+          nullable: true
+          description: 小组联系电话。
+          example: "13800000000"
+        contactEmail:
+          type: string
+          nullable: true
+          description: 小组联系邮箱。
+          example: dev@clubhub.example
+        activityLocation:
+          type: string
+          nullable: true
+          description: 小组常用活动地点。
+          example: 嘉定校区创新实验室
+        displayOrder:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 小组展示顺序，数值越小越靠前。
+          example: 10
+        groupStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+          description: 小组状态，active 表示启用，inactive 表示停用。
+          example: active
+      required:
+        - groupName
+
+    UpdateClubGroupRequest:
+      description: 更新社团小组的请求体，字段含义与创建小组一致。
+      allOf:
+        - $ref: "#/components/schemas/CreateClubGroupRequest"
+
     ClubMemberRecord:
       type: object
       properties:
@@ -3463,9 +6284,19 @@ components:
         studentNo:
           type: string
           nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+          description: 成员当前归属部门 ID；为空表示未归属部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
+        groupId:
+          type: integer
+          nullable: true
+          description: 成员当前归属小组 ID；为空表示未归属小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
@@ -3515,12 +6346,26 @@ components:
         userId:
           type: integer
           minimum: 1
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 新成员任期归属部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 departmentId。
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 新成员任期归属小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 groupId。
         positionName:
           type: string
           minLength: 1
@@ -3559,12 +6404,26 @@ components:
           deprecated: true
           description: 已废弃，服务端从 JWT 读取身份。
           minimum: 1
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员任期调整后的部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 departmentId。
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员任期调整后的小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
+          description: 历史兼容字段；新流程优先使用 groupId。
         positionName:
           type: string
           minLength: 1
@@ -3591,16 +6450,1166 @@ components:
       type: object
       description: 更新成员部门和小组归属的请求体。
       properties:
+        departmentId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员调整后的部门 ID；传 null 表示不归属任何部门。
+          example: 1001
         departmentName:
           type: string
           nullable: true
-          description: 成员调整后的部门名称；传空或 null 表示不归属任何部门。
+          description: 历史兼容字段；新流程优先使用 departmentId。
           example: 技术部
+        groupId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 成员调整后的小组 ID；传 null 表示不归属任何小组。
+          example: 2001
         groupName:
           type: string
           nullable: true
-          description: 成员调整后的小组名称；传空或 null 表示不归属任何小组。
+          description: 历史兼容字段；新流程优先使用 groupId。
           example: 后端组
+
+    AwardLevelInput:
+      type: object
+      description: 奖项等级配置输入；不分等级的奖项也应保留一个默认等级，作为奖项分、金额和名额的规则来源。
+      properties:
+        awardLevelId:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: 已有等级 ID；新增等级时为空。
+          example: 10001
+        levelName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 等级名称。
+          example: 一等奖
+        awardScore:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: 该等级贡献到成员考核的奖项分。
+          example: 20
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          description: 奖励金额；非经费类荣誉可为空。
+          example: 500
+        quota:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: 名额；不限名额时为空。
+          example: 3
+        displayOrder:
+          type: integer
+          default: 0
+          description: 等级展示顺序。
+          example: 1
+        levelStatus:
+          type: string
+          enum: [active, inactive]
+          default: active
+          description: 等级状态。
+          example: active
+      required:
+        - levelName
+        - awardScore
+
+    AwardLevelRecord:
+      type: object
+      description: 社团评奖评优奖项等级配置。
+      properties:
+        awardLevelId:
+          type: integer
+          description: 奖项等级 ID。
+          example: 10001
+        awardSchemeId:
+          type: integer
+          description: 所属奖项配置 ID。
+          example: 9001
+        levelName:
+          type: string
+          description: 等级名称，例如一等奖、二等奖或优秀奖。
+          example: 一等奖
+        awardScore:
+          type: number
+          format: decimal
+          description: 该等级折算到成员考核中的奖项分。
+          example: 20
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 该等级对应的奖励金额；无固定金额时为空。
+          example: 500
+        quota:
+          type: integer
+          nullable: true
+          description: 该等级名额；不限制名额时为空。
+          example: 3
+        displayOrder:
+          type: integer
+          description: 等级展示顺序，数值越小越靠前。
+          example: 1
+        levelStatus:
+          type: string
+          enum: [active, inactive]
+          description: 等级状态；停用等级仅用于历史申请展示，不再允许新申请选择。
+          example: active
+      required:
+        - awardLevelId
+        - awardSchemeId
+        - levelName
+        - awardScore
+        - displayOrder
+        - levelStatus
+
+    AwardRuleDocumentRecord:
+      type: object
+      description: 评奖评优评定细则，支持学校级通用细则和社团级细则。
+      properties:
+        ruleDocumentId:
+          type: integer
+          description: 细则 ID。
+          example: 137601
+        clubId:
+          type: integer
+          nullable: true
+          description: 社团级细则所属社团；学校级细则为空。
+          example: 2
+        clubName:
+          type: string
+          nullable: true
+          description: 所属社团名称；学校级细则为空。
+          example: 摄影社
+        ruleTitle:
+          type: string
+          description: 细则标题。
+          example: 2026 年度校园影像贡献奖评定细则
+        ruleScope:
+          type: string
+          enum: [global, club]
+          description: global 表示学校级通用细则，club 表示社团级细则。
+          example: club
+        ruleScopeText:
+          type: string
+          description: 细则范围中文文案。
+          example: 社团细则
+        academicYear:
+          type: string
+          description: 适用学年或年度。
+          example: "2026"
+        termName:
+          type: string
+          nullable: true
+          description: 适用学期。
+          example: 春季
+        issuerName:
+          type: string
+          nullable: true
+          description: 发布或制定单位。
+          example: 摄影社评奖评优工作组
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 细则附件的内部文件引用；客户端下载文件应调用评定细则附件下载接口。
+          example: clubs/2/awards/137601/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        materialName:
+          type: string
+          nullable: true
+          description: 细则附件展示名称。
+          example: 摄影社 2026 年度校园影像贡献奖评定细则.pdf
+        versionNo:
+          type: string
+          description: 细则版本号。
+          example: "1.0"
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          description: 细则状态。
+          example: published
+        ruleStatusText:
+          type: string
+          description: 细则状态中文文案。
+          example: 已发布
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效开始时间。
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 生效结束时间。
+        publishedByUserId:
+          type: integer
+          nullable: true
+          description: 发布人用户 ID。
+        publishedByName:
+          type: string
+          nullable: true
+          description: 发布人展示名。
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 发布时间。
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - ruleDocumentId
+        - ruleTitle
+        - ruleScope
+        - ruleScopeText
+        - academicYear
+        - versionNo
+        - ruleStatus
+        - ruleStatusText
+        - createdAt
+        - updatedAt
+
+    CreateAwardRuleDocumentRequest:
+      type: object
+      description: 创建评奖评优评定细则的请求。
+      properties:
+        ruleTitle:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 细则标题。
+        ruleScope:
+          type: string
+          enum: [global, club]
+          default: club
+          description: global 为学校级细则，club 为当前社团细则。
+        academicYear:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 适用学年或年度。
+        termName:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: 适用学期。
+        issuerName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 发布或制定单位。
+        summary:
+          type: string
+          nullable: true
+          description: 细则摘要。
+        contentText:
+          type: string
+          nullable: true
+          description: 细则正文。
+        materialUrl:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: 兼容字段，由附件上传接口维护内部文件引用；新前端不应让用户手填地址。
+        materialName:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 附件展示名称。
+        versionNo:
+          type: string
+          maxLength: 50
+          default: "1.0"
+          description: 版本号。
+        ruleStatus:
+          type: string
+          enum: [draft, published, archived]
+          default: draft
+          description: 初始状态。
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        effectiveEndAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - ruleTitle
+        - academicYear
+
+    UpdateAwardRuleDocumentRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAwardRuleDocumentRequest"
+
+    AwardSchemeRecord:
+      type: object
+      description: 社团评奖评优奖项配置，对应学校奖学金系统里的奖种详情，但按社团维度管理。
+      properties:
+        awardSchemeId:
+          type: integer
+          description: 奖项配置 ID。
+          example: 9001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        awardName:
+          type: string
+          description: 奖项名称。
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类，用于区分荣誉、奖学金、竞赛、服务或其他类型。
+          example: honor
+        academicYear:
+          type: string
+          description: 奖项所属学年或年度。
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          description: 奖项所属学期；跨学年项目可为空。
+          example: 春季
+        sponsorUnit:
+          type: string
+          nullable: true
+          description: 奖项设立或资助单位。
+          example: 同济大学团委
+        rewardLevel:
+          type: string
+          nullable: true
+          description: 奖项层级，例如校级、院级或社团级。
+          example: 校级
+        fundingSource:
+          type: string
+          nullable: true
+          description: 奖励经费来源说明。
+          example: 社团专项经费
+        isRanked:
+          type: boolean
+          description: 是否区分一等奖、二等奖等等级。
+          example: true
+        isFixedAmount:
+          type: boolean
+          description: 是否按等级固定奖励金额。
+          example: true
+        description:
+          type: string
+          nullable: true
+          description: 奖项说明。
+          example: 面向本学期在社团运营中表现突出的成员。
+        materialDescription:
+          type: string
+          nullable: true
+          description: 申请材料要求。
+          example: 需提交个人总结、活动组织证明和负责人推荐意见。
+        applicationStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 申请窗口开始时间；为空表示不限制开始时间。
+          example: "2026-07-01T00:00:00Z"
+        applicationEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 申请窗口结束时间；为空表示不限制结束时间。
+          example: "2026-07-16T23:59:59Z"
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 奖项配置中的建议公示开始时间。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 奖项配置中的建议公示结束时间。
+          example: "2026-07-21T18:00:00Z"
+        schemeStatus:
+          type: string
+          enum: [draft, open, reviewing, publicizing, archived, closed]
+          description: 奖项配置状态。
+          example: open
+        schemeStatusText:
+          type: string
+          description: 奖项配置状态中文文案。
+          example: 开放申请
+        createdByUserId:
+          type: integer
+          nullable: true
+          description: 创建人用户 ID。
+        createdByName:
+          type: string
+          nullable: true
+          description: 创建人展示名。
+          example: 王社长
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。
+          example: "2026-07-01T08:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
+        levels:
+          type: array
+          description: 奖项等级列表。
+          items:
+            $ref: "#/components/schemas/AwardLevelRecord"
+      required:
+        - awardSchemeId
+        - clubId
+        - clubName
+        - awardName
+        - awardCategory
+        - academicYear
+        - isRanked
+        - isFixedAmount
+        - schemeStatus
+        - schemeStatusText
+        - createdAt
+        - updatedAt
+        - levels
+
+    CreateAwardSchemeRequest:
+      type: object
+      description: 创建评奖评优奖项配置的请求。
+      properties:
+        awardName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          default: honor
+          example: honor
+        academicYear:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          maxLength: 80
+          example: 春季
+        sponsorUnit:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: 同济大学团委
+        rewardLevel:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: 校级
+        fundingSource:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: 社团专项经费
+        isRanked:
+          type: boolean
+          default: true
+        isFixedAmount:
+          type: boolean
+          default: true
+        description:
+          type: string
+          nullable: true
+        materialDescription:
+          type: string
+          nullable: true
+        applicationStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        applicationEndAt:
+          type: string
+          format: date-time
+          nullable: true
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+        schemeStatus:
+          type: string
+          enum: [draft, open, reviewing, publicizing, archived, closed]
+          default: draft
+        levels:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AwardLevelInput"
+      required:
+        - awardName
+        - awardCategory
+        - academicYear
+        - levels
+
+    UpdateAwardSchemeRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAwardSchemeRequest"
+
+    AwardReviewRecord:
+      type: object
+      description: 评奖评优申请审批记录。
+      properties:
+        reviewId:
+          type: integer
+          description: 审批记录 ID。
+          example: 80001
+        awardApplicationId:
+          type: integer
+          description: 所属评奖评优申请 ID。
+          example: 70001
+        reviewRound:
+          type: integer
+          description: 审批轮次；退回后重新提交会进入新轮次。
+          example: 1
+        reviewStep:
+          type: string
+          enum:
+            [
+              student_submit,
+              club_review,
+              advisor_review,
+              school_review,
+              publicity,
+              archive,
+            ]
+          description: 本次审批所在节点。
+          example: club_review
+        reviewResult:
+          type: string
+          enum: [submit, approve, reject, return, publish, archive, withdraw]
+          description: 审批动作或系统流转动作。
+          example: approve
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审批人用户 ID；系统生成记录可为空。
+          example: 3
+        reviewerName:
+          type: string
+          nullable: true
+          description: 审批人展示名。
+          example: 王社长
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审批意见。
+          example: 材料完整，同意进入指导老师审核。
+        fromStatus:
+          type: string
+          nullable: true
+          description: 审批前申请状态。
+          example: club_review
+        toStatus:
+          type: string
+          nullable: true
+          description: 审批后申请状态。
+          example: advisor_review
+        reviewedAt:
+          type: string
+          format: date-time
+          description: 审批记录生成时间。
+          example: "2026-07-12T10:15:00Z"
+      required:
+        - reviewId
+        - awardApplicationId
+        - reviewRound
+        - reviewStep
+        - reviewResult
+        - reviewedAt
+
+    AwardAttachmentRecord:
+      type: object
+      description: 评奖评优申请材料附件。
+      properties:
+        attachmentId:
+          type: integer
+          description: 附件记录 ID。
+          example: 60001
+        awardApplicationId:
+          type: integer
+          description: 所属评奖评优申请 ID。
+          example: 70001
+        attachmentName:
+          type: string
+          description: 附件展示名称。
+          example: 个人总结.pdf
+        attachmentUrl:
+          type: string
+          description: 申请材料的内部文件引用；客户端下载文件应调用申请材料下载接口。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        attachmentType:
+          type: string
+          nullable: true
+          description: 附件类型或材料分类。
+          example: pdf
+        uploadedByUserId:
+          type: integer
+          description: 上传人用户 ID。
+          example: 12
+        uploadedByName:
+          type: string
+          nullable: true
+          description: 上传人展示名。
+          example: 张三
+        uploadedAt:
+          type: string
+          format: date-time
+          description: 上传时间。
+          example: "2026-07-10T08:30:00Z"
+      required:
+        - attachmentId
+        - awardApplicationId
+        - attachmentName
+        - attachmentUrl
+        - uploadedByUserId
+        - uploadedAt
+
+    AwardApplicationRecord:
+      type: object
+      description: 评奖评优申请记录，承载成员自荐、负责人推荐、分级审批、公示和归档状态。
+      properties:
+        awardApplicationId:
+          type: integer
+          description: 评奖评优申请 ID。
+          example: 70001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        awardSchemeId:
+          type: integer
+          description: 被申请的奖项配置 ID。
+          example: 9001
+        awardName:
+          type: string
+          description: 被申请的奖项名称。
+          example: 优秀社团干部
+        awardCategory:
+          type: string
+          enum: [honor, scholarship, competition, service, other]
+          description: 奖项分类。
+          example: honor
+        academicYear:
+          type: string
+          description: 奖项所属学年或年度。
+          example: 2025-2026学年
+        termName:
+          type: string
+          nullable: true
+          description: 奖项所属学期。
+          example: 春季
+        awardLevelId:
+          type: integer
+          description: 被申请的奖项等级 ID。
+          example: 10001
+        levelName:
+          type: string
+          description: 被申请的奖项等级名称。
+          example: 一等奖
+        applicantUserId:
+          type: integer
+          description: 申请人或被推荐人用户 ID。
+          example: 12
+        applicantName:
+          type: string
+          description: 申请人或被推荐人展示名。
+          example: 张三
+        applicantStudentNo:
+          type: string
+          nullable: true
+          description: 申请人或被推荐人学号。
+          example: "2450001"
+        recommenderUserId:
+          type: integer
+          nullable: true
+          description: 推荐人用户 ID；本人申请时为空。
+        recommenderName:
+          type: string
+          nullable: true
+          description: 推荐人展示名；本人申请时为空。
+        submitterUserId:
+          type: integer
+          description: 提交该申请的用户 ID。
+          example: 12
+        submitterName:
+          type: string
+          nullable: true
+          description: 提交人展示名。
+          example: 张三
+        applicationType:
+          type: string
+          enum: [self, recommendation]
+          description: 申请类型，self 为本人申请，recommendation 为负责人推荐。
+          example: self
+        applicationReason:
+          type: string
+          nullable: true
+          description: 申请理由或推荐理由。
+          example: 本学期组织多次技术分享并负责核心项目推进。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 申请主材料的内部文件引用；具体材料以 attachments 为准，客户端下载文件应调用申请材料下载接口。
+        currentStep:
+          type: string
+          enum:
+            [
+              student_submit,
+              club_review,
+              advisor_review,
+              school_review,
+              publicity,
+              archived,
+            ]
+          description: 当前所处流程节点。
+          example: advisor_review
+        currentStepText:
+          type: string
+          description: 当前流程节点中文文案。
+          example: 待指导老师审核
+        applicationStatus:
+          type: string
+          enum:
+            [
+              draft,
+              submitted,
+              club_review,
+              advisor_review,
+              school_review,
+              returned,
+              rejected,
+              approved,
+              publicizing,
+              publicized,
+              archived,
+              withdrawn,
+            ]
+          description: 申请状态。
+          example: advisor_review
+        applicationStatusText:
+          type: string
+          description: 申请状态中文文案。
+          example: 审核中
+        publicStatus:
+          type: string
+          enum: [none, publicizing, publicized, withdrawn]
+          description: 公示状态。
+          example: none
+        reviewRound:
+          type: integer
+          description: 当前审批轮次。
+          example: 1
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          description: 校级终审确认后的最终奖项分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 校级终审确认后的最终奖励金额。
+          example: 500
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 首次提交审核时间。
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 校级终审通过时间。
+        publicizedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 进入公示时间。
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 归档时间。
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。
+          example: "2026-07-10T08:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近更新时间。
+          example: "2026-07-12T10:15:00Z"
+        reviewRecords:
+          type: array
+          description: 审批流转记录，按时间顺序返回。
+          items:
+            $ref: "#/components/schemas/AwardReviewRecord"
+        attachments:
+          type: array
+          description: 申请材料附件列表。
+          items:
+            $ref: "#/components/schemas/AwardAttachmentRecord"
+      required:
+        - awardApplicationId
+        - clubId
+        - clubName
+        - awardSchemeId
+        - awardName
+        - awardCategory
+        - academicYear
+        - awardLevelId
+        - levelName
+        - applicantUserId
+        - applicantName
+        - submitterUserId
+        - applicationType
+        - currentStep
+        - currentStepText
+        - applicationStatus
+        - applicationStatusText
+        - publicStatus
+        - reviewRound
+        - createdAt
+        - updatedAt
+        - reviewRecords
+        - attachments
+
+    CreateAwardApplicationRequest:
+      type: object
+      description: 创建评奖评优申请或负责人推荐；awardSchemeId 必须属于当前路径社团，且对应奖项处于开放申请或审核中，并仍在申请时间窗内。
+      properties:
+        awardSchemeId:
+          type: integer
+          minimum: 1
+          example: 9001
+        awardLevelId:
+          type: integer
+          minimum: 1
+          example: 10001
+        applicantUserId:
+          type: integer
+          minimum: 1
+          description: 被推荐或申请的社团成员用户 ID。
+          example: 12
+        applicationType:
+          type: string
+          enum: [self, recommendation]
+          default: self
+          example: self
+        applicationReason:
+          type: string
+          minLength: 1
+          description: 申请理由或推荐理由。
+          example: 本学期组织多次技术分享并负责核心项目推进。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+        submitNow:
+          type: boolean
+          default: false
+          description: 是否创建后立即提交到负责人初审。
+      required:
+        - awardSchemeId
+        - awardLevelId
+        - applicantUserId
+        - applicationType
+        - applicationReason
+
+    UpdateAwardApplicationRequest:
+      type: object
+      description: 更新评奖评优申请草稿或退回记录。
+      properties:
+        awardLevelId:
+          type: integer
+          minimum: 1
+          example: 10001
+        applicationReason:
+          type: string
+          minLength: 1
+          example: 已补充新的活动组织证明。
+        materialUrl:
+          type: string
+          nullable: true
+          description: 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
+          example: clubs/2/awards/137101/67df6e0f9a1b4f5c9e91f6d3f1d2c7aa.pdf
+      required:
+        - awardLevelId
+        - applicationReason
+
+    ReviewAwardApplicationRequest:
+      type: object
+      description: 评奖评优审核动作；后端根据当前步骤和审核结果推进下一状态。
+      properties:
+        reviewResult:
+          type: string
+          enum: [approve, reject, return, publish, archive, withdraw]
+          description: 审核动作。
+          example: approve
+        reviewComment:
+          type: string
+          nullable: true
+          example: 材料完整，同意进入下一环节。
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: 校级终审可确认最终奖项分；为空时使用等级配置分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          minimum: 0
+          description: 校级终审可确认最终金额；为空时使用等级配置金额。
+          example: 500
+      required:
+        - reviewResult
+
+    AwardPublicityItemRecord:
+      type: object
+      description: 公示批次中的单条获奖申请。
+      properties:
+        publicityItemId:
+          type: integer
+          description: 公示明细 ID。
+          example: 50001
+        publicityBatchId:
+          type: integer
+          description: 所属公示批次 ID。
+          example: 40001
+        awardApplicationId:
+          type: integer
+          description: 被公示的评奖评优申请 ID。
+          example: 70001
+        applicantUserId:
+          type: integer
+          description: 获奖成员用户 ID。
+          example: 12
+        applicantName:
+          type: string
+          description: 获奖成员展示名。
+          example: 张三
+        awardName:
+          type: string
+          description: 公示奖项名称。
+          example: 优秀社团干部
+        levelName:
+          type: string
+          description: 公示奖项等级名称。
+          example: 一等奖
+        finalAwardScore:
+          type: number
+          format: decimal
+          nullable: true
+          description: 公示采用的最终奖项分。
+          example: 20
+        finalAmount:
+          type: number
+          format: decimal
+          nullable: true
+          description: 公示采用的最终奖励金额。
+          example: 500
+        displayOrder:
+          type: integer
+          description: 公示名单展示顺序。
+          example: 1
+        publicityResult:
+          type: string
+          enum: [normal, withdrawn, corrected]
+          description: 公示结果状态。
+          example: normal
+        createdAt:
+          type: string
+          format: date-time
+          description: 明细创建时间。
+          example: "2026-07-18T09:00:00Z"
+      required:
+        - publicityItemId
+        - publicityBatchId
+        - awardApplicationId
+        - applicantUserId
+        - applicantName
+        - awardName
+        - levelName
+        - displayOrder
+        - publicityResult
+        - createdAt
+
+    AwardPublicityBatchRecord:
+      type: object
+      description: 评奖评优公示批次。
+      properties:
+        publicityBatchId:
+          type: integer
+          description: 公示批次 ID。
+          example: 40001
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 所属社团名称。
+          example: 计算机协会
+        title:
+          type: string
+          description: 公示标题。
+          example: 2025-2026学年春季优秀社团干部拟获奖名单公示
+        description:
+          type: string
+          nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示开始时间。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示结束时间。
+          example: "2026-07-21T18:00:00Z"
+        publicityStatus:
+          type: string
+          enum: [draft, publicizing, closed, archived]
+          description: 公示批次状态。
+          example: publicizing
+        publicityStatusText:
+          type: string
+          description: 公示批次状态中文文案。
+          example: 公示中
+        publisherUserId:
+          type: integer
+          nullable: true
+          description: 发布人用户 ID。
+        publisherName:
+          type: string
+          nullable: true
+          description: 发布人展示名。
+          example: 王社长
+        createdAt:
+          type: string
+          format: date-time
+          description: 批次创建时间。
+          example: "2026-07-18T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 批次最近更新时间。
+          example: "2026-07-18T10:00:00Z"
+        items:
+          type: array
+          description: 公示名单明细。
+          items:
+            $ref: "#/components/schemas/AwardPublicityItemRecord"
+      required:
+        - publicityBatchId
+        - clubId
+        - clubName
+        - title
+        - publicityStatus
+        - publicityStatusText
+        - createdAt
+        - updatedAt
+        - items
+
+    CreateAwardPublicityBatchRequest:
+      type: object
+      description: 创建评奖评优公示批次。
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 公示标题。
+          example: 2025-2026学年春季优秀社团干部拟获奖名单公示
+        description:
+          type: string
+          nullable: true
+          description: 公示说明。
+          example: 公示期内如有异议请联系社团负责人。
+        publicityStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示开始时间，不能为空。
+          example: "2026-07-18T09:00:00Z"
+        publicityEndAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 公示结束时间，必须晚于 publicityStartAt。
+          example: "2026-07-21T18:00:00Z"
+        awardApplicationIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+          description: 纳入公示的已通过申请 ID。
+          example: [70001, 70002]
+      required:
+        - title
+        - publicityStartAt
+        - publicityEndAt
+        - awardApplicationIds
+
     ClubEvaluationRecord:
       type: object
       description: 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
@@ -3667,7 +7676,7 @@ components:
         termName:
           type: string
           description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -3686,22 +7695,22 @@ components:
         activityScore:
           type: number
           format: decimal
-          description: 活动参与得分，取值范围 0-100。
+          description: 活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。
           example: 92
         taskScore:
           type: number
           format: decimal
-          description: 项目任务得分，取值范围 0-100。
+          description: 项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。
           example: 88
         learningScore:
           type: number
           format: decimal
-          description: 学习记录得分，取值范围 0-100。
+          description: 学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。
           example: 95
         awardScore:
           type: number
           format: decimal
-          description: 奖项或附加贡献得分，取值范围 0-100。
+          description: 奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。
           example: 80
         totalScore:
           type: number
@@ -3750,9 +7759,104 @@ components:
         - publicStatus
         - publicStatusText
 
+    ClubEvaluationScorePreview:
+      type: object
+      description: 成员学期考核系统生成分预览；维护人可在系统生成分基础上微调后保存。
+      properties:
+        activityScore:
+          type: number
+          format: decimal
+          description: 根据活动签到、签退和参与记录生成的活动分。
+          example: 80
+        taskScore:
+          type: number
+          format: decimal
+          description: 根据项目任务进度、完成状态和成果审核生成的任务分。
+          example: 88
+        learningScore:
+          type: number
+          format: decimal
+          description: 根据课程学习记录和进度生成的学习分。
+          example: 95
+        awardScore:
+          type: number
+          format: decimal
+          description: 根据同社团、同成员、同学期评优评奖记录汇总生成的奖项分。
+          example: 60
+        totalScore:
+          type: number
+          format: decimal
+          description: 四项系统生成分合计。
+          example: 323
+        grade:
+          type: string
+          description: 后端根据总分计算的等级。
+          example: 优秀
+      required:
+        - activityScore
+        - taskScore
+        - learningScore
+        - awardScore
+        - totalScore
+        - grade
+
+    GenerateClubEvaluationsRequest:
+      type: object
+      description: 批量生成成员考核草稿的请求。
+      properties:
+        termName:
+          type: string
+          minLength: 1
+          description: 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
+          example: 2025-2026学年春季
+        overwriteDrafts:
+          type: boolean
+          default: true
+          description: 是否刷新已存在的草稿记录；已公示记录始终不会覆盖。
+          example: true
+      required:
+        - termName
+
+    GenerateClubEvaluationsResult:
+      type: object
+      description: 批量生成成员考核草稿的结果统计。
+      properties:
+        termName:
+          type: string
+          description: 本次生成的考核学期。
+          example: 2025-2026学年春季
+        totalMembers:
+          type: integer
+          description: 本次纳入生成范围的当前有效成员数。
+          example: 36
+        createdCount:
+          type: integer
+          description: 新创建的草稿记录数。
+          example: 28
+        refreshedCount:
+          type: integer
+          description: 已存在草稿并被刷新系统生成分的记录数。
+          example: 6
+        skippedPublishedCount:
+          type: integer
+          description: 已公示而未覆盖的记录数。
+          example: 2
+        records:
+          type: array
+          description: 生成后该学期的考核记录。
+          items:
+            $ref: "#/components/schemas/ClubEvaluationRecord"
+      required:
+        - termName
+        - totalMembers
+        - createdCount
+        - refreshedCount
+        - skippedPublishedCount
+        - records
+
     CreateClubEvaluationRequest:
       type: object
-      description: 创建社团成员评价考核或评优评奖结果记录；总分和等级由后端计算。
+      description: 创建社团成员评价考核或评优评奖结果记录；学期考核通常先由批量生成接口生成草稿，维护人可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
       properties:
         currentUserId:
           type: integer
@@ -3773,8 +7877,8 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -3793,30 +7897,34 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 活动参与得分。
+          description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 92
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 项目任务得分。
+          description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 88
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 学习记录得分。
+          description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 95
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 奖项或附加贡献得分。
+          description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
           example: 80
         publicStatus:
           type: string
@@ -3833,14 +7941,10 @@ components:
         - evaluationType
         - userId
         - termName
-        - activityScore
-        - taskScore
-        - learningScore
-        - awardScore
 
     UpdateClubEvaluationRequest:
       type: object
-      description: 更新社团成员评价考核或评优评奖结果记录；总分和等级由后端重新计算。
+      description: 更新社团成员评价考核或评优评奖结果记录；学期考核可在系统生成分基础上微调四项分数，评优评奖记录的奖项分由维护人录入。
       properties:
         currentUserId:
           type: integer
@@ -3856,8 +7960,8 @@ components:
         termName:
           type: string
           minLength: 1
-          description: 考核或评奖所属学期。
-          example: 2026 学年春季学期
+          description: 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
+          example: 2025-2026学年春季
         awardTitle:
           type: string
           nullable: true
@@ -3876,30 +7980,34 @@ components:
         activityScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 活动参与得分。
+          description: 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 92
         taskScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 项目任务得分。
+          description: 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 88
         learningScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 学习记录得分。
+          description: 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
           example: 95
         awardScore:
           type: number
           format: decimal
+          nullable: true
           minimum: 0
           maximum: 100
-          description: 奖项或附加贡献得分。
+          description: 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
           example: 80
         publicStatus:
           type: string
@@ -3930,6 +8038,14 @@ components:
         applicantName:
           type: string
           nullable: true
+        advisorUserId:
+          type: integer
+          nullable: true
+          description: 拟邀请的指导老师用户 ID。
+        advisorName:
+          type: string
+          nullable: true
+          description: 拟邀请的指导老师姓名。
         applyReason:
           type: string
         materialUrl:
@@ -3948,6 +8064,11 @@ components:
         reviewComment:
           type: string
           nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
         clubStatus:
           type: string
           nullable: true
@@ -4009,6 +8130,8 @@ components:
         contactPhone:
           type: string
           nullable: true
+          description: 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
+          example: "13800000000"
       required:
         - name
         - category
@@ -5025,6 +9148,348 @@ components:
       required:
         - approved
 
+    Material:
+      type: object
+      description: A club-owned material and its current inventory balance.
+      example:
+        id: 101
+        clubId: 1
+        clubName: 摄影社
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 10
+        availableQuantity: 7
+        borrowedQuantity: 3
+        storageLocation: 学生活动中心 A102
+        status: active
+        createdAt: "2026-07-13T02:00:00Z"
+      properties:
+        id:
+          type: integer
+          description: Material identifier in MATERIALS.MATERIAL_ID.
+          example: 101
+        clubId:
+          type: integer
+          description: Club that owns the material.
+          example: 1
+        clubName:
+          type: string
+          description: Display name of the owning club.
+          example: 摄影社
+        name:
+          type: string
+          description: Material name.
+          example: 无线麦克风
+        specification:
+          type: string
+          description: Optional model or specification.
+          example: UHF 双通道
+          nullable: true
+        totalQuantity:
+          type: integer
+          description: Total registered inventory quantity.
+          example: 10
+        availableQuantity:
+          type: integer
+          description: Quantity currently available to borrow.
+          example: 7
+        borrowedQuantity:
+          type: integer
+          description: Quantity currently checked out.
+          example: 3
+        storageLocation:
+          type: string
+          description: Optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+        status:
+          type: string
+          description: Whether the material is available for new borrows.
+          enum: [active, disabled]
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: Material creation time in UTC.
+          example: "2026-07-13T02:00:00Z"
+      required:
+        - id
+        - clubId
+        - clubName
+        - name
+        - totalQuantity
+        - availableQuantity
+        - borrowedQuantity
+        - status
+        - createdAt
+
+    MaterialBorrow:
+      type: object
+      description: A material borrow record, including return or damage outcome.
+      example:
+        id: 501
+        materialId: 101
+        materialName: 无线麦克风
+        clubId: 1
+        clubName: 摄影社
+        borrowerUserId: 2350007
+        borrowerName: 张国雄
+        quantity: 2
+        borrowAt: "2026-07-13T02:00:00Z"
+        expectedReturnAt: "2026-07-20T02:00:00Z"
+        status: borrowed
+        compensationAmount: 0
+        overdue: false
+      properties:
+        id:
+          type: integer
+          description: Borrow record identifier in MATERIAL_BORROWS.BORROW_ID.
+          example: 501
+        materialId:
+          type: integer
+          description: Borrowed material identifier.
+          example: 101
+        materialName:
+          type: string
+          description: Borrowed material display name.
+          example: 无线麦克风
+        specification:
+          type: string
+          description: Material specification captured for display.
+          example: UHF 双通道
+          nullable: true
+        clubId:
+          type: integer
+          description: Club responsible for the borrow record.
+          example: 1
+        clubName:
+          type: string
+          description: Display name of the responsible club.
+          example: 摄影社
+        borrowerUserId:
+          type: integer
+          description: User who borrowed the material.
+          example: 2350007
+        borrowerName:
+          type: string
+          description: Borrower display name.
+          example: 张国雄
+          nullable: true
+        quantity:
+          type: integer
+          description: Borrowed quantity.
+          example: 2
+        borrowAt:
+          type: string
+          format: date-time
+          description: Borrow registration time in UTC.
+          example: "2026-07-13T02:00:00Z"
+        expectedReturnAt:
+          type: string
+          format: date-time
+          description: Expected return time in UTC.
+          example: "2026-07-20T02:00:00Z"
+          nullable: true
+        returnAt:
+          type: string
+          format: date-time
+          description: Actual completion time for a return or damage registration.
+          example: "2026-07-19T08:30:00Z"
+          nullable: true
+        status:
+          type: string
+          description: Current borrow lifecycle status.
+          enum: [borrowed, returned, damaged]
+          example: borrowed
+        damageDescription:
+          type: string
+          description: Damage details when status is damaged.
+          example: 麦克风网罩变形
+          nullable: true
+        compensationAmount:
+          type: number
+          format: double
+          description: Registered compensation amount in CNY.
+          example: 120
+        overdue:
+          type: boolean
+          description: Whether an active borrow is past its expected return time.
+          example: false
+      required:
+        - id
+        - materialId
+        - materialName
+        - clubId
+        - clubName
+        - borrowerUserId
+        - quantity
+        - borrowAt
+        - status
+        - compensationAmount
+        - overdue
+
+    CreateMaterialRequest:
+      type: object
+      description: Request to register a new material in a manageable club inventory.
+      example:
+        clubId: 1
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 10
+        availableQuantity: 10
+        storageLocation: 学生活动中心 A102
+        status: active
+      properties:
+        clubId:
+          type: integer
+          description: Club that will own the new material.
+          example: 1
+        name:
+          type: string
+          description: Material name.
+          example: 无线麦克风
+          minLength: 1
+          maxLength: 255
+        specification:
+          type: string
+          description: Optional model or specification.
+          example: UHF 双通道
+          nullable: true
+          maxLength: 255
+        totalQuantity:
+          type: integer
+          description: Initial total inventory quantity.
+          example: 10
+          minimum: 1
+        availableQuantity:
+          type: integer
+          description: Initial available quantity; defaults to totalQuantity when omitted.
+          example: 10
+          nullable: true
+          minimum: 0
+        storageLocation:
+          type: string
+          description: Optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+          maxLength: 255
+        status:
+          type: string
+          description: Initial material status.
+          enum: [active, disabled]
+          default: active
+          example: active
+      required:
+        - clubId
+        - name
+        - totalQuantity
+
+    BorrowMaterialRequest:
+      type: object
+      description: Request to register a material borrow without an approval step.
+      example:
+        materialId: 101
+        clubId: 1
+        quantity: 2
+        expectedReturnAt: "2026-07-20T02:00:00Z"
+      properties:
+        materialId:
+          type: integer
+          description: Material to borrow.
+          example: 101
+        clubId:
+          type: integer
+          description: Club that owns the material and borrow record.
+          example: 1
+        quantity:
+          type: integer
+          description: Quantity to borrow; must not exceed available inventory.
+          example: 2
+          minimum: 1
+        expectedReturnAt:
+          type: string
+          format: date-time
+          description: Required return deadline, later than the borrow time and no more than 7 days after it.
+          example: "2026-07-20T02:00:00Z"
+      required:
+        - materialId
+        - clubId
+        - quantity
+        - expectedReturnAt
+
+    UpdateMaterialRequest:
+      type: object
+      description: Request to update a material without changing its owning club.
+      example:
+        name: 无线麦克风
+        specification: UHF 双通道
+        totalQuantity: 12
+        availableQuantity: 9
+        storageLocation: 学生活动中心 A102
+        status: active
+      properties:
+        name:
+          type: string
+          description: Updated material name.
+          example: 无线麦克风
+          minLength: 1
+          maxLength: 255
+        specification:
+          type: string
+          description: Updated optional model or specification.
+          example: UHF 双通道
+          nullable: true
+          maxLength: 255
+        totalQuantity:
+          type: integer
+          description: Updated total inventory quantity.
+          example: 12
+          minimum: 1
+        availableQuantity:
+          type: integer
+          description: Updated available quantity after accounting for checked-out items.
+          example: 9
+          minimum: 0
+        storageLocation:
+          type: string
+          description: Updated optional physical storage location.
+          example: 学生活动中心 A102
+          nullable: true
+          maxLength: 255
+        status:
+          type: string
+          description: Updated material status.
+          enum: [active, disabled]
+          example: active
+      required:
+        - name
+        - totalQuantity
+        - availableQuantity
+        - status
+
+    RegisterMaterialDamageRequest:
+      type: object
+      description: Request to complete an active borrow as damaged and record compensation.
+      example:
+        damageDescription: 麦克风网罩变形
+        compensationAmount: 120
+      properties:
+        damageDescription:
+          type: string
+          description: Required description of the observed damage.
+          example: 麦克风网罩变形
+          minLength: 1
+          maxLength: 255
+        compensationAmount:
+          type: number
+          format: double
+          description: Non-negative compensation amount in CNY.
+          example: 120
+          minimum: 0
+      required:
+        - damageDescription
+        - compensationAmount
+
     Project:
       type: object
       description: Project initiation application and review result.
@@ -5077,6 +9542,10 @@ components:
           description: Optional reviewer comment.
           example: 立项材料完整，同意执行。
           nullable: true
+        canViewTasks:
+          type: boolean
+          description: 当前登录用户是否可以进入该项目的任务空间。
+          example: true
         createdAt:
           type: string
           format: date-time
@@ -5088,16 +9557,13 @@ components:
         - projectName
         - startDate
         - projectStatus
+        - canViewTasks
         - createdAt
 
     CreateProjectRequest:
       type: object
       description: Request body for creating a project initiation application.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 12
         clubId:
           type: integer
           description: Club that submits the project application.
@@ -5132,7 +9598,6 @@ components:
           example: "2026-08-15T18:00:00Z"
           nullable: true
       required:
-        - currentUserId
         - clubId
         - projectName
         - startDate
@@ -5141,27 +9606,18 @@ components:
       type: object
       description: Request body for assigning or changing a project leader.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 7
         leaderUserId:
           type: integer
-          description: User id of an active club member.
+          description: User id of a current valid club member.
           minimum: 1
           example: 12
       required:
-        - currentUserId
         - leaderUserId
 
     ReviewProjectRequest:
       type: object
       description: Request body for reviewing a project initiation application.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 3
         projectStatus:
           type: string
           enum: [running, closed]
@@ -5173,26 +9629,18 @@ components:
           example: 立项材料完整，同意执行。
           nullable: true
       required:
-        - currentUserId
         - projectStatus
 
     CancelProjectRequest:
       type: object
       description: Request body for canceling a pending or running project.
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          example: 12
         cancelReason:
           type: string
           description: Optional applicant cancellation reason.
           maxLength: 200
           example: 申请材料需要补充，暂时撤销。
           nullable: true
-      required:
-        - currentUserId
-
     ProjectMember:
       type: object
       description: 项目与用户之间的成员关系及展示信息。
@@ -5232,11 +9680,11 @@ components:
         joinedAt:
           type: string
           format: date-time
-          description: 本次加入或恢复为 active 的时间。
+          description: 本次加入或恢复为正在参与状态的时间。
         leftAt:
           type: string
           format: date-time
-          description: 退出或移除时间；active 成员为空。
+          description: 退出或移除时间；正在参与的成员为空。
           nullable: true
         remark:
           type: string
@@ -5263,7 +9711,7 @@ components:
 
     ProjectMemberCandidate:
       type: object
-      description: 可加入项目的所属社团 active 成员。
+      description: 可加入项目的所属社团当前有效成员。
       properties:
         userId:
           type: integer
@@ -5294,7 +9742,7 @@ components:
         userId:
           type: integer
           minimum: 1
-          description: 所属社团 active 成员的用户 ID。
+          description: 所属社团当前有效成员的用户 ID。
           example: 12
         memberRole:
           type: string
@@ -5311,279 +9759,624 @@ components:
         - userId
         - memberRole
 
+    ProjectTask:
+      type: object
+      description: 项目任务及执行进度。
+      properties:
+        id:
+          type: integer
+          description: 项目任务 ID。
+          example: 5001
+        projectId:
+          type: integer
+          description: 所属项目 ID。
+          example: 1001
+        assignees:
+          type: array
+          description: 任务执行人列表；每位执行人都必须正在参与该项目。
+          items:
+            $ref: "#/components/schemas/ProjectTaskAssignee"
+        title:
+          type: string
+          description: 任务标题。
+          example: 完成活动物资清单
+        content:
+          type: string
+          description: 任务详细内容。
+          nullable: true
+          example: 汇总采购物品、数量和预算。
+        priority:
+          type: string
+          description: 任务优先级。
+          enum: [low, medium, high, urgent]
+          example: high
+        startDate:
+          type: string
+          format: date-time
+          description: 任务创建或开始时间。
+        dueDate:
+          type: string
+          format: date-time
+          description: 任务截止时间。
+        finishDate:
+          type: string
+          format: date-time
+          description: 任务完成时间；未完成时为空。
+          nullable: true
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 完成进度百分比。
+          example: 60
+        taskStatus:
+          type: string
+          description: 任务状态。
+          enum: [pending, in_progress, completed, delayed]
+          example: in_progress
+        delayReason:
+          type: string
+          description: 延期原因；延期或逾期未完成时必填。
+          nullable: true
+          example: 供应商报价尚未到齐。
+        deliverableTitle:
+          type: string
+          nullable: true
+          description: 已提交成果标题。
+          example: 阶段成果报告
+        deliverableDesc:
+          type: string
+          nullable: true
+          description: 已提交成果说明。
+        deliverableUrl:
+          type: string
+          nullable: true
+          format: uri
+          pattern: "^https?://.+"
+          maxLength: 255
+          description: 已提交成果链接，仅允许 HTTP 或 HTTPS 地址。
+          example: https://example.com/report.pdf
+        deliverableStatus:
+          type: string
+          enum: [not_submitted, pending, approved, rejected]
+          description: 成果审核状态。
+          example: pending
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审核人用户 ID。
+          example: 3
+        reviewerDisplayName:
+          type: string
+          nullable: true
+          description: 审核人姓名和学号/工号展示。
+          example: 李老师（05001）
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审核意见。
+        deliverableSubmitterId:
+          type: integer
+          nullable: true
+          description: 成果提交人用户 ID。
+          example: 12
+        deliverableSubmitterDisplayName:
+          type: string
+          nullable: true
+          description: 成果提交人姓名和学号/工号展示。
+          example: 王同学（2450004）
+        deliverableSubmittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 成果提交时间。
+        deliverableReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 成果审核时间。
+      required:
+        - id
+        - projectId
+        - assignees
+        - title
+        - priority
+        - startDate
+        - dueDate
+        - progress
+        - taskStatus
+        - deliverableStatus
+
+    CreateProjectTaskRequest:
+      type: object
+      description: 项目负责人创建任务的请求。
+      properties:
+        assigneeUserIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: 正在参与该项目的执行人用户 ID 列表。
+          items:
+            type: integer
+            minimum: 1
+          example: [12, 15]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: 任务标题。
+          example: 完成活动物资清单
+        content:
+          type: string
+          maxLength: 4000
+          description: 可选任务说明。
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          description: 任务优先级。
+          example: high
+        dueDate:
+          type: string
+          format: date-time
+          description: 截止时间，必须晚于任务创建时间。
+      required:
+        - assigneeUserIds
+        - title
+        - priority
+        - dueDate
+
+    UpdateProjectTaskProgressRequest:
+      type: object
+      description: 任务执行人更新进度的请求。
+      properties:
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 完成进度百分比。
+          example: 100
+        taskStatus:
+          type: string
+          enum: [pending, in_progress, completed, delayed]
+          description: 更新后的任务状态。
+          example: completed
+        delayReason:
+          type: string
+          maxLength: 255
+          description: 延期原因；仅 delayed 状态必填，completed 时会被清空。
+          nullable: true
+        reportContent:
+          type: string
+          maxLength: 1000
+          description: 本次进度汇报内容；进行中任务必须填写。
+          nullable: true
+      required:
+        - progress
+        - taskStatus
+
+    SubmitProjectTaskDeliverableRequest:
+      type: object
+      description: 提交项目任务成果的请求；提交人由服务端从 Bearer 令牌解析。
+      properties:
+        deliverableTitle:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 成果标题。
+          example: 阶段成果报告
+        deliverableDesc:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: 成果说明。
+          example: 已完成活动策划、物资清单和阶段复盘材料。
+        deliverableUrl:
+          type: string
+          nullable: true
+          format: uri
+          pattern: "^https?://.+"
+          maxLength: 255
+          description: 成果链接，仅允许 HTTP 或 HTTPS 地址。
+          example: https://example.com/report.pdf
+      required:
+        - deliverableTitle
+
+    ReviewProjectTaskDeliverableRequest:
+      type: object
+      description: 审核项目任务成果的请求；审核人由服务端从 Bearer 令牌解析。
+      properties:
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        reviewComment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 审核意见。
+          example: 成果完整，同意通过。
+      required:
+        - approved
+
+    ProjectTaskAssignee:
+      type: object
+      description: 项目任务的执行人展示信息。
+      properties:
+        userId:
+          type: integer
+          description: 执行人用户 ID。
+          example: 12
+        displayName:
+          type: string
+          description: 执行人姓名或账号展示名。
+          example: 王同学
+      required:
+        - userId
+        - displayName
+
+    ProjectTaskProgressReport:
+      type: object
+      description: 一次任务进度提交的可追溯记录。
+      properties:
+        id:
+          type: integer
+          description: 进度记录 ID。
+          example: 8001
+        taskId:
+          type: integer
+          description: 所属任务 ID。
+          example: 5001
+        reporterUserId:
+          type: integer
+          description: 提交人用户 ID。
+          example: 12
+        reporterName:
+          type: string
+          description: 提交人姓名或账号展示名。
+          example: 王同学
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 本次提交后的任务进度。
+          example: 60
+        taskStatus:
+          type: string
+          enum: [pending, in_progress, completed, delayed]
+          description: 本次提交后的任务状态。
+          example: in_progress
+        reportContent:
+          type: string
+          description: 本次进度汇报内容。
+          nullable: true
+          example: 已完成物资清单初稿，正在核对预算。
+        delayReason:
+          type: string
+          description: 本次提交的延期原因；仅延期时有值。
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+          description: 服务端记录的提交时间；任务完成时也以此时间写入完成时间。
+      required:
+        - id
+        - taskId
+        - reporterUserId
+        - reporterName
+        - progress
+        - taskStatus
+        - submittedAt
+
     LearningTeacherCandidate:
       type: object
-      description: User-facing instructor option used by the learning course form.
+      description: 课程表单使用的授课人候选项；授课人可以是教师或学生。
       required:
         - id
         - displayName
       properties:
         id:
           type: integer
-          description: Internal user id submitted by the client after the user selects an instructor.
+          description: 选择授课人后提交的内部用户 ID。
           example: 30
         realName:
           type: string
           nullable: true
-          description: Instructor real name.
-          example: ???
+          description: 授课人姓名。
+          example: 张老师
         studentNo:
           type: string
           nullable: true
-          description: Instructor staff number.
+          description: 授课人的学号或工号。
           example: "10001"
         displayName:
           type: string
-          description: User-facing label containing the instructor name and staff number.
-          example: ????10001?
+          description: 包含教师或学生身份、姓名及学工号的展示文本。
+          example: 学生 · 张同学（2350001）
 
     LearningItem:
       type: object
-      description: Training course or learning resource published by a club.
+      description: 社团发布的培训课程、视频、文档或资料资源。
       properties:
         id:
           type: integer
-          description: Learning item id in LEARNING_ITEMS.ITEM_ID.
+          description: LEARNING_ITEMS.ITEM_ID。
           example: 2001
         clubId:
           type: integer
-          description: Club that publishes the course.
+          description: 发布资源的社团。
           example: 1
         uploaderUserId:
           type: integer
           nullable: true
-          description: User who created or uploaded the learning item.
+          description: 创建或上传资源的用户。
           example: 12
-        teacherUserId:
+        instructorUserId:
           type: integer
           nullable: true
-          description: Instructor user id.
+          description: 课程授课人，可以是教师或学生；非课程资源可为空。
           example: 30
         title:
           type: string
-          description: Course title.
-          example: ???????
+          description: 课程或资源标题。
+          example: Oracle 入门培训视频
         itemType:
           type: string
-          nullable: true
-          description: Course type, video, document, or other learning resource type.
-          example: course
+          description: 资源类型，支持 course、lecture、training、video、document、material。
+          example: video
         categoryName:
           type: string
           nullable: true
-          description: Course category.
-          example: ????
+          description: 资源分类。
+          example: 数据库培训
         description:
           type: string
           nullable: true
-          description: Course introduction.
-          example: ???????????????
+          maxLength: 1000
+          description: 课程或资源说明。
+        fileUrl:
+          type: string
+          nullable: true
+          description: 外部文件地址或内部存储引用；列表仅向资源管理者返回，普通用户通过下载接口获取可访问地址。
         startAt:
           type: string
           format: date-time
-          description: Required course start time; learning progress cannot be updated before this time.
+          nullable: true
+          description: 课程开始时间；非课程资源可为空。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; when omitted, users may join at any time.
+          description: 课程结束时间。
         capacity:
           type: integer
-          description: Maximum number of users who may join the course.
+          nullable: true
+          description: 课程容量；非课程资源可为空。
           example: 40
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club means active club members, public means all active school accounts.
+          enum: [public, club, department]
+          description: 可见范围；department 表示与上传人同一社团部门的有效成员。
           example: club
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 下载设置；approval 表示需要审批，当前不可直接下载。
+          example: allow
         itemStatus:
           type: string
-          enum: [draft, published, closed, finished]
-          description: Current course publication status.
+          enum: [draft, pending_review, published, rejected, closed, finished]
+          description: 发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。
           example: published
         currentEnrollments:
           type: integer
-          description: Number of users currently joined.
+          description: 当前有效学习记录数量。
           example: 8
         currentUserRecordStatus:
           type: string
           enum: [none, enrolled, learning, completed, cancelled]
-          description: Current viewer's learning record status; none means not enrolled.
+          description: 当前用户的学习状态。
         canManage:
           type: boolean
-          description: Whether the current viewer may edit this course and view its roster.
+          description: 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
         canEnroll:
           type: boolean
-          description: Whether the current viewer may join the course now.
+          description: 当前用户是否可加入课程；非课程资源恒为 false。
         canCancelEnrollment:
           type: boolean
-          description: Whether the current viewer may exit the course now.
+          description: 当前用户是否可退出课程。
         enrollmentUnavailableReason:
           type: string
           nullable: true
-          description: Chinese explanation shown when enrollment is unavailable.
+          description: 无法加入课程的中文原因。
+        canStartLearning:
+          type: boolean
+          description: 当前用户是否可开始或继续学习非课程资源。
+        learningUnavailableReason:
+          type: string
+          nullable: true
+          description: 无法开始学习资源的中文原因。
+        canDownload:
+          type: boolean
+          description: 当前用户是否可通过下载接口获取文件地址。
+        downloadUnavailableReason:
+          type: string
+          nullable: true
+          description: 无法直接下载的中文原因。
       required:
         - id
         - clubId
         - title
-        - startAt
-        - capacity
+        - itemType
         - visibility
+        - downloadPermission
         - itemStatus
         - currentEnrollments
         - currentUserRecordStatus
         - canManage
         - canEnroll
         - canCancelEnrollment
+        - canStartLearning
+        - canDownload
 
     CreateLearningItemRequest:
       type: object
-      description: Request body for creating a club training course.
+      description: 创建课程或上传学习资源的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current operator user id.
-          example: 12
         clubId:
           type: integer
           minimum: 1
-          description: Club that publishes the course.
+          description: 发布资源的社团。
           example: 1
         title:
           type: string
           minLength: 1
           maxLength: 100
-          description: Course title.
-          example: ???????
+          description: 课程或资源标题。
+          example: Oracle 入门培训视频
         description:
           type: string
           nullable: true
-          description: Course introduction.
-        teacherUserId:
+          maxLength: 1000
+          description: 课程或资源说明。
+        instructorUserId:
           type: integer
+          nullable: true
           minimum: 1
-          description: Instructor user id.
+          description: 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         itemType:
           type: string
           maxLength: 30
-          description: Course type.
-          example: course
+          description: 支持 course、lecture、training、video、document、material。
+          example: video
         categoryName:
           type: string
           nullable: true
           maxLength: 100
-          description: Course category.
+          description: 资源分类。
+        fileUrl:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。
         startAt:
           type: string
           format: date-time
-          description: Required course start time.
+          nullable: true
+          description: 课程开始时间；课程类型必填。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; omit it for a long-running course.
+          description: 课程结束时间。
         capacity:
           type: integer
+          nullable: true
           minimum: 1
-          description: Enrollment capacity.
+          description: 课程容量；课程类型必填。
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club or public.
+          enum: [public, club, department]
+          description: 公开、社团内或上传人所在部门内可见。
           example: club
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 是否允许直接下载；课程无文件时建议 deny。
+          example: allow
         itemStatus:
           type: string
           enum: [draft, published]
           default: draft
-          description: Initial course status.
+          description: 初始发布状态。
       required:
-        - currentUserId
         - clubId
         - title
-        - teacherUserId
         - itemType
-        - startAt
-        - capacity
         - visibility
+        - downloadPermission
         - itemStatus
 
     UpdateLearningItemRequest:
       type: object
-      description: Request body for updating a club training course.
+      description: 更新课程或学习资源的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current operator user id.
         title:
           type: string
           minLength: 1
           maxLength: 100
-          description: Course title.
+          description: 课程或资源标题。
         description:
           type: string
           nullable: true
-          description: Course introduction.
-        teacherUserId:
+          description: 课程或资源说明。
+        instructorUserId:
           type: integer
+          nullable: true
           minimum: 1
-          description: Instructor user id.
+          description: 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         itemType:
           type: string
           maxLength: 30
-          description: Course type.
+          description: 支持 course、lecture、training、video、document、material。
         categoryName:
           type: string
           nullable: true
           maxLength: 100
-          description: Course category.
+          description: 资源分类。
+        fileUrl:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 视频、文档或资料的 HTTP/HTTPS 文件地址。
         startAt:
           type: string
           format: date-time
-          description: Required course start time.
+          nullable: true
+          description: 课程开始时间。
         endAt:
           type: string
           format: date-time
           nullable: true
-          description: Optional course end time; omit it for a long-running course.
+          description: 课程结束时间。
         capacity:
           type: integer
+          nullable: true
           minimum: 1
-          description: Enrollment capacity.
+          description: 课程容量。
         visibility:
           type: string
-          enum: [club, public]
-          description: Course audience; club or public.
+          enum: [public, club, department]
+          description: 公开、社团内或上传人所在部门内可见。
+        downloadPermission:
+          type: string
+          enum: [allow, deny, approval]
+          description: 下载设置。
         itemStatus:
           type: string
           enum: [draft, published, closed]
-          description: Updated course publication status.
+          description: 更新后的发布状态。
       required:
-        - currentUserId
         - title
-        - teacherUserId
         - itemType
-        - startAt
-        - capacity
         - visibility
+        - downloadPermission
         - itemStatus
 
-    EnrollLearningItemRequest:
+    ReviewLearningItemRequest:
       type: object
-      description: Request body for joining or exiting a training course.
+      description: 社团管理员或系统管理员审核课程、资源的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current user id.
-          example: 21
+        result:
+          type: string
+          enum: [approved, rejected]
+          description: approved 表示审核通过并发布，rejected 表示驳回。
       required:
-        - currentUserId
+        - result
 
     LearningRecord:
       type: object
-      description: Course enrollment and learning progress record.
+      description: 课程报名、资源学习进度和下载行为记录。
       properties:
         id:
           type: integer
@@ -5637,7 +10430,16 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: Completion time.
+          description: 完成时间。
+        downloadedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最近一次下载时间。
+        downloadIp:
+          type: string
+          nullable: true
+          description: 最近一次下载 IP。
       required:
         - id
         - itemId
@@ -5647,13 +10449,8 @@ components:
 
     UpdateLearningProgressRequest:
       type: object
-      description: Request body for updating learning progress.
+      description: 更新当前登录用户学习进度的请求。
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
-          description: Current learning user id.
-          example: 21
         progress:
           type: number
           format: double
@@ -5668,8 +10465,70 @@ components:
           description: Latest accumulated learning duration in seconds.
           example: 3600
       required:
-        - currentUserId
         - progress
+
+    LearningDownloadResult:
+      type: object
+      description: 下载权限校验通过后返回的可访问资源地址与记录时间；OSS 资源返回受鉴权的后端流式下载地址。
+      properties:
+        itemId:
+          type: integer
+          description: 学习资源 ID。
+        title:
+          type: string
+          description: 资源标题。
+        fileUrl:
+          type: string
+          description: 受鉴权的后端文件地址或历史文件地址。
+        downloadedAt:
+          type: string
+          format: date-time
+          description: 本次下载记录时间。
+      required:
+        - itemId
+        - title
+        - fileUrl
+        - downloadedAt
+
+    LearningItemStatistics:
+      type: object
+      description: 基于 LEARNING_RECORDS 聚合的资源学习与下载统计。
+      properties:
+        itemId:
+          type: integer
+          description: 学习资源 ID。
+        title:
+          type: string
+          description: 资源标题。
+        learnerCount:
+          type: integer
+          description: 非取消状态的学习人数。
+        completedCount:
+          type: integer
+          description: 已完成学习人数。
+        downloadCount:
+          type: integer
+          description: 发生过下载行为的人数。
+        averageProgress:
+          type: number
+          format: double
+          description: 学习记录平均进度。
+        averageDurationSeconds:
+          type: number
+          format: double
+          description: 平均累计学习时长（秒）。
+        totalDurationSeconds:
+          type: integer
+          description: 累计学习时长（秒）。
+      required:
+        - itemId
+        - title
+        - learnerCount
+        - completedCount
+        - downloadCount
+        - averageProgress
+        - averageDurationSeconds
+        - totalDurationSeconds
 
     ActivityRegistrationResult:
       type: object

@@ -20,20 +20,11 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// Request body for updating learning progress.
+    /// 更新当前登录用户学习进度的请求。
     /// </summary>
     [DataContract]
     public partial class UpdateLearningProgressRequest 
     {
-        /// <summary>
-        /// Current learning user id.
-        /// </summary>
-        /// <value>Current learning user id.</value>
-        /* <example>21</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
         /// <summary>
         /// Latest learning progress percentage.
         /// </summary>

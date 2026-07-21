@@ -20,121 +20,124 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// Request body for creating a club training course.
+    /// 创建课程或上传学习资源的请求。
     /// </summary>
     [DataContract]
     public partial class CreateLearningItemRequest 
     {
         /// <summary>
-        /// Current operator user id.
+        /// 发布资源的社团。
         /// </summary>
-        /// <value>Current operator user id.</value>
-        /* <example>12</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
-        /// <summary>
-        /// Club that publishes the course.
-        /// </summary>
-        /// <value>Club that publishes the course.</value>
+        /// <value>发布资源的社团。</value>
         /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Course title.
+        /// 课程或资源标题。
         /// </summary>
-        /// <value>Course title.</value>
-        /* <example>???????</example> */
+        /// <value>课程或资源标题。</value>
+        /* <example>Oracle 入门培训视频</example> */
         [Required]
         [StringLength(100, MinimumLength=1)]
         [DataMember(Name="title", EmitDefaultValue=false)]
         public string Title { get; set; }
 
         /// <summary>
-        /// Course introduction.
+        /// 课程或资源说明。
         /// </summary>
-        /// <value>Course introduction.</value>
+        /// <value>课程或资源说明。</value>
+        [MaxLength(1000)]
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Instructor user id.
+        /// 可选的课程授课人，可以是教师或学生；非课程资源可为空。
         /// </summary>
-        /// <value>Instructor user id.</value>
-        [Required]
-        [DataMember(Name="teacherUserId", EmitDefaultValue=true)]
-        public int TeacherUserId { get; set; }
+        /// <value>可选的课程授课人，可以是教师或学生；非课程资源可为空。</value>
+        [DataMember(Name="instructorUserId", EmitDefaultValue=true)]
+        public int? InstructorUserId { get; set; }
 
         /// <summary>
-        /// Course type.
+        /// 支持 course、lecture、training、video、document、material。
         /// </summary>
-        /// <value>Course type.</value>
-        /* <example>course</example> */
+        /// <value>支持 course、lecture、training、video、document、material。</value>
+        /* <example>video</example> */
         [Required]
         [MaxLength(30)]
         [DataMember(Name="itemType", EmitDefaultValue=false)]
         public string ItemType { get; set; }
 
         /// <summary>
-        /// Course category.
+        /// 资源分类。
         /// </summary>
-        /// <value>Course category.</value>
+        /// <value>资源分类。</value>
         [MaxLength(100)]
         [DataMember(Name="categoryName", EmitDefaultValue=true)]
         public string? CategoryName { get; set; }
 
         /// <summary>
-        /// Required course start time.
+        /// 视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。
         /// </summary>
-        /// <value>Required course start time.</value>
-        [Required]
-        [DataMember(Name="startAt", EmitDefaultValue=true)]
-        public DateTime StartAt { get; set; }
+        /// <value>视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。</value>
+        [MaxLength(255)]
+        [DataMember(Name="fileUrl", EmitDefaultValue=true)]
+        public string? FileUrl { get; set; }
 
         /// <summary>
-        /// Optional course end time; omit it for a long-running course.
+        /// 课程开始时间；课程类型必填。
         /// </summary>
-        /// <value>Optional course end time; omit it for a long-running course.</value>
+        /// <value>课程开始时间；课程类型必填。</value>
+        [DataMember(Name="startAt", EmitDefaultValue=true)]
+        public DateTime? StartAt { get; set; }
+
+        /// <summary>
+        /// 课程结束时间。
+        /// </summary>
+        /// <value>课程结束时间。</value>
         [DataMember(Name="endAt", EmitDefaultValue=true)]
         public DateTime? EndAt { get; set; }
 
         /// <summary>
-        /// Enrollment capacity.
+        /// 课程容量；课程类型必填。
         /// </summary>
-        /// <value>Enrollment capacity.</value>
-        [Required]
+        /// <value>课程容量；课程类型必填。</value>
         [DataMember(Name="capacity", EmitDefaultValue=true)]
-        public int Capacity { get; set; }
+        public int? Capacity { get; set; }
 
 
         /// <summary>
-        /// Course audience; club or public.
+        /// 公开、社团内或上传人所在部门内可见。
         /// </summary>
-        /// <value>Course audience; club or public.</value>
+        /// <value>公开、社团内或上传人所在部门内可见。</value>
         
         public enum VisibilityEnum
         {
             
             /// <summary>
-            /// Enum ClubEnum for club
-            /// </summary>
-            [EnumMember(Value = "club")]
-            ClubEnum = 1,
-            
-            /// <summary>
             /// Enum PublicEnum for public
             /// </summary>
             [EnumMember(Value = "public")]
-            PublicEnum = 2
+            PublicEnum = 1,
+            
+            /// <summary>
+            /// Enum ClubEnum for club
+            /// </summary>
+            [EnumMember(Value = "club")]
+            ClubEnum = 2,
+            
+            /// <summary>
+            /// Enum DepartmentEnum for department
+            /// </summary>
+            [EnumMember(Value = "department")]
+            DepartmentEnum = 3
         }
 
         /// <summary>
-        /// Course audience; club or public.
+        /// 公开、社团内或上传人所在部门内可见。
         /// </summary>
-        /// <value>Course audience; club or public.</value>
+        /// <value>公开、社团内或上传人所在部门内可见。</value>
         /* <example>club</example> */
         [Required]
         [DataMember(Name="visibility", EmitDefaultValue=true)]
@@ -142,9 +145,46 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Initial course status.
+        /// 是否允许直接下载；课程无文件时建议 deny。
         /// </summary>
-        /// <value>Initial course status.</value>
+        /// <value>是否允许直接下载；课程无文件时建议 deny。</value>
+        
+        public enum DownloadPermissionEnum
+        {
+            
+            /// <summary>
+            /// Enum AllowEnum for allow
+            /// </summary>
+            [EnumMember(Value = "allow")]
+            AllowEnum = 1,
+            
+            /// <summary>
+            /// Enum DenyEnum for deny
+            /// </summary>
+            [EnumMember(Value = "deny")]
+            DenyEnum = 2,
+            
+            /// <summary>
+            /// Enum ApprovalEnum for approval
+            /// </summary>
+            [EnumMember(Value = "approval")]
+            ApprovalEnum = 3
+        }
+
+        /// <summary>
+        /// 是否允许直接下载；课程无文件时建议 deny。
+        /// </summary>
+        /// <value>是否允许直接下载；课程无文件时建议 deny。</value>
+        /* <example>allow</example> */
+        [Required]
+        [DataMember(Name="downloadPermission", EmitDefaultValue=true)]
+        public DownloadPermissionEnum DownloadPermission { get; set; }
+
+
+        /// <summary>
+        /// 初始发布状态。
+        /// </summary>
+        /// <value>初始发布状态。</value>
         
         public enum ItemStatusEnum
         {
@@ -163,9 +203,9 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Initial course status.
+        /// 初始发布状态。
         /// </summary>
-        /// <value>Initial course status.</value>
+        /// <value>初始发布状态。</value>
         [Required]
         [DataMember(Name="itemStatus", EmitDefaultValue=true)]
         public ItemStatusEnum ItemStatus { get; set; } = ItemStatusEnum.DraftEnum;

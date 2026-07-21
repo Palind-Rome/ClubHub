@@ -25,14 +25,6 @@ namespace Org.OpenAPITools.Models
     [DataContract]
     public partial class ReviewProjectRequest 
     {
-        /// <summary>
-        /// Gets or Sets CurrentUserId
-        /// </summary>
-        /* <example>3</example> */
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
 
         /// <summary>
         /// Review result. running means approved; closed means rejected or closed.

@@ -21,12 +21,6 @@ import { mapValues } from "../runtime";
  */
 export interface CancelProjectRequest {
   /**
-   *
-   * @type {number}
-   * @memberof CancelProjectRequest
-   */
-  currentUserId: number;
-  /**
    * Optional applicant cancellation reason.
    * @type {string}
    * @memberof CancelProjectRequest
@@ -38,7 +32,6 @@ export interface CancelProjectRequest {
  * Check if a given object implements the CancelProjectRequest interface.
  */
 export function instanceOfCancelProjectRequest(value: object): value is CancelProjectRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   return true;
 }
 
@@ -54,7 +47,6 @@ export function CancelProjectRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     cancelReason: json["cancelReason"] == null ? undefined : json["cancelReason"],
   };
 }
@@ -72,7 +64,6 @@ export function CancelProjectRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     cancelReason: value["cancelReason"],
   };
 }

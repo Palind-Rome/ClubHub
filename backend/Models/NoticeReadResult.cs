@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Org.OpenAPITools.Models
 { 
@@ -48,6 +49,7 @@ namespace Org.OpenAPITools.Models
         /// </summary>
         /// <value>是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。</value>
         /* <example>true</example> */
+        [JsonRequired]
         [Required]
         [DataMember(Name="isRead", EmitDefaultValue=true)]
         public bool IsRead { get; set; }

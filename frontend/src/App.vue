@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
+import { MATERIAL_ACCESS_PERMISSIONS } from "./materialPermissions";
 
 const healthOk = ref(false);
 const healthChecking = ref(false);
@@ -55,9 +56,21 @@ const canAccessVenueReservations = computed(() => {
     permissions.includes("venue:review")
   );
 });
+const canAccessMaterialBorrows = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  return (
+    permissions.includes("*") ||
+    MATERIAL_ACCESS_PERMISSIONS.some((permission) => permissions.includes(permission))
+  );
+});
 
 function refreshSession() {
-  auth.value = readAuth();
+  const nextAuth = readAuth();
+  auth.value = nextAuth;
+
+  if (!nextAuth && route.path !== "/auth") {
+    router.replace({ path: "/auth", query: { redirect: route.fullPath } });
+  }
 }
 
 async function checkHealth() {
@@ -96,6 +109,7 @@ onUnmounted(() => {
       <el-menu mode="horizontal" router :default-active="activeMenu" :ellipsis="false" class="nav">
         <el-menu-item index="/auth">{{ accountLabel }}</el-menu-item>
         <el-menu-item index="/clubs">我的社团</el-menu-item>
+        <el-menu-item index="/club-organization">社团架构</el-menu-item>
         <el-menu-item index="/club-members">成员管理</el-menu-item>
         <el-menu-item v-if="canAccessClubRegistration" index="/club-registration">
           社团注册
@@ -110,7 +124,8 @@ onUnmounted(() => {
         <el-menu-item v-if="canAccessVenueReservations" index="/venue-reservations">
           场地预约
         </el-menu-item>
-        <el-menu-item index="/learning">课程</el-menu-item>
+        <el-menu-item index="/learning">学习中心</el-menu-item>
+        <el-menu-item v-if="canAccessMaterialBorrows" index="/materials"> 物资借还 </el-menu-item>
       </el-menu>
       <div class="header-actions">
         <div class="session">
