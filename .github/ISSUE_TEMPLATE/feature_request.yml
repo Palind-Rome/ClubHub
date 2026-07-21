@@ -1,0 +1,105 @@
+name: 课程功能点
+description: 规划一个课程要求的业务功能点（对应数据库设计文档）
+title: "[功能点] "
+labels: [课程功能点]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      description: 请选择此功能点的优先级
+      options:
+        - 优先级:P0
+        - 优先级:P1
+        - 优先级:P2
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 领域
+      description: 请选择此功能点所属的业务领域
+      options:
+        - area:auth
+        - area:club
+        - area:activity
+        - area:venue
+        - area:project
+        - area:learning
+        - area:material
+        - area:evaluation
+        - area:notice
+        - area:analytics
+        - area:forum
+        - area:frontend
+        - area:recruitment
+        - area:docs
+        - area:meta
+    validations:
+      required: true
+  - type: checkboxes
+    id: fullstack
+    attributes:
+      label: 全栈任务
+      description: 如果涉及前后端数据库联动，请勾选此项
+      options:
+        - label: 本任务涉及前后端与数据库联动
+          required: false
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 请描述此功能点的目标
+      placeholder: |
+        要实现什么业务能力……
+    validations:
+      required: true
+  - type: textarea
+    id: user_roles
+    attributes:
+      label: 用户 / 角色
+      description: 请描述此功能点涉及的用户角色
+      placeholder: |
+        哪些角色会使用此功能：学生、社团负责人、系统管理员……
+    validations:
+      required: true
+  - type: textarea
+    id: business_rules
+    attributes:
+      label: 业务规则
+      description: 请列出关键业务规则
+      placeholder: |
+        - 规则1
+        - 规则2
+    validations:
+      required: false
+  - type: textarea
+    id: data_involved
+    attributes:
+      label: 涉及数据
+      description: 请列出涉及的数据库表、新字段或约束
+      placeholder: |
+        - 表：
+        - 新字段或约束：
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 验收标准
+      description: 请列出明确的验收条件
+      placeholder: |
+        - [ ] 条件1
+        - [ ] 条件2
+    validations:
+      required: true
+  - type: textarea
+    id: defense_notes
+    attributes:
+      label: 答辩演示说明
+      description: 此功能在答辩时的演示要点（可选）
+      placeholder: |
+        演示流程、关键截图点……
+    validations:
+      required: false
