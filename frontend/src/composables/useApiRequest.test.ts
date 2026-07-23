@@ -8,7 +8,7 @@ const auth = {
   user: { id: 7, username: "student", realName: "测试学生", accountStatus: "active" },
   roles: [],
   permissions: [],
-} as unknown as AuthResponse;
+} satisfies AuthResponse;
 
 describe("requestJson", () => {
   beforeEach(() => {

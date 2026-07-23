@@ -387,8 +387,8 @@ Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Sch
 
 ┌─ ci.yml ──────────────────────────────────────────┐
 │  validate        检查文件完整性 + schema ≥12 张表    │
-│  build-backend   如果有 .sln 则 dotnet build        │
-│  build-frontend  如果有 package.json 则 pnpm build  │
+│  build-backend   dotnet restore + build + test      │
+│  build-frontend  pnpm install + test + build        │
 └────────────────────────────────────────────────────┘
 ┌─ code-check.yml ───────────────────────────────────┐
 │  pre-commit-check 通用 pre-commit 检查              │
@@ -471,7 +471,9 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
  5. 前端开发：在 src/ 中写 Vue 组件，调用生成的前端 API 函数
           │
           ▼
- 6. 本地验证：dotnet build / pnpm lint && pnpm build
+ 6. 本地验证：
+    ├── dotnet restore && dotnet build --configuration Release && dotnet test --configuration Release
+    └── pnpm install --frozen-lockfile && pnpm test && pnpm run lint && pnpm run build
           │
           ▼
  7. 发起 PR → CI + code-check 门禁通过 → 合并

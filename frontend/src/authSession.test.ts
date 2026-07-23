@@ -13,7 +13,7 @@ const auth = {
   user: { id: 7, username: "student", realName: "测试学生", accountStatus: "active" },
   roles: [],
   permissions: ["club:view"],
-} as unknown as AuthResponse;
+} satisfies AuthResponse;
 
 describe("auth session", () => {
   beforeEach(() => localStorage.clear());

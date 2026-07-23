@@ -28,6 +28,9 @@ public sealed class PasswordHasherTests
     [InlineData("")]
     [InlineData("plaintext")]
     [InlineData("PBKDF2$not-a-number$salt$hash")]
+    [InlineData("PBKDF2$0$AQ==$AQ==")]
+    [InlineData("PBKDF2$-1$AQ==$AQ==")]
+    [InlineData("PBKDF2$600000$AQ==$")]
     [InlineData("PBKDF2$600000$not-base64$not-base64")]
     public void VerifyRejectsMalformedStoredHashes(string storedHash)
     {
