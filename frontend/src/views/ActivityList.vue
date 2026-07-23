@@ -72,17 +72,6 @@ interface ReviewActivityForm {
   comment: string;
 }
 
-interface BudgetForm {
-  budgetAmount: number;
-  budgetPurpose: string;
-  budgetDetail: string;
-}
-
-interface BudgetReviewForm {
-  approved: boolean;
-  comment: string;
-}
-
 interface SignForm {
   type: "checkin" | "checkout";
   userId?: number;
@@ -102,8 +91,6 @@ let stopSessionListener: (() => void) | undefined;
 
 const createDialogVisible = ref(false);
 const reviewDialogVisible = ref(false);
-const budgetDialogVisible = ref(false);
-const budgetReviewDialogVisible = ref(false);
 const settingsDialogVisible = ref(false);
 const signDialogVisible = ref(false);
 const participationsDialogVisible = ref(false);
@@ -142,9 +129,7 @@ const canCreateActivity = computed(() => hasPermission("activity:create"));
 const pageTitle = computed(() =>
   canCreateActivity.value ||
   hasPermission("activity:review") ||
-  hasPermission("activity:checkin:manage") ||
-  hasPermission("budget:apply") ||
-  hasPermission("budget:review")
+  hasPermission("activity:checkin:manage")
     ? "活动管理"
     : "活动",
 );
@@ -162,17 +147,6 @@ const createForm = ref<CreateActivityForm>({
 });
 
 const reviewForm = ref<ReviewActivityForm>({
-  approved: true,
-  comment: "",
-});
-
-const budgetForm = ref<BudgetForm>({
-  budgetAmount: 1000,
-  budgetPurpose: "",
-  budgetDetail: "",
-});
-
-const budgetReviewForm = ref<BudgetReviewForm>({
   approved: true,
   comment: "",
 });
@@ -232,12 +206,6 @@ const signStatusLabel: Record<string, string> = {
   checked_out: "已签退",
 };
 
-const budgetStatusLabel: Record<string, string> = {
-  pending: "待审批",
-  approved: "已通过",
-  rejected: "已驳回",
-};
-
 const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -267,15 +235,6 @@ function formatActivityTimeRange(activity: Activity) {
     return "未设置活动时间";
   }
   return `${formatTime(activity.startTime)} ~ ${formatTime(activity.endTime)}`;
-}
-
-function formatMoney(value: number | null) {
-  if (value == null) return "未填写";
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 2,
-  }).format(value);
 }
 
 function buildDefaultCreateTimes() {
@@ -415,24 +374,10 @@ function canViewParticipations(activity: Activity) {
   );
 }
 
-function canApplyBudget(activity: Activity) {
-  return hasScopedPermission("budget:apply", activity.clubId);
-}
-
-function canReviewBudget(activity: Activity) {
-  return (
-    activity.budgetStatus === "pending" && hasScopedPermission("budget:review", activity.clubId)
-  );
-}
-
 function canManageMaterial(activity: Activity) {
   return MATERIAL_ACCESS_PERMISSIONS.some((permission) =>
     hasScopedPermission(permission, activity.clubId),
   );
-}
-
-function showBudgetMenu(activity: Activity) {
-  return canApplyBudget(activity) || canReviewBudget(activity);
 }
 
 async function loadActivities() {
@@ -617,65 +562,6 @@ async function reviewActivity() {
   }
 }
 
-function openBudget(activity: Activity) {
-  if (!canApplyBudget(activity)) {
-    ElMessage.warning("当前账号没有该社团的经费申请权限。");
-    return;
-  }
-
-  currentActivity.value = activity;
-  budgetForm.value = {
-    budgetAmount: activity.budgetAmount ?? 1000,
-    budgetPurpose: activity.budgetPurpose ?? "",
-    budgetDetail: activity.budgetDetail ?? "",
-  };
-  budgetDialogVisible.value = true;
-}
-
-async function applyBudget() {
-  if (!currentActivity.value) return;
-  if (!budgetForm.value.budgetPurpose.trim() || budgetForm.value.budgetAmount <= 0) {
-    error.value = "请填写大于 0 的预算金额和经费用途。";
-    ElMessage.error(error.value);
-    return;
-  }
-
-  saving.value = true;
-  try {
-    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/budget`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        budgetAmount: budgetForm.value.budgetAmount,
-        budgetPurpose: budgetForm.value.budgetPurpose,
-        budgetDetail: emptyToNull(budgetForm.value.budgetDetail),
-      }),
-    });
-    budgetDialogVisible.value = false;
-    ElMessage.success("经费预算已提交审批");
-    await loadActivities();
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "提交经费预算失败";
-    ElMessage.error(error.value);
-  } finally {
-    saving.value = false;
-  }
-}
-
-function openBudgetReview(activity: Activity) {
-  if (!canReviewBudget(activity)) {
-    ElMessage.warning("当前账号没有该社团的经费审批权限。");
-    return;
-  }
-
-  currentActivity.value = activity;
-  budgetReviewForm.value = {
-    approved: true,
-    comment: "",
-  };
-  budgetReviewDialogVisible.value = true;
-}
-
 async function openMaterialBorrows(activity: Activity) {
   if (!canManageMaterial(activity)) {
     ElMessage.warning("当前账号没有该社团的物资借用管理权限。");
@@ -687,30 +573,6 @@ async function openMaterialBorrows(activity: Activity) {
     path: "/materials",
     query: { clubId: String(activity.clubId) },
   });
-}
-
-async function reviewBudget() {
-  if (!currentActivity.value) return;
-
-  saving.value = true;
-  try {
-    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/budget/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        approved: budgetReviewForm.value.approved,
-        comment: emptyToNull(budgetReviewForm.value.comment),
-      }),
-    });
-    budgetReviewDialogVisible.value = false;
-    ElMessage.success("经费审批结果已保存");
-    await loadActivities();
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "审批经费失败";
-    ElMessage.error(error.value);
-  } finally {
-    saving.value = false;
-  }
 }
 
 function openSettings(activity: Activity) {
@@ -928,24 +790,6 @@ async function openParticipations(activity: Activity) {
               </template>
             </el-dropdown>
 
-            <el-dropdown v-if="showBudgetMenu(row)" trigger="click">
-              <el-button size="small" type="primary" plain>经费管理</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
-                    v-if="canApplyBudget(row)"
-                    :disabled="row.budgetStatus === 'approved'"
-                    @click="openBudget(row)"
-                  >
-                    经费申请
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="canReviewBudget(row)" @click="openBudgetReview(row)">
-                    经费审批
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-
             <el-button
               v-if="canManageMaterial(row)"
               size="small"
@@ -1095,101 +939,6 @@ async function openParticipations(activity: Activity) {
       <template #footer>
         <el-button @click="reviewDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="reviewActivity">保存审核结果</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="budgetDialogVisible" title="活动经费预算申请" width="560px">
-      <el-descriptions
-        v-if="currentActivity"
-        :column="1"
-        border
-        size="small"
-        class="review-summary"
-      >
-        <el-descriptions-item label="活动标题">{{ currentActivity.title }}</el-descriptions-item>
-        <el-descriptions-item label="主办社团">{{ currentActivity.clubName }}</el-descriptions-item>
-        <el-descriptions-item label="当前经费状态">
-          {{
-            currentActivity.budgetStatus
-              ? budgetStatusLabel[currentActivity.budgetStatus]
-              : "未申请"
-          }}
-        </el-descriptions-item>
-        <el-descriptions-item label="审批意见">{{
-          currentActivity.budgetComment || "暂无"
-        }}</el-descriptions-item>
-      </el-descriptions>
-      <el-form label-position="top" class="review-form">
-        <el-form-item label="申请人">
-          <span class="readonly-user">{{ currentUserDisplay }}</span>
-        </el-form-item>
-        <el-form-item label="预算金额" required>
-          <el-input-number
-            v-model="budgetForm.budgetAmount"
-            :min="0.01"
-            :precision="2"
-            :step="100"
-          />
-        </el-form-item>
-        <el-form-item label="经费用途" required>
-          <el-input v-model="budgetForm.budgetPurpose" placeholder="如：物料采购、场地布置" />
-        </el-form-item>
-        <el-form-item label="预算明细">
-          <el-input
-            v-model="budgetForm.budgetDetail"
-            type="textarea"
-            :rows="4"
-            placeholder="请填写预算条目、单价、数量或补充说明"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="budgetDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="applyBudget">提交审批</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="budgetReviewDialogVisible" title="活动经费审批" width="560px">
-      <el-descriptions
-        v-if="currentActivity"
-        :column="1"
-        border
-        size="small"
-        class="review-summary"
-      >
-        <el-descriptions-item label="活动标题">{{ currentActivity.title }}</el-descriptions-item>
-        <el-descriptions-item label="预算金额">{{
-          formatMoney(currentActivity.budgetAmount)
-        }}</el-descriptions-item>
-        <el-descriptions-item label="经费用途">{{
-          currentActivity.budgetPurpose || "未填写"
-        }}</el-descriptions-item>
-        <el-descriptions-item label="预算明细">{{
-          currentActivity.budgetDetail || "未填写"
-        }}</el-descriptions-item>
-      </el-descriptions>
-      <el-form label-position="top" class="review-form">
-        <el-form-item label="审批结果">
-          <el-radio-group v-model="budgetReviewForm.approved">
-            <el-radio :value="true">通过</el-radio>
-            <el-radio :value="false">驳回</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审批人">
-          <span class="readonly-user">{{ currentUserDisplay }}</span>
-        </el-form-item>
-        <el-form-item label="审批意见">
-          <el-input
-            v-model="budgetReviewForm.comment"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入经费审批意见"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="budgetReviewDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="reviewBudget">保存审批结果</el-button>
       </template>
     </el-dialog>
 

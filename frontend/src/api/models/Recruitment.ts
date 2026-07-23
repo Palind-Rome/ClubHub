@@ -208,26 +208,54 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
     clubId: json["clubId"],
     clubName: json["clubName"],
     title: json["title"],
-    description: json["description"] == null ? undefined : json["description"],
-    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
-    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    quota: json["quota"] == null ? undefined : json["quota"],
-    requirements: json["requirements"] == null ? undefined : json["requirements"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    startAt:
+      json["startAt"] === undefined
+        ? undefined
+        : json["startAt"] === null
+          ? null
+          : new Date(json["startAt"]),
+    endAt:
+      json["endAt"] === undefined
+        ? undefined
+        : json["endAt"] === null
+          ? null
+          : new Date(json["endAt"]),
+    quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
+    requirements:
+      json["requirements"] === undefined
+        ? undefined
+        : json["requirements"] === null
+          ? null
+          : json["requirements"],
     recruitStatus: json["recruitStatus"],
     recruitStatusText: json["recruitStatusText"],
     createdAt: new Date(json["createdAt"]),
     applicationCount: json["applicationCount"],
     acceptedCount: json["acceptedCount"],
     currentUserApplicationId:
-      json["currentUserApplicationId"] == null ? undefined : json["currentUserApplicationId"],
+      json["currentUserApplicationId"] === undefined
+        ? undefined
+        : json["currentUserApplicationId"] === null
+          ? null
+          : json["currentUserApplicationId"],
     currentUserApplicationStatus:
-      json["currentUserApplicationStatus"] == null
+      json["currentUserApplicationStatus"] === undefined
         ? undefined
-        : json["currentUserApplicationStatus"],
+        : json["currentUserApplicationStatus"] === null
+          ? null
+          : json["currentUserApplicationStatus"],
     currentUserApplicationStatusText:
-      json["currentUserApplicationStatusText"] == null
+      json["currentUserApplicationStatusText"] === undefined
         ? undefined
-        : json["currentUserApplicationStatusText"],
+        : json["currentUserApplicationStatusText"] === null
+          ? null
+          : json["currentUserApplicationStatusText"],
     currentUserIsMember: json["currentUserIsMember"],
     isOwnProposal: json["isOwnProposal"],
     canManage: json["canManage"],

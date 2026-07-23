@@ -2612,8 +2612,9 @@ paths:
 
   /api/activities/{activityId}/budget:
     put:
-      summary: 提交或更新活动经费预算申请
-      description: 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
+      summary: 旧活动经费预算入口（已停用）
+      description: 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+      deprecated: true
       operationId: applyActivityBudget
       parameters:
         - name: activityId
@@ -2642,11 +2643,14 @@ paths:
           description: 当前用户没有该社团的经费申请权限
         "404":
           description: 活动不存在
+        "409":
+          description: 旧活动经费预算入口已停用，请改用经费管理闭环接口
 
   /api/activities/{activityId}/budget/review:
     post:
-      summary: 审批活动经费预算
-      description: 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
+      summary: 旧活动经费审批入口（已停用）
+      description: 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+      deprecated: true
       operationId: reviewActivityBudget
       parameters:
         - name: activityId
@@ -2675,6 +2679,279 @@ paths:
           description: 当前用户没有该社团的经费审批权限
         "404":
           description: 活动不存在
+        "409":
+          description: 旧活动经费审批入口已停用，请改用经费管理闭环接口
+
+  /api/budget/accounts:
+    get:
+      summary: 获取经费账户列表
+      description: 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+      operationId: getBudgetAccounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: fiscalYear
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 经费账户列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetAccount"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
+    post:
+      summary: 创建社团年度经费账户
+      description: 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+      operationId: createBudgetAccount
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBudgetAccountRequest"
+      responses:
+        "201":
+          description: 经费账户已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetAccount"
+        "400":
+          description: 请求参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有维护经费账户权限
+        "409":
+          description: 同一社团同一年度已存在经费账户
+
+  /api/budget/accounts/{accountId}:
+    put:
+      summary: 更新社团年度经费账户
+      description: 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+      operationId: updateBudgetAccount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBudgetAccountRequest"
+      responses:
+        "200":
+          description: 经费账户已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetAccount"
+        "400":
+          description: 请求参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有维护经费账户权限
+        "404":
+          description: 经费账户不存在
+
+  /api/budget/applications:
+    get:
+      summary: 获取经费申请列表
+      description: 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+      operationId: getBudgetApplications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, cancelled]
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [activity_budget, purchase, reimbursement]
+      responses:
+        "200":
+          description: 经费申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetApplication"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
+    post:
+      summary: 提交经费申请
+      description: 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+      operationId: createBudgetApplication
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBudgetApplicationRequest"
+      responses:
+        "201":
+          description: 经费申请已提交，等待审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 请求参数或业务规则不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的经费申请权限
+        "404":
+          description: 经费账户或活动不存在
+        "409":
+          description: 经费账户余额不足或账户状态不允许申请
+
+  /api/budget/applications/{applicationId}/review:
+    post:
+      summary: 审核经费申请
+      description: 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+      operationId: reviewBudgetApplication
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewBudgetApplicationRequest"
+      responses:
+        "200":
+          description: 经费审核结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 当前申请状态不允许审核或参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的经费审核权限
+        "404":
+          description: 经费申请不存在
+        "409":
+          description: 账户余额不足或并发审核冲突
+
+  /api/budget/applications/{applicationId}/cancel:
+    post:
+      summary: 撤销经费申请
+      description: 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+      operationId: cancelBudgetApplication
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelBudgetApplicationRequest"
+      responses:
+        "200":
+          description: 经费申请已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 当前申请状态不允许撤销
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有撤销该申请的权限
+        "404":
+          description: 经费申请不存在
+
+  /api/budget/transactions:
+    get:
+      summary: 获取经费流水列表
+      description: 返回当前用户授权范围内的经费流水，用于审计账户余额。
+      operationId: getBudgetTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 经费流水列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetTransaction"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
 
   /api/activities/{activityId}/checkin-settings:
     put:
@@ -8584,6 +8861,416 @@ components:
       required:
         - clubId
         - clubName
+
+    BudgetAccount:
+      type: object
+      description: 社团年度经费账户。已占用和余额由经费流水汇总得到，不由客户端手填。
+      properties:
+        id:
+          type: integer
+          description: 经费账户 ID。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 账户所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 账户所属社团名称。
+          example: 计算机协会
+        fiscalYear:
+          type: string
+          description: 经费年度，通常使用自然年或学年标识。
+          example: "2026"
+        accountName:
+          type: string
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          description: 年度批准额度。
+          example: 50000
+        committedAmount:
+          type: number
+          format: double
+          description: 已由审批通过申请占用的金额。
+          example: 12000
+        remainingAmount:
+          type: number
+          format: double
+          description: 当前剩余额度，由年度额度和流水汇总计算。
+          example: 38000
+        status:
+          type: string
+          enum: [active, closed]
+          description: 账户状态；active 启用，closed 关闭。
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: 账户创建时间。
+          example: "2026-07-20T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 账户最近更新时间。
+          example: "2026-07-20T10:30:00Z"
+      required:
+        - id
+        - clubId
+        - clubName
+        - fiscalYear
+        - accountName
+        - initialAmount
+        - committedAmount
+        - remainingAmount
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateBudgetAccountRequest:
+      type: object
+      description: 创建社团年度经费账户的请求。
+      properties:
+        clubId:
+          type: integer
+          description: 账户所属社团 ID。
+          example: 1
+        fiscalYear:
+          type: string
+          minLength: 4
+          maxLength: 20
+          description: 经费年度，同一社团同一年度只能有一个经费账户。
+          example: "2026"
+        accountName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: 年度批准额度。
+          example: 50000
+      required:
+        - clubId
+        - fiscalYear
+        - accountName
+        - initialAmount
+
+    UpdateBudgetAccountRequest:
+      type: object
+      description: 维护社团年度经费账户的请求。
+      properties:
+        accountName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: 年度批准额度，不能低于已审批占用金额。
+          example: 60000
+        status:
+          type: string
+          enum: [active, closed]
+          description: 账户状态；active 启用，closed 关闭。
+          example: active
+      required:
+        - accountName
+        - initialAmount
+        - status
+
+    BudgetApplication:
+      type: object
+      description: 经费申请记录，覆盖活动预算、采购和报销等基础类型。
+      properties:
+        id:
+          type: integer
+          description: 经费申请 ID。
+          example: 1000000
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 申请所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 申请所属社团名称。
+          example: 计算机协会
+        activityId:
+          type: integer
+          nullable: true
+          description: 关联活动 ID；采购、报销等非活动场景可为空。
+          example: 12
+        activityTitle:
+          type: string
+          nullable: true
+          description: 关联活动标题。
+          example: 迎新技术分享会
+        applicantUserId:
+          type: integer
+          description: 申请人用户 ID，由服务端根据登录态写入。
+          example: 3
+        applicantName:
+          type: string
+          description: 申请人展示名称。
+          example: 王明
+        type:
+          type: string
+          enum: [activity_budget, purchase, reimbursement]
+          description: 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
+          example: activity_budget
+        title:
+          type: string
+          description: 经费申请标题。
+          example: 迎新活动物料采购
+        amount:
+          type: number
+          format: double
+          description: 申请金额。
+          example: 1200
+        purpose:
+          type: string
+          description: 经费用途。
+          example: 活动布置、设备耗材、报名物料
+        detail:
+          type: string
+          nullable: true
+          description: 经费明细说明，可包含预算条目、数量、单价或报销说明。
+          example: 横幅 2 条，单价 120 元；矿泉水 10 箱，单价 45 元。
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+          description: 申请状态；pending 待审核，approved 已通过，rejected 已驳回，cancelled 已撤销。
+          example: pending
+        submittedAt:
+          type: string
+          format: date-time
+          description: 申请提交时间。
+          example: "2026-07-20T10:00:00Z"
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 审核完成时间；待审核或已撤销时可为空。
+          example: "2026-07-20T12:00:00Z"
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审核人用户 ID；待审核或已撤销时可为空。
+          example: 5
+        reviewerName:
+          type: string
+          nullable: true
+          description: 审核人展示名称。
+          example: 张老师
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审核意见或撤销说明。
+          example: 预算合理，同意执行。
+      required:
+        - id
+        - accountId
+        - clubId
+        - clubName
+        - applicantUserId
+        - applicantName
+        - type
+        - title
+        - amount
+        - purpose
+        - status
+        - submittedAt
+
+    CreateBudgetApplicationRequest:
+      type: object
+      description: 提交经费申请。申请人由服务端从登录态写入，客户端无需提交 applicantUserId。
+      properties:
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        activityId:
+          type: integer
+          nullable: true
+          description: 关联活动，可不填。
+          example: 12
+        type:
+          type: string
+          enum: [activity_budget, purchase, reimbursement]
+          description: 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
+          example: activity_budget
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费申请标题。
+          example: 迎新活动物料采购
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: 申请金额，必须大于 0。
+          example: 1200
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费用途。
+          example: 活动布置、设备耗材、报名物料
+        detail:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: 经费明细说明，可包含预算条目、数量、单价或报销说明。
+          example: 横幅 2 条，单价 120 元；矿泉水 10 箱，单价 45 元。
+      required:
+        - accountId
+        - type
+        - title
+        - amount
+        - purpose
+
+    ReviewBudgetApplicationRequest:
+      type: object
+      description: 审核经费申请的请求。
+      properties:
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 审核意见。
+          example: 预算合理，同意执行。
+      required:
+        - approved
+
+    CancelBudgetApplicationRequest:
+      type: object
+      description: 撤销待审核经费申请的请求。
+      properties:
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 撤销说明。
+          example: 活动方案调整，暂不申请经费。
+
+    BudgetReviewRecord:
+      type: object
+      description: 经费审核记录，用于保留审核动作历史。
+      properties:
+        id:
+          type: integer
+          description: 经费审核记录 ID。
+          example: 1000000
+        applicationId:
+          type: integer
+          description: 被审核的经费申请 ID。
+          example: 1000000
+        reviewerUserId:
+          type: integer
+          description: 审核人用户 ID。
+          example: 5
+        reviewerName:
+          type: string
+          description: 审核人展示名称。
+          example: 张老师
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        comment:
+          type: string
+          nullable: true
+          description: 审核意见。
+          example: 预算合理，同意执行。
+        reviewedAt:
+          type: string
+          format: date-time
+          description: 审核时间。
+          example: "2026-07-20T12:00:00Z"
+      required:
+        - id
+        - applicationId
+        - reviewerUserId
+        - reviewerName
+        - approved
+        - reviewedAt
+
+    BudgetTransaction:
+      type: object
+      description: 经费流水记录，余额由经费账户初始额度和流水金额汇总得到。
+      properties:
+        id:
+          type: integer
+          description: 经费流水 ID。
+          example: 1000000
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        applicationId:
+          type: integer
+          nullable: true
+          description: 关联经费申请 ID；手工调整类流水可为空。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 流水所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 流水所属社团名称。
+          example: 计算机协会
+        type:
+          type: string
+          enum: [commitment, expense, refund, adjustment]
+          description: 流水类型；commitment 审批占用，expense 实际支出，refund 退款，adjustment 调整。
+          example: commitment
+        amount:
+          type: number
+          format: double
+          description: 流水金额，支出或占用为负数，退款或调增为正数。
+          example: -1200
+        description:
+          type: string
+          nullable: true
+          description: 流水说明。
+          example: 经费申请通过：迎新活动物料采购
+        occurredAt:
+          type: string
+          format: date-time
+          description: 流水发生时间。
+          example: "2026-07-20T12:00:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          description: 流水创建时间。
+          example: "2026-07-20T12:00:00Z"
+      required:
+        - id
+        - accountId
+        - clubId
+        - clubName
+        - type
+        - amount
+        - occurredAt
+        - createdAt
 
     Activity:
       type: object

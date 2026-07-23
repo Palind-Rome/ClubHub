@@ -85,8 +85,18 @@ export function UpdateProjectTaskProgressRequestFromJSONTyped(
   return {
     progress: json["progress"],
     taskStatus: json["taskStatus"],
-    delayReason: json["delayReason"] == null ? undefined : json["delayReason"],
-    reportContent: json["reportContent"] == null ? undefined : json["reportContent"],
+    delayReason:
+      json["delayReason"] === undefined
+        ? undefined
+        : json["delayReason"] === null
+          ? null
+          : json["delayReason"],
+    reportContent:
+      json["reportContent"] === undefined
+        ? undefined
+        : json["reportContent"] === null
+          ? null
+          : json["reportContent"],
   };
 }
 

@@ -139,16 +139,42 @@ export function CreateClubMemberTermRequestFromJSONTyped(
   return {
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     userId: json["userId"],
-    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
-    departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
-    groupId: json["groupId"] == null ? undefined : json["groupId"],
-    groupName: json["groupName"] == null ? undefined : json["groupName"],
+    departmentId:
+      json["departmentId"] === undefined
+        ? undefined
+        : json["departmentId"] === null
+          ? null
+          : json["departmentId"],
+    departmentName:
+      json["departmentName"] === undefined
+        ? undefined
+        : json["departmentName"] === null
+          ? null
+          : json["departmentName"],
+    groupId:
+      json["groupId"] === undefined ? undefined : json["groupId"] === null ? null : json["groupId"],
+    groupName:
+      json["groupName"] === undefined
+        ? undefined
+        : json["groupName"] === null
+          ? null
+          : json["groupName"],
     positionName: json["positionName"],
     termName: json["termName"],
     termStart: new Date(json["termStart"]),
-    termEnd: json["termEnd"] == null ? undefined : new Date(json["termEnd"]),
+    termEnd:
+      json["termEnd"] === undefined
+        ? undefined
+        : json["termEnd"] === null
+          ? null
+          : new Date(json["termEnd"]),
     memberStatus: json["memberStatus"] == null ? undefined : json["memberStatus"],
-    contributionScore: json["contributionScore"] == null ? undefined : json["contributionScore"],
+    contributionScore:
+      json["contributionScore"] === undefined
+        ? undefined
+        : json["contributionScore"] === null
+          ? null
+          : json["contributionScore"],
     closeCurrentTerm: json["closeCurrentTerm"] == null ? undefined : json["closeCurrentTerm"],
   };
 }

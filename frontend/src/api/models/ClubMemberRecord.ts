@@ -160,18 +160,74 @@ export function ClubMemberRecordFromJSONTyped(
     clubName: json["clubName"],
     userId: json["userId"],
     userName: json["userName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
-    departmentId: json["departmentId"] == null ? undefined : json["departmentId"],
-    departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
-    groupId: json["groupId"] == null ? undefined : json["groupId"],
-    groupName: json["groupName"] == null ? undefined : json["groupName"],
-    positionName: json["positionName"] == null ? undefined : json["positionName"],
-    termName: json["termName"] == null ? undefined : json["termName"],
-    termStart: json["termStart"] == null ? undefined : new Date(json["termStart"]),
-    termEnd: json["termEnd"] == null ? undefined : new Date(json["termEnd"]),
-    memberStatus: json["memberStatus"] == null ? undefined : json["memberStatus"],
-    joinAt: json["joinAt"] == null ? undefined : new Date(json["joinAt"]),
-    contributionScore: json["contributionScore"] == null ? undefined : json["contributionScore"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
+    departmentId:
+      json["departmentId"] === undefined
+        ? undefined
+        : json["departmentId"] === null
+          ? null
+          : json["departmentId"],
+    departmentName:
+      json["departmentName"] === undefined
+        ? undefined
+        : json["departmentName"] === null
+          ? null
+          : json["departmentName"],
+    groupId:
+      json["groupId"] === undefined ? undefined : json["groupId"] === null ? null : json["groupId"],
+    groupName:
+      json["groupName"] === undefined
+        ? undefined
+        : json["groupName"] === null
+          ? null
+          : json["groupName"],
+    positionName:
+      json["positionName"] === undefined
+        ? undefined
+        : json["positionName"] === null
+          ? null
+          : json["positionName"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
+    termStart:
+      json["termStart"] === undefined
+        ? undefined
+        : json["termStart"] === null
+          ? null
+          : new Date(json["termStart"]),
+    termEnd:
+      json["termEnd"] === undefined
+        ? undefined
+        : json["termEnd"] === null
+          ? null
+          : new Date(json["termEnd"]),
+    memberStatus:
+      json["memberStatus"] === undefined
+        ? undefined
+        : json["memberStatus"] === null
+          ? null
+          : json["memberStatus"],
+    joinAt:
+      json["joinAt"] === undefined
+        ? undefined
+        : json["joinAt"] === null
+          ? null
+          : new Date(json["joinAt"]),
+    contributionScore:
+      json["contributionScore"] === undefined
+        ? undefined
+        : json["contributionScore"] === null
+          ? null
+          : json["contributionScore"],
     isCurrent: json["isCurrent"],
   };
 }

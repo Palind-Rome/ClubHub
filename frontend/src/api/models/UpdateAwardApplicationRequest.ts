@@ -65,7 +65,12 @@ export function UpdateAwardApplicationRequestFromJSONTyped(
   return {
     awardLevelId: json["awardLevelId"],
     applicationReason: json["applicationReason"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
   };
 }
 

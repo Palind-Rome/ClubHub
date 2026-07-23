@@ -140,15 +140,55 @@ export function LearningRecordFromJSONTyped(
     itemId: json["itemId"],
     userId: json["userId"],
     userDisplayName: json["userDisplayName"],
-    userNumber: json["userNumber"] == null ? undefined : json["userNumber"],
+    userNumber:
+      json["userNumber"] === undefined
+        ? undefined
+        : json["userNumber"] === null
+          ? null
+          : json["userNumber"],
     enrollStatus: json["enrollStatus"],
-    enrolledAt: json["enrolledAt"] == null ? undefined : new Date(json["enrolledAt"]),
-    progress: json["progress"] == null ? undefined : json["progress"],
-    durationSeconds: json["durationSeconds"] == null ? undefined : json["durationSeconds"],
-    lastLearnAt: json["lastLearnAt"] == null ? undefined : new Date(json["lastLearnAt"]),
-    completedAt: json["completedAt"] == null ? undefined : new Date(json["completedAt"]),
-    downloadedAt: json["downloadedAt"] == null ? undefined : new Date(json["downloadedAt"]),
-    downloadIp: json["downloadIp"] == null ? undefined : json["downloadIp"],
+    enrolledAt:
+      json["enrolledAt"] === undefined
+        ? undefined
+        : json["enrolledAt"] === null
+          ? null
+          : new Date(json["enrolledAt"]),
+    progress:
+      json["progress"] === undefined
+        ? undefined
+        : json["progress"] === null
+          ? null
+          : json["progress"],
+    durationSeconds:
+      json["durationSeconds"] === undefined
+        ? undefined
+        : json["durationSeconds"] === null
+          ? null
+          : json["durationSeconds"],
+    lastLearnAt:
+      json["lastLearnAt"] === undefined
+        ? undefined
+        : json["lastLearnAt"] === null
+          ? null
+          : new Date(json["lastLearnAt"]),
+    completedAt:
+      json["completedAt"] === undefined
+        ? undefined
+        : json["completedAt"] === null
+          ? null
+          : new Date(json["completedAt"]),
+    downloadedAt:
+      json["downloadedAt"] === undefined
+        ? undefined
+        : json["downloadedAt"] === null
+          ? null
+          : new Date(json["downloadedAt"]),
+    downloadIp:
+      json["downloadIp"] === undefined
+        ? undefined
+        : json["downloadIp"] === null
+          ? null
+          : json["downloadIp"],
   };
 }
 

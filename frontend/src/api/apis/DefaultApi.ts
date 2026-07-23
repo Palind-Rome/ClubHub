@@ -82,6 +82,26 @@ import {
   BorrowMaterialRequestToJSON,
 } from "../models/BorrowMaterialRequest";
 import {
+  type BudgetAccount,
+  BudgetAccountFromJSON,
+  BudgetAccountToJSON,
+} from "../models/BudgetAccount";
+import {
+  type BudgetApplication,
+  BudgetApplicationFromJSON,
+  BudgetApplicationToJSON,
+} from "../models/BudgetApplication";
+import {
+  type BudgetTransaction,
+  BudgetTransactionFromJSON,
+  BudgetTransactionToJSON,
+} from "../models/BudgetTransaction";
+import {
+  type CancelBudgetApplicationRequest,
+  CancelBudgetApplicationRequestFromJSON,
+  CancelBudgetApplicationRequestToJSON,
+} from "../models/CancelBudgetApplicationRequest";
+import {
   type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
@@ -142,6 +162,16 @@ import {
   CreateAwardSchemeRequestFromJSON,
   CreateAwardSchemeRequestToJSON,
 } from "../models/CreateAwardSchemeRequest";
+import {
+  type CreateBudgetAccountRequest,
+  CreateBudgetAccountRequestFromJSON,
+  CreateBudgetAccountRequestToJSON,
+} from "../models/CreateBudgetAccountRequest";
+import {
+  type CreateBudgetApplicationRequest,
+  CreateBudgetApplicationRequestFromJSON,
+  CreateBudgetApplicationRequestToJSON,
+} from "../models/CreateBudgetApplicationRequest";
 import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
@@ -348,6 +378,11 @@ import {
   ReviewAwardApplicationRequestToJSON,
 } from "../models/ReviewAwardApplicationRequest";
 import {
+  type ReviewBudgetApplicationRequest,
+  ReviewBudgetApplicationRequestFromJSON,
+  ReviewBudgetApplicationRequestToJSON,
+} from "../models/ReviewBudgetApplicationRequest";
+import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
   ReviewClubApplicationRequestToJSON,
@@ -412,6 +447,11 @@ import {
   UpdateAwardSchemeRequestFromJSON,
   UpdateAwardSchemeRequestToJSON,
 } from "../models/UpdateAwardSchemeRequest";
+import {
+  type UpdateBudgetAccountRequest,
+  UpdateBudgetAccountRequestFromJSON,
+  UpdateBudgetAccountRequestToJSON,
+} from "../models/UpdateBudgetAccountRequest";
 import {
   type UpdateCheckinSettingsRequest,
   UpdateCheckinSettingsRequestFromJSON,
@@ -528,6 +568,11 @@ export interface BorrowMaterialOperationRequest {
   borrowMaterialRequest: BorrowMaterialRequest;
 }
 
+export interface CancelBudgetApplicationOperationRequest {
+  applicationId: number;
+  cancelBudgetApplicationRequest?: CancelBudgetApplicationRequest;
+}
+
 export interface CancelLearningEnrollmentRequest {
   itemId: number;
 }
@@ -555,6 +600,14 @@ export interface CheckoutActivityRequest {
 
 export interface CreateActivityOperationRequest {
   createActivityRequest: CreateActivityRequest;
+}
+
+export interface CreateBudgetAccountOperationRequest {
+  createBudgetAccountRequest: CreateBudgetAccountRequest;
+}
+
+export interface CreateBudgetApplicationOperationRequest {
+  createBudgetApplicationRequest: CreateBudgetApplicationRequest;
 }
 
 export interface CreateClubOperationRequest {
@@ -715,6 +768,23 @@ export interface GetActivityByIdRequest {
 
 export interface GetActivityParticipationsRequest {
   activityId: number;
+}
+
+export interface GetBudgetAccountsRequest {
+  clubId?: number;
+  fiscalYear?: string;
+}
+
+export interface GetBudgetApplicationsRequest {
+  clubId?: number;
+  accountId?: number;
+  status?: GetBudgetApplicationsStatusEnum;
+  type?: GetBudgetApplicationsTypeEnum;
+}
+
+export interface GetBudgetTransactionsRequest {
+  clubId?: number;
+  accountId?: number;
 }
 
 export interface GetClubApplicationsRequest {
@@ -965,6 +1035,11 @@ export interface ReviewActivityBudgetOperationRequest {
   reviewActivityBudgetRequest: ReviewActivityBudgetRequest;
 }
 
+export interface ReviewBudgetApplicationOperationRequest {
+  applicationId: number;
+  reviewBudgetApplicationRequest: ReviewBudgetApplicationRequest;
+}
+
 export interface ReviewClubApplicationOperationRequest {
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
@@ -1025,6 +1100,11 @@ export interface SubmitProjectTaskDeliverableOperationRequest {
 export interface UpdateActivityCheckinSettingsRequest {
   activityId: number;
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
+}
+
+export interface UpdateBudgetAccountOperationRequest {
+  accountId: number;
+  updateBudgetAccountRequest: UpdateBudgetAccountRequest;
 }
 
 export interface UpdateClubOperationRequest {
@@ -1232,6 +1312,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for applyActivityBudget without sending the request
+   * @deprecated
    */
   async applyActivityBudgetRequestOpts(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1272,8 +1353,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
-   * 提交或更新活动经费预算申请
+   * 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费预算入口（已停用）
+   * @deprecated
    */
   async applyActivityBudgetRaw(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1286,8 +1368,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
-   * 提交或更新活动经费预算申请
+   * 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费预算入口（已停用）
+   * @deprecated
    */
   async applyActivityBudget(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1554,6 +1637,79 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<MaterialBorrow> {
     const response = await this.borrowMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for cancelBudgetApplication without sending the request
+   */
+  async cancelBudgetApplicationRequestOpts(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling cancelBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications/{applicationId}/cancel`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CancelBudgetApplicationRequestToJSON(
+        requestParameters["cancelBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+   * 撤销经费申请
+   */
+  async cancelBudgetApplicationRaw(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.cancelBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+   * 撤销经费申请
+   */
+  async cancelBudgetApplication(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.cancelBudgetApplicationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1986,6 +2142,140 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.createActivityRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createBudgetAccount without sending the request
+   */
+  async createBudgetAccountRequestOpts(
+    requestParameters: CreateBudgetAccountOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createBudgetAccountRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createBudgetAccountRequest",
+        'Required parameter "createBudgetAccountRequest" was null or undefined when calling createBudgetAccount().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateBudgetAccountRequestToJSON(requestParameters["createBudgetAccountRequest"]),
+    };
+  }
+
+  /**
+   * 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+   * 创建社团年度经费账户
+   */
+  async createBudgetAccountRaw(
+    requestParameters: CreateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetAccount>> {
+    const requestOptions = await this.createBudgetAccountRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => BudgetAccountFromJSON(jsonValue));
+  }
+
+  /**
+   * 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+   * 创建社团年度经费账户
+   */
+  async createBudgetAccount(
+    requestParameters: CreateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetAccount> {
+    const response = await this.createBudgetAccountRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createBudgetApplication without sending the request
+   */
+  async createBudgetApplicationRequestOpts(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createBudgetApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createBudgetApplicationRequest",
+        'Required parameter "createBudgetApplicationRequest" was null or undefined when calling createBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateBudgetApplicationRequestToJSON(
+        requestParameters["createBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+   * 提交经费申请
+   */
+  async createBudgetApplicationRaw(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.createBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+   * 提交经费申请
+   */
+  async createBudgetApplication(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.createBudgetApplicationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -4253,6 +4543,209 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ActivityParticipation>> {
     const response = await this.getActivityParticipationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetAccounts without sending the request
+   */
+  async getBudgetAccountsRequestOpts(
+    requestParameters: GetBudgetAccountsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["fiscalYear"] != null) {
+      queryParameters["fiscalYear"] = requestParameters["fiscalYear"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+   * 获取经费账户列表
+   */
+  async getBudgetAccountsRaw(
+    requestParameters: GetBudgetAccountsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetAccount>>> {
+    const requestOptions = await this.getBudgetAccountsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetAccountFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+   * 获取经费账户列表
+   */
+  async getBudgetAccounts(
+    requestParameters: GetBudgetAccountsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetAccount>> {
+    const response = await this.getBudgetAccountsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetApplications without sending the request
+   */
+  async getBudgetApplicationsRequestOpts(
+    requestParameters: GetBudgetApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["accountId"] != null) {
+      queryParameters["accountId"] = requestParameters["accountId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["type"] != null) {
+      queryParameters["type"] = requestParameters["type"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+   * 获取经费申请列表
+   */
+  async getBudgetApplicationsRaw(
+    requestParameters: GetBudgetApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetApplication>>> {
+    const requestOptions = await this.getBudgetApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetApplicationFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+   * 获取经费申请列表
+   */
+  async getBudgetApplications(
+    requestParameters: GetBudgetApplicationsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetApplication>> {
+    const response = await this.getBudgetApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetTransactions without sending the request
+   */
+  async getBudgetTransactionsRequestOpts(
+    requestParameters: GetBudgetTransactionsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["accountId"] != null) {
+      queryParameters["accountId"] = requestParameters["accountId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/transactions`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费流水，用于审计账户余额。
+   * 获取经费流水列表
+   */
+  async getBudgetTransactionsRaw(
+    requestParameters: GetBudgetTransactionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetTransaction>>> {
+    const requestOptions = await this.getBudgetTransactionsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetTransactionFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费流水，用于审计账户余额。
+   * 获取经费流水列表
+   */
+  async getBudgetTransactions(
+    requestParameters: GetBudgetTransactionsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetTransaction>> {
+    const response = await this.getBudgetTransactionsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -7599,6 +8092,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for reviewActivityBudget without sending the request
+   * @deprecated
    */
   async reviewActivityBudgetRequestOpts(
     requestParameters: ReviewActivityBudgetOperationRequest,
@@ -7639,8 +8133,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
-   * 审批活动经费预算
+   * 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费审批入口（已停用）
+   * @deprecated
    */
   async reviewActivityBudgetRaw(
     requestParameters: ReviewActivityBudgetOperationRequest,
@@ -7653,14 +8148,95 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
-   * 审批活动经费预算
+   * 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费审批入口（已停用）
+   * @deprecated
    */
   async reviewActivityBudget(
     requestParameters: ReviewActivityBudgetOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.reviewActivityBudgetRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for reviewBudgetApplication without sending the request
+   */
+  async reviewBudgetApplicationRequestOpts(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling reviewBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["reviewBudgetApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewBudgetApplicationRequest",
+        'Required parameter "reviewBudgetApplicationRequest" was null or undefined when calling reviewBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications/{applicationId}/review`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewBudgetApplicationRequestToJSON(
+        requestParameters["reviewBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+   * 审核经费申请
+   */
+  async reviewBudgetApplicationRaw(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.reviewBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+   * 审核经费申请
+   */
+  async reviewBudgetApplication(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.reviewBudgetApplicationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -8541,6 +9117,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.updateActivityCheckinSettingsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateBudgetAccount without sending the request
+   */
+  async updateBudgetAccountRequestOpts(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["accountId"] == null) {
+      throw new runtime.RequiredError(
+        "accountId",
+        'Required parameter "accountId" was null or undefined when calling updateBudgetAccount().',
+      );
+    }
+
+    if (requestParameters["updateBudgetAccountRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateBudgetAccountRequest",
+        'Required parameter "updateBudgetAccountRequest" was null or undefined when calling updateBudgetAccount().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts/{accountId}`;
+    urlPath = urlPath.replace(
+      "{accountId}",
+      encodeURIComponent(String(requestParameters["accountId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateBudgetAccountRequestToJSON(requestParameters["updateBudgetAccountRequest"]),
+    };
+  }
+
+  /**
+   * 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+   * 更新社团年度经费账户
+   */
+  async updateBudgetAccountRaw(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetAccount>> {
+    const requestOptions = await this.updateBudgetAccountRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => BudgetAccountFromJSON(jsonValue));
+  }
+
+  /**
+   * 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+   * 更新社团年度经费账户
+   */
+  async updateBudgetAccount(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetAccount> {
+    const response = await this.updateBudgetAccountRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -10204,6 +10856,27 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 }
 
+/**
+ * @export
+ */
+export const GetBudgetApplicationsStatusEnum = {
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+  Cancelled: "cancelled",
+} as const;
+export type GetBudgetApplicationsStatusEnum =
+  (typeof GetBudgetApplicationsStatusEnum)[keyof typeof GetBudgetApplicationsStatusEnum];
+/**
+ * @export
+ */
+export const GetBudgetApplicationsTypeEnum = {
+  ActivityBudget: "activity_budget",
+  Purchase: "purchase",
+  Reimbursement: "reimbursement",
+} as const;
+export type GetBudgetApplicationsTypeEnum =
+  (typeof GetBudgetApplicationsTypeEnum)[keyof typeof GetBudgetApplicationsTypeEnum];
 /**
  * @export
  */

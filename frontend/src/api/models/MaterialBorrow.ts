@@ -162,18 +162,42 @@ export function MaterialBorrowFromJSONTyped(
     id: json["id"],
     materialId: json["materialId"],
     materialName: json["materialName"],
-    specification: json["specification"] == null ? undefined : json["specification"],
+    specification:
+      json["specification"] === undefined
+        ? undefined
+        : json["specification"] === null
+          ? null
+          : json["specification"],
     clubId: json["clubId"],
     clubName: json["clubName"],
     borrowerUserId: json["borrowerUserId"],
-    borrowerName: json["borrowerName"] == null ? undefined : json["borrowerName"],
+    borrowerName:
+      json["borrowerName"] === undefined
+        ? undefined
+        : json["borrowerName"] === null
+          ? null
+          : json["borrowerName"],
     quantity: json["quantity"],
     borrowAt: new Date(json["borrowAt"]),
     expectedReturnAt:
-      json["expectedReturnAt"] == null ? undefined : new Date(json["expectedReturnAt"]),
-    returnAt: json["returnAt"] == null ? undefined : new Date(json["returnAt"]),
+      json["expectedReturnAt"] === undefined
+        ? undefined
+        : json["expectedReturnAt"] === null
+          ? null
+          : new Date(json["expectedReturnAt"]),
+    returnAt:
+      json["returnAt"] === undefined
+        ? undefined
+        : json["returnAt"] === null
+          ? null
+          : new Date(json["returnAt"]),
     status: json["status"],
-    damageDescription: json["damageDescription"] == null ? undefined : json["damageDescription"],
+    damageDescription:
+      json["damageDescription"] === undefined
+        ? undefined
+        : json["damageDescription"] === null
+          ? null
+          : json["damageDescription"],
     compensationAmount: json["compensationAmount"],
     overdue: json["overdue"],
   };
