@@ -2870,7 +2870,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师 可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布 全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
    * 新建公告通知
    */
   async createNoticeRaw(
@@ -2884,7 +2884,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师 可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布 全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
    * 新建公告通知
    */
   async createNotice(
@@ -3468,7 +3468,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 删除通知草稿
    */
   async deleteNoticeDraftRaw(
@@ -3482,7 +3482,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 删除通知草稿
    */
   async deleteNoticeDraft(
@@ -5699,7 +5699,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果： 普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知； 具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计； 具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。 普通接收者只返回本人已读状态，不返回受众人数和已读人数。
    * 查询公告通知
    */
   async getNoticesRaw(
@@ -5713,7 +5713,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果： 普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知； 具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计； 具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。 普通接收者只返回本人已读状态，不返回受众人数和已读人数。
    * 查询公告通知
    */
   async getNotices(
@@ -6831,7 +6831,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
    * 标记通知已读
    */
   async markNoticeReadRaw(
@@ -6847,7 +6847,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
    * 标记通知已读
    */
   async markNoticeRead(
@@ -9573,7 +9573,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 编辑或发布通知草稿
    */
   async updateNoticeDraftRaw(
@@ -9587,7 +9587,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 编辑或发布通知草稿
    */
   async updateNoticeDraft(

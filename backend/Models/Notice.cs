@@ -223,21 +223,20 @@ namespace Org.OpenAPITools.Models
         public DateTime? ReadAt { get; set; }
 
         /// <summary>
-        /// 当前规则下可接收该通知的用户数。
+        /// 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
         /// </summary>
-        /// <value>当前规则下可接收该通知的用户数。</value>
+        /// <value>当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。</value>
         /* <example>28</example> */
         [DataMember(Name="audienceCount", EmitDefaultValue=true)]
         public int? AudienceCount { get; set; }
 
         /// <summary>
-        /// 已读人数。
+        /// 已读人数；仅发布者或对应范围的通知管理者可见。
         /// </summary>
-        /// <value>已读人数。</value>
+        /// <value>已读人数；仅发布者或对应范围的通知管理者可见。</value>
         /* <example>12</example> */
-        [Required]
         [DataMember(Name="readCount", EmitDefaultValue=true)]
-        public int ReadCount { get; set; }
+        public int? ReadCount { get; set; }
 
     }
 }

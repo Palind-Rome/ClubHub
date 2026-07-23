@@ -233,7 +233,12 @@ paths:
   /api/notices:
     get:
       summary: 查询公告通知
-      description: 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      description: |
+        从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果：
+        普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知；
+        具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计；
+        具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。
+        普通接收者只返回本人已读状态，不返回受众人数和已读人数。
       operationId: getNotices
       security:
         - bearerAuth: []
@@ -294,7 +299,10 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 新建公告通知
-      description: 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+      description: |
+        从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师
+        可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布
+        全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
       operationId: createNotice
       security:
         - bearerAuth: []
@@ -347,7 +355,7 @@ paths:
   /api/notices/{noticeId}:
     patch:
       summary: 编辑或发布通知草稿
-      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
       operationId: updateNoticeDraft
       security:
         - bearerAuth: []
@@ -420,7 +428,7 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     delete:
       summary: 删除通知草稿
-      description: 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+      description: 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
       operationId: deleteNoticeDraft
       security:
         - bearerAuth: []
@@ -477,7 +485,7 @@ paths:
   /api/notices/{noticeId}/reads:
     post:
       summary: 标记通知已读
-      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+      description: 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
       operationId: markNoticeRead
       security:
         - bearerAuth: []
@@ -516,7 +524,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 通知仍是草稿，不能标记已读
+          description: 通知不是已发布状态，不能标记已读
           content:
             application/json:
               schema:
@@ -5657,12 +5665,13 @@ components:
           nullable: true
         audienceCount:
           type: integer
-          description: 当前规则下可接收该通知的用户数。
+          description: 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
           nullable: true
           example: 28
         readCount:
           type: integer
-          description: 已读人数。
+          description: 已读人数；仅发布者或对应范围的通知管理者可见。
+          nullable: true
           example: 12
       required:
         - id
@@ -5674,7 +5683,6 @@ components:
         - publishAt
         - noticeStatus
         - isRead
-        - readCount
 
     CreateNoticeRequest:
       type: object
