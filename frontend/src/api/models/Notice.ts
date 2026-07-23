@@ -117,17 +117,17 @@ export interface Notice {
    */
   readAt?: Date | null;
   /**
-   * 当前规则下可接收该通知的用户数。
+   * 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
    * @type {number}
    * @memberof Notice
    */
   audienceCount?: number | null;
   /**
-   * 已读人数。
+   * 已读人数；仅发布者或对应范围的通知管理者可见。
    * @type {number}
    * @memberof Notice
    */
-  readCount: number;
+  readCount?: number | null;
 }
 
 /**
@@ -165,7 +165,6 @@ export function instanceOfNotice(value: object): value is Notice {
   if (!("publishAt" in value) || value["publishAt"] === undefined) return false;
   if (!("noticeStatus" in value) || value["noticeStatus"] === undefined) return false;
   if (!("isRead" in value) || value["isRead"] === undefined) return false;
-  if (!("readCount" in value) || value["readCount"] === undefined) return false;
   return true;
 }
 
@@ -195,7 +194,7 @@ export function NoticeFromJSONTyped(json: any, ignoreDiscriminator: boolean): No
     isRead: json["isRead"],
     readAt: json["readAt"] == null ? undefined : new Date(json["readAt"]),
     audienceCount: json["audienceCount"] == null ? undefined : json["audienceCount"],
-    readCount: json["readCount"],
+    readCount: json["readCount"] == null ? undefined : json["readCount"],
   };
 }
 
