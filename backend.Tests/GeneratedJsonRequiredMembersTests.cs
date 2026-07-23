@@ -3,9 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClubHub.Api.Tests;
@@ -15,7 +12,7 @@ public class GeneratedJsonRequiredMembersTests
     [Fact]
     public async Task ReviewDeliverableWithoutApprovedReturnsBadRequest()
     {
-        await using var factory = CreateFactory();
+        await using var factory = new ClubHubWebApplicationFactory();
         using var client = CreateAuthenticatedClient(factory);
 
         using var content = new StringContent(
@@ -35,7 +32,7 @@ public class GeneratedJsonRequiredMembersTests
     [Fact]
     public async Task ReviewDeliverableRejectedWithoutCommentReturnsBadRequest()
     {
-        await using var factory = CreateFactory();
+        await using var factory = new ClubHubWebApplicationFactory();
         using var client = CreateAuthenticatedClient(factory);
 
         using var content = new StringContent(
@@ -53,22 +50,7 @@ public class GeneratedJsonRequiredMembersTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory() =>
-        new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.UseEnvironment("Testing");
-                builder.ConfigureAppConfiguration((_, config) =>
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["Authentication:TokenSigningKey"] = "ClubHub.Tests.TokenSigningKey",
-                        ["ConnectionStrings:Default"] = "Data Source=ClubHubTests"
-                    });
-                });
-            });
-
-    private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<Program> factory)
+    private static HttpClient CreateAuthenticatedClient(ClubHubWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<AuthTokenService>().CreateToken(new User
