@@ -701,7 +701,7 @@ public class AuthService
         return $"{clubName}{roleSuffix}";
     }
 
-    private static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
+    internal static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
         BaseRoles.FirstOrDefault(role => role.Code == roleCode)?.Permissions ?? [];
 
     private static IReadOnlyList<string> MergePermissions(params IReadOnlyList<string>[] permissionGroups) =>
