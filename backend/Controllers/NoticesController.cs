@@ -133,10 +133,8 @@ public class NoticesController : ControllerBase
         var target = await ResolveCreateTargetAsync(req, permissionRoles, targetType);
         if (target.Result is not null) return target.Result;
 
-        var maxId = await _db.Notices.MaxAsync(n => (int?)n.NoticeId) ?? 0;
         var notice = new Notice
         {
-            NoticeId = maxId + 1,
             ClubId = target.ClubId,
             PublisherUserId = publisher.UserId,
             NoticeType = noticeType,

@@ -266,69 +266,51 @@ public class LearningController : ControllerBase
         if (itemStatus is null) return BadRequest("资源初始状态只能是草稿或已发布。");
 
         var isCourse = LearningWorkflow.IsSupportedCourseType(request.ItemType);
-
-        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        var item = new DbLearningItem
         {
-            await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-            var item = new DbLearningItem
-            {
-                ItemId = await GetNextLearningItemId(),
-                ClubId = request.ClubId,
-                UploaderUserId = currentUserId.Value,
-                TeacherUserId = isCourse ? request.InstructorUserId : null,
-                Title = request.Title.Trim(),
-                ItemType = Normalize(request.ItemType),
-                CategoryName = NormalizeOptionalText(request.CategoryName),
-                Description = NormalizeOptionalText(request.Description),
-                FileUrl = NormalizeOptionalText(request.FileUrl),
-                StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null,
-                EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null,
-                Capacity = isCourse ? request.Capacity : null,
-                Visibility = ToVisibilityValue(request.Visibility),
-                DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission),
-                ItemStatus = itemStatus,
-                CreatedAt = LearningWorkflow.BusinessNow()
-            };
+            ClubId = request.ClubId,
+            UploaderUserId = currentUserId.Value,
+            TeacherUserId = isCourse ? request.InstructorUserId : null,
+            Title = request.Title.Trim(),
+            ItemType = Normalize(request.ItemType),
+            CategoryName = NormalizeOptionalText(request.CategoryName),
+            Description = NormalizeOptionalText(request.Description),
+            FileUrl = NormalizeOptionalText(request.FileUrl),
+            StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null,
+            EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null,
+            Capacity = isCourse ? request.Capacity : null,
+            Visibility = ToVisibilityValue(request.Visibility),
+            DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission),
+            ItemStatus = itemStatus,
+            CreatedAt = LearningWorkflow.BusinessNow()
+        };
 
-            _db.LearningItems.Add(item);
-            try
-            {
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
+        _db.LearningItems.Add(item);
+        await _db.SaveChangesAsync();
 
-                var now = LearningWorkflow.BusinessNow();
-                var decision = GetEnrollmentDecision(
-                    operatorUser,
-                    permissionRoles,
-                    item,
-                    null,
-                    0,
-                    canManage: true,
-                    now);
-                var itemDto = TryMapItemDto(
-                    item,
-                    0,
-                    null,
-                    true,
-                    HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
-                    decision,
-                    now);
-                if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
+        var now = LearningWorkflow.BusinessNow();
+        var decision = GetEnrollmentDecision(
+            operatorUser,
+            permissionRoles,
+            item,
+            null,
+            0,
+            canManage: true,
+            now);
+        var itemDto = TryMapItemDto(
+            item,
+            0,
+            null,
+            true,
+            HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
+            decision,
+            now);
+        if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
 
-                return CreatedAtAction(
-                    nameof(GetItems),
-                    null,
-                    itemDto);
-            }
-            catch (DbUpdateException) when (attempt < MaxCreateRetries)
-            {
-                await transaction.RollbackAsync();
-                _db.ChangeTracker.Clear();
-            }
-        }
-
-        return Conflict("资源编号生成冲突，请重试。");
+        return CreatedAtAction(
+            nameof(GetItems),
+            null,
+            itemDto);
     }
 
     /// <summary>
@@ -396,17 +378,31 @@ public class LearningController : ControllerBase
                 "当前用户没有在该社团上传资源的权限。");
         }
 
-        await using var transaction =
-            await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var itemId = await GetNextLearningItemId();
+        await using var transaction = await _db.Database.BeginTransactionAsync();
         string? storageReference = null;
+        var item = new DbLearningItem
+        {
+            ClubId = clubId,
+            UploaderUserId = currentUserId.Value,
+            Title = normalizedTitle,
+            ItemType = InferResourceType(file.ContentType, extension),
+            CategoryName = normalizedCategory,
+            Description = normalizedDescription,
+            Visibility = normalizedVisibility,
+            DownloadPermission = normalizedDownloadPermission,
+            ItemStatus = LearningWorkflow.ItemStatusPendingReview,
+            CreatedAt = LearningWorkflow.BusinessNow()
+        };
 
         try
         {
+            _db.LearningItems.Add(item);
+            await _db.SaveChangesAsync();
+
             await using var stream = file.OpenReadStream();
             storageReference = await _objectStorage.UploadAsync(
                 clubId,
-                itemId,
+                item.ItemId,
                 extension,
                 stream,
                 file.Length,
@@ -414,22 +410,7 @@ public class LearningController : ControllerBase
                 originalFileName,
                 HttpContext.RequestAborted);
 
-            var item = new DbLearningItem
-            {
-                ItemId = itemId,
-                ClubId = clubId,
-                UploaderUserId = currentUserId.Value,
-                Title = normalizedTitle,
-                ItemType = InferResourceType(file.ContentType, extension),
-                CategoryName = normalizedCategory,
-                Description = normalizedDescription,
-                FileUrl = storageReference,
-                Visibility = normalizedVisibility,
-                DownloadPermission = normalizedDownloadPermission,
-                ItemStatus = LearningWorkflow.ItemStatusPendingReview,
-                CreatedAt = LearningWorkflow.BusinessNow()
-            };
-            _db.LearningItems.Add(item);
+            item.FileUrl = storageReference;
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -443,14 +424,14 @@ public class LearningController : ControllerBase
                 null,
                 now);
             return itemDto is null
-                ? CourseDataIntegrityProblem(itemId)
+                ? CourseDataIntegrityProblem(item.ItemId)
                 : CreatedAtAction(nameof(GetItems), null, itemDto);
         }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
             await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, itemId);
-            _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", itemId);
+            await TryRemoveObjectAsync(storageReference, item.ItemId);
+            _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", item.ItemId);
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "资源存储暂不可用",
@@ -459,7 +440,7 @@ public class LearningController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, itemId);
+            await TryRemoveObjectAsync(storageReference, item.ItemId);
             throw;
         }
     }
@@ -825,7 +806,6 @@ public class LearningController : ControllerBase
             : LearningWorkflow.ItemStatusRejected;
         _db.OperationLogs.Add(new OperationLog
         {
-            LogId = await GetNextOperationLogIdAsync(),
             UserId = currentUserId.Value,
             ModuleName = "learning",
             OperationType = approved ? "review_approved" : "review_rejected",
@@ -1009,7 +989,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value
                 };
@@ -1152,7 +1131,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value
                 };
@@ -1235,7 +1213,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value,
                     EnrollStatus = LearningWorkflow.RecordStatusLearning,
@@ -2001,32 +1978,6 @@ public class LearningController : ControllerBase
             .OrderByDescending(record => record.EnrolledAt)
             .ThenByDescending(record => record.RecordId)
             .FirstOrDefaultAsync();
-    }
-
-    /// <summary>
-    /// 在可串行化事务中计算下一个课程编号。
-    /// </summary>
-    private async Task<int> GetNextLearningItemId()
-    {
-        // 当前表尚未配置序列，使用可串行化事务和重试保护 max(id) + 1。
-        var maxId = await _db.LearningItems.MaxAsync(item => (int?)item.ItemId) ?? 0;
-        return maxId + 1;
-    }
-
-    /// <summary>
-    /// 在可串行化事务中计算下一个学习记录编号。
-    /// </summary>
-    private async Task<int> GetNextLearningRecordId()
-    {
-        // 与 LEARNING_ITEMS 保持一致，后续数据库统一引入序列时再替换。
-        var maxId = await _db.LearningRecords.MaxAsync(record => (int?)record.RecordId) ?? 0;
-        return maxId + 1;
-    }
-
-    private async Task<int> GetNextOperationLogIdAsync()
-    {
-        var maxId = await _db.OperationLogs.MaxAsync(log => (int?)log.LogId) ?? 0;
-        return maxId + 1;
     }
 
     /// <summary>

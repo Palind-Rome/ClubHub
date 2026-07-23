@@ -791,7 +791,6 @@ public class AuthService
     private async Task<List<Role>> EnsureBaseRolesAsync()
     {
         var roles = await _db.Roles.ToListAsync();
-        var nextId = (roles.Count == 0 ? 0 : roles.Max(r => r.RoleId)) + 1;
         var changed = false;
 
         foreach (var roleDef in BaseRoles)
@@ -802,7 +801,6 @@ public class AuthService
             {
                 existing = new Role
                 {
-                    RoleId = nextId++,
                     RoleCode = roleDef.Code,
                     RoleName = roleDef.Name,
                     RoleScope = roleDef.Scope,

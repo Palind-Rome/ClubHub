@@ -243,10 +243,8 @@ public class VenueReservationsController : ControllerBase
             return Conflict(Error("venue_reservation_conflict", "该场地在所选时间段已有已通过预约。"));
         }
 
-        var nextId = (await _db.VenueReservations.MaxAsync(r => (int?)r.ReservationId) ?? 0) + 1;
         var reservation = new VenueReservationEntity
         {
-            ReservationId = nextId,
             VenueId = req.VenueId,
             ClubId = req.ClubId,
             ActivityId = req.ActivityId,

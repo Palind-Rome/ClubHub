@@ -90,10 +90,8 @@ public class RecruitmentsController : ControllerBase
         var recruitStatus = requestedStatus;
 
         var now = DateTime.UtcNow;
-        var nextId = (await _db.Recruitments.MaxAsync(r => (int?)r.RecruitId) ?? 0) + 1;
         var recruitment = new Recruitment
         {
-            RecruitId = nextId,
             ClubId = club.ClubId,
             Title = req.Title.Trim(),
             Description = EmptyToNull(req.Description),

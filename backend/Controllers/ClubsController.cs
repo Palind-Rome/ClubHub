@@ -2482,7 +2482,7 @@ public class ClubsController : ControllerBase
         _db.UserRoles.Add(new UserRole
         {
             UserId = userId,
-            RoleId = role.RoleId,
+            Role = role,
             ClubId = clubId,
             AssignedAt = now
         });
@@ -2547,7 +2547,7 @@ public class ClubsController : ControllerBase
         _db.UserRoles.Add(new UserRole
         {
             UserId = userId,
-            RoleId = role.RoleId,
+            Role = role,
             ClubId = clubId,
             AssignedAt = now
         });
@@ -2587,7 +2587,7 @@ public class ClubsController : ControllerBase
         _db.UserRoles.Add(new UserRole
         {
             UserId = userId,
-            RoleId = role.RoleId,
+            Role = role,
             ClubId = clubId,
             AssignedAt = now
         });
@@ -2622,7 +2622,6 @@ public class ClubsController : ControllerBase
 
         role = new Role
         {
-            RoleId = await NextRoleIdAsync(),
             RoleCode = roleCode,
             RoleName = roleName,
             RoleScope = "club",
@@ -2631,18 +2630,6 @@ public class ClubsController : ControllerBase
         };
         _db.Roles.Add(role);
         return role;
-    }
-
-    private async Task<int> NextRoleIdAsync()
-    {
-        var maxSaved = await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0;
-        var maxAdded = _db.ChangeTracker.Entries<Role>()
-            .Where(entry => entry.State == EntityState.Added)
-            .Select(entry => entry.Entity.RoleId)
-            .DefaultIfEmpty(0)
-            .Max();
-
-        return Math.Max(maxSaved, maxAdded) + 1;
     }
 
     private async Task RefreshClubPresidentAsync(Club club, int ignoredMemberId, DateTime now)

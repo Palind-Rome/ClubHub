@@ -77,10 +77,8 @@ public class VenuesController : ControllerBase
         var managerValidation = await ValidateManagerAsync(req.ManagerUserId);
         if (managerValidation is not null) return managerValidation;
 
-        var nextId = (await _db.Venues.MaxAsync(v => (int?)v.VenueId) ?? 0) + 1;
         var venue = new Venue
         {
-            VenueId = nextId,
             VenueName = normalizedName,
             Building = NullIfBlank(req.Building),
             RoomNo = NullIfBlank(req.RoomNo),
