@@ -1,10 +1,12 @@
 using System.Globalization;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PermissionRole = ClubHub.Api.Services.AuthRole;
 using ApiCreateNoticeRequest = Org.OpenAPITools.Models.CreateNoticeRequest;
 using ApiNotice = Org.OpenAPITools.Models.Notice;
 using ApiNoticeReadResult = Org.OpenAPITools.Models.NoticeReadResult;
@@ -26,18 +28,14 @@ public class NoticesController : ControllerBase
     private const string StatusDeleting = "deleting";
     private const string MemberActive = "active";
 
-    private static readonly HashSet<string> NoticePublisherRoleCodes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "club_officer",
-        "club_leader",
-        "club_president",
-        "club_manager",
-        "president"
-    };
-
     private readonly ClubHubDbContext _db;
+    private readonly AuthService _authService;
 
-    public NoticesController(ClubHubDbContext db) => _db = db;
+    public NoticesController(ClubHubDbContext db, AuthService authService)
+    {
+        _db = db;
+        _authService = authService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -55,6 +53,7 @@ public class NoticesController : ControllerBase
         {
             return StatusCode(403, new { message = "当前用户账号不可用，不能查看通知。" });
         }
+        var permissionRoles = await _authService.GetPermissionRolesAsync(viewer.UserId);
 
         var normalizedStatus = NormalizeStatus(noticeStatus);
         if (noticeStatus is not null && normalizedStatus is null)
@@ -92,12 +91,12 @@ public class NoticesController : ControllerBase
                 continue;
             }
 
-            if (!CanViewNotice(viewer, notice, effectiveStatus, context))
+            if (!CanViewNotice(viewer, permissionRoles, notice, effectiveStatus, context))
             {
                 continue;
             }
 
-            var dto = ToApiNotice(notice, viewer.UserId, context, effectiveStatus);
+            var dto = ToApiNotice(notice, viewer.UserId, permissionRoles, context, effectiveStatus);
             if (unreadOnly && dto.IsRead) continue;
             result.Add(dto);
         }
@@ -120,6 +119,7 @@ public class NoticesController : ControllerBase
         {
             return StatusCode(403, new { message = "发布人账号不可用，不能发布通知。" });
         }
+        var permissionRoles = await _authService.GetPermissionRolesAsync(publisher.UserId);
 
         var targetType = NormalizeTargetType(req.TargetType)!;
         var noticeType = req.NoticeType.Trim();
@@ -130,7 +130,7 @@ public class NoticesController : ControllerBase
             return BadRequest(new { message = "过期时间必须晚于当前时间。" });
         }
 
-        var target = await ResolveCreateTargetAsync(req, publisher, targetType);
+        var target = await ResolveCreateTargetAsync(req, permissionRoles, targetType);
         if (target.Result is not null) return target.Result;
 
         var maxId = await _db.Notices.MaxAsync(n => (int?)n.NoticeId) ?? 0;
@@ -154,7 +154,9 @@ public class NoticesController : ControllerBase
 
         var created = await NoticeQuery().FirstAsync(n => n.NoticeId == notice.NoticeId);
         var context = await NoticeListContext.LoadAsync(_db, [created]);
-        return CreatedAtAction(nameof(GetAll), ToApiNotice(created, publisher.UserId, context));
+        return CreatedAtAction(
+            nameof(GetAll),
+            ToApiNotice(created, publisher.UserId, permissionRoles, context));
     }
 
     [HttpPatch("{noticeId:int}")]
@@ -179,6 +181,7 @@ public class NoticesController : ControllerBase
         {
             return StatusCode(403, new { message = "当前用户账号不可用，不能维护通知草稿。" });
         }
+        var permissionRoles = await _authService.GetPermissionRolesAsync(operatorUser.UserId);
 
         var notice = await NoticeQuery(asNoTracking: true).FirstOrDefaultAsync(n => n.NoticeId == noticeId);
         if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
@@ -191,7 +194,8 @@ public class NoticesController : ControllerBase
             return Conflict(new { message = "草稿已被其他操作修改，请刷新后重试。" });
         }
 
-        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        if (notice.PublisherUserId != operatorUser.UserId &&
+            !NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId))
         {
             return StatusCode(403, new { message = "当前用户没有维护该通知草稿的权限。" });
         }
@@ -204,7 +208,7 @@ public class NoticesController : ControllerBase
             return BadRequest(new { message = "过期时间必须晚于当前时间。" });
         }
 
-        var target = await ResolveCreateTargetAsync(req, operatorUser, targetType);
+        var target = await ResolveCreateTargetAsync(req, permissionRoles, targetType);
         if (target.Result is not null) return target.Result;
         var publishAt = status == StatusPublished
             ? requestTime
@@ -243,7 +247,7 @@ public class NoticesController : ControllerBase
 
         var updated = await NoticeQuery().FirstAsync(n => n.NoticeId == noticeId);
         var context = await NoticeListContext.LoadAsync(_db, [updated]);
-        return Ok(ToApiNotice(updated, operatorUser.UserId, context));
+        return Ok(ToApiNotice(updated, operatorUser.UserId, permissionRoles, context));
     }
 
     [HttpDelete("{noticeId:int}")]
@@ -264,6 +268,7 @@ public class NoticesController : ControllerBase
         {
             return StatusCode(403, new { message = "当前用户账号不可用，不能删除通知草稿。" });
         }
+        var permissionRoles = await _authService.GetPermissionRolesAsync(operatorUser.UserId);
 
         var notice = await NoticeQuery(asNoTracking: true).FirstOrDefaultAsync(n => n.NoticeId == noticeId);
         if (notice is null) return NotFound(new { message = "通知草稿不存在。" });
@@ -276,7 +281,8 @@ public class NoticesController : ControllerBase
             return Conflict(new { message = "草稿已被其他操作修改，请刷新后重试。" });
         }
 
-        if (notice.PublisherUserId != operatorUser.UserId && !CanManageNotice(operatorUser, notice))
+        if (notice.PublisherUserId != operatorUser.UserId &&
+            !NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId))
         {
             return StatusCode(403, new { message = "当前用户没有删除该通知草稿的权限。" });
         }
@@ -316,17 +322,18 @@ public class NoticesController : ControllerBase
         {
             return StatusCode(403, new { message = "当前用户账号不可用，不能标记通知已读。" });
         }
+        var permissionRoles = await _authService.GetPermissionRolesAsync(user.UserId);
 
         var notice = await NoticeQuery().FirstOrDefaultAsync(n => n.NoticeId == noticeId);
         if (notice is null) return NotFound(new { message = "通知不存在。" });
 
         var effectiveStatus = EffectiveStatus(notice, DateTime.UtcNow);
-        if (effectiveStatus == StatusDraft)
+        if (effectiveStatus != StatusPublished)
         {
-            return Conflict(new { message = "通知草稿尚未发布，不能标记已读。" });
+            return Conflict(new { message = "只有已发布通知可以标记已读。" });
         }
         var context = await NoticeListContext.LoadAsync(_db, [notice]);
-        if (!CanViewNotice(user, notice, effectiveStatus, context))
+        if (!CanViewNotice(user, permissionRoles, notice, effectiveStatus, context))
         {
             return StatusCode(403, new { message = "当前用户不可阅读该通知。" });
         }
@@ -395,22 +402,22 @@ public class NoticesController : ControllerBase
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveCreateTargetAsync(
         ApiCreateNoticeRequest req,
-        User publisher,
+        IReadOnlyList<PermissionRole> permissionRoles,
         string targetType)
     {
         return targetType switch
         {
-            TargetSchool => await ResolveSchoolTargetAsync(req, publisher),
-            TargetClub => await ResolveClubTargetAsync(req, publisher),
-            TargetDepartment => await ResolveDepartmentTargetAsync(req, publisher),
-            TargetMember => await ResolveMemberTargetAsync(req, publisher),
+            TargetSchool => await ResolveSchoolTargetAsync(req, permissionRoles),
+            TargetClub => await ResolveClubTargetAsync(req, permissionRoles),
+            TargetDepartment => await ResolveDepartmentTargetAsync(req, permissionRoles),
+            TargetMember => await ResolveMemberTargetAsync(req, permissionRoles),
             _ => (BadRequest(new { message = "定向类型不合法。" }), null, null)
         };
     }
 
     private Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveSchoolTargetAsync(
         ApiCreateNoticeRequest req,
-        User publisher)
+        IReadOnlyList<PermissionRole> permissionRoles)
     {
         if (req.TargetId is not null || req.ClubId is not null)
         {
@@ -418,7 +425,7 @@ public class NoticesController : ControllerBase
                 (BadRequest(new { message = "全校通知不需要填写社团或目标 ID。" }), null, null));
         }
 
-        if (!UsersController.IsPlatformAdmin(publisher))
+        if (!NoticeAuthorizationPolicy.CanPublishSchool(permissionRoles))
         {
             return Task.FromResult<(IActionResult? Result, int? ClubId, int? TargetId)>(
                 (StatusCode(403, new { message = "只有社团管理员或系统管理员可以发布全校通知。" }), null, null));
@@ -429,7 +436,7 @@ public class NoticesController : ControllerBase
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveClubTargetAsync(
         ApiCreateNoticeRequest req,
-        User publisher)
+        IReadOnlyList<PermissionRole> permissionRoles)
     {
         if (req.TargetId is null or <= 0)
         {
@@ -438,7 +445,7 @@ public class NoticesController : ControllerBase
 
         var club = await _db.Clubs.FindAsync(req.TargetId.Value);
         if (club is null) return (NotFound(new { message = "目标社团不存在。" }), null, null);
-        if (!CanPublishForClub(publisher, club.ClubId))
+        if (!NoticeAuthorizationPolicy.CanPublishForClub(permissionRoles, club.ClubId))
         {
             return (StatusCode(403, new { message = "当前用户没有该社团的通知发布权限。" }), null, null);
         }
@@ -448,7 +455,7 @@ public class NoticesController : ControllerBase
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveDepartmentTargetAsync(
         ApiCreateNoticeRequest req,
-        User publisher)
+        IReadOnlyList<PermissionRole> permissionRoles)
     {
         if (req.TargetId is null or <= 0)
         {
@@ -464,7 +471,7 @@ public class NoticesController : ControllerBase
             return (BadRequest(new { message = "目标成员未登记部门，不能作为部门通知目标。" }), null, null);
         }
 
-        if (!CanPublishForClub(publisher, member.ClubId))
+        if (!NoticeAuthorizationPolicy.CanPublishForClub(permissionRoles, member.ClubId))
         {
             return (StatusCode(403, new { message = "当前用户没有该社团部门的通知发布权限。" }), null, null);
         }
@@ -474,7 +481,7 @@ public class NoticesController : ControllerBase
 
     private async Task<(IActionResult? Result, int? ClubId, int? TargetId)> ResolveMemberTargetAsync(
         ApiCreateNoticeRequest req,
-        User publisher)
+        IReadOnlyList<PermissionRole> permissionRoles)
     {
         if (req.TargetId is null or <= 0)
         {
@@ -486,7 +493,7 @@ public class NoticesController : ControllerBase
 
         if (req.ClubId is null)
         {
-            if (!UsersController.IsPlatformAdmin(publisher))
+            if (!NoticeAuthorizationPolicy.CanPublishSchool(permissionRoles))
             {
                 return (StatusCode(403, new { message = "未指定社团时，只有社团管理员或系统管理员可以定向通知单个成员。" }), null, null);
             }
@@ -496,7 +503,7 @@ public class NoticesController : ControllerBase
 
         var club = await _db.Clubs.FindAsync(req.ClubId.Value);
         if (club is null) return (NotFound(new { message = "成员所属社团不存在。" }), null, null);
-        if (!CanPublishForClub(publisher, club.ClubId))
+        if (!NoticeAuthorizationPolicy.CanPublishForClub(permissionRoles, club.ClubId))
         {
             return (StatusCode(403, new { message = "当前用户没有该社团的成员通知发布权限。" }), null, null);
         }
@@ -520,58 +527,49 @@ public class NoticesController : ControllerBase
         return (null, club.ClubId, targetUser.UserId);
     }
 
-    private bool CanViewNotice(User viewer, Notice notice, string effectiveStatus, NoticeListContext context)
+    private bool CanViewNotice(
+        User viewer,
+        IReadOnlyList<PermissionRole> permissionRoles,
+        Notice notice,
+        string effectiveStatus,
+        NoticeListContext context)
     {
         if (effectiveStatus == StatusDraft)
         {
-            return notice.PublisherUserId == viewer.UserId || CanManageNotice(viewer, notice);
+            return notice.PublisherUserId == viewer.UserId ||
+                NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId);
         }
 
         if (effectiveStatus != StatusPublished)
         {
-            return CanManageNotice(viewer, notice);
+            return notice.PublisherUserId == viewer.UserId ||
+                NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId);
         }
 
         return notice.TargetType switch
         {
             TargetSchool => true,
-            TargetClub => notice.ClubId is not null && CanAccessClubNotice(viewer, notice.ClubId.Value),
-            TargetDepartment => CanAccessDepartmentNotice(viewer, notice, context),
-            TargetMember => notice.TargetId == viewer.UserId || CanManageNotice(viewer, notice),
+            TargetClub => notice.ClubId is not null &&
+                NoticeAuthorizationPolicy.CanViewClub(permissionRoles, notice.ClubId.Value),
+            TargetDepartment => CanAccessDepartmentNotice(
+                viewer,
+                permissionRoles,
+                notice,
+                context),
+            TargetMember => notice.TargetId == viewer.UserId ||
+                NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId),
             _ => false
         };
     }
 
-    private bool CanManageNotice(User user, Notice notice)
-    {
-        if (UsersController.IsPlatformAdmin(user)) return true;
-        return notice.ClubId is not null && CanPublishForClub(user, notice.ClubId.Value);
-    }
-
-    private bool CanPublishForClub(User user, int clubId)
-    {
-        if (UsersController.IsPlatformAdmin(user)) return true;
-        if (UsersController.IsClubPrincipal(user, clubId)) return true;
-
-        return user.UserRoles.Any(ur =>
-            ur.ClubId == clubId &&
-            ur.Role is not null &&
-            NoticePublisherRoleCodes.Contains(ur.Role.RoleCode));
-    }
-
-    private bool CanAccessClubNotice(User user, int clubId)
-    {
-        if (UsersController.IsPlatformAdmin(user)) return true;
-        if (CanPublishForClub(user, clubId)) return true;
-
-        return user.ClubMemberships.Any(cm => cm.ClubId == clubId && IsActiveMemberTerm(cm)) ||
-               user.UserRoles.Any(ur => ur.ClubId == clubId && ur.Role is not null);
-    }
-
-    private bool CanAccessDepartmentNotice(User user, Notice notice, NoticeListContext context)
+    private bool CanAccessDepartmentNotice(
+        User user,
+        IReadOnlyList<PermissionRole> permissionRoles,
+        Notice notice,
+        NoticeListContext context)
     {
         if (notice.TargetId is null || notice.ClubId is null) return false;
-        if (CanManageNotice(user, notice)) return true;
+        if (NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId)) return true;
 
         if (!context.DepartmentTargets.TryGetValue(notice.TargetId.Value, out var target) ||
             string.IsNullOrWhiteSpace(target.DepartmentName))
@@ -588,6 +586,7 @@ public class NoticesController : ControllerBase
     private ApiNotice ToApiNotice(
         Notice notice,
         int viewerUserId,
+        IReadOnlyList<PermissionRole> permissionRoles,
         NoticeListContext context,
         string? effectiveStatus = null)
     {
@@ -596,7 +595,11 @@ public class NoticesController : ControllerBase
             .Where(r => r.UserId == viewerUserId)
             .OrderByDescending(r => r.ReadAt)
             .FirstOrDefault();
-        var readCount = notice.Reads.Select(r => r.UserId).Distinct().Count();
+        var canViewStatistics = NoticeAuthorizationPolicy.CanViewStatistics(
+            permissionRoles,
+            viewerUserId,
+            notice.PublisherUserId,
+            notice.ClubId);
         return new ApiNotice
         {
             Id = notice.NoticeId,
@@ -615,8 +618,10 @@ public class NoticesController : ControllerBase
             NoticeStatus = ToApiNoticeStatus(effectiveStatus),
             IsRead = read is not null,
             ReadAt = read?.ReadAt,
-            AudienceCount = CountAudience(notice, context),
-            ReadCount = readCount
+            AudienceCount = canViewStatistics ? CountAudience(notice, context) : null,
+            ReadCount = canViewStatistics
+                ? notice.Reads.Select(r => r.UserId).Distinct().Count()
+                : null
         };
     }
 

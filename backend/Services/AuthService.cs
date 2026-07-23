@@ -115,8 +115,8 @@ public class AuthService
             AdvisorRole,
             "指导老师",
             ClubScope,
-            "指定社团指导角色，可查看社团运营、处理本社团物资借还记录、维护并审核学习资源，以及审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
-            ["club:internal:view", "club:operation:view", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
+            "指定社团指导角色，可按负责人权限管理公告通知、成员、考核与评奖评优，并处理社团运营审核工作。",
+            ["club:internal:view", "club:notice:view", "club:operation:view", "notice:publish", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
         new(
             "CLUB_ADMIN",
             "社团管理员",
@@ -699,7 +699,7 @@ public class AuthService
         return $"{clubName}{roleSuffix}";
     }
 
-    private static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
+    internal static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
         BaseRoles.FirstOrDefault(role => role.Code == roleCode)?.Permissions ?? [];
 
     private static IReadOnlyList<string> MergePermissions(params IReadOnlyList<string>[] permissionGroups) =>
