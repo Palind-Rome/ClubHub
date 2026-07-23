@@ -12,7 +12,15 @@
 --   - 为对应主键列设置 sequence NEXTVAL 默认值；
 --   - 不新增、删除或重命名表、列、主键、外键，不更新或删除任何业务行。
 --
--- Oracle DDL 会隐式提交，不能依赖 ROLLBACK 撤销已生效的步骤。脚本可重复执行：
+-- Oracle DDL 会隐式提交，不能依赖 ROLLBACK 撤销已生效的步骤。
+-- 回滚准备：执行前导出目标列的 USER_TAB_COLUMNS.DATA_DEFAULT，以及目标 sequence
+-- 在 USER_SEQUENCES 中的存在性、LAST_NUMBER、INCREMENT_BY、MIN_VALUE、MAX_VALUE、
+-- CACHE_SIZE、CYCLE_FLAG 和 ORDER_FLAG。
+-- 回滚：若迁移后尚无新写入，按导出结果恢复列默认值；仅删除本迁移新建的
+-- sequence，原有 sequence 由 DBA 在维护窗口按备份恢复属性和位置。
+-- 若迁移后已有新写入，不得删除或回退 sequence；应先评估已生成的主键，并由 DBA
+-- 采用不会与现有主键冲突的调整方案，仅恢复安全的默认值或 sequence 属性。
+-- 脚本可重复执行：
 -- 已存在的 sequence 会被推进到实时最大主键之后且不低于 1000000，已设置的
 -- 列默认值会被同值覆盖。若脚本中断，修复原因后可从头重跑。
 

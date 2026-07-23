@@ -378,7 +378,6 @@ public class LearningController : ControllerBase
                 "当前用户没有在该社团上传资源的权限。");
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
         string? storageReference = null;
         var item = new DbLearningItem
         {
@@ -394,11 +393,11 @@ public class LearningController : ControllerBase
             CreatedAt = LearningWorkflow.BusinessNow()
         };
 
+        _db.LearningItems.Add(item);
+        await _db.SaveChangesAsync();
+
         try
         {
-            _db.LearningItems.Add(item);
-            await _db.SaveChangesAsync();
-
             await using var stream = file.OpenReadStream();
             storageReference = await _objectStorage.UploadAsync(
                 clubId,
@@ -412,7 +411,6 @@ public class LearningController : ControllerBase
 
             item.FileUrl = storageReference;
             await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             var now = LearningWorkflow.BusinessNow();
             var itemDto = TryMapItemDto(
@@ -429,8 +427,7 @@ public class LearningController : ControllerBase
         }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
-            await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, item.ItemId);
+            await CompensateFailedResourceUploadAsync(item, storageReference);
             _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", item.ItemId);
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
@@ -439,8 +436,7 @@ public class LearningController : ControllerBase
         }
         catch
         {
-            await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, item.ItemId);
+            await CompensateFailedResourceUploadAsync(item, storageReference);
             throw;
         }
     }
@@ -2380,6 +2376,26 @@ public class LearningController : ControllerBase
 
     private static bool IsObjectStorageFailure(Exception exception) =>
         exception is LearningObjectStorageException;
+
+    private async Task CompensateFailedResourceUploadAsync(
+        DbLearningItem item,
+        string? storageReference)
+    {
+        try
+        {
+            _db.LearningItems.Remove(item);
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "资源 {ItemId} 上传失败后的数据库补偿删除失败，可能留下待清理记录。",
+                item.ItemId);
+        }
+
+        await TryRemoveObjectAsync(storageReference, item.ItemId);
+    }
 
     private async Task TryRemoveObjectAsync(string? storageReference, int itemId)
     {

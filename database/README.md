@@ -4,10 +4,6 @@
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
 - `verify.sql`：验证当前用户、36 张核心表、35 个核心主键 Sequence 及其列默认值和推进位置，并检查项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示和细则约束。
-- `verify-sequence-concurrency.ps1`：检查 Issue #150 新增的 17 个 Sequence
-  是否存在、是否领先于现有主键、是否绑定到正确的主键列默认值，再并发取值确认
-  多连接不会得到重复值；脚本不会写入业务表，但会推进 Sequence，因此只能连接
-  隔离测试 Schema 或一次性数据库，禁止连接共享开发库、演示库或生产库。
 - `seeds/`：后续放演示数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
@@ -109,12 +105,6 @@
 11. 执行 `migrations/20260718_harden_evaluation_award_sources.sql`，确认成员考核奖项分来源表已带上社团和成员范围，并替换为组合外键。
 12. 停止仍使用 `MAX(id) + 1` 的旧后端，执行 `migrations/20260723_add_remaining_id_sequences.sql`，确认 17 个新增 Sequence 和主键默认值均已生效。
 13. 执行 `verify.sql`；36 张核心表计数应为 36，Sequence 缺失或落后、重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评奖评优申请复合外键列定义、评定细则范围/外键和考核奖项分来源错挂查询均应返回 0 行。
-14. 另行准备隔离测试 Schema 或一次性数据库，执行同一迁移后，在仓库根目录运行
-    `pwsh -File database/verify-sequence-concurrency.ps1 -ConfirmIsolatedDatabase`。
-    脚本会先自动检查 17 个新增 Sequence 的存在性、推进位置和列默认值，再默认使用
-    8 个并发连接为每个 Sequence 获取 128 个值。所有 Sequence 都应输出 `OK`，
-    且最终提示 17 个 Sequence 全部通过。该检查会推进 Sequence，但不会写入业务表；
-    禁止将它指向共享开发库、演示库或生产库。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
