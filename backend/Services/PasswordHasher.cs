@@ -42,13 +42,18 @@ public static class PasswordHasher
                 return false;
             }
 
-            if (!int.TryParse(parts[1], out var iterations))
+            if (!int.TryParse(parts[1], out var iterations) || iterations <= 0)
             {
                 return false;
             }
 
             var salt = Convert.FromBase64String(parts[2]);
             var expectedHash = Convert.FromBase64String(parts[3]);
+            if (expectedHash.Length == 0)
+            {
+                return false;
+            }
+
             var actualHash = Rfc2898DeriveBytes.Pbkdf2(
                 password,
                 salt,

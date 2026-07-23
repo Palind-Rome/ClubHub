@@ -15,6 +15,7 @@
 - `.github/`：Issue 模板、PR 模板、CI 和部署 workflow。
 - `api/`：OpenAPI 规范文件，用于生成 API 客户端代码（待补充）。
 - `backend/`：后端 ASP.NET Core Web API。
+- `backend.Tests/`：xUnit 后端测试；API 测试使用内存数据库隔离，不连接共享 Oracle。
 - `frontend/`：前端 Vue 3 / Vite。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图、迁移说明。
 - `docs/`：课程最终交付文档，包括需求分析、数据库设计、系统设计与实现、答辩 PPT。
@@ -335,8 +336,8 @@ CI 内部三个 Job：
 | Job 名称 | 说明 |
 |----------|------|
 | `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
-| `build-backend` | 如果存在 `.sln`，自动 `dotnet restore` + `dotnet build`。 |
-| `build-frontend` | 如果存在 `frontend/package.json`，用 `pnpm install --frozen-lockfile` + `pnpm build` 构建（强制要求 lockfile，不运行 lint）。 |
+| `build-backend` | 后端或后端测试变更时，自动 `dotnet restore` + `dotnet build` + `dotnet test`。 |
+| `build-frontend` | 前端变更时，用 `pnpm install --frozen-lockfile` + `pnpm test` + `pnpm build` 验证（强制要求 lockfile）。 |
 
 `code-check.yml` 内部主要 Job：
 
@@ -354,9 +355,13 @@ draft PR 策略：
 - `gen-api-code.yml`：与 draft 状态无关，只按非 `main`/`dev` 分支上的 `api/**` push 或手动触发运行。
 - `deploy.yml`：只在 `main` push 或手动触发时运行，与 draft PR 无关。
 
+后端与前端测试已接入 CI。后端 API 测试必须通过统一的
+`ClubHubWebApplicationFactory` 将 Oracle `DbContext` 替换为内存测试数据库；前端测试使用
+jsdom 和 Mock HTTP。两类测试都不得依赖共享远程 Oracle。Oracle sequence、迁移脚本和
+Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Schema 或一次性数据库。
+
 后续补充：
 
-- **测试步骤**：`dotnet test`、`pnpm test`，待后端/前端项目建立后启用。
 - **Oracle 远程语法验证**：通过 `sqlplus` 连接远端 Oracle 实例，对 `schema.sql` 做 Oracle 语法校验（不是全量刷新），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
 
 ### 部署 Secrets
@@ -382,8 +387,8 @@ draft PR 策略：
 
 ┌─ ci.yml ──────────────────────────────────────────┐
 │  validate        检查文件完整性 + schema ≥12 张表    │
-│  build-backend   如果有 .sln 则 dotnet build        │
-│  build-frontend  如果有 package.json 则 pnpm build  │
+│  build-backend   dotnet restore + build + test      │
+│  build-frontend  pnpm install + test + build        │
 └────────────────────────────────────────────────────┘
 ┌─ code-check.yml ───────────────────────────────────┐
 │  pre-commit-check 通用 pre-commit 检查              │
@@ -466,7 +471,9 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
  5. 前端开发：在 src/ 中写 Vue 组件，调用生成的前端 API 函数
           │
           ▼
- 6. 本地验证：dotnet build / pnpm lint && pnpm build
+ 6. 本地验证：
+    ├── dotnet restore && dotnet build --configuration Release && dotnet test --configuration Release
+    └── pnpm install --frozen-lockfile && pnpm test && pnpm run lint && pnpm run build
           │
           ▼
  7. 发起 PR → CI + code-check 门禁通过 → 合并
@@ -501,6 +508,7 @@ dotnet test --configuration Release
 # 前端
 corepack enable
 pnpm install --frozen-lockfile
+pnpm test
 pnpm run lint
 pnpm run build
 

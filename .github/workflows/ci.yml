@@ -39,6 +39,7 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'backend.Tests/**'
               - 'ClubHub.sln'
               - '.github/workflows/ci.yml'
             frontend:
@@ -99,7 +100,7 @@ jobs:
           echo "数据库脚本检查通过：共 $table_count 张表。"
 
   # ============================================================
-  # 后端构建（仅 backend/** 或 .sln 有变更时运行）
+  # 后端构建与测试（backend/**、backend.Tests/** 或 .sln 变更时运行）
   # draft PR 阶段也运行，用于尽早发现编译问题
   # ============================================================
   build-backend:
@@ -193,7 +194,7 @@ jobs:
             exit 1
           fi
 
-      - name: 安装依赖并构建
+      - name: 安装依赖、测试并构建
         if: steps.detect.outputs.exists == 'true'
         shell: bash
         run: |
@@ -201,17 +202,11 @@ jobs:
           cd frontend
           if [[ -f "pnpm-lock.yaml" ]]; then
             pnpm install --frozen-lockfile
+            pnpm test
             pnpm run --if-present build
           elif [[ -f "package-lock.json" ]]; then
             npm ci
+            npm test
             npm run build --if-present
           fi
           echo "前端构建通过。"
-
-      # TODO: 项目建立后取消注释以下测试步骤
-      # - name: 运行前端测试
-      #   if: steps.detect.outputs.exists == 'true'
-      #   shell: bash
-      #   run: |
-      #     cd frontend
-      #     pnpm run --if-present test

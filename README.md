@@ -20,6 +20,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ├── .github/          # Issue 模板、PR 模板、CI 和部署 workflow
 ├── api/              # OpenAPI 规范文件，用于生成 API 客户端代码
 ├── backend/          # ASP.NET Core Web API
+├── backend.Tests/    # 不连接远程 Oracle 的后端单元测试与 API 边界测试
 ├── database/         # Oracle 建表脚本、种子数据、视图、迁移说明
 ├── docs/             # 课程交付文档
 ├── frontend/         # Vue 3 / Vite 前端
@@ -44,3 +45,23 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 2. 配好 Visual Studio、.NET SDK 10.0、Oracle XE、SQL Developer。
 3. 用 `database/schema.sql` 创建本地数据库结构，用 `database/verify.sql` 验证。
 4. 日常开发先从 `dev` 分支开功能分支，用 Issue、PR 和 commit 留痕。
+
+## 自动化测试
+
+后端测试统一使用 xUnit。API 测试通过 `ClubHubWebApplicationFactory` 将正式 Oracle
+`DbContext` 替换为进程内测试数据库，不读取或修改团队共享的远程 Oracle：
+
+```powershell
+dotnet test ClubHub.sln --configuration Release
+```
+
+前端使用 Vitest 和 jsdom，HTTP 请求使用 Mock，不依赖后端或数据库：
+
+```powershell
+cd frontend
+pnpm install --frozen-lockfile
+pnpm test
+```
+
+CI 会在相关目录发生变更时自动运行对应测试。需要验证 Oracle sequence、迁移脚本或
+Oracle 特有查询时，应另行使用隔离的测试 Schema 或一次性数据库，禁止使用共享开发库。
