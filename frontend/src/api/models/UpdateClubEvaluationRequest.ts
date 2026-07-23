@@ -139,15 +139,55 @@ export function UpdateClubEvaluationRequestFromJSONTyped(
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     evaluationType: json["evaluationType"] == null ? undefined : json["evaluationType"],
     termName: json["termName"] == null ? undefined : json["termName"],
-    awardTitle: json["awardTitle"] == null ? undefined : json["awardTitle"],
-    awardLevel: json["awardLevel"] == null ? undefined : json["awardLevel"],
-    awardReason: json["awardReason"] == null ? undefined : json["awardReason"],
-    activityScore: json["activityScore"] == null ? undefined : json["activityScore"],
-    taskScore: json["taskScore"] == null ? undefined : json["taskScore"],
-    learningScore: json["learningScore"] == null ? undefined : json["learningScore"],
-    awardScore: json["awardScore"] == null ? undefined : json["awardScore"],
+    awardTitle:
+      json["awardTitle"] === undefined
+        ? undefined
+        : json["awardTitle"] === null
+          ? null
+          : json["awardTitle"],
+    awardLevel:
+      json["awardLevel"] === undefined
+        ? undefined
+        : json["awardLevel"] === null
+          ? null
+          : json["awardLevel"],
+    awardReason:
+      json["awardReason"] === undefined
+        ? undefined
+        : json["awardReason"] === null
+          ? null
+          : json["awardReason"],
+    activityScore:
+      json["activityScore"] === undefined
+        ? undefined
+        : json["activityScore"] === null
+          ? null
+          : json["activityScore"],
+    taskScore:
+      json["taskScore"] === undefined
+        ? undefined
+        : json["taskScore"] === null
+          ? null
+          : json["taskScore"],
+    learningScore:
+      json["learningScore"] === undefined
+        ? undefined
+        : json["learningScore"] === null
+          ? null
+          : json["learningScore"],
+    awardScore:
+      json["awardScore"] === undefined
+        ? undefined
+        : json["awardScore"] === null
+          ? null
+          : json["awardScore"],
     publicStatus: json["publicStatus"] == null ? undefined : json["publicStatus"],
-    commentText: json["commentText"] == null ? undefined : json["commentText"],
+    commentText:
+      json["commentText"] === undefined
+        ? undefined
+        : json["commentText"] === null
+          ? null
+          : json["commentText"],
   };
 }
 

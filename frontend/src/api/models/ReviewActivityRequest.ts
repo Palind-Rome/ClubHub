@@ -60,9 +60,20 @@ export function ReviewActivityRequestFromJSONTyped(
     return json;
   }
   return {
-    approved: json["approved"] == null ? undefined : json["approved"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    comment: json["comment"] == null ? undefined : json["comment"],
+    approved:
+      json["approved"] === undefined
+        ? undefined
+        : json["approved"] === null
+          ? null
+          : json["approved"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    comment:
+      json["comment"] === undefined ? undefined : json["comment"] === null ? null : json["comment"],
   };
 }
 

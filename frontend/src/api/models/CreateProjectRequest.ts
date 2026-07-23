@@ -82,10 +82,25 @@ export function CreateProjectRequestFromJSONTyped(
   return {
     clubId: json["clubId"],
     projectName: json["projectName"],
-    description: json["description"] == null ? undefined : json["description"],
-    leaderUserId: json["leaderUserId"] == null ? undefined : json["leaderUserId"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    leaderUserId:
+      json["leaderUserId"] === undefined
+        ? undefined
+        : json["leaderUserId"] === null
+          ? null
+          : json["leaderUserId"],
     startDate: new Date(json["startDate"]),
-    endDate: json["endDate"] == null ? undefined : new Date(json["endDate"]),
+    endDate:
+      json["endDate"] === undefined
+        ? undefined
+        : json["endDate"] === null
+          ? null
+          : new Date(json["endDate"]),
   };
 }
 

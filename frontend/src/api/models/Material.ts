@@ -126,11 +126,21 @@ export function MaterialFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     clubId: json["clubId"],
     clubName: json["clubName"],
     name: json["name"],
-    specification: json["specification"] == null ? undefined : json["specification"],
+    specification:
+      json["specification"] === undefined
+        ? undefined
+        : json["specification"] === null
+          ? null
+          : json["specification"],
     totalQuantity: json["totalQuantity"],
     availableQuantity: json["availableQuantity"],
     borrowedQuantity: json["borrowedQuantity"],
-    storageLocation: json["storageLocation"] == null ? undefined : json["storageLocation"],
+    storageLocation:
+      json["storageLocation"] === undefined
+        ? undefined
+        : json["storageLocation"] === null
+          ? null
+          : json["storageLocation"],
     status: json["status"],
     createdAt: new Date(json["createdAt"]),
   };

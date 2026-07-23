@@ -57,9 +57,10 @@ export function ApiErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return json;
   }
   return {
-    code: json["code"] == null ? undefined : json["code"],
+    code: json["code"] === undefined ? undefined : json["code"] === null ? null : json["code"],
     message: json["message"],
-    detail: json["detail"] == null ? undefined : json["detail"],
+    detail:
+      json["detail"] === undefined ? undefined : json["detail"] === null ? null : json["detail"],
   };
 }
 

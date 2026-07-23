@@ -372,31 +372,96 @@ export function AwardApplicationRecordFromJSONTyped(
     awardName: json["awardName"],
     awardCategory: json["awardCategory"],
     academicYear: json["academicYear"],
-    termName: json["termName"] == null ? undefined : json["termName"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
     awardLevelId: json["awardLevelId"],
     levelName: json["levelName"],
     applicantUserId: json["applicantUserId"],
     applicantName: json["applicantName"],
-    applicantStudentNo: json["applicantStudentNo"] == null ? undefined : json["applicantStudentNo"],
-    recommenderUserId: json["recommenderUserId"] == null ? undefined : json["recommenderUserId"],
-    recommenderName: json["recommenderName"] == null ? undefined : json["recommenderName"],
+    applicantStudentNo:
+      json["applicantStudentNo"] === undefined
+        ? undefined
+        : json["applicantStudentNo"] === null
+          ? null
+          : json["applicantStudentNo"],
+    recommenderUserId:
+      json["recommenderUserId"] === undefined
+        ? undefined
+        : json["recommenderUserId"] === null
+          ? null
+          : json["recommenderUserId"],
+    recommenderName:
+      json["recommenderName"] === undefined
+        ? undefined
+        : json["recommenderName"] === null
+          ? null
+          : json["recommenderName"],
     submitterUserId: json["submitterUserId"],
-    submitterName: json["submitterName"] == null ? undefined : json["submitterName"],
+    submitterName:
+      json["submitterName"] === undefined
+        ? undefined
+        : json["submitterName"] === null
+          ? null
+          : json["submitterName"],
     applicationType: json["applicationType"],
-    applicationReason: json["applicationReason"] == null ? undefined : json["applicationReason"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
+    applicationReason:
+      json["applicationReason"] === undefined
+        ? undefined
+        : json["applicationReason"] === null
+          ? null
+          : json["applicationReason"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
     currentStep: json["currentStep"],
     currentStepText: json["currentStepText"],
     applicationStatus: json["applicationStatus"],
     applicationStatusText: json["applicationStatusText"],
     publicStatus: json["publicStatus"],
     reviewRound: json["reviewRound"],
-    finalAwardScore: json["finalAwardScore"] == null ? undefined : json["finalAwardScore"],
-    finalAmount: json["finalAmount"] == null ? undefined : json["finalAmount"],
-    submittedAt: json["submittedAt"] == null ? undefined : new Date(json["submittedAt"]),
-    approvedAt: json["approvedAt"] == null ? undefined : new Date(json["approvedAt"]),
-    publicizedAt: json["publicizedAt"] == null ? undefined : new Date(json["publicizedAt"]),
-    archivedAt: json["archivedAt"] == null ? undefined : new Date(json["archivedAt"]),
+    finalAwardScore:
+      json["finalAwardScore"] === undefined
+        ? undefined
+        : json["finalAwardScore"] === null
+          ? null
+          : json["finalAwardScore"],
+    finalAmount:
+      json["finalAmount"] === undefined
+        ? undefined
+        : json["finalAmount"] === null
+          ? null
+          : json["finalAmount"],
+    submittedAt:
+      json["submittedAt"] === undefined
+        ? undefined
+        : json["submittedAt"] === null
+          ? null
+          : new Date(json["submittedAt"]),
+    approvedAt:
+      json["approvedAt"] === undefined
+        ? undefined
+        : json["approvedAt"] === null
+          ? null
+          : new Date(json["approvedAt"]),
+    publicizedAt:
+      json["publicizedAt"] === undefined
+        ? undefined
+        : json["publicizedAt"] === null
+          ? null
+          : new Date(json["publicizedAt"]),
+    archivedAt:
+      json["archivedAt"] === undefined
+        ? undefined
+        : json["archivedAt"] === null
+          ? null
+          : new Date(json["archivedAt"]),
     createdAt: new Date(json["createdAt"]),
     updatedAt: new Date(json["updatedAt"]),
     reviewRecords: (json["reviewRecords"] as Array<any>).map(AwardReviewRecordFromJSON),

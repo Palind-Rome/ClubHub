@@ -107,16 +107,45 @@ export function CreateActivityRequestFromJSONTyped(
   }
   return {
     clubId: json["clubId"],
-    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
+    creatorUserId:
+      json["creatorUserId"] === undefined
+        ? undefined
+        : json["creatorUserId"] === null
+          ? null
+          : json["creatorUserId"],
     title: json["title"],
-    activityType: json["activityType"] == null ? undefined : json["activityType"],
-    description: json["description"] == null ? undefined : json["description"],
-    location: json["location"] == null ? undefined : json["location"],
+    activityType:
+      json["activityType"] === undefined
+        ? undefined
+        : json["activityType"] === null
+          ? null
+          : json["activityType"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    location:
+      json["location"] === undefined
+        ? undefined
+        : json["location"] === null
+          ? null
+          : json["location"],
     startTime: new Date(json["startTime"]),
     endTime: new Date(json["endTime"]),
-    maxParticipants: json["maxParticipants"] == null ? undefined : json["maxParticipants"],
+    maxParticipants:
+      json["maxParticipants"] === undefined
+        ? undefined
+        : json["maxParticipants"] === null
+          ? null
+          : json["maxParticipants"],
     registrationDeadline:
-      json["registrationDeadline"] == null ? undefined : new Date(json["registrationDeadline"]),
+      json["registrationDeadline"] === undefined
+        ? undefined
+        : json["registrationDeadline"] === null
+          ? null
+          : new Date(json["registrationDeadline"]),
   };
 }
 

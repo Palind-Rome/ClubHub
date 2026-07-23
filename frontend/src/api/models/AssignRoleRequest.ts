@@ -71,7 +71,8 @@ export function AssignRoleRequestFromJSONTyped(
     operatorUserId: json["operatorUserId"],
     targetUserId: json["targetUserId"],
     roleCode: json["roleCode"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
   };
 }
 

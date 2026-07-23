@@ -171,17 +171,47 @@ export function VenueReservationFromJSONTyped(
     venueName: json["venueName"],
     clubId: json["clubId"],
     clubName: json["clubName"],
-    activityId: json["activityId"] == null ? undefined : json["activityId"],
-    activityTitle: json["activityTitle"] == null ? undefined : json["activityTitle"],
+    activityId:
+      json["activityId"] === undefined
+        ? undefined
+        : json["activityId"] === null
+          ? null
+          : json["activityId"],
+    activityTitle:
+      json["activityTitle"] === undefined
+        ? undefined
+        : json["activityTitle"] === null
+          ? null
+          : json["activityTitle"],
     applicantUserId: json["applicantUserId"],
-    applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
+    applicantName:
+      json["applicantName"] === undefined
+        ? undefined
+        : json["applicantName"] === null
+          ? null
+          : json["applicantName"],
     startTime: new Date(json["startTime"]),
     endTime: new Date(json["endTime"]),
     purpose: json["purpose"],
     status: json["status"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerName:
+      json["reviewerName"] === undefined
+        ? undefined
+        : json["reviewerName"] === null
+          ? null
+          : json["reviewerName"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
     createdAt: new Date(json["createdAt"]),
   };
 }

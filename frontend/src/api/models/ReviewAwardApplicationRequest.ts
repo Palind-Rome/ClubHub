@@ -83,9 +83,24 @@ export function ReviewAwardApplicationRequestFromJSONTyped(
   }
   return {
     reviewResult: json["reviewResult"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
-    finalAwardScore: json["finalAwardScore"] == null ? undefined : json["finalAwardScore"],
-    finalAmount: json["finalAmount"] == null ? undefined : json["finalAmount"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
+    finalAwardScore:
+      json["finalAwardScore"] === undefined
+        ? undefined
+        : json["finalAwardScore"] === null
+          ? null
+          : json["finalAwardScore"],
+    finalAmount:
+      json["finalAmount"] === undefined
+        ? undefined
+        : json["finalAmount"] === null
+          ? null
+          : json["finalAmount"],
   };
 }
 

@@ -231,32 +231,125 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
   return {
     id: json["id"],
     title: json["title"],
-    activityType: json["activityType"] == null ? undefined : json["activityType"],
-    description: json["description"] == null ? undefined : json["description"],
+    activityType:
+      json["activityType"] === undefined
+        ? undefined
+        : json["activityType"] === null
+          ? null
+          : json["activityType"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     clubName: json["clubName"],
     clubId: json["clubId"],
-    creatorUserId: json["creatorUserId"] == null ? undefined : json["creatorUserId"],
+    creatorUserId:
+      json["creatorUserId"] === undefined
+        ? undefined
+        : json["creatorUserId"] === null
+          ? null
+          : json["creatorUserId"],
     startTime: json["startTime"] == null ? null : new Date(json["startTime"]),
     endTime: json["endTime"] == null ? null : new Date(json["endTime"]),
-    location: json["location"] == null ? undefined : json["location"],
+    location:
+      json["location"] === undefined
+        ? undefined
+        : json["location"] === null
+          ? null
+          : json["location"],
     status: json["status"],
-    maxParticipants: json["maxParticipants"] == null ? undefined : json["maxParticipants"],
+    maxParticipants:
+      json["maxParticipants"] === undefined
+        ? undefined
+        : json["maxParticipants"] === null
+          ? null
+          : json["maxParticipants"],
     registrationDeadline:
-      json["registrationDeadline"] == null ? undefined : new Date(json["registrationDeadline"]),
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
-    budgetAmount: json["budgetAmount"] == null ? undefined : json["budgetAmount"],
-    budgetPurpose: json["budgetPurpose"] == null ? undefined : json["budgetPurpose"],
-    budgetDetail: json["budgetDetail"] == null ? undefined : json["budgetDetail"],
-    budgetStatus: json["budgetStatus"] == null ? undefined : json["budgetStatus"],
-    budgetReviewerId: json["budgetReviewerId"] == null ? undefined : json["budgetReviewerId"],
-    budgetComment: json["budgetComment"] == null ? undefined : json["budgetComment"],
-    publishedAt: json["publishedAt"] == null ? undefined : new Date(json["publishedAt"]),
-    checkinStartAt: json["checkinStartAt"] == null ? undefined : new Date(json["checkinStartAt"]),
-    checkinEndAt: json["checkinEndAt"] == null ? undefined : new Date(json["checkinEndAt"]),
+      json["registrationDeadline"] === undefined
+        ? undefined
+        : json["registrationDeadline"] === null
+          ? null
+          : new Date(json["registrationDeadline"]),
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
+    budgetAmount:
+      json["budgetAmount"] === undefined
+        ? undefined
+        : json["budgetAmount"] === null
+          ? null
+          : json["budgetAmount"],
+    budgetPurpose:
+      json["budgetPurpose"] === undefined
+        ? undefined
+        : json["budgetPurpose"] === null
+          ? null
+          : json["budgetPurpose"],
+    budgetDetail:
+      json["budgetDetail"] === undefined
+        ? undefined
+        : json["budgetDetail"] === null
+          ? null
+          : json["budgetDetail"],
+    budgetStatus:
+      json["budgetStatus"] === undefined
+        ? undefined
+        : json["budgetStatus"] === null
+          ? null
+          : json["budgetStatus"],
+    budgetReviewerId:
+      json["budgetReviewerId"] === undefined
+        ? undefined
+        : json["budgetReviewerId"] === null
+          ? null
+          : json["budgetReviewerId"],
+    budgetComment:
+      json["budgetComment"] === undefined
+        ? undefined
+        : json["budgetComment"] === null
+          ? null
+          : json["budgetComment"],
+    publishedAt:
+      json["publishedAt"] === undefined
+        ? undefined
+        : json["publishedAt"] === null
+          ? null
+          : new Date(json["publishedAt"]),
+    checkinStartAt:
+      json["checkinStartAt"] === undefined
+        ? undefined
+        : json["checkinStartAt"] === null
+          ? null
+          : new Date(json["checkinStartAt"]),
+    checkinEndAt:
+      json["checkinEndAt"] === undefined
+        ? undefined
+        : json["checkinEndAt"] === null
+          ? null
+          : new Date(json["checkinEndAt"]),
     checkoutStartAt:
-      json["checkoutStartAt"] == null ? undefined : new Date(json["checkoutStartAt"]),
-    checkoutEndAt: json["checkoutEndAt"] == null ? undefined : new Date(json["checkoutEndAt"]),
+      json["checkoutStartAt"] === undefined
+        ? undefined
+        : json["checkoutStartAt"] === null
+          ? null
+          : new Date(json["checkoutStartAt"]),
+    checkoutEndAt:
+      json["checkoutEndAt"] === undefined
+        ? undefined
+        : json["checkoutEndAt"] === null
+          ? null
+          : new Date(json["checkoutEndAt"]),
     currentParticipants: json["currentParticipants"],
     isRegistered: json["isRegistered"],
   };

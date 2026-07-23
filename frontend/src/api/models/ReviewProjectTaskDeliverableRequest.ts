@@ -59,7 +59,12 @@ export function ReviewProjectTaskDeliverableRequestFromJSONTyped(
   }
   return {
     approved: json["approved"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
   };
 }
 

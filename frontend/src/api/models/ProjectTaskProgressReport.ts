@@ -122,8 +122,18 @@ export function ProjectTaskProgressReportFromJSONTyped(
     reporterName: json["reporterName"],
     progress: json["progress"],
     taskStatus: json["taskStatus"],
-    reportContent: json["reportContent"] == null ? undefined : json["reportContent"],
-    delayReason: json["delayReason"] == null ? undefined : json["delayReason"],
+    reportContent:
+      json["reportContent"] === undefined
+        ? undefined
+        : json["reportContent"] === null
+          ? null
+          : json["reportContent"],
+    delayReason:
+      json["delayReason"] === undefined
+        ? undefined
+        : json["delayReason"] === null
+          ? null
+          : json["delayReason"],
     submittedAt: new Date(json["submittedAt"]),
   };
 }

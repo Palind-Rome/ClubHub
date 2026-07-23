@@ -234,32 +234,86 @@ export function ProjectTaskFromJSONTyped(json: any, ignoreDiscriminator: boolean
     projectId: json["projectId"],
     assignees: (json["assignees"] as Array<any>).map(ProjectTaskAssigneeFromJSON),
     title: json["title"],
-    content: json["content"] == null ? undefined : json["content"],
+    content:
+      json["content"] === undefined ? undefined : json["content"] === null ? null : json["content"],
     priority: json["priority"],
     startDate: new Date(json["startDate"]),
     dueDate: new Date(json["dueDate"]),
-    finishDate: json["finishDate"] == null ? undefined : new Date(json["finishDate"]),
+    finishDate:
+      json["finishDate"] === undefined
+        ? undefined
+        : json["finishDate"] === null
+          ? null
+          : new Date(json["finishDate"]),
     progress: json["progress"],
     taskStatus: json["taskStatus"],
-    delayReason: json["delayReason"] == null ? undefined : json["delayReason"],
-    deliverableTitle: json["deliverableTitle"] == null ? undefined : json["deliverableTitle"],
-    deliverableDesc: json["deliverableDesc"] == null ? undefined : json["deliverableDesc"],
-    deliverableUrl: json["deliverableUrl"] == null ? undefined : json["deliverableUrl"],
-    deliverableStatus: json["deliverableStatus"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerDisplayName:
-      json["reviewerDisplayName"] == null ? undefined : json["reviewerDisplayName"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
-    deliverableSubmitterId:
-      json["deliverableSubmitterId"] == null ? undefined : json["deliverableSubmitterId"],
-    deliverableSubmitterDisplayName:
-      json["deliverableSubmitterDisplayName"] == null
+    delayReason:
+      json["delayReason"] === undefined
         ? undefined
-        : json["deliverableSubmitterDisplayName"],
+        : json["delayReason"] === null
+          ? null
+          : json["delayReason"],
+    deliverableTitle:
+      json["deliverableTitle"] === undefined
+        ? undefined
+        : json["deliverableTitle"] === null
+          ? null
+          : json["deliverableTitle"],
+    deliverableDesc:
+      json["deliverableDesc"] === undefined
+        ? undefined
+        : json["deliverableDesc"] === null
+          ? null
+          : json["deliverableDesc"],
+    deliverableUrl:
+      json["deliverableUrl"] === undefined
+        ? undefined
+        : json["deliverableUrl"] === null
+          ? null
+          : json["deliverableUrl"],
+    deliverableStatus: json["deliverableStatus"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerDisplayName:
+      json["reviewerDisplayName"] === undefined
+        ? undefined
+        : json["reviewerDisplayName"] === null
+          ? null
+          : json["reviewerDisplayName"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
+    deliverableSubmitterId:
+      json["deliverableSubmitterId"] === undefined
+        ? undefined
+        : json["deliverableSubmitterId"] === null
+          ? null
+          : json["deliverableSubmitterId"],
+    deliverableSubmitterDisplayName:
+      json["deliverableSubmitterDisplayName"] === undefined
+        ? undefined
+        : json["deliverableSubmitterDisplayName"] === null
+          ? null
+          : json["deliverableSubmitterDisplayName"],
     deliverableSubmittedAt:
-      json["deliverableSubmittedAt"] == null ? undefined : new Date(json["deliverableSubmittedAt"]),
+      json["deliverableSubmittedAt"] === undefined
+        ? undefined
+        : json["deliverableSubmittedAt"] === null
+          ? null
+          : new Date(json["deliverableSubmittedAt"]),
     deliverableReviewedAt:
-      json["deliverableReviewedAt"] == null ? undefined : new Date(json["deliverableReviewedAt"]),
+      json["deliverableReviewedAt"] === undefined
+        ? undefined
+        : json["deliverableReviewedAt"] === null
+          ? null
+          : new Date(json["deliverableReviewedAt"]),
   };
 }
 

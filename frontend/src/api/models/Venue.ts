@@ -109,14 +109,29 @@ export function VenueFromJSONTyped(json: any, ignoreDiscriminator: boolean): Ven
   return {
     id: json["id"],
     name: json["name"],
-    building: json["building"] == null ? undefined : json["building"],
-    roomNo: json["roomNo"] == null ? undefined : json["roomNo"],
+    building:
+      json["building"] === undefined
+        ? undefined
+        : json["building"] === null
+          ? null
+          : json["building"],
+    roomNo:
+      json["roomNo"] === undefined ? undefined : json["roomNo"] === null ? null : json["roomNo"],
     capacity: json["capacity"],
     status: json["status"],
-    managerUserId: json["managerUserId"] == null ? undefined : json["managerUserId"],
+    managerUserId:
+      json["managerUserId"] === undefined
+        ? undefined
+        : json["managerUserId"] === null
+          ? null
+          : json["managerUserId"],
     createdAt: new Date(json["createdAt"]),
     maintenanceUntil:
-      json["maintenanceUntil"] == null ? undefined : new Date(json["maintenanceUntil"]),
+      json["maintenanceUntil"] === undefined
+        ? undefined
+        : json["maintenanceUntil"] === null
+          ? null
+          : new Date(json["maintenanceUntil"]),
   };
 }
 

@@ -101,16 +101,38 @@ export function UpdateRecruitmentRequestFromJSONTyped(
   }
   return {
     currentUserId: json["currentUserId"],
-    title: json["title"] == null ? undefined : json["title"],
-    description: json["description"] == null ? undefined : json["description"],
-    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
-    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    quota: json["quota"] == null ? undefined : json["quota"],
-    requirements: json["requirements"] == null ? undefined : json["requirements"],
-    recruitStatus:
-      json["recruitStatus"] == null
+    title: json["title"] === undefined ? undefined : json["title"] === null ? null : json["title"],
+    description:
+      json["description"] === undefined
         ? undefined
-        : RecruitmentWorkflowStatusFromJSON(json["recruitStatus"]),
+        : json["description"] === null
+          ? null
+          : json["description"],
+    startAt:
+      json["startAt"] === undefined
+        ? undefined
+        : json["startAt"] === null
+          ? null
+          : new Date(json["startAt"]),
+    endAt:
+      json["endAt"] === undefined
+        ? undefined
+        : json["endAt"] === null
+          ? null
+          : new Date(json["endAt"]),
+    quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
+    requirements:
+      json["requirements"] === undefined
+        ? undefined
+        : json["requirements"] === null
+          ? null
+          : json["requirements"],
+    recruitStatus:
+      json["recruitStatus"] === undefined
+        ? undefined
+        : json["recruitStatus"] === null
+          ? null
+          : RecruitmentWorkflowStatusFromJSON(json["recruitStatus"]),
   };
 }
 

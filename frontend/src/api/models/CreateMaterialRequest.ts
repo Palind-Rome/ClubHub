@@ -98,10 +98,25 @@ export function CreateMaterialRequestFromJSONTyped(
   return {
     clubId: json["clubId"],
     name: json["name"],
-    specification: json["specification"] == null ? undefined : json["specification"],
+    specification:
+      json["specification"] === undefined
+        ? undefined
+        : json["specification"] === null
+          ? null
+          : json["specification"],
     totalQuantity: json["totalQuantity"],
-    availableQuantity: json["availableQuantity"] == null ? undefined : json["availableQuantity"],
-    storageLocation: json["storageLocation"] == null ? undefined : json["storageLocation"],
+    availableQuantity:
+      json["availableQuantity"] === undefined
+        ? undefined
+        : json["availableQuantity"] === null
+          ? null
+          : json["availableQuantity"],
+    storageLocation:
+      json["storageLocation"] === undefined
+        ? undefined
+        : json["storageLocation"] === null
+          ? null
+          : json["storageLocation"],
     status: json["status"] == null ? undefined : json["status"],
   };
 }

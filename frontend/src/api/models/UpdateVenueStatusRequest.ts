@@ -83,11 +83,17 @@ export function UpdateVenueStatusRequestFromJSONTyped(
     operatorUserId: json["operatorUserId"],
     status: json["status"],
     maintenanceUntil:
-      json["maintenanceUntil"] == null ? undefined : new Date(json["maintenanceUntil"]),
-    cancelConflictingReservations:
-      json["cancelConflictingReservations"] == null
+      json["maintenanceUntil"] === undefined
         ? undefined
-        : json["cancelConflictingReservations"],
+        : json["maintenanceUntil"] === null
+          ? null
+          : new Date(json["maintenanceUntil"]),
+    cancelConflictingReservations:
+      json["cancelConflictingReservations"] === undefined
+        ? undefined
+        : json["cancelConflictingReservations"] === null
+          ? null
+          : json["cancelConflictingReservations"],
   };
 }
 
