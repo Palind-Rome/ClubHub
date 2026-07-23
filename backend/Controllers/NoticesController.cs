@@ -324,7 +324,9 @@ public class NoticesController : ControllerBase
         }
         var permissionRoles = await _authService.GetPermissionRolesAsync(user.UserId);
 
-        var notice = await NoticeQuery().FirstOrDefaultAsync(n => n.NoticeId == noticeId);
+        var notice = await _db.Notices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(n => n.NoticeId == noticeId);
         if (notice is null) return NotFound(new { message = "通知不存在。" });
 
         var effectiveStatus = EffectiveStatus(notice, DateTime.UtcNow);
@@ -332,7 +334,9 @@ public class NoticesController : ControllerBase
         {
             return Conflict(new { message = "只有已发布通知可以标记已读。" });
         }
-        var context = await NoticeListContext.LoadAsync(_db, [notice]);
+        var context = notice.TargetType == TargetDepartment
+            ? await NoticeListContext.LoadAsync(_db, [notice])
+            : NoticeListContext.Empty;
         if (!CanViewNotice(user, permissionRoles, notice, effectiveStatus, context))
         {
             return StatusCode(403, new { message = "当前用户不可阅读该通知。" });
@@ -534,12 +538,6 @@ public class NoticesController : ControllerBase
         string effectiveStatus,
         NoticeListContext context)
     {
-        if (effectiveStatus == StatusDraft)
-        {
-            return notice.PublisherUserId == viewer.UserId ||
-                NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, notice.ClubId);
-        }
-
         if (effectiveStatus != StatusPublished)
         {
             return notice.PublisherUserId == viewer.UserId ||
@@ -809,6 +807,8 @@ public class NoticesController : ControllerBase
 
     private sealed class NoticeListContext
     {
+        public static NoticeListContext Empty { get; } = new();
+
         public Dictionary<int, ClubMember> DepartmentTargets { get; private init; } = [];
 
         public Dictionary<int, User> MemberTargets { get; private init; } = [];
