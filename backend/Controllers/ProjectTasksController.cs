@@ -202,7 +202,6 @@ public class ProjectTasksController : ControllerBase
 
                 var task = new DbProjectTask
                 {
-                    TaskId = (await _db.ProjectTasks.MaxAsync(item => (int?)item.TaskId) ?? 0) + 1,
                     ProjectId = projectId,
                     AssigneeUserId = assigneeUserIds[0],
                     Title = title,
@@ -216,12 +215,10 @@ public class ProjectTasksController : ControllerBase
                     DelayReason = null
                 };
                 _db.ProjectTasks.Add(task);
-                var nextTaskAssigneeId = (await _db.ProjectTaskAssignees.MaxAsync(item => (int?)item.TaskAssigneeId) ?? 0) + 1;
                 foreach (var assigneeUserId in assigneeUserIds)
                 {
                     task.Assignees.Add(new()
                     {
-                        TaskAssigneeId = nextTaskAssigneeId++,
                         UserId = assigneeUserId,
                         AssignedAt = now
                     });
@@ -295,7 +292,6 @@ public class ProjectTasksController : ControllerBase
                 task.DelayReason = status == CompletedStatus ? null : NormalizeOptionalText(request.DelayReason);
                 _db.ProjectTaskProgressReports.Add(new()
                 {
-                    TaskProgressReportId = (await _db.ProjectTaskProgressReports.MaxAsync(item => (int?)item.TaskProgressReportId) ?? 0) + 1,
                     TaskId = task.TaskId,
                     ReporterUserId = userId.Value,
                     Progress = request.Progress,

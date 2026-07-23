@@ -146,7 +146,6 @@ public class MaterialBorrowsController : ControllerBase
 
                 var material = new Material
                 {
-                    MaterialId = (await _db.Materials.MaxAsync(m => (int?)m.MaterialId) ?? 0) + 1,
                     ClubId = req.ClubId,
                     MaterialName = name,
                     Specification = NullIfBlank(req.Specification),
@@ -354,7 +353,6 @@ public class MaterialBorrowsController : ControllerBase
 
                 var borrow = new MaterialBorrow
                 {
-                    BorrowId = (await _db.MaterialBorrows.MaxAsync(b => (int?)b.BorrowId) ?? 0) + 1,
                     MaterialId = req.MaterialId,
                     ClubId = req.ClubId,
                     BorrowerUserId = currentUserId.Value,

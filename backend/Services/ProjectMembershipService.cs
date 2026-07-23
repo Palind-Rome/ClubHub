@@ -244,7 +244,6 @@ public class ProjectMembershipService
                 {
                     member = new ProjectMember
                     {
-                        ProjectMemberId = await GetNextProjectMemberIdAsync(),
                         ProjectId = currentProject.ProjectId,
                         UserId = userId,
                         MemberRole = memberRole,
@@ -313,7 +312,6 @@ public class ProjectMembershipService
         var memberships = await _db.ProjectMembers
             .Where(member => member.ProjectId == project.ProjectId)
             .ToListAsync();
-        var nextMemberId = (await _db.ProjectMembers.MaxAsync(member => (int?)member.ProjectMemberId) ?? 0) + 1;
 
         foreach (var currentLeader in memberships.Where(member =>
                      member.UserId != newLeaderUserId &&
@@ -329,7 +327,6 @@ public class ProjectMembershipService
             if (previousLeader is null)
             {
                 previousLeader = CreateMembership(
-                    nextMemberId++,
                     project,
                     previousLeaderUserId.Value,
                     MemberRole,
@@ -348,7 +345,6 @@ public class ProjectMembershipService
         if (newLeader is null)
         {
             newLeader = CreateMembership(
-                nextMemberId,
                 project,
                 newLeaderUserId,
                 LeaderRole,
@@ -378,14 +374,7 @@ public class ProjectMembershipService
         return false;
     }
 
-    private async Task<int> GetNextProjectMemberIdAsync()
-    {
-        var maxId = await _db.ProjectMembers.MaxAsync(member => (int?)member.ProjectMemberId) ?? 0;
-        return maxId + 1;
-    }
-
     private static ProjectMember CreateMembership(
-        int projectMemberId,
         Project project,
         int userId,
         string role,
@@ -394,8 +383,8 @@ public class ProjectMembershipService
     {
         return new ProjectMember
         {
-            ProjectMemberId = projectMemberId,
             ProjectId = project.ProjectId,
+            Project = project,
             UserId = userId,
             MemberRole = role,
             MemberStatus = ActiveStatus,

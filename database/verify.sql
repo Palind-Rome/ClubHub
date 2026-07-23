@@ -27,7 +27,24 @@ WHERE sequence_name IN (
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
   'SEQ_ACTIVITY_PARTICIPATIONS',
-  'SEQ_NOTICE_READS'
+  'SEQ_NOTICE_READS',
+  'SEQ_ROLES',
+  'SEQ_RECRUITMENTS',
+  'SEQ_RECRUITMENT_APPLICATIONS',
+  'SEQ_VENUES',
+  'SEQ_VENUE_RESERVATIONS',
+  'SEQ_PROJECTS',
+  'SEQ_PROJECT_MEMBERS',
+  'SEQ_PROJECT_TASKS',
+  'SEQ_PROJECT_TASK_ASSIGNEES',
+  'SEQ_PROJECT_TASK_PROGRESS_REPORTS',
+  'SEQ_LEARNING_ITEMS',
+  'SEQ_LEARNING_RECORDS',
+  'SEQ_MATERIALS',
+  'SEQ_MATERIAL_BORROWS',
+  'SEQ_NOTICES',
+  'SEQ_FORUM_POSTS',
+  'SEQ_OPERATION_LOGS'
 )
 ORDER BY sequence_name;
 
@@ -61,9 +78,72 @@ WHERE (table_name, column_name) IN (
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
   ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
-  ('NOTICE_READS', 'READ_ID')
+  ('NOTICE_READS', 'READ_ID'),
+  ('ROLES', 'ROLE_ID'),
+  ('RECRUITMENTS', 'RECRUIT_ID'),
+  ('RECRUITMENT_APPLICATIONS', 'APPLICATION_ID'),
+  ('VENUES', 'VENUE_ID'),
+  ('VENUE_RESERVATIONS', 'RESERVATION_ID'),
+  ('PROJECTS', 'PROJECT_ID'),
+  ('PROJECT_MEMBERS', 'PROJECT_MEMBER_ID'),
+  ('PROJECT_TASKS', 'TASK_ID'),
+  ('PROJECT_TASK_ASSIGNEES', 'TASK_ASSIGNEE_ID'),
+  ('PROJECT_TASK_PROGRESS_REPORTS', 'TASK_PROGRESS_REPORT_ID'),
+  ('LEARNING_ITEMS', 'ITEM_ID'),
+  ('LEARNING_RECORDS', 'RECORD_ID'),
+  ('MATERIALS', 'MATERIAL_ID'),
+  ('MATERIAL_BORROWS', 'BORROW_ID'),
+  ('NOTICES', 'NOTICE_ID'),
+  ('FORUM_POSTS', 'POST_ID'),
+  ('OPERATION_LOGS', 'LOG_ID')
 )
 ORDER BY table_name, column_name;
+
+-- 以下查询应返回 0 行：每个主键 sequence 必须存在，且下一个值必须大于当前最大主键。
+WITH sequence_targets AS (
+  SELECT 'SEQ_USERS' AS sequence_name, NVL(MAX(user_id), 0) AS max_id FROM users
+  UNION ALL SELECT 'SEQ_USER_ROLES', NVL(MAX(user_role_id), 0) FROM user_roles
+  UNION ALL SELECT 'SEQ_CLUBS', NVL(MAX(club_id), 0) FROM clubs
+  UNION ALL SELECT 'SEQ_CLUB_MEMBERS', NVL(MAX(member_id), 0) FROM club_members
+  UNION ALL SELECT 'SEQ_CLUB_DEPARTMENTS', NVL(MAX(department_id), 0) FROM club_departments
+  UNION ALL SELECT 'SEQ_CLUB_GROUPS', NVL(MAX(group_id), 0) FROM club_groups
+  UNION ALL SELECT 'SEQ_AWARD_SCHEMES', NVL(MAX(award_scheme_id), 0) FROM award_schemes
+  UNION ALL SELECT 'SEQ_AWARD_LEVELS', NVL(MAX(award_level_id), 0) FROM award_levels
+  UNION ALL SELECT 'SEQ_AWARD_APPLICATIONS', NVL(MAX(award_application_id), 0) FROM award_applications
+  UNION ALL SELECT 'SEQ_AWARD_REVIEW_RECORDS', NVL(MAX(review_id), 0) FROM award_review_records
+  UNION ALL SELECT 'SEQ_AWARD_ATTACHMENTS', NVL(MAX(attachment_id), 0) FROM award_attachments
+  UNION ALL SELECT 'SEQ_AWARD_PUBLICITY_BATCHES', NVL(MAX(publicity_batch_id), 0) FROM award_publicity_batches
+  UNION ALL SELECT 'SEQ_AWARD_PUBLICITY_ITEMS', NVL(MAX(publicity_item_id), 0) FROM award_publicity_items
+  UNION ALL SELECT 'SEQ_AWARD_RULE_DOCUMENTS', NVL(MAX(rule_document_id), 0) FROM award_rule_documents
+  UNION ALL SELECT 'SEQ_EVALUATIONS', NVL(MAX(evaluation_id), 0) FROM evaluations
+  UNION ALL SELECT 'SEQ_ACTIVITIES', NVL(MAX(activity_id), 0) FROM activities
+  UNION ALL SELECT 'SEQ_ACTIVITY_PARTICIPATIONS', NVL(MAX(participation_id), 0) FROM activity_participations
+  UNION ALL SELECT 'SEQ_NOTICE_READS', NVL(MAX(read_id), 0) FROM notice_reads
+  UNION ALL SELECT 'SEQ_ROLES', NVL(MAX(role_id), 0) FROM roles
+  UNION ALL SELECT 'SEQ_RECRUITMENTS', NVL(MAX(recruit_id), 0) FROM recruitments
+  UNION ALL SELECT 'SEQ_RECRUITMENT_APPLICATIONS', NVL(MAX(application_id), 0) FROM recruitment_applications
+  UNION ALL SELECT 'SEQ_VENUES', NVL(MAX(venue_id), 0) FROM venues
+  UNION ALL SELECT 'SEQ_VENUE_RESERVATIONS', NVL(MAX(reservation_id), 0) FROM venue_reservations
+  UNION ALL SELECT 'SEQ_PROJECTS', NVL(MAX(project_id), 0) FROM projects
+  UNION ALL SELECT 'SEQ_PROJECT_MEMBERS', NVL(MAX(project_member_id), 0) FROM project_members
+  UNION ALL SELECT 'SEQ_PROJECT_TASKS', NVL(MAX(task_id), 0) FROM project_tasks
+  UNION ALL SELECT 'SEQ_PROJECT_TASK_ASSIGNEES', NVL(MAX(task_assignee_id), 0) FROM project_task_assignees
+  UNION ALL SELECT 'SEQ_PROJECT_TASK_PROGRESS_REPORTS', NVL(MAX(task_progress_report_id), 0) FROM project_task_progress_reports
+  UNION ALL SELECT 'SEQ_LEARNING_ITEMS', NVL(MAX(item_id), 0) FROM learning_items
+  UNION ALL SELECT 'SEQ_LEARNING_RECORDS', NVL(MAX(record_id), 0) FROM learning_records
+  UNION ALL SELECT 'SEQ_MATERIALS', NVL(MAX(material_id), 0) FROM materials
+  UNION ALL SELECT 'SEQ_MATERIAL_BORROWS', NVL(MAX(borrow_id), 0) FROM material_borrows
+  UNION ALL SELECT 'SEQ_NOTICES', NVL(MAX(notice_id), 0) FROM notices
+  UNION ALL SELECT 'SEQ_FORUM_POSTS', NVL(MAX(post_id), 0) FROM forum_posts
+  UNION ALL SELECT 'SEQ_OPERATION_LOGS', NVL(MAX(log_id), 0) FROM operation_logs
+)
+SELECT target.sequence_name, target.max_id, sequence_state.last_number
+FROM sequence_targets target
+LEFT JOIN user_sequences sequence_state
+  ON sequence_state.sequence_name = target.sequence_name
+WHERE sequence_state.sequence_name IS NULL
+   OR sequence_state.last_number <= target.max_id
+ORDER BY target.sequence_name;
 
 -- ClubHub 核心表应为 36 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count

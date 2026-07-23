@@ -151,7 +151,6 @@ public class ProjectsController : ControllerBase
                 var now = DateTime.UtcNow;
                 var project = new DbProject
                 {
-                    ProjectId = await GetNextProjectId(),
                     ClubId = req.ClubId,
                     ProjectName = req.ProjectName.Trim(),
                     Description = NormalizeOptionalText(req.Description),
@@ -186,7 +185,7 @@ public class ProjectsController : ControllerBase
             }
         }
 
-        return Conflict("Project id generation conflicted. Please retry.");
+        return Conflict("Project creation conflicted. Please retry.");
     }
 
     /// <summary>
@@ -616,13 +615,6 @@ public class ProjectsController : ControllerBase
              u.AccountStatus.ToLower() == EnabledStatus ||
              u.AccountStatus == "在任" ||
              u.AccountStatus == "正常"));
-    }
-
-    private async Task<int> GetNextProjectId()
-    {
-        // The course schema has no PROJECTS sequence yet, so creation uses SERIALIZABLE + retry to avoid max(id)+1 races.
-        var maxId = await _db.Projects.MaxAsync(p => (int?)p.ProjectId) ?? 0;
-        return maxId + 1;
     }
 
     /// <summary>

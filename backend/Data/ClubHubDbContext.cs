@@ -74,6 +74,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Role>(e =>
         {
             e.HasKey(r => r.RoleId);
+            e.Property(r => r.RoleId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_ROLES.NEXTVAL");
             e.HasMany(r => r.UserRoles)
              .WithOne(ur => ur.Role)
              .HasForeignKey(ur => ur.RoleId)
@@ -473,6 +476,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Recruitment>(e =>
         {
             e.HasKey(r => r.RecruitId);
+            e.Property(r => r.RecruitId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_RECRUITMENTS.NEXTVAL");
             e.HasMany(r => r.Applications)
              .WithOne(a => a.Recruitment)
              .HasForeignKey(a => a.RecruitId)
@@ -482,6 +488,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<RecruitmentApplication>(e =>
         {
             e.HasKey(a => a.ApplicationId);
+            e.Property(a => a.ApplicationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_RECRUITMENT_APPLICATIONS.NEXTVAL");
             e.HasOne(a => a.User)
              .WithMany()
              .HasForeignKey(a => a.UserId)
@@ -519,6 +528,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Project>(e =>
         {
             e.HasKey(p => p.ProjectId);
+            e.Property(p => p.ProjectId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECTS.NEXTVAL");
             e.HasOne(p => p.Club)
              .WithMany()
              .HasForeignKey(p => p.ClubId)
@@ -532,6 +544,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectMember>(e =>
         {
             e.HasKey(pm => pm.ProjectMemberId);
+            e.Property(pm => pm.ProjectMemberId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_MEMBERS.NEXTVAL");
             e.HasIndex(pm => new { pm.ProjectId, pm.UserId })
              .IsUnique()
              .HasDatabaseName("UQ_PROJECT_MEMBERS_USER");
@@ -556,6 +571,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTask>(e =>
         {
             e.HasKey(t => t.TaskId);
+            e.Property(t => t.TaskId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASKS.NEXTVAL");
             e.Property(t => t.Title).HasMaxLength(255);
             e.Property(t => t.Priority).HasMaxLength(255);
             e.Property(t => t.TaskStatus).HasMaxLength(255);
@@ -585,6 +603,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTaskAssignee>(e =>
         {
             e.HasKey(item => item.TaskAssigneeId);
+            e.Property(item => item.TaskAssigneeId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASK_ASSIGNEES.NEXTVAL");
             e.HasIndex(item => new { item.TaskId, item.UserId })
              .IsUnique()
              .HasDatabaseName("UQ_PROJECT_TASK_ASSIGNEES");
@@ -603,6 +624,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTaskProgressReport>(e =>
         {
             e.HasKey(item => item.TaskProgressReportId);
+            e.Property(item => item.TaskProgressReportId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASK_PROGRESS_REPORTS.NEXTVAL");
             e.Property(item => item.TaskStatus).HasMaxLength(30);
             e.Property(item => item.ReportContent).HasMaxLength(1000);
             e.Property(item => item.DelayReason).HasMaxLength(255);
@@ -621,6 +645,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<LearningItem>(e =>
         {
             e.HasKey(item => item.ItemId);
+            e.Property(item => item.ItemId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_LEARNING_ITEMS.NEXTVAL");
             e.HasOne(item => item.Uploader)
              .WithMany()
              .HasForeignKey(item => item.UploaderUserId)
@@ -638,6 +665,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<LearningRecord>(e =>
         {
             e.HasKey(record => record.RecordId);
+            e.Property(record => record.RecordId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_LEARNING_RECORDS.NEXTVAL");
             e.HasOne(record => record.User)
              .WithMany()
              .HasForeignKey(record => record.UserId)
@@ -647,11 +677,17 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<OperationLog>(e =>
         {
             e.HasKey(log => log.LogId);
+            e.Property(log => log.LogId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_OPERATION_LOGS.NEXTVAL");
         });
 
         modelBuilder.Entity<Notice>(e =>
         {
             e.HasKey(n => n.NoticeId);
+            e.Property(n => n.NoticeId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_NOTICES.NEXTVAL");
             e.HasOne(n => n.Publisher)
              .WithMany()
              .HasForeignKey(n => n.PublisherUserId)
@@ -702,6 +738,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Venue>(e =>
         {
             e.HasKey(v => v.VenueId);
+            e.Property(v => v.VenueId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_VENUES.NEXTVAL");
             e.HasMany(v => v.Reservations)
              .WithOne(r => r.Venue)
              .HasForeignKey(r => r.VenueId)
@@ -711,6 +750,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<VenueReservation>(e =>
         {
             e.HasKey(r => r.ReservationId);
+            e.Property(r => r.ReservationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_VENUE_RESERVATIONS.NEXTVAL");
             e.HasOne(r => r.Club)
              .WithMany()
              .HasForeignKey(r => r.ClubId)
@@ -772,6 +814,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Material>(e =>
         {
             e.HasKey(m => m.MaterialId);
+            e.Property(m => m.MaterialId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_MATERIALS.NEXTVAL");
             e.HasOne(m => m.Club)
              .WithMany()
              .HasForeignKey(m => m.ClubId)
@@ -785,6 +830,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<MaterialBorrow>(e =>
         {
             e.HasKey(b => b.BorrowId);
+            e.Property(b => b.BorrowId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_MATERIAL_BORROWS.NEXTVAL");
             e.HasOne(b => b.Club)
              .WithMany()
              .HasForeignKey(b => b.ClubId)
