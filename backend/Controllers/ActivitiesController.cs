@@ -26,12 +26,6 @@ public class ActivitiesController : ControllerBase
     private const string RegisterStatusPending = "pending";
     private const string RegisterStatusAccepted = "accepted";
     private const string RegisterStatusOnsite = "onsite";
-    private const string BudgetStatusPending = "pending";
-    private const string BudgetStatusApproved = "approved";
-    private const string BudgetStatusRejected = "rejected";
-    private const int BudgetPurposeMaxLength = 255;
-    private const int BudgetCommentMaxLength = 255;
-    private const int BudgetDetailMaxLength = 4000;
     private const string ActivityCreatePermission = "activity:create";
     private const string ActivityReviewPermission = "activity:review";
     private const string ActivityCheckinManagePermission = "activity:checkin:manage";
@@ -368,113 +362,30 @@ public class ActivitiesController : ControllerBase
 
     [HttpPut("{activityId:int}/budget")]
     [Authorize]
-    public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
+    public IActionResult ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
     {
-        var currentUserId = User.GetUserId();
-        if (currentUserId is null)
-        {
-            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
-        }
-
-        var budgetPurpose = req.BudgetPurpose?.Trim();
-        var budgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
-        if (req.BudgetAmount < 0.01)
-        {
-            return BadRequest(new { message = "预算金额必须大于 0。" });
-        }
-
-        if (string.IsNullOrWhiteSpace(budgetPurpose))
-        {
-            return BadRequest(new { message = "预算用途不能为空。" });
-        }
-
-        if (budgetPurpose.Length > BudgetPurposeMaxLength)
-        {
-            return BadRequest(new { message = $"预算用途不能超过 {BudgetPurposeMaxLength} 个字符。" });
-        }
-
-        if (budgetDetail?.Length > BudgetDetailMaxLength)
-        {
-            return BadRequest(new { message = $"经费明细不能超过 {BudgetDetailMaxLength} 个字符。" });
-        }
-
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
-
-        var activity = await LockActivityForRegistration(activityId);
-
-        if (activity is null) return NotFound();
-
-        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:apply", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
-        }
-
-        if (activity.ActivityStatus is "finished" or "cancelled")
-        {
-            return BadRequest(new { message = "已结束或已取消的活动不能提交经费申请。" });
-        }
-
-        if (string.Equals(activity.BudgetStatus, BudgetStatusApproved, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { message = "经费预算已审批通过，不能重复修改申请。" });
-        }
-
-        activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
-        activity.BudgetPurpose = budgetPurpose;
-        activity.BudgetDetail = budgetDetail;
-        activity.BudgetStatus = BudgetStatusPending;
-        activity.BudgetReviewerId = null;
-        activity.BudgetComment = null;
-
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        _ = activityId;
+        _ = req;
+        return StatusCode(
+            StatusCodes.Status409Conflict,
+            new
+            {
+                message = "活动页旧经费预算入口已停用，请前往“经费管理”创建经费申请，确保账户、审核、流水和余额闭环一致。"
+            });
     }
 
     [HttpPost("{activityId:int}/budget/review")]
     [Authorize]
-    public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
+    public IActionResult ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
-        var currentUserId = User.GetUserId();
-        if (currentUserId is null)
-        {
-            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
-        }
-
-        var budgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
-        if (budgetComment?.Length > BudgetCommentMaxLength)
-        {
-            return BadRequest(new { message = $"审批意见不能超过 {BudgetCommentMaxLength} 个字符。" });
-        }
-
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
-
-        var activity = await LockActivityForRegistration(activityId);
-
-        if (activity is null) return NotFound();
-        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:review", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
-        }
-
-        if (!string.Equals(activity.BudgetStatus, BudgetStatusPending, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { message = "只有待审批的经费申请才能审批。" });
-        }
-
-        activity.BudgetReviewerId = currentUserId.Value;
-        activity.BudgetComment = budgetComment;
-        activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
-
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        _ = activityId;
+        _ = req;
+        return StatusCode(
+            StatusCodes.Status409Conflict,
+            new
+            {
+                message = "活动页旧经费审批入口已停用，请前往“经费管理”审核经费申请，确保账户、审核、流水和余额闭环一致。"
+            });
     }
 
     [HttpPut("{activityId:int}/checkin-settings")]

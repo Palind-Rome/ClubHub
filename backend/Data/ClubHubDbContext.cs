@@ -42,6 +42,10 @@ public class ClubHubDbContext : DbContext
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<MaterialBorrow> MaterialBorrows => Set<MaterialBorrow>();
+    public DbSet<BudgetAccount> BudgetAccounts => Set<BudgetAccount>();
+    public DbSet<BudgetApplication> BudgetApplications => Set<BudgetApplication>();
+    public DbSet<BudgetReviewRecord> BudgetReviewRecords => Set<BudgetReviewRecord>();
+    public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -840,6 +844,146 @@ public class ClubHubDbContext : DbContext
             e.HasOne(b => b.BorrowerUser)
              .WithMany()
              .HasForeignKey(b => b.BorrowerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetAccount>(e =>
+        {
+            e.HasKey(account => account.AccountId);
+            e.Property(account => account.AccountId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_ACCOUNTS.NEXTVAL");
+            e.Property(account => account.FiscalYear).HasMaxLength(20);
+            e.Property(account => account.AccountName).HasMaxLength(255);
+            e.Property(account => account.InitialAmount).HasPrecision(12, 2).HasDefaultValue(0);
+            e.Property(account => account.AccountStatus).HasMaxLength(30).HasDefaultValue("active");
+            e.Property(account => account.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(account => account.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasAlternateKey(account => new { account.ClubId, account.AccountId })
+             .HasName("UQ_BUDGET_ACCOUNTS_SCOPE");
+            e.HasIndex(account => new { account.ClubId, account.FiscalYear })
+             .IsUnique()
+             .HasDatabaseName("UQ_BUDGET_ACCOUNTS_YEAR");
+            e.HasOne(account => account.Club)
+             .WithMany()
+             .HasForeignKey(account => account.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetApplication>(e =>
+        {
+            e.HasKey(application => application.ApplicationId);
+            e.Property(application => application.ApplicationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_APPLICATIONS.NEXTVAL");
+            e.Property(application => application.ApplicationType).HasMaxLength(30);
+            e.Property(application => application.Title).HasMaxLength(255);
+            e.Property(application => application.Amount).HasPrecision(12, 2);
+            e.Property(application => application.Purpose).HasMaxLength(255);
+            e.Property(application => application.Detail).HasColumnType("CLOB");
+            e.Property(application => application.ApplicationStatus).HasMaxLength(30).HasDefaultValue("pending");
+            e.Property(application => application.SubmittedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.ReviewComment).HasMaxLength(255);
+            e.HasAlternateKey(application => new { application.ClubId, application.ApplicationId })
+             .HasName("UQ_BUDGET_APPLICATIONS_SCOPE");
+            e.HasAlternateKey(application => new
+            {
+                application.ClubId,
+                application.AccountId,
+                application.ApplicationId
+            })
+             .HasName("UQ_BUDGET_APPLICATIONS_ACCOUNT_SCOPE");
+            e.HasIndex(application => new
+            {
+                application.ClubId,
+                application.ApplicationStatus,
+                application.SubmittedAt
+            })
+             .HasDatabaseName("IX_BUDGET_APPLICATIONS_CLUB");
+            e.HasIndex(application => new { application.AccountId, application.ApplicationStatus })
+             .HasDatabaseName("IX_BUDGET_APPLICATIONS_ACCOUNT");
+            e.HasOne(application => application.Account)
+             .WithMany(account => account.Applications)
+             .HasForeignKey(application => new { application.ClubId, application.AccountId })
+             .HasPrincipalKey(account => new { account.ClubId, account.AccountId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.Club)
+             .WithMany()
+             .HasForeignKey(application => application.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.Activity)
+             .WithMany()
+             .HasForeignKey(application => application.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.ApplicantUser)
+             .WithMany()
+             .HasForeignKey(application => application.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(application => application.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetReviewRecord>(e =>
+        {
+            e.HasKey(review => review.ReviewId);
+            e.Property(review => review.ReviewId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_REVIEW_RECORDS.NEXTVAL");
+            e.Property(review => review.CommentText).HasMaxLength(255);
+            e.Property(review => review.ReviewedAt).HasDefaultValueSql("SYSDATE");
+            e.HasOne(review => review.Application)
+             .WithMany(application => application.ReviewRecords)
+             .HasForeignKey(review => review.ApplicationId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(review => review.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(review => review.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetTransaction>(e =>
+        {
+            e.HasKey(transaction => transaction.TransactionId);
+            e.Property(transaction => transaction.TransactionId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_TRANSACTIONS.NEXTVAL");
+            e.Property(transaction => transaction.TransactionType).HasMaxLength(30);
+            e.Property(transaction => transaction.Amount).HasPrecision(12, 2);
+            e.Property(transaction => transaction.Description).HasMaxLength(255);
+            e.Property(transaction => transaction.OccurredAt).HasDefaultValueSql("SYSDATE");
+            e.Property(transaction => transaction.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(transaction => new { transaction.ApplicationId, transaction.TransactionType })
+             .IsUnique()
+             .HasDatabaseName("UQ_BUDGET_TXN_APPLICATION");
+            e.HasIndex(transaction => new { transaction.AccountId, transaction.OccurredAt })
+             .HasDatabaseName("IX_BUDGET_TRANSACTIONS_ACCOUNT");
+            e.HasOne(transaction => transaction.Account)
+             .WithMany(account => account.Transactions)
+             .HasForeignKey(transaction => new { transaction.ClubId, transaction.AccountId })
+             .HasPrincipalKey(account => new { account.ClubId, account.AccountId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(transaction => transaction.Application)
+             .WithMany(application => application.Transactions)
+             .HasForeignKey(transaction => new
+             {
+                 transaction.ClubId,
+                 transaction.AccountId,
+                 transaction.ApplicationId
+             })
+             .HasPrincipalKey(application => new
+             {
+                 application.ClubId,
+                 application.AccountId,
+                 application.ApplicationId
+             })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(transaction => transaction.Club)
+             .WithMany()
+             .HasForeignKey(transaction => transaction.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

@@ -68,8 +68,18 @@ export function ProjectMemberCandidateFromJSONTyped(
   }
   return {
     userId: json["userId"],
-    realName: json["realName"] == null ? undefined : json["realName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
+    realName:
+      json["realName"] === undefined
+        ? undefined
+        : json["realName"] === null
+          ? null
+          : json["realName"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
     displayName: json["displayName"],
   };
 }

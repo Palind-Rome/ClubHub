@@ -106,12 +106,32 @@ export function CreateClubApplicationRequestFromJSONTyped(
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     name: json["name"],
     category: json["category"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     applyReason: json["applyReason"],
     materialUrl: json["materialUrl"],
-    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
-    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
+    advisorUserId:
+      json["advisorUserId"] === undefined
+        ? undefined
+        : json["advisorUserId"] === null
+          ? null
+          : json["advisorUserId"],
+    advisorName:
+      json["advisorName"] === undefined
+        ? undefined
+        : json["advisorName"] === null
+          ? null
+          : json["advisorName"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
   };
 }
 

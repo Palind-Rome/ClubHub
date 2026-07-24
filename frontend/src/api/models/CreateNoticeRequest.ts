@@ -119,9 +119,20 @@ export function CreateNoticeRequestFromJSONTyped(
     title: json["title"],
     content: json["content"],
     targetType: json["targetType"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
-    targetId: json["targetId"] == null ? undefined : json["targetId"],
-    expireAt: json["expireAt"] == null ? undefined : new Date(json["expireAt"]),
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
+    targetId:
+      json["targetId"] === undefined
+        ? undefined
+        : json["targetId"] === null
+          ? null
+          : json["targetId"],
+    expireAt:
+      json["expireAt"] === undefined
+        ? undefined
+        : json["expireAt"] === null
+          ? null
+          : new Date(json["expireAt"]),
     noticeStatus: json["noticeStatus"] == null ? undefined : json["noticeStatus"],
   };
 }

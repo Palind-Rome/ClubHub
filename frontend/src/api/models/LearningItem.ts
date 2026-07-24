@@ -254,16 +254,52 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
   return {
     id: json["id"],
     clubId: json["clubId"],
-    uploaderUserId: json["uploaderUserId"] == null ? undefined : json["uploaderUserId"],
-    instructorUserId: json["instructorUserId"] == null ? undefined : json["instructorUserId"],
+    uploaderUserId:
+      json["uploaderUserId"] === undefined
+        ? undefined
+        : json["uploaderUserId"] === null
+          ? null
+          : json["uploaderUserId"],
+    instructorUserId:
+      json["instructorUserId"] === undefined
+        ? undefined
+        : json["instructorUserId"] === null
+          ? null
+          : json["instructorUserId"],
     title: json["title"],
     itemType: json["itemType"],
-    categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
-    description: json["description"] == null ? undefined : json["description"],
-    fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
-    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
-    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    capacity: json["capacity"] == null ? undefined : json["capacity"],
+    categoryName:
+      json["categoryName"] === undefined
+        ? undefined
+        : json["categoryName"] === null
+          ? null
+          : json["categoryName"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    fileUrl:
+      json["fileUrl"] === undefined ? undefined : json["fileUrl"] === null ? null : json["fileUrl"],
+    startAt:
+      json["startAt"] === undefined
+        ? undefined
+        : json["startAt"] === null
+          ? null
+          : new Date(json["startAt"]),
+    endAt:
+      json["endAt"] === undefined
+        ? undefined
+        : json["endAt"] === null
+          ? null
+          : new Date(json["endAt"]),
+    capacity:
+      json["capacity"] === undefined
+        ? undefined
+        : json["capacity"] === null
+          ? null
+          : json["capacity"],
     visibility: json["visibility"],
     downloadPermission: json["downloadPermission"],
     itemStatus: json["itemStatus"],
@@ -273,13 +309,25 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
     canEnroll: json["canEnroll"],
     canCancelEnrollment: json["canCancelEnrollment"],
     enrollmentUnavailableReason:
-      json["enrollmentUnavailableReason"] == null ? undefined : json["enrollmentUnavailableReason"],
+      json["enrollmentUnavailableReason"] === undefined
+        ? undefined
+        : json["enrollmentUnavailableReason"] === null
+          ? null
+          : json["enrollmentUnavailableReason"],
     canStartLearning: json["canStartLearning"],
     learningUnavailableReason:
-      json["learningUnavailableReason"] == null ? undefined : json["learningUnavailableReason"],
+      json["learningUnavailableReason"] === undefined
+        ? undefined
+        : json["learningUnavailableReason"] === null
+          ? null
+          : json["learningUnavailableReason"],
     canDownload: json["canDownload"],
     downloadUnavailableReason:
-      json["downloadUnavailableReason"] == null ? undefined : json["downloadUnavailableReason"],
+      json["downloadUnavailableReason"] === undefined
+        ? undefined
+        : json["downloadUnavailableReason"] === null
+          ? null
+          : json["downloadUnavailableReason"],
   };
 }
 

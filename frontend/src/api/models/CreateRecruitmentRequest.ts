@@ -117,7 +117,12 @@ export function CreateRecruitmentRequestFromJSONTyped(
     currentUserId: json["currentUserId"],
     clubId: json["clubId"],
     title: json["title"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     startAt: new Date(json["startAt"]),
     endAt: new Date(json["endAt"]),
     quota: json["quota"],

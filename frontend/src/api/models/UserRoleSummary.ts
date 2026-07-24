@@ -75,9 +75,20 @@ export function UserRoleSummaryFromJSONTyped(
   return {
     roleCode: json["roleCode"],
     roleName: json["roleName"],
-    roleScope: json["roleScope"] == null ? undefined : json["roleScope"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
-    clubName: json["clubName"] == null ? undefined : json["clubName"],
+    roleScope:
+      json["roleScope"] === undefined
+        ? undefined
+        : json["roleScope"] === null
+          ? null
+          : json["roleScope"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
+    clubName:
+      json["clubName"] === undefined
+        ? undefined
+        : json["clubName"] === null
+          ? null
+          : json["clubName"],
   };
 }
 

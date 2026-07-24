@@ -47,7 +47,12 @@ export function CancelProjectRequestFromJSONTyped(
     return json;
   }
   return {
-    cancelReason: json["cancelReason"] == null ? undefined : json["cancelReason"],
+    cancelReason:
+      json["cancelReason"] === undefined
+        ? undefined
+        : json["cancelReason"] === null
+          ? null
+          : json["cancelReason"],
   };
 }
 

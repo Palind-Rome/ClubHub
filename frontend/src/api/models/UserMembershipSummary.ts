@@ -87,11 +87,36 @@ export function UserMembershipSummaryFromJSONTyped(
   return {
     clubId: json["clubId"],
     clubName: json["clubName"],
-    departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
-    groupName: json["groupName"] == null ? undefined : json["groupName"],
-    positionName: json["positionName"] == null ? undefined : json["positionName"],
-    termName: json["termName"] == null ? undefined : json["termName"],
-    memberStatus: json["memberStatus"] == null ? undefined : json["memberStatus"],
+    departmentName:
+      json["departmentName"] === undefined
+        ? undefined
+        : json["departmentName"] === null
+          ? null
+          : json["departmentName"],
+    groupName:
+      json["groupName"] === undefined
+        ? undefined
+        : json["groupName"] === null
+          ? null
+          : json["groupName"],
+    positionName:
+      json["positionName"] === undefined
+        ? undefined
+        : json["positionName"] === null
+          ? null
+          : json["positionName"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
+    memberStatus:
+      json["memberStatus"] === undefined
+        ? undefined
+        : json["memberStatus"] === null
+          ? null
+          : json["memberStatus"],
   };
 }
 

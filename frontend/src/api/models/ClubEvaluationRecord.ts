@@ -246,16 +246,61 @@ export function ClubEvaluationRecordFromJSONTyped(
     clubName: json["clubName"],
     userId: json["userId"],
     userName: json["userName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
-    departmentName: json["departmentName"] == null ? undefined : json["departmentName"],
-    groupName: json["groupName"] == null ? undefined : json["groupName"],
-    positionName: json["positionName"] == null ? undefined : json["positionName"],
-    evaluatorUserId: json["evaluatorUserId"] == null ? undefined : json["evaluatorUserId"],
-    evaluatorName: json["evaluatorName"] == null ? undefined : json["evaluatorName"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
+    departmentName:
+      json["departmentName"] === undefined
+        ? undefined
+        : json["departmentName"] === null
+          ? null
+          : json["departmentName"],
+    groupName:
+      json["groupName"] === undefined
+        ? undefined
+        : json["groupName"] === null
+          ? null
+          : json["groupName"],
+    positionName:
+      json["positionName"] === undefined
+        ? undefined
+        : json["positionName"] === null
+          ? null
+          : json["positionName"],
+    evaluatorUserId:
+      json["evaluatorUserId"] === undefined
+        ? undefined
+        : json["evaluatorUserId"] === null
+          ? null
+          : json["evaluatorUserId"],
+    evaluatorName:
+      json["evaluatorName"] === undefined
+        ? undefined
+        : json["evaluatorName"] === null
+          ? null
+          : json["evaluatorName"],
     termName: json["termName"],
-    awardTitle: json["awardTitle"] == null ? undefined : json["awardTitle"],
-    awardLevel: json["awardLevel"] == null ? undefined : json["awardLevel"],
-    awardReason: json["awardReason"] == null ? undefined : json["awardReason"],
+    awardTitle:
+      json["awardTitle"] === undefined
+        ? undefined
+        : json["awardTitle"] === null
+          ? null
+          : json["awardTitle"],
+    awardLevel:
+      json["awardLevel"] === undefined
+        ? undefined
+        : json["awardLevel"] === null
+          ? null
+          : json["awardLevel"],
+    awardReason:
+      json["awardReason"] === undefined
+        ? undefined
+        : json["awardReason"] === null
+          ? null
+          : json["awardReason"],
     activityScore: json["activityScore"],
     taskScore: json["taskScore"],
     learningScore: json["learningScore"],
@@ -264,8 +309,18 @@ export function ClubEvaluationRecordFromJSONTyped(
     grade: json["grade"],
     publicStatus: json["publicStatus"],
     publicStatusText: json["publicStatusText"],
-    commentText: json["commentText"] == null ? undefined : json["commentText"],
-    createdAt: json["createdAt"] == null ? undefined : new Date(json["createdAt"]),
+    commentText:
+      json["commentText"] === undefined
+        ? undefined
+        : json["commentText"] === null
+          ? null
+          : json["commentText"],
+    createdAt:
+      json["createdAt"] === undefined
+        ? undefined
+        : json["createdAt"] === null
+          ? null
+          : new Date(json["createdAt"]),
   };
 }
 

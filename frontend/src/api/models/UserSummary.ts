@@ -122,11 +122,31 @@ export function UserSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolean
   }
   return {
     id: json["id"],
-    username: json["username"] == null ? undefined : json["username"],
-    realName: json["realName"] == null ? undefined : json["realName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
+    username:
+      json["username"] === undefined
+        ? undefined
+        : json["username"] === null
+          ? null
+          : json["username"],
+    realName:
+      json["realName"] === undefined
+        ? undefined
+        : json["realName"] === null
+          ? null
+          : json["realName"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
     displayName: json["displayName"],
-    accountStatus: json["accountStatus"] == null ? undefined : json["accountStatus"],
+    accountStatus:
+      json["accountStatus"] === undefined
+        ? undefined
+        : json["accountStatus"] === null
+          ? null
+          : json["accountStatus"],
     roles: (json["roles"] as Array<any>).map(UserRoleSummaryFromJSON),
     memberships: (json["memberships"] as Array<any>).map(UserMembershipSummaryFromJSON),
     canSubmitClubApplication: json["canSubmitClubApplication"],

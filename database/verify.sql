@@ -27,6 +27,10 @@ WHERE sequence_name IN (
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
   'SEQ_ACTIVITY_PARTICIPATIONS',
+  'SEQ_BUDGET_ACCOUNTS',
+  'SEQ_BUDGET_APPLICATIONS',
+  'SEQ_BUDGET_REVIEW_RECORDS',
+  'SEQ_BUDGET_TRANSACTIONS',
   'SEQ_NOTICE_READS',
   'SEQ_ROLES',
   'SEQ_RECRUITMENTS',
@@ -54,6 +58,11 @@ WHERE index_name IN (
   'UQ_USERS_USERNAME',
   'UQ_USERS_STUDENT_NO',
   'UQ_USER_ROLES_SCOPE',
+  'UQ_BUDGET_ACCOUNTS_SCOPE',
+  'UQ_BUDGET_ACCOUNTS_YEAR',
+  'UQ_BUDGET_APPLICATIONS_ACCOUNT_SCOPE',
+  'UQ_BUDGET_APPLICATIONS_SCOPE',
+  'UQ_BUDGET_TXN_APPLICATION',
   'UQ_NOTICE_READS_NOTICE_USER'
 )
 ORDER BY index_name;
@@ -78,6 +87,10 @@ WHERE (table_name, column_name) IN (
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
   ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
+  ('BUDGET_ACCOUNTS', 'ACCOUNT_ID'),
+  ('BUDGET_APPLICATIONS', 'APPLICATION_ID'),
+  ('BUDGET_REVIEW_RECORDS', 'REVIEW_ID'),
+  ('BUDGET_TRANSACTIONS', 'TRANSACTION_ID'),
   ('NOTICE_READS', 'READ_ID'),
   ('ROLES', 'ROLE_ID'),
   ('RECRUITMENTS', 'RECRUIT_ID'),
@@ -118,6 +131,10 @@ WITH sequence_targets AS (
   UNION ALL SELECT 'SEQ_EVALUATIONS', NVL(MAX(evaluation_id), 0) FROM evaluations
   UNION ALL SELECT 'SEQ_ACTIVITIES', NVL(MAX(activity_id), 0) FROM activities
   UNION ALL SELECT 'SEQ_ACTIVITY_PARTICIPATIONS', NVL(MAX(participation_id), 0) FROM activity_participations
+  UNION ALL SELECT 'SEQ_BUDGET_ACCOUNTS', NVL(MAX(account_id), 0) FROM budget_accounts
+  UNION ALL SELECT 'SEQ_BUDGET_APPLICATIONS', NVL(MAX(application_id), 0) FROM budget_applications
+  UNION ALL SELECT 'SEQ_BUDGET_REVIEW_RECORDS', NVL(MAX(review_id), 0) FROM budget_review_records
+  UNION ALL SELECT 'SEQ_BUDGET_TRANSACTIONS', NVL(MAX(transaction_id), 0) FROM budget_transactions
   UNION ALL SELECT 'SEQ_NOTICE_READS', NVL(MAX(read_id), 0) FROM notice_reads
   UNION ALL SELECT 'SEQ_ROLES', NVL(MAX(role_id), 0) FROM roles
   UNION ALL SELECT 'SEQ_RECRUITMENTS', NVL(MAX(recruit_id), 0) FROM recruitments
@@ -145,13 +162,14 @@ WHERE sequence_state.sequence_name IS NULL
    OR sequence_state.last_number <= target.max_id
 ORDER BY target.sequence_name;
 
--- ClubHub 核心表应为 36 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- ClubHub 核心表应为 40 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
   'USERS', 'ROLES', 'USER_ROLES',
   'CLUBS', 'CLUB_DEPARTMENTS', 'CLUB_GROUPS', 'CLUB_MEMBERS', 'RECRUITMENTS', 'RECRUITMENT_APPLICATIONS',
   'ACTIVITIES', 'ACTIVITY_PARTICIPATIONS', 'VENUES', 'VENUE_RESERVATIONS',
+  'BUDGET_ACCOUNTS', 'BUDGET_APPLICATIONS', 'BUDGET_REVIEW_RECORDS', 'BUDGET_TRANSACTIONS',
   'PROJECTS', 'PROJECT_MEMBERS', 'PROJECT_TASKS', 'PROJECT_TASK_ASSIGNEES', 'PROJECT_TASK_PROGRESS_REPORTS',
   'LEARNING_ITEMS', 'LEARNING_RECORDS',
   'MATERIALS', 'MATERIAL_BORROWS',
@@ -185,6 +203,68 @@ SELECT notice_id, user_id, COUNT(*) AS duplicate_count
 FROM notice_reads
 GROUP BY notice_id, user_id
 HAVING COUNT(*) > 1;
+
+SELECT club_id, fiscal_year, COUNT(*) AS duplicate_count
+FROM budget_accounts
+GROUP BY club_id, fiscal_year
+HAVING COUNT(*) > 1;
+
+SELECT application_id, transaction_type, COUNT(*) AS duplicate_count
+FROM budget_transactions
+WHERE application_id IS NOT NULL
+GROUP BY application_id, transaction_type
+HAVING COUNT(*) > 1;
+
+SELECT account_id, fiscal_year, initial_amount, account_status
+FROM budget_accounts
+WHERE initial_amount < 0
+   OR account_status NOT IN ('active', 'closed');
+
+SELECT application_id, application_type, amount, application_status
+FROM budget_applications
+WHERE application_type NOT IN ('activity_budget', 'purchase', 'reimbursement')
+   OR amount <= 0
+   OR application_status NOT IN ('pending', 'approved', 'rejected', 'cancelled');
+
+SELECT transaction_id, transaction_type, amount
+FROM budget_transactions
+WHERE transaction_type NOT IN ('commitment', 'expense', 'refund', 'adjustment')
+   OR amount = 0;
+
+SELECT account.account_id,
+       account.club_id,
+       account.fiscal_year,
+       account.initial_amount + NVL(SUM(txn.amount), 0) AS remaining_amount
+FROM budget_accounts account
+LEFT JOIN budget_transactions txn
+  ON txn.club_id = account.club_id
+ AND txn.account_id = account.account_id
+GROUP BY account.account_id, account.club_id, account.fiscal_year, account.initial_amount
+HAVING account.initial_amount + NVL(SUM(txn.amount), 0) < 0;
+
+SELECT txn.transaction_id,
+       txn.club_id AS transaction_club_id,
+       txn.account_id AS transaction_account_id,
+       app.club_id AS application_club_id,
+       app.account_id AS application_account_id
+FROM budget_transactions txn
+JOIN budget_applications app
+  ON app.application_id = txn.application_id
+WHERE txn.application_id IS NOT NULL
+  AND (txn.club_id <> app.club_id OR txn.account_id <> app.account_id);
+
+SELECT app.application_id, app.application_status
+FROM budget_applications app
+WHERE application_status = 'approved'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM budget_transactions txn
+    WHERE txn.club_id = app.club_id
+      AND txn.account_id = app.account_id
+      AND txn.application_id = app.application_id
+      AND txn.transaction_type = 'commitment'
+      AND txn.amount = -app.amount
+  );
 
 SELECT project_member_id, member_role, member_status
 FROM project_members
