@@ -202,6 +202,7 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpPatch("{recruitId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewRecruitment")]
     public async Task<IActionResult> ReviewRecruitment(int recruitId, [FromBody] ReviewRecruitmentRequest req)
     {
         if (req.CurrentUserId <= 0) return BadRequest(new { message = "请选择当前审核用户。" });
@@ -266,6 +267,7 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpPost("{recruitId:int}/applications")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createRecruitmentApplication")]
     public async Task<IActionResult> CreateApplication(int recruitId, [FromBody] CreateRecruitmentApplicationRequest req)
     {
         var result = await _applicationService.CreateApplicationAsync(recruitId, req);
@@ -278,6 +280,7 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpPatch("applications/{applicationId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewRecruitmentApplication")]
     public async Task<IActionResult> ReviewApplication(int applicationId, [FromBody] ReviewRecruitmentApplicationRequest req)
     {
         var result = await _applicationService.ReviewApplicationAsync(applicationId, req);

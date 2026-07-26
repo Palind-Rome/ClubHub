@@ -709,6 +709,7 @@ async function reviewItem(item: LearningItem, approved: boolean) {
 
   try {
     await api.reviewLearningItem({
+      idempotencyKey: crypto.randomUUID(),
       itemId: item.id,
       reviewLearningItemRequest: { result: approved ? "approved" : "rejected" },
     });
@@ -1037,6 +1038,7 @@ async function enroll(item: LearningItem) {
   enrollingId.value = item.id;
   try {
     await api.enrollLearningItem({
+      idempotencyKey: crypto.randomUUID(),
       itemId: item.id,
     });
     ElMessage.success("已加入课程");

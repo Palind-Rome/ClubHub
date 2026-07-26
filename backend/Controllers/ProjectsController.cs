@@ -124,6 +124,7 @@ public class ProjectsController : ControllerBase
     /// Creates a project initiation application in pending status.
     /// </summary>
     [HttpPost]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createProject")]
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest? req)
     {
@@ -145,7 +146,7 @@ public class ProjectsController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var now = DateTime.UtcNow;
@@ -221,7 +222,7 @@ public class ProjectsController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var project = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == projectId);
@@ -265,6 +266,7 @@ public class ProjectsController : ControllerBase
     /// Reviews a project initiation application. Requirement 1.10 uses one advisor review round.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewProject")]
     [Authorize]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
     {

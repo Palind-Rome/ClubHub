@@ -16,6 +16,7 @@
 - `api/`：OpenAPI 规范文件，用于生成 API 客户端代码（待补充）。
 - `backend/`：后端 ASP.NET Core Web API。
 - `backend.Tests/`：xUnit 后端测试；API 测试使用内存数据库隔离，不连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，只允许连接隔离测试 Schema 或一次性数据库。
 - `frontend/`：前端 Vue 3 / Vite。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图、迁移说明。
 - `docs/`：课程最终交付文档，包括需求分析、数据库设计、系统设计与实现、答辩 PPT。
@@ -359,6 +360,9 @@ draft PR 策略：
 `ClubHubWebApplicationFactory` 将 Oracle `DbContext` 替换为内存测试数据库；前端测试使用
 jsdom 和 Mock HTTP。两类测试都不得依赖共享远程 Oracle。Oracle sequence、迁移脚本和
 Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Schema 或一次性数据库。
+Oracle 集成测试位于 `backend.OracleIntegrationTests/`，仅在同时设置
+`CLUBHUB_ORACLE_INTEGRATION_CONNECTION` 和
+`CLUBHUB_ORACLE_INTEGRATION_ISOLATED=true` 后运行；普通 CI 不提供这些变量。
 
 后续补充：
 
@@ -379,8 +383,12 @@ Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Sch
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
 | `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
-目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`。未设置时部署默认
-为 `false`；完成缓存验证后显式设为 `true`，无需修改镜像。
+目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`、
+`REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
+`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 和
+`REDIS_IDEMPOTENCY_ENABLED`。未设置时部署默认均为 `false`。幂等开关只能在人工执行
+`20260726_add_idempotency_records.sql` 后启用；认证会话开关最后启用，启用或回滚均会
+要求所有用户重新登录。
 部署 workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
 确保部署和回滚不依赖可变的 `latest` 标签。
 

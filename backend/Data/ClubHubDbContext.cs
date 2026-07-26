@@ -40,6 +40,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
     public DbSet<EvaluationAwardSource> EvaluationAwardSources => Set<EvaluationAwardSource>();
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<MaterialBorrow> MaterialBorrows => Set<MaterialBorrow>();
     public DbSet<BudgetAccount> BudgetAccounts => Set<BudgetAccount>();
@@ -684,6 +685,37 @@ public class ClubHubDbContext : DbContext
             e.Property(log => log.LogId)
              .ValueGeneratedOnAdd()
              .HasDefaultValueSql("SEQ_OPERATION_LOGS.NEXTVAL");
+        });
+
+        modelBuilder.Entity<IdempotencyRecord>(e =>
+        {
+            e.HasKey(record => record.IdempotencyId);
+            e.Property(record => record.IdempotencyId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_IDEMPOTENCY_RECORDS.NEXTVAL");
+            e.Property(record => record.OperationScope).HasMaxLength(100);
+            e.Property(record => record.RequestKeyHash).HasMaxLength(64);
+            e.Property(record => record.RequestHash).HasMaxLength(64);
+            e.Property(record => record.RecordStatus).HasMaxLength(20);
+            e.Property(record => record.ContentType).HasMaxLength(100);
+            e.Property(record => record.ResponseHeaders).HasColumnType("CLOB");
+            e.Property(record => record.ResponseBody).HasColumnType("CLOB");
+            e.Property(record => record.CreatedAt).HasDefaultValueSql("SYSTIMESTAMP");
+            e.Property(record => record.UpdatedAt).HasDefaultValueSql("SYSTIMESTAMP");
+            e.HasIndex(record => new
+            {
+                record.UserId,
+                record.OperationScope,
+                record.RequestKeyHash
+            })
+             .IsUnique()
+             .HasDatabaseName("UQ_IDEMPOTENCY_USER_SCOPE_KEY");
+            e.HasIndex(record => record.ExpiresAt)
+             .HasDatabaseName("IX_IDEMPOTENCY_EXPIRES_AT");
+            e.HasOne(record => record.User)
+             .WithMany()
+             .HasForeignKey(record => record.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Notice>(e =>

@@ -128,7 +128,7 @@ paths:
   /api/auth/session:
     get:
       summary: 刷新当前用户会话
-      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
       operationId: refreshAuthSession
       security:
         - bearerAuth: []
@@ -153,6 +153,29 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/logout:
+    post:
+      summary: 注销当前登录会话
+      description: 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+      operationId: logoutCurrentSession
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 当前登录会话已注销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法安全注销
           content:
             application/json:
               schema:
@@ -188,14 +211,11 @@ paths:
 
   /api/auth/permissions/check:
     get:
-      summary: 检查用户是否拥有指定权限
+      summary: 检查当前用户是否拥有指定权限
       operationId: checkPermission
+      security:
+        - bearerAuth: []
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
         - name: permission
           in: query
           required: true
@@ -221,6 +241,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
           content:
@@ -232,6 +258,8 @@ paths:
     post:
       summary: 分配用户角色
       operationId: assignUserRole
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -675,6 +703,11 @@ paths:
       summary: 提交社团注册申请
       description: 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
       operationId: createClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -702,7 +735,11 @@ paths:
       summary: 修改退回的社团注册申请并重新提交
       description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
       operationId: resubmitClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -734,7 +771,11 @@ paths:
     patch:
       summary: 平台管理员审核社团注册申请
       operationId: reviewClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1687,7 +1728,11 @@ paths:
       summary: 创建评奖评优申请或负责人推荐
       description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
       operationId: createClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1875,7 +1920,11 @@ paths:
       summary: 提交或重新提交评奖评优申请
       description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
       operationId: submitClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1907,7 +1956,11 @@ paths:
       summary: 审核评奖评优申请
       description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
       operationId: reviewClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -2374,7 +2427,11 @@ paths:
       summary: 审核社团招募
       description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
       operationId: reviewRecruitment
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
           in: path
           required: true
@@ -2437,7 +2494,11 @@ paths:
       summary: 提交招募报名
       description: 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
       operationId: createRecruitmentApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
           in: path
           required: true
@@ -2470,7 +2531,11 @@ paths:
       summary: 筛选招募报名
       description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
       operationId: reviewRecruitmentApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: applicationId
           in: path
           required: true
@@ -2573,9 +2638,11 @@ paths:
       summary: 报名活动
       description: 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
       operationId: registerActivity
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: activityId
           in: path
           required: true
@@ -2614,9 +2681,11 @@ paths:
       summary: 审核活动并发布或驳回
       description: 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
       operationId: reviewActivity
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: activityId
           in: path
           required: true
@@ -2857,8 +2926,11 @@ paths:
       summary: 提交经费申请
       description: 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
       operationId: createBudgetApplication
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -2888,9 +2960,11 @@ paths:
       summary: 审核经费申请
       description: 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
       operationId: reviewBudgetApplication
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: applicationId
           in: path
           required: true
@@ -3160,6 +3234,111 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/users/{userId}/status:
+    patch:
+      summary: 更新用户账号状态
+      description: 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+      operationId: updateUserAccountStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserAccountStatusRequest"
+      responses:
+        "200":
+          description: 更新后的用户摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          description: 状态值不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有账号状态管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 不允许停用当前操作人或最后一名有效系统管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 无法安全失效权限或撤销会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/users/{userId}/sessions/revoke:
+    post:
+      summary: 强制撤销用户的全部登录会话
+      operationId: revokeUserSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 目标用户的全部登录会话已撤销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有强制下线权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法确认撤销结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/projects:
     get:
       summary: 获取项目列表
@@ -3201,8 +3380,11 @@ paths:
     post:
       summary: 社团负责人或指导老师提交项目立项申请
       operationId: createProject
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -3322,9 +3504,11 @@ paths:
       summary: 指导老师审核项目立项申请
       description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
       operationId: reviewProject
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -3836,9 +4020,11 @@ paths:
       summary: 提交项目任务成果
       description: 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
       operationId: submitProjectTaskDeliverable
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -3930,9 +4116,11 @@ paths:
       summary: 审核项目任务成果
       description: 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
       operationId: reviewProjectTaskDeliverable
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -4326,8 +4514,11 @@ paths:
     post:
       summary: 提交场地预约申请
       operationId: createVenueReservation
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -4488,9 +4679,11 @@ paths:
     post:
       summary: 审批场地预约
       operationId: reviewVenueReservation
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: reservationId
           in: path
           required: true
@@ -4939,9 +5132,11 @@ paths:
       summary: 审核课程或学习资源
       description: 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
       operationId: reviewLearningItem
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: itemId
           in: path
           required: true
@@ -4975,9 +5170,11 @@ paths:
       summary: 加入培训课程
       description: 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
       operationId: enrollLearningItem
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: itemId
           in: path
           required: true
@@ -5381,8 +5578,11 @@ paths:
     post:
       summary: Register a material borrow
       operationId: borrowMaterial
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -5431,9 +5631,11 @@ paths:
     post:
       summary: Register material return
       operationId: returnMaterialBorrow
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: borrowId
           in: path
           required: true
@@ -5481,9 +5683,11 @@ paths:
     post:
       summary: Register material damage
       operationId: damageMaterialBorrow
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: borrowId
           in: path
           required: true
@@ -5534,6 +5738,18 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: "标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。"
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._~:+/\-=]+$'
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -5717,12 +5933,8 @@ components:
 
     AssignRoleRequest:
       type: object
-      description: 为目标用户分配系统级或社团级角色。
+      description: 为目标用户分配系统级或社团级角色；操作人从 Bearer 登录令牌读取。
       properties:
-        operatorUserId:
-          type: integer
-          description: 发起分配操作的用户 ID。
-          example: 1
         targetUserId:
           type: integer
           description: 被分配角色的用户 ID。
@@ -5738,7 +5950,6 @@ components:
           nullable: true
           example: 1
       required:
-        - operatorUserId
         - targetUserId
         - roleCode
 
@@ -8855,6 +9066,17 @@ components:
       required:
         - currentUserId
         - decision
+
+    UpdateUserAccountStatusRequest:
+      type: object
+      properties:
+        accountStatus:
+          type: string
+          enum: [normal, disabled]
+          example: disabled
+          description: normal 表示启用，disabled 表示停用。
+      required:
+        - accountStatus
 
     UserSummary:
       type: object

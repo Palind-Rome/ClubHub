@@ -29,7 +29,7 @@
 
 - `backend/`：ASP.NET Core Web API，负责 C# 业务逻辑、权限、Oracle 数据访问。
 - `backend.Tests/`：后端单元测试和 API 边界测试；统一使用内存测试数据库，禁止连接共享 Oracle。
-- Oracle 专属集成测试必须放在独立测试项目或目录中，并使用隔离测试 Schema 或一次性数据库，禁止连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，必须使用隔离测试 Schema 或一次性数据库，禁止连接共享 Oracle。
 - `frontend/`：Vue 3 + Vite + Element Plus，负责页面和交互。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图和迁移脚本。
 - `docs/`：各类文档。
@@ -39,7 +39,7 @@
 
 ## 数据库基线
 
-当前数据库设计共有 40 张 Oracle 表：
+当前数据库设计共有 41 张 Oracle 表：
 
 - USERS、ROLES、USER_ROLES
 - CLUBS、CLUB_DEPARTMENTS、CLUB_GROUPS、CLUB_MEMBERS、RECRUITMENTS、RECRUITMENT_APPLICATIONS
@@ -51,6 +51,7 @@
 - AWARD_SCHEMES、AWARD_LEVELS、AWARD_APPLICATIONS、AWARD_REVIEW_RECORDS、AWARD_ATTACHMENTS、AWARD_PUBLICITY_BATCHES、AWARD_PUBLICITY_ITEMS、AWARD_RULE_DOCUMENTS
 - EVALUATIONS、EVALUATION_AWARD_SOURCES
 - NOTICES、NOTICE_READS、FORUM_POSTS、OPERATION_LOGS
+- IDEMPOTENCY_RECORDS
 
 数据库脚本放在 `database/schema.sql`。不要修改表结构。如果确有必要，请先与用户讨论。
 
@@ -59,6 +60,10 @@ CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。�
 Redis 生产实例只允许连接 `clubhub-net`，禁止映射公网 6379。认证密码通过
 `REDIS_PASSWORD` Secret 注入；不得提交 `.env`、真实密码或带密连接串。运维操作
 遵循 `docs/operations/redis-runbook.md`，恢复演练必须使用隔离卷。
+
+Redis 会话、权限快照、预览会话、限流与幂等分别使用独立开关，默认关闭。启用
+幂等前必须先人工执行 `20260726_add_idempotency_records.sql`；启用认证会话会使
+旧纯签名 Token 失效。限流、预览和幂等在 Redis 故障时禁止自动绕过。
 
 ## 开发规范
 

@@ -4,6 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
 import { BUDGET_ACCESS_PERMISSIONS } from "./budgetPermissions";
 import { MATERIAL_ACCESS_PERMISSIONS } from "./materialPermissions";
+import { apiClient } from "./apiClient";
+import { ElMessage } from "element-plus";
 
 const healthOk = ref(false);
 const healthChecking = ref(false);
@@ -94,10 +96,15 @@ async function checkHealth() {
   }
 }
 
-function logout() {
-  clearSession();
-  refreshSession();
-  router.push("/auth");
+async function logout() {
+  try {
+    await apiClient.logoutCurrentSession();
+    clearSession();
+    refreshSession();
+    await router.push("/auth");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "注销失败，请稍后重试");
+  }
 }
 
 onMounted(() => {

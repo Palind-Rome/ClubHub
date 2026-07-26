@@ -120,6 +120,7 @@ export * from "./UpdateLearningProgressRequest";
 export * from "./UpdateMaterialRequest";
 export * from "./UpdateProjectTaskProgressRequest";
 export * from "./UpdateRecruitmentRequest";
+export * from "./UpdateUserAccountStatusRequest";
 export * from "./UpdateVenueRequest";
 export * from "./UpdateVenueStatusRequest";
 export * from "./UserMembershipSummary";

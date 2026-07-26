@@ -294,6 +294,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("borrowMaterial")]
     public async Task<IActionResult> BorrowMaterial([FromBody] ApiBorrowMaterialRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -375,6 +376,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows/{borrowId:int}/return")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("returnMaterialBorrow")]
     public async Task<IActionResult> ReturnMaterial(int borrowId)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -414,6 +416,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows/{borrowId:int}/damage")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("damageMaterialBorrow")]
     public async Task<IActionResult> RegisterDamage(int borrowId, [FromBody] ApiRegisterMaterialDamageRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -484,7 +487,7 @@ public class MaterialBorrowsController : ControllerBase
     {
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var result = await operation();

@@ -33,15 +33,18 @@ public class ActivitiesController : ControllerBase
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
     private readonly PublicQueryCacheService _publicQueryCache;
+    private readonly IDistributedRateLimiter _rateLimiter;
 
     public ActivitiesController(
         ClubHubDbContext db,
         AuthService authService,
-        PublicQueryCacheService publicQueryCache)
+        PublicQueryCacheService publicQueryCache,
+        IDistributedRateLimiter rateLimiter)
     {
         _db = db;
         _authService = authService;
         _publicQueryCache = publicQueryCache;
+        _rateLimiter = rateLimiter;
     }
 
     [HttpGet]
@@ -199,6 +202,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/registrations")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("registerActivity")]
     [Authorize]
     public async Task<IActionResult> Register(int activityId)
     {
@@ -210,7 +214,7 @@ public class ActivitiesController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxRegisterRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.ReadCommitted);
 
             var activity = await LockActivityForRegistration(activityId);
             if (activity is null)
@@ -304,6 +308,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewActivity")]
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
     {
@@ -586,6 +591,30 @@ public class ActivitiesController : ControllerBase
 
         if (!string.Equals(expectedCode, req.Code.Trim(), StringComparison.Ordinal))
         {
+            try
+            {
+                var direction = isCheckin ? "checkin" : "checkout";
+                var decision = await _rateLimiter.AcquireAsync(
+                    "activity-sign-code",
+                    $"{currentUserId.Value}:{activityId}:{direction}",
+                    5,
+                    TimeSpan.FromMinutes(10),
+                    HttpContext.RequestAborted);
+                if (!decision.Allowed)
+                {
+                    Response.Headers.RetryAfter = decision.RetryAfterSeconds.ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new { message = "签到码或签退码错误次数过多，请稍后重试。" });
+                }
+            }
+            catch (RateLimitUnavailableException)
+            {
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    new { message = "暂时无法安全校验签到或签退请求，请稍后重试。" });
+            }
+
             return BadRequest(new { message = isCheckin ? "签到码不正确。" : "签退码不正确。" });
         }
 

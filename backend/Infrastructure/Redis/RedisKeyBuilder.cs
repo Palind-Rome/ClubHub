@@ -10,6 +10,8 @@ public interface IRedisKeyBuilder
 {
     RedisKey Build(string module, string purpose, params object[] identitySegments);
 
+    string BuildPrefix(string module, string purpose);
+
     string HashSensitive(string value);
 }
 
@@ -47,9 +49,7 @@ public sealed partial class RedisKeyBuilder : IRedisKeyBuilder
         }
 
         var encodedIdentity = identitySegments.Select(EncodeIdentitySegment);
-        var key = string.Join(
-            ':',
-            [ApplicationPrefix, _environmentPrefix, module, purpose, PayloadVersion, .. encodedIdentity]);
+        var key = BuildPrefix(module, purpose) + string.Join(':', encodedIdentity);
 
         if (Encoding.UTF8.GetByteCount(key) > MaxKeyBytes)
         {
@@ -59,6 +59,13 @@ public sealed partial class RedisKeyBuilder : IRedisKeyBuilder
         }
 
         return key;
+    }
+
+    public string BuildPrefix(string module, string purpose)
+    {
+        ValidateNamespaceSegment(module, nameof(module));
+        ValidateNamespaceSegment(purpose, nameof(purpose));
+        return $"{ApplicationPrefix}:{_environmentPrefix}:{module}:{purpose}:{PayloadVersion}:";
     }
 
     public string HashSensitive(string value)

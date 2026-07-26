@@ -45,6 +45,8 @@ public sealed class RedisFeatureOptions
 
     public bool PermissionCache { get; init; }
 
+    public bool PreviewSessions { get; init; }
+
     public bool RateLimiting { get; init; }
 
     public bool Idempotency { get; init; }

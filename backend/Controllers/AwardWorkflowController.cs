@@ -657,6 +657,7 @@ public class AwardWorkflowController : ControllerBase
     }
 
     [HttpPost("award-applications")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createClubAwardApplication")]
     public async Task<IActionResult> CreateAwardApplication(
         int clubId,
         [FromBody] CreateAwardApplicationRequest req)
@@ -910,6 +911,7 @@ public class AwardWorkflowController : ControllerBase
     }
 
     [HttpPost("award-applications/{awardApplicationId:int}/submit")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("submitClubAwardApplication")]
     public async Task<IActionResult> SubmitAwardApplication(int clubId, int awardApplicationId)
     {
         var currentUserId = User.GetUserId();
@@ -964,6 +966,7 @@ public class AwardWorkflowController : ControllerBase
     }
 
     [HttpPost("award-applications/{awardApplicationId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewClubAwardApplication")]
     public async Task<IActionResult> ReviewAwardApplication(
         int clubId,
         int awardApplicationId,

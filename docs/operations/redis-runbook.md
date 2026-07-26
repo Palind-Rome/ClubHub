@@ -38,6 +38,21 @@ REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning ping
 `/health/live` 只检查 API 进程；`/health/ready` 同时检查启用的 Redis。Redis 故障时
 普通缓存查询应回源 Oracle，但 readiness 会返回 503，防止部署流程误判成功。
 
+## 功能启用与回滚顺序
+
+所有 Redis 业务开关默认关闭。生产或演示环境按以下顺序人工启用：
+
+1. 先备份 Oracle 与 Redis，并在隔离 Schema 验证
+   `database/migrations/20260726_add_idempotency_records.sql`。
+2. 人工执行迁移后启用 `REDIS_IDEMPOTENCY_ENABLED`，再按需启用权限缓存、预览会话
+   和限流。
+3. 最后启用 `REDIS_AUTH_SESSIONS_ENABLED`；已有纯签名 Token 会全部失效，需提前通知
+   用户重新登录。
+
+认证会话回滚也会要求全员重新登录。权限缓存可关闭并直接回源 Oracle；限流、预览
+与幂等在 Redis 故障时不得绕过。若幂等写回 Redis 失败，先保留
+`IDEMPOTENCY_RECORDS`，由 Oracle 台账继续重放已提交结果。
+
 ## 备份
 
 至少在版本升级、密码轮换和重大功能上线前生成一次 RDB，并将文件复制到受控的
@@ -113,6 +128,8 @@ Get-FileHash ./redis-backup-dump.rdb -Algorithm SHA256
 | `/health/ready` | 连续失败立即停止部署并通知维护者 |
 | 缓存命中、未命中、回源和重建失败 | 回源或失败率突增时检查 Redis 与 Oracle |
 | 缓存重建租约 `owner-mismatch` | 持续出现时检查 Oracle 慢查询并调整租约 TTL |
+| 会话/限流/预览 503 比例 | 任一持续增长时停止新流量并检查 Redis 连通性、AOF 和容量 |
+| `IDEMPOTENCY_RECORDS` 过期清理积压 | 连续两个清理周期增长时检查 Oracle 任务和索引 |
 
 常用只读检查：
 

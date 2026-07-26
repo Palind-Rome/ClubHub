@@ -29,6 +29,14 @@ public interface IRedisDatabase
         RedisValue expectedValue,
         CancellationToken cancellationToken = default);
 
+    Task<RedisResult> ScriptEvaluateAsync(
+        string script,
+        RedisKey[] keys,
+        RedisValue[] values,
+        CancellationToken cancellationToken = default) =>
+        Task.FromException<RedisResult>(
+            new NotSupportedException("This Redis database does not support Lua scripts."));
+
     Task<TimeSpan> PingAsync(CancellationToken cancellationToken = default);
 }
 
@@ -89,6 +97,15 @@ internal sealed class StackExchangeRedisDatabase : IRedisDatabase
             .WaitAsync(cancellationToken);
         return (long)result == 1;
     }
+
+    public async Task<RedisResult> ScriptEvaluateAsync(
+        string script,
+        RedisKey[] keys,
+        RedisValue[] values,
+        CancellationToken cancellationToken = default) =>
+        await GetDatabase()
+            .ScriptEvaluateAsync(script, keys, values)
+            .WaitAsync(cancellationToken);
 
     public async Task<TimeSpan> PingAsync(
         CancellationToken cancellationToken = default) =>
