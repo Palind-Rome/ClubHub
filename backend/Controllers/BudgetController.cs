@@ -616,8 +616,8 @@ public class BudgetController : ControllerBase
                 var purpose = NullIfBlank(req.Purpose) ?? application.Purpose;
                 var detail = req.Detail is not null ? NullIfBlank(req.Detail) : application.Detail;
                 var amount = req.Amount.HasValue ? Convert.ToDecimal(req.Amount.Value) : application.Amount;
-                var newType = NullIfBlank(req.Type);
-                var applicationType = newType is not null ? NormalizeApplicationType(newType) : application.ApplicationType;
+                var newType = Enum.IsDefined(req.Type) ? EnumMemberValue(req.Type) : null;
+                var applicationType = newType ?? application.ApplicationType;
 
                 if (!AllowedApplicationTypes.Contains(applicationType))
                 {
