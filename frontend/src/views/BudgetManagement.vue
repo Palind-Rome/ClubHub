@@ -9,7 +9,12 @@ import {
   BUDGET_APPLY_PERMISSION,
   BUDGET_REVIEW_PERMISSION,
 } from "../budgetPermissions";
-import type { BudgetAccount, BudgetApplication, BudgetReviewRecord, BudgetTransaction } from "../api/models";
+import type {
+  BudgetAccount,
+  BudgetApplication,
+  BudgetReviewRecord,
+  BudgetTransaction,
+} from "../api/models";
 import { apiClient, createIdempotencyKey } from "../apiClient";
 import { requestJson } from "../composables/useApiRequest";
 import { formatVenueReservationDateTime } from "../beijingTime";
@@ -642,9 +647,7 @@ function reviewActionLabel(approved: boolean) {
 
 function activityOptionsForSelectedResubmitAccount() {
   if (!resubmitTarget.value) return [];
-  return activities.value.filter(
-    (activity) => activity.clubId === resubmitTarget.value?.clubId,
-  );
+  return activities.value.filter((activity) => activity.clubId === resubmitTarget.value?.clubId);
 }
 
 onMounted(() => {
@@ -838,7 +841,10 @@ onMounted(() => {
               撤销
             </el-button>
             <el-button
-              v-if="row.status === 'rejected' && (row.applicantUserId === auth?.user.id || canApplyForClub(row.clubId))"
+              v-if="
+                row.status === 'rejected' &&
+                (row.applicantUserId === auth?.user.id || canApplyForClub(row.clubId))
+              "
               size="small"
               type="primary"
               text
@@ -846,12 +852,7 @@ onMounted(() => {
             >
               重新提交
             </el-button>
-            <el-button
-              size="small"
-              text
-              type="info"
-              @click="openReviewHistory(row)"
-            >
+            <el-button size="small" text type="info" @click="openReviewHistory(row)">
               审核历史
             </el-button>
           </template>
@@ -1046,11 +1047,7 @@ onMounted(() => {
           </el-select>
         </el-form-item>
         <el-form-item label="关联活动" prop="activityId">
-          <el-select
-            v-model="resubmitForm.activityId"
-            clearable
-            placeholder="可不选"
-          >
+          <el-select v-model="resubmitForm.activityId" clearable placeholder="可不选">
             <el-option
               v-for="activity in activityOptionsForSelectedResubmitAccount()"
               :key="activity.id"
