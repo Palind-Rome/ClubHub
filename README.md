@@ -29,6 +29,11 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 └── README.md
 ```
 
+## 设计文档
+
+- [Redis 数据边界与故障降级基线](docs/architecture/redis-data-boundary.md)：规定后续
+  Redis 子任务统一使用的数据分类、Key、TTL、持久化、故障降级和回滚边界。
+
 ## 课程要求摘要
 
 - 使用较新版本 VS.NET / Visual Studio。
