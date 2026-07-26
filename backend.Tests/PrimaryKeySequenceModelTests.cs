@@ -23,6 +23,7 @@ public sealed class PrimaryKeySequenceModelTests
         { typeof(LearningRecord), nameof(LearningRecord.RecordId), "SEQ_LEARNING_RECORDS.NEXTVAL" },
         { typeof(Material), nameof(Material.MaterialId), "SEQ_MATERIALS.NEXTVAL" },
         { typeof(MaterialBorrow), nameof(MaterialBorrow.BorrowId), "SEQ_MATERIAL_BORROWS.NEXTVAL" },
+        { typeof(IdempotencyRecord), nameof(IdempotencyRecord.IdempotencyId), "SEQ_IDEMPOTENCY_RECORDS.NEXTVAL" },
         { typeof(Notice), nameof(Notice.NoticeId), "SEQ_NOTICES.NEXTVAL" },
         { typeof(OperationLog), nameof(OperationLog.LogId), "SEQ_OPERATION_LOGS.NEXTVAL" }
     };

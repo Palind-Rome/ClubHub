@@ -128,7 +128,7 @@ paths:
   /api/auth/session:
     get:
       summary: 刷新当前用户会话
-      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
       operationId: refreshAuthSession
       security:
         - bearerAuth: []
@@ -153,6 +153,29 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/logout:
+    post:
+      summary: 注销当前登录会话
+      description: 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+      operationId: logoutCurrentSession
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 当前登录会话已注销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法安全注销
           content:
             application/json:
               schema:
@@ -188,14 +211,11 @@ paths:
 
   /api/auth/permissions/check:
     get:
-      summary: 检查用户是否拥有指定权限
+      summary: 检查当前用户是否拥有指定权限
       operationId: checkPermission
+      security:
+        - bearerAuth: []
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
         - name: permission
           in: query
           required: true
@@ -221,6 +241,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
           content:
@@ -232,6 +258,8 @@ paths:
     post:
       summary: 分配用户角色
       operationId: assignUserRole
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -3160,6 +3188,111 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/users/{userId}/status:
+    patch:
+      summary: 更新用户账号状态
+      description: 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+      operationId: updateUserAccountStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserAccountStatusRequest"
+      responses:
+        "200":
+          description: 更新后的用户摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          description: 状态值不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有账号状态管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 不允许停用当前操作人或最后一名有效系统管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 无法安全失效权限或撤销会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/users/{userId}/sessions/revoke:
+    post:
+      summary: 强制撤销用户的全部登录会话
+      operationId: revokeUserSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 目标用户的全部登录会话已撤销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有强制下线权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法确认撤销结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/projects:
     get:
       summary: 获取项目列表
@@ -5717,12 +5850,8 @@ components:
 
     AssignRoleRequest:
       type: object
-      description: 为目标用户分配系统级或社团级角色。
+      description: 为目标用户分配系统级或社团级角色；操作人从 Bearer 登录令牌读取。
       properties:
-        operatorUserId:
-          type: integer
-          description: 发起分配操作的用户 ID。
-          example: 1
         targetUserId:
           type: integer
           description: 被分配角色的用户 ID。
@@ -5738,7 +5867,6 @@ components:
           nullable: true
           example: 1
       required:
-        - operatorUserId
         - targetUserId
         - roleCode
 
@@ -8855,6 +8983,16 @@ components:
       required:
         - currentUserId
         - decision
+
+    UpdateUserAccountStatusRequest:
+      type: object
+      properties:
+        accountStatus:
+          type: string
+          enum: [normal, disabled]
+          description: normal 表示启用，disabled 表示停用。
+      required:
+        - accountStatus
 
     UserSummary:
       type: object

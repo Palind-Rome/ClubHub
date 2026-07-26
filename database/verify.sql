@@ -48,7 +48,8 @@ WHERE sequence_name IN (
   'SEQ_MATERIAL_BORROWS',
   'SEQ_NOTICES',
   'SEQ_FORUM_POSTS',
-  'SEQ_OPERATION_LOGS'
+  'SEQ_OPERATION_LOGS',
+  'SEQ_IDEMPOTENCY_RECORDS'
 )
 ORDER BY sequence_name;
 
@@ -108,7 +109,8 @@ WHERE (table_name, column_name) IN (
   ('MATERIAL_BORROWS', 'BORROW_ID'),
   ('NOTICES', 'NOTICE_ID'),
   ('FORUM_POSTS', 'POST_ID'),
-  ('OPERATION_LOGS', 'LOG_ID')
+  ('OPERATION_LOGS', 'LOG_ID'),
+  ('IDEMPOTENCY_RECORDS', 'IDEMPOTENCY_ID')
 )
 ORDER BY table_name, column_name;
 
@@ -153,6 +155,7 @@ WITH sequence_targets AS (
   UNION ALL SELECT 'SEQ_NOTICES', NVL(MAX(notice_id), 0) FROM notices
   UNION ALL SELECT 'SEQ_FORUM_POSTS', NVL(MAX(post_id), 0) FROM forum_posts
   UNION ALL SELECT 'SEQ_OPERATION_LOGS', NVL(MAX(log_id), 0) FROM operation_logs
+  UNION ALL SELECT 'SEQ_IDEMPOTENCY_RECORDS', NVL(MAX(idempotency_id), 0) FROM idempotency_records
 )
 SELECT target.sequence_name, target.max_id, sequence_state.last_number
 FROM sequence_targets target
@@ -162,7 +165,7 @@ WHERE sequence_state.sequence_name IS NULL
    OR sequence_state.last_number <= target.max_id
 ORDER BY target.sequence_name;
 
--- ClubHub 核心表应为 40 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- ClubHub 核心表应为 41 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
@@ -176,8 +179,19 @@ WHERE table_name IN (
   'AWARD_SCHEMES', 'AWARD_LEVELS', 'AWARD_APPLICATIONS', 'AWARD_REVIEW_RECORDS',
   'AWARD_ATTACHMENTS', 'AWARD_PUBLICITY_BATCHES', 'AWARD_PUBLICITY_ITEMS', 'AWARD_RULE_DOCUMENTS',
   'EVALUATIONS', 'EVALUATION_AWARD_SOURCES',
-  'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS'
+  'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS', 'IDEMPOTENCY_RECORDS'
 );
+
+-- 幂等台账必须具备用户/操作/请求 Key 唯一性、状态检查和用户外键。
+SELECT constraint_name, constraint_type, status
+FROM user_constraints
+WHERE table_name = 'IDEMPOTENCY_RECORDS'
+  AND constraint_name IN (
+    'UQ_IDEMPOTENCY_USER_SCOPE_KEY',
+    'CK_IDEMPOTENCY_STATUS',
+    'FK_IDEMPOTENCY_USER'
+  )
+ORDER BY constraint_name;
 
 SELECT column_id, column_name, data_type, data_length, nullable, data_default
 FROM user_tab_columns
