@@ -253,6 +253,11 @@ import {
   DeleteVenueRequestToJSON,
 } from "../models/DeleteVenueRequest";
 import {
+  type DependencyHealthReport,
+  DependencyHealthReportFromJSON,
+  DependencyHealthReportToJSON,
+} from "../models/DependencyHealthReport";
+import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -7228,6 +7233,94 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<HealthStatus> {
     const response = await this.healthCheckRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for healthCheckLive without sending the request
+   */
+  async healthCheckLiveRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/health/live`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+   * API 存活检查
+   */
+  async healthCheckLiveRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<DependencyHealthReport>> {
+    const requestOptions = await this.healthCheckLiveRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      DependencyHealthReportFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+   * API 存活检查
+   */
+  async healthCheckLive(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<DependencyHealthReport> {
+    const response = await this.healthCheckLiveRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for healthCheckReady without sending the request
+   */
+  async healthCheckReadyRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/health/ready`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+   * API 就绪检查
+   */
+  async healthCheckReadyRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<DependencyHealthReport>> {
+    const requestOptions = await this.healthCheckReadyRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      DependencyHealthReportFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+   * API 就绪检查
+   */
+  async healthCheckReady(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<DependencyHealthReport> {
+    const response = await this.healthCheckReadyRaw(initOverrides);
     return await response.value();
   }
 
