@@ -11,6 +11,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 - 前端：Vue 3 / Vite
 - 数据库：Oracle Database 18c 或更高版本
 - 数据访问：Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider
+- 缓存与协调：Redis / StackExchange.Redis（按功能开关启用）
 - 协作：GitHub Issues / Pull Requests / GitHub Actions
 
 ## 目录结构
@@ -33,6 +34,17 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 
 - [Redis 数据边界与故障降级基线](docs/architecture/redis-data-boundary.md)：规定后续
   Redis 子任务统一使用的数据分类、Key、TTL、持久化、故障降级和回滚边界。
+
+## Redis 后端基础组件
+
+Redis 默认关闭，现有业务请求仍直接访问 Oracle。需要在本地试用基础组件时，复制
+`backend/appsettings.Development.example.json`，再设置 `Redis:Enabled`、
+`Redis:ConnectionString`、`Redis:EnvironmentPrefix` 和对应的功能开关。真实密码和
+生产连接串只能放在被忽略的本地配置或环境变量中。
+
+统一连接、Key、序列化和 Cache Aside 实现在 `backend/Infrastructure/Redis/`。
+`GET /health/live` 只检查 API 进程；`GET /health/ready` 还会检查已启用的 Redis。
+本任务没有把缓存接入任何业务 Controller，具体缓存项由后续 Issue 单独实施。
 
 ## 课程要求摘要
 

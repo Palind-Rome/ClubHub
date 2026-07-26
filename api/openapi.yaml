@@ -25,6 +25,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /health/live:
+    get:
+      summary: API 存活检查
+      description: 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+      operationId: healthCheckLive
+      responses:
+        "200":
+          description: API 进程正常运行
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
+
+  /health/ready:
+    get:
+      summary: API 就绪检查
+      description: 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+      operationId: healthCheckReady
+      responses:
+        "200":
+          description: API 已就绪
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
+        "503":
+          description: 至少一个已启用的依赖不可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
+
   /api/auth/register:
     post:
       summary: 用户注册
@@ -5541,6 +5573,43 @@ components:
       required:
         - status
         - timestamp
+
+    DependencyHealthReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+        durationMs:
+          type: number
+          format: double
+          minimum: 0
+        checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DependencyHealthCheck"
+      required:
+        - status
+        - durationMs
+        - checks
+
+    DependencyHealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+        description:
+          type: string
+          nullable: true
+      required:
+        - status
 
     RegisterRequest:
       type: object
