@@ -437,6 +437,7 @@ async function createProject() {
   saving.value = true;
   try {
     await api.createProject({
+      idempotencyKey: crypto.randomUUID(),
       createProjectRequest: {
         clubId: createForm.clubId,
         projectName: createForm.projectName.trim(),
@@ -511,6 +512,7 @@ async function reviewProject() {
   reviewSavingId.value = reviewForm.projectId;
   try {
     await api.reviewProject({
+      idempotencyKey: crypto.randomUUID(),
       projectId: reviewForm.projectId,
       reviewProjectRequest: {
         projectStatus: reviewForm.projectStatus,
