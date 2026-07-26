@@ -1,8 +1,10 @@
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Services;
 using ClubHub.Api.Validation;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Org.OpenAPITools.Converters;
 
@@ -37,6 +39,7 @@ builder.Services
         AuthTokenAuthenticationHandler.SchemeName,
         _ => { });
 builder.Services.AddAuthorization();
+builder.Services.AddClubHubRedis(builder.Configuration);
 
 builder.Services.AddDbContext<ClubHubDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("Default"))
@@ -59,6 +62,20 @@ app.UseCors(policy =>
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks(
+    "/health/live",
+    new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains("live"),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    });
+app.MapHealthChecks(
+    "/health/ready",
+    new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains("ready"),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    });
 app.MapControllers();
 app.Run();
 
