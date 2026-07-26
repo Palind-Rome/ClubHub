@@ -72,15 +72,21 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
 
         if (_authSessions.Enabled)
         {
-            var accountStatus = await _permissionSnapshots.GetAccountStatusAsync(
+            var account = await _permissionSnapshots.GetAccountStatusAsync(
                 principal.UserId,
-                () => _db.Users
-                    .AsNoTracking()
-                    .Where(user => user.UserId == principal.UserId)
-                    .Select(user => user.AccountStatus)
-                    .SingleOrDefaultAsync(),
+                async () =>
+                {
+                    var status = await _db.Users
+                        .AsNoTracking()
+                        .Where(user => user.UserId == principal.UserId)
+                        .Select(user => new { user.AccountStatus })
+                        .SingleOrDefaultAsync();
+                    return new AccountStatusSnapshot(
+                        status is not null,
+                        status?.AccountStatus);
+                },
                 Context.RequestAborted);
-            if (!string.Equals(accountStatus, "normal", StringComparison.OrdinalIgnoreCase))
+            if (!account.Exists || !IsActiveAccountStatus(account.Status))
             {
                 return AuthenticateResult.Fail("Authentication account is disabled or missing.");
             }
@@ -88,6 +94,10 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
 
         return CreateSuccessResult(principal);
     }
+
+    private static bool IsActiveAccountStatus(string? status) =>
+        string.IsNullOrWhiteSpace(status) ||
+        status.Trim().ToLowerInvariant() is "active" or "normal" or "enabled" or "在任" or "正常";
 
     private AuthenticateResult TryAuthenticatePreviewCookie()
     {

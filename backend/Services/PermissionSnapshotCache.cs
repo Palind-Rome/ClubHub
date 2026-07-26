@@ -1,7 +1,6 @@
 using System.Text.Json;
 using ClubHub.Api.Infrastructure.Redis;
 using Microsoft.Extensions.Options;
-using Org.OpenAPITools.Models;
 using StackExchange.Redis;
 
 namespace ClubHub.Api.Services;
@@ -13,9 +12,9 @@ public interface IPermissionSnapshotCache
         Func<Task<PermissionSnapshot>> factory,
         CancellationToken cancellationToken = default);
 
-    Task<string?> GetAccountStatusAsync(
+    Task<AccountStatusSnapshot> GetAccountStatusAsync(
         int userId,
-        Func<Task<string?>> factory,
+        Func<Task<AccountStatusSnapshot>> factory,
         CancellationToken cancellationToken = default);
 
     Task InvalidateAsync(
@@ -29,9 +28,10 @@ public sealed record PermissionSnapshot(
     string? AccountStatus,
     IReadOnlyList<AuthRole> Roles);
 
+public sealed record AccountStatusSnapshot(bool Exists, string? Status);
+
 public sealed class PermissionSnapshotCache : IPermissionSnapshotCache
 {
-    private const string MissingAccount = "__missing__";
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
     private readonly IRedisDatabase _redis;
     private readonly IRedisKeyBuilder _keys;
@@ -96,9 +96,9 @@ public sealed class PermissionSnapshotCache : IPermissionSnapshotCache
         return loaded;
     }
 
-    public async Task<string?> GetAccountStatusAsync(
+    public async Task<AccountStatusSnapshot> GetAccountStatusAsync(
         int userId,
-        Func<Task<string?>> factory,
+        Func<Task<AccountStatusSnapshot>> factory,
         CancellationToken cancellationToken = default)
     {
         if (!Enabled) return await factory();
@@ -108,8 +108,20 @@ public sealed class PermissionSnapshotCache : IPermissionSnapshotCache
             var cached = await _redis.StringGetAsync(AccountKey(userId), cancellationToken);
             if (cached.HasValue)
             {
-                var value = (string)cached!;
-                return value == MissingAccount ? null : value;
+                try
+                {
+                    var snapshot =
+                        JsonSerializer.Deserialize<AccountStatusSnapshot>((string)cached!);
+                    if (snapshot is not null) return snapshot;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Discarding damaged account-status snapshot for user {UserId}.",
+                        userId);
+                    await _redis.KeyDeleteAsync(AccountKey(userId), cancellationToken);
+                }
             }
         }
         catch (Exception ex) when (ex is RedisException or TimeoutException)
@@ -122,7 +134,7 @@ public sealed class PermissionSnapshotCache : IPermissionSnapshotCache
         {
             await _redis.StringSetAsync(
                 AccountKey(userId),
-                loaded ?? MissingAccount,
+                JsonSerializer.Serialize(loaded),
                 Ttl,
                 cancellationToken);
         }

@@ -704,6 +704,8 @@ paths:
       description: 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
       operationId: createClubApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -734,6 +736,8 @@ paths:
       description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
       operationId: resubmitClubApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
@@ -768,6 +772,8 @@ paths:
       summary: 平台管理员审核社团注册申请
       operationId: reviewClubApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
@@ -1723,6 +1729,8 @@ paths:
       description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
       operationId: createClubAwardApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
@@ -1913,6 +1921,8 @@ paths:
       description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
       operationId: submitClubAwardApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
@@ -1947,6 +1957,8 @@ paths:
       description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
       operationId: reviewClubAwardApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
@@ -2416,6 +2428,8 @@ paths:
       description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
       operationId: reviewRecruitment
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
@@ -2481,6 +2495,8 @@ paths:
       description: 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
       operationId: createRecruitmentApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
@@ -2516,6 +2532,8 @@ paths:
       description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
       operationId: reviewRecruitmentApplication
       x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
         - name: applicationId

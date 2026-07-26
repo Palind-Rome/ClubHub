@@ -70,9 +70,9 @@ public sealed class RedisAuthIdempotencyContractTests
             Assert.Matches(
                 $@"operationId: {Regex.Escape(operation)}
       x-idempotency-required: true
-(?:      security:
+      security:
         - bearerAuth: \[\]
-)?      parameters:
+      parameters:
         - \$ref: ""#/components/parameters/IdempotencyKey""",
                 contract.ReplaceLineEndings("\n"));
         }
@@ -256,6 +256,64 @@ public sealed class RedisAuthIdempotencyContractTests
             $"{subject}-isolated",
             5,
             TimeSpan.FromMinutes(1))).Allowed);
+    }
+
+    [Fact]
+    public async Task StoringPreviewSessionDoesNotEvictAnotherUnexpiredSessionWhenCiRedisIsAvailable()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        await using var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
+        var environmentPrefix = $"ci-preview-{Guid.NewGuid():N}"[..20];
+        var redisOptions = Options.Create(new RedisOptions
+        {
+            Enabled = true,
+            EnvironmentPrefix = environmentPrefix,
+            Features = new RedisFeatureOptions { PreviewSessions = true }
+        });
+        var database = new DirectRedisDatabase(connection.GetDatabase());
+        var keys = new RedisKeyBuilder(redisOptions);
+        using var firstInstance = new LearningPreviewSessionStore(
+            database,
+            keys,
+            redisOptions,
+            new TestEnvironment());
+        using var secondInstance = new LearningPreviewSessionStore(
+            database,
+            keys,
+            redisOptions,
+            new TestEnvironment());
+        var firstToken = $"preview-{Guid.NewGuid():N}";
+        var secondToken = $"preview-{Guid.NewGuid():N}";
+        var preview = new PreparedLearningPreview(
+            LearningPreviewKind.Pdf,
+            "application/pdf",
+            128,
+            "learning/preview/test.pdf",
+            null,
+            true);
+
+        Assert.True(await firstInstance.StoreAsync(
+            firstToken,
+            156,
+            1,
+            preview,
+            TimeSpan.FromMinutes(5)));
+        Assert.True(await secondInstance.StoreAsync(
+            secondToken,
+            157,
+            2,
+            preview,
+            TimeSpan.FromMinutes(5)));
+        Assert.NotNull(await secondInstance.GetAsync(firstToken, 156, 1));
+
+        await connection.GetDatabase().KeyDeleteAsync(
+        [
+            keys.Build("learning", "preview", keys.HashSensitive(firstToken)),
+            keys.Build("learning", "preview", keys.HashSensitive(secondToken)),
+            keys.Build("learning", "preview-index", "global")
+        ]);
     }
 
     private static string FindRepositoryRoot()

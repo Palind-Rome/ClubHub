@@ -13,7 +13,7 @@ public sealed class LearningPreviewSessionStore : IDisposable
 {
     private const int MaxSessions = 4096;
     private const string StoreScript = """
-        local expired = redis.call('zrangebyscore', KEYS[2], '-inf', ARGV[2])
+        local expired = redis.call('zrangebyscore', KEYS[2], '-inf', ARGV[7])
         for _, digest in ipairs(expired) do
           redis.call('del', ARGV[5] .. digest)
           redis.call('zrem', KEYS[2], digest)
@@ -65,7 +65,8 @@ public sealed class LearningPreviewSessionStore : IDisposable
         }
 
         var digest = _keys!.HashSensitive(token);
-        var expiresAt = DateTimeOffset.UtcNow.Add(lifetime);
+        var now = DateTimeOffset.UtcNow;
+        var expiresAt = now.Add(lifetime);
         var safePreview = !_development && preview.PhysicalPath is not null
             ? preview with { PhysicalPath = null }
             : preview;
@@ -83,7 +84,8 @@ public sealed class LearningPreviewSessionStore : IDisposable
                     (long)Math.Ceiling(lifetime.TotalSeconds),
                     MaxSessions,
                     SessionPrefix(),
-                    digest
+                    digest,
+                    now.ToUnixTimeMilliseconds()
                 ],
                 cancellationToken);
             return (long)result == 1;
@@ -173,7 +175,7 @@ public sealed class LearningPreviewSessionStore : IDisposable
     private RedisKey IndexKey() => _keys!.Build("learning", "preview-index", "global");
 
     private string SessionPrefix() =>
-        $"clubhub:{_redisOptions!.EnvironmentPrefix}:learning:preview:v1:";
+        _keys!.BuildPrefix("learning", "preview");
 
     private string LocalKey(string token) => _keys?.HashSensitive(token) ??
         Convert.ToHexString(

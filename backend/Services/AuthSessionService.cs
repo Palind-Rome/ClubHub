@@ -199,7 +199,7 @@ public sealed class AuthSessionService : IAuthSessionService
 
     private RedisKey UserIndexKey(int userId) => _keys.Build("auth", "user-sessions", userId.ToString());
 
-    private string SessionPrefix() => $"clubhub:{_redisOptions.EnvironmentPrefix}:auth:session:v1:";
+    private string SessionPrefix() => _keys.BuildPrefix("auth", "session");
 
     private sealed record AuthSessionPayload(
         int UserId,

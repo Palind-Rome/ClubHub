@@ -269,7 +269,7 @@ public class AuthService
         }
         catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
         {
-            return AuthServiceResult<AuthResponse>.Fail(503, "会话服务暂不可用，请稍后重试。");
+            return AuthServiceResult<AuthResponse>.Fail(503, "账号已创建，但会话服务暂不可用，请稍后直接登录。");
         }
     }
 

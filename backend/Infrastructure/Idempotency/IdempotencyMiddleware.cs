@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Data;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -17,6 +18,12 @@ namespace ClubHub.Api.Infrastructure.Idempotency;
 public sealed partial class IdempotencyMiddleware
 {
     private const int MaxResponseBytes = 64 * 1024;
+    private const string RenewProcessingScript = """
+        if redis.call('get', KEYS[1]) == ARGV[1] then
+          return redis.call('expire', KEYS[1], ARGV[2])
+        end
+        return 0
+        """;
     private static readonly TimeSpan ResultLifetime = TimeSpan.FromHours(24);
     private static readonly TimeSpan ProcessingLifetime = TimeSpan.FromSeconds(60);
     private readonly RequestDelegate _next;
@@ -135,6 +142,14 @@ public sealed partial class IdempotencyMiddleware
         var originalBody = context.Response.Body;
         await using var capture = new MemoryStream();
         context.Response.Body = capture;
+        using var leaseCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        var leaseTask = MaintainProcessingLeaseAsync(
+            redis,
+            redisKey,
+            processing,
+            logger,
+            leaseCancellation.Token);
         var transactionCompleted = false;
         try
         {
@@ -228,6 +243,8 @@ public sealed partial class IdempotencyMiddleware
         }
         finally
         {
+            leaseCancellation.Cancel();
+            await leaseTask;
             context.Response.Body = originalBody;
         }
     }
@@ -237,17 +254,65 @@ public sealed partial class IdempotencyMiddleware
     private static async Task<string> BuildRequestHashAsync(HttpContext context, string operationId)
     {
         context.Request.EnableBuffering();
-        using var buffer = new MemoryStream();
-        await context.Request.Body.CopyToAsync(buffer, context.RequestAborted);
-        context.Request.Body.Position = 0;
+        using var bodyHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = ArrayPool<byte>.Shared.Rent(64 * 1024);
+        string bodyDigest;
+        try
+        {
+            int read;
+            while ((read = await context.Request.Body.ReadAsync(
+                       buffer.AsMemory(0, buffer.Length),
+                       context.RequestAborted)) > 0)
+            {
+                bodyHash.AppendData(buffer, 0, read);
+            }
+            bodyDigest = Convert.ToHexStringLower(bodyHash.GetHashAndReset());
+        }
+        finally
+        {
+            context.Request.Body.Position = 0;
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
         var canonical = string.Join(
             '\n',
             context.Request.Method,
             operationId,
             context.Request.Path.Value,
             context.Request.QueryString.Value,
-            Convert.ToHexStringLower(SHA256.HashData(buffer.ToArray())));
+            bodyDigest);
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
+    }
+
+    private static async Task MaintainProcessingLeaseAsync(
+        IRedisDatabase redis,
+        RedisKey redisKey,
+        string processing,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var renewed = await redis.ScriptEvaluateAsync(
+                    RenewProcessingScript,
+                    [redisKey],
+                    [processing, (long)ProcessingLifetime.TotalSeconds],
+                    cancellationToken);
+                if ((long)renewed != 1) return;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Normal request completion.
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            logger.LogWarning(
+                ex,
+                "Unable to renew Redis idempotency processing lease; Oracle ledger remains authoritative.");
+        }
     }
 
     private static Dictionary<string, string> CaptureHeaders(HttpResponse response)
@@ -295,7 +360,7 @@ public sealed partial class IdempotencyMiddleware
 
     private static async Task SafeReleaseAsync(
         IRedisDatabase redis,
-        string redisKey,
+        RedisKey redisKey,
         string processing,
         ILogger logger,
         CancellationToken cancellationToken)

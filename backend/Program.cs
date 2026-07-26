@@ -57,10 +57,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddClubHubRedis(builder.Configuration);
 
 builder.Services.AddScoped<PermissionInvalidationInterceptor>();
+builder.Services.AddScoped<PermissionTransactionInterceptor>();
+builder.Services.AddScoped<PermissionInvalidationCoordinator>();
 builder.Services.AddDbContext<ClubHubDbContext>((services, options) =>
     options
         .UseOracle(builder.Configuration.GetConnectionString("Default"))
-        .AddInterceptors(services.GetRequiredService<PermissionInvalidationInterceptor>()));
+        .AddInterceptors(
+            services.GetRequiredService<PermissionInvalidationInterceptor>(),
+            services.GetRequiredService<PermissionTransactionInterceptor>()));
 
 var app = builder.Build();
 
@@ -77,6 +81,8 @@ app.UseCors(policy =>
     policy.AllowAnyOrigin()
           .AllowAnyMethod()
           .AllowAnyHeader());
+
+app.UseRouting();
 
 app.Use(async (context, next) =>
 {

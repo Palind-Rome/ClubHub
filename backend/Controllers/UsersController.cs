@@ -15,7 +15,6 @@ public class UsersController : ControllerBase
 {
     private readonly ClubHubDbContext _db;
     private readonly IAuthSessionService _authSessions;
-    private readonly IPermissionSnapshotCache _permissionSnapshots;
     private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "\u8d1f\u8d23\u4eba",
@@ -41,12 +40,10 @@ public class UsersController : ControllerBase
 
     public UsersController(
         ClubHubDbContext db,
-        IAuthSessionService authSessions,
-        IPermissionSnapshotCache permissionSnapshots)
+        IAuthSessionService authSessions)
     {
         _db = db;
         _authSessions = authSessions;
-        _permissionSnapshots = permissionSnapshots;
     }
 
     [HttpGet]
@@ -185,11 +182,6 @@ public class UsersController : ControllerBase
         await using var transaction = await _db.Database.BeginTransactionAsync();
         try
         {
-            await _permissionSnapshots.InvalidateAsync(
-                userId,
-                requiredForSafety: normalized == "disabled",
-                HttpContext.RequestAborted);
-
             target.AccountStatus = normalized;
             target.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -200,10 +192,6 @@ public class UsersController : ControllerBase
             }
 
             await transaction.CommitAsync();
-            await _permissionSnapshots.InvalidateAsync(
-                userId,
-                requiredForSafety: false,
-                HttpContext.RequestAborted);
             return Ok(ToUserSummary(target));
         }
         catch (Exception ex) when (ex is PermissionSnapshotUnavailableException or
@@ -220,11 +208,14 @@ public class UsersController : ControllerBase
         var operatorId = User.GetUserId();
         if (operatorId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var isAdmin = await _db.UserRoles.AnyAsync(userRole =>
-            userRole.UserId == operatorId.Value &&
-            userRole.Role != null &&
-            userRole.Role.RoleCode == "SYSTEM_ADMIN");
-        if (!isAdmin) return StatusCode(403, new { message = "只有系统管理员可以强制下线用户。" });
+        var operatorUser = await _db.Users
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .SingleOrDefaultAsync(user => user.UserId == operatorId.Value);
+        if (operatorUser is null || !IsSystemAdmin(operatorUser))
+        {
+            return StatusCode(403, new { message = "只有系统管理员可以强制下线用户。" });
+        }
         if (!await _db.Users.AnyAsync(user => user.UserId == userId))
         {
             return NotFound(new { message = "目标用户不存在。" });

@@ -12,23 +12,67 @@ namespace ClubHub.Api.Data;
 /// </summary>
 public sealed class JoinableDbTransaction : IAsyncDisposable
 {
-    private readonly IDbContextTransaction? _ownedTransaction;
+    private readonly IDbContextTransaction _transaction;
+    private readonly bool _ownsTransaction;
+    private readonly string? _savepoint;
+    private bool _completed;
 
-    internal JoinableDbTransaction(IDbContextTransaction? ownedTransaction)
+    internal JoinableDbTransaction(
+        IDbContextTransaction transaction,
+        bool ownsTransaction,
+        string? savepoint)
     {
-        _ownedTransaction = ownedTransaction;
+        _transaction = transaction;
+        _ownsTransaction = ownsTransaction;
+        _savepoint = savepoint;
     }
 
-    public bool OwnsTransaction => _ownedTransaction is not null;
+    public bool OwnsTransaction => _ownsTransaction;
 
-    public Task CommitAsync(CancellationToken cancellationToken = default) =>
-        _ownedTransaction?.CommitAsync(cancellationToken) ?? Task.CompletedTask;
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        if (_completed) return;
+        if (_ownsTransaction)
+        {
+            await _transaction.CommitAsync(cancellationToken);
+        }
+        else if (_savepoint is not null)
+        {
+            await _transaction.ReleaseSavepointAsync(_savepoint, cancellationToken);
+        }
+        _completed = true;
+    }
 
-    public Task RollbackAsync(CancellationToken cancellationToken = default) =>
-        _ownedTransaction?.RollbackAsync(cancellationToken) ?? Task.CompletedTask;
+    public async Task RollbackAsync(CancellationToken cancellationToken = default)
+    {
+        if (_completed) return;
+        if (_ownsTransaction)
+        {
+            await _transaction.RollbackAsync(cancellationToken);
+        }
+        else if (_savepoint is not null)
+        {
+            await _transaction.RollbackToSavepointAsync(_savepoint, cancellationToken);
+            await _transaction.ReleaseSavepointAsync(_savepoint, cancellationToken);
+        }
+        _completed = true;
+    }
 
-    public ValueTask DisposeAsync() =>
-        _ownedTransaction?.DisposeAsync() ?? ValueTask.CompletedTask;
+    public async ValueTask DisposeAsync()
+    {
+        if (_ownsTransaction)
+        {
+            await _transaction.DisposeAsync();
+            return;
+        }
+
+        if (!_completed && _savepoint is not null)
+        {
+            await _transaction.RollbackToSavepointAsync(_savepoint);
+            await _transaction.ReleaseSavepointAsync(_savepoint);
+            _completed = true;
+        }
+    }
 }
 
 public static class JoinableDbTransactionExtensions
@@ -51,12 +95,22 @@ public static class JoinableDbTransactionExtensions
     {
         if (database.CurrentTransaction is not null)
         {
-            return new JoinableDbTransaction(null);
+            var savepoint = $"CH_{Guid.NewGuid():N}"[..27];
+            await database.CurrentTransaction.CreateSavepointAsync(
+                savepoint,
+                cancellationToken);
+            return new JoinableDbTransaction(
+                database.CurrentTransaction,
+                ownsTransaction: false,
+                savepoint);
         }
 
         var transaction = isolationLevel is null
             ? await database.BeginTransactionAsync(cancellationToken)
             : await database.BeginTransactionAsync(isolationLevel.Value, cancellationToken);
-        return new JoinableDbTransaction(transaction);
+        return new JoinableDbTransaction(
+            transaction,
+            ownsTransaction: true,
+            savepoint: null);
     }
 }

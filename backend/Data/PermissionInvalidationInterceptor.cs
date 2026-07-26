@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data.Common;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +13,15 @@ namespace ClubHub.Api.Data;
 public sealed class PermissionInvalidationInterceptor : SaveChangesInterceptor
 {
     private readonly IPermissionSnapshotCache _snapshots;
-    private readonly ConcurrentDictionary<Guid, int[]> _pending = new();
+    private readonly PermissionInvalidationCoordinator _coordinator;
 
-    public PermissionInvalidationInterceptor(IPermissionSnapshotCache snapshots) =>
+    public PermissionInvalidationInterceptor(
+        IPermissionSnapshotCache snapshots,
+        PermissionInvalidationCoordinator coordinator)
+    {
         _snapshots = snapshots;
+        _coordinator = coordinator;
+    }
 
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -26,7 +32,7 @@ public sealed class PermissionInvalidationInterceptor : SaveChangesInterceptor
 
         var changes = CollectChanges(context);
         if (changes.UserIds.Length == 0) return result;
-        _pending[context.ContextId.InstanceId] = changes.UserIds;
+        _coordinator.Track(context, changes.UserIds);
 
         if (changes.RequiresSafePreInvalidation)
         {
@@ -45,7 +51,8 @@ public sealed class PermissionInvalidationInterceptor : SaveChangesInterceptor
         CancellationToken cancellationToken = default)
     {
         if (eventData.Context is { } context &&
-            _pending.TryRemove(context.ContextId.InstanceId, out var userIds))
+            context.Database.CurrentTransaction is null &&
+            _coordinator.TryTake(context, out var userIds))
         {
             foreach (var userId in userIds)
             {
@@ -61,7 +68,7 @@ public sealed class PermissionInvalidationInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is { } context)
         {
-            _pending.TryRemove(context.ContextId.InstanceId, out _);
+            _coordinator.Clear(context);
         }
         return Task.CompletedTask;
     }
@@ -97,4 +104,81 @@ public sealed class PermissionInvalidationInterceptor : SaveChangesInterceptor
     }
 
     private sealed record PermissionChanges(int[] UserIds, bool RequiresSafePreInvalidation);
+}
+
+public sealed class PermissionTransactionInterceptor : DbTransactionInterceptor
+{
+    private readonly IPermissionSnapshotCache _snapshots;
+    private readonly PermissionInvalidationCoordinator _coordinator;
+
+    public PermissionTransactionInterceptor(
+        IPermissionSnapshotCache snapshots,
+        PermissionInvalidationCoordinator coordinator)
+    {
+        _snapshots = snapshots;
+        _coordinator = coordinator;
+    }
+
+    public override async Task TransactionCommittedAsync(
+        DbTransaction transaction,
+        TransactionEndEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context &&
+            _coordinator.TryTake(context, out var userIds))
+        {
+            foreach (var userId in userIds)
+            {
+                await _snapshots.InvalidateAsync(userId, false, cancellationToken);
+            }
+        }
+    }
+
+    public override Task TransactionRolledBackAsync(
+        DbTransaction transaction,
+        TransactionEndEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) _coordinator.Clear(context);
+        return Task.CompletedTask;
+    }
+
+    public override Task TransactionFailedAsync(
+        DbTransaction transaction,
+        TransactionErrorEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) _coordinator.Clear(context);
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class PermissionInvalidationCoordinator
+{
+    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<int, byte>> _pending = new();
+
+    public void Track(DbContext context, IEnumerable<int> userIds)
+    {
+        var users = _pending.GetOrAdd(
+            context.ContextId.InstanceId,
+            _ => new ConcurrentDictionary<int, byte>());
+        foreach (var userId in userIds)
+        {
+            if (userId > 0) users.TryAdd(userId, 0);
+        }
+    }
+
+    public bool TryTake(DbContext context, out int[] userIds)
+    {
+        if (_pending.TryRemove(context.ContextId.InstanceId, out var users))
+        {
+            userIds = users.Keys.ToArray();
+            return userIds.Length > 0;
+        }
+        userIds = [];
+        return false;
+    }
+
+    public void Clear(DbContext context) =>
+        _pending.TryRemove(context.ContextId.InstanceId, out _);
 }
