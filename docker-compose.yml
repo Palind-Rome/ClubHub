@@ -4,6 +4,51 @@
 # 服务器上运行：docker compose up -d
 
 services:
+  redis:
+    image: redis:8.2.8-alpine
+    command:
+      - sh
+      - -ec
+      - |
+        exec redis-server \
+          --appendonly yes \
+          --appendfsync everysec \
+          --save 300 10 \
+          --maxmemory "$$REDIS_MAXMEMORY" \
+          --maxmemory-policy noeviction \
+          --dir /data \
+          --requirepass "$$REDIS_PASSWORD"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the deployment environment}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-384mb}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -q PONG',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - clubhub-net
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: ${REDIS_CONTAINER_MEMORY_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-0.50}
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   backend:
     image: ghcr.io/palind-rome/clubhub-backend:latest
     environment:
@@ -11,6 +56,12 @@ services:
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__Default: ${DB_CONNECTION_STRING}
       Authentication__TokenSigningKey: ${AUTH_TOKEN_SIGNING_KEY}
+      Redis__Enabled: "true"
+      Redis__ConnectionString: redis:6379
+      Redis__Username: default
+      Redis__Password: ${REDIS_PASSWORD}
+      Redis__EnvironmentPrefix: prod
+      Redis__Features__Cache: ${REDIS_CACHE_ENABLED:-false}
       Oss__Region: ${OSS_REGION:-cn-shanghai}
       Oss__Endpoint: ${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
       Oss__Bucket: ${OSS_BUCKET:-clubhub-learning-prod-2026-c7h2}
@@ -21,6 +72,9 @@ services:
     networks:
       - clubhub-net
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
 
   frontend:
     image: ghcr.io/palind-rome/clubhub-frontend:latest
@@ -35,3 +89,6 @@ services:
 networks:
   clubhub-net:
     external: true
+
+volumes:
+  redis-data:

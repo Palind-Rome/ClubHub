@@ -49,6 +49,8 @@ public sealed class RedisRegistrationTests
         {
             Enabled = true,
             ConnectionString = "localhost:6379",
+            Username = "clubhub",
+            Password = "test-only-password",
             EnvironmentPrefix = "test",
             Database = 2,
             ConnectTimeoutMilliseconds = 1_500,
@@ -66,6 +68,8 @@ public sealed class RedisRegistrationTests
         Assert.Equal(750, connection.AsyncTimeout);
         Assert.Equal(4, connection.ConnectRetry);
         Assert.Equal(2, connection.DefaultDatabase);
+        Assert.Equal("clubhub", connection.User);
+        Assert.Equal("test-only-password", connection.Password);
         Assert.Same(BacklogPolicy.FailFast, connection.BacklogPolicy);
         Assert.IsType<ExponentialRetry>(connection.ReconnectRetryPolicy);
     }
@@ -262,6 +266,7 @@ public sealed class RedisHealthEndpointTests
                     {
                         ["Redis:Enabled"] = "true",
                         ["Redis:ConnectionString"] = "localhost:6379",
+                        ["Redis:Password"] = "test-only-password",
                         ["Redis:EnvironmentPrefix"] = "test"
                     }));
             builder.ConfigureTestServices(services =>

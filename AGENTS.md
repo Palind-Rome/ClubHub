@@ -35,6 +35,7 @@
 - `docs/`：各类文档。
 - `docker-compose.yml`：生产环境 Docker 编排。
 - `docker-compose.dev.yml`：本地开发环境（源码挂载 + 热重载，只需 Docker）。
+- `docs/operations/redis-runbook.md`：Redis 备份、恢复、升级、密码轮换、容量告警和排障。
 
 ## 数据库基线
 
@@ -54,6 +55,10 @@
 数据库脚本放在 `database/schema.sql`。不要修改表结构。如果确有必要，请先与用户讨论。
 
 CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。全量刷新只允许用于本地开发库或明确的测试库；生产/演示库的结构变更必须通过人工确认后的迁移脚本执行。
+
+Redis 生产实例只允许连接 `clubhub-net`，禁止映射公网 6379。认证密码通过
+`REDIS_PASSWORD` Secret 注入；不得提交 `.env`、真实密码或带密连接串。运维操作
+遵循 `docs/operations/redis-runbook.md`，恢复演练必须使用隔离卷。
 
 ## 开发规范
 
