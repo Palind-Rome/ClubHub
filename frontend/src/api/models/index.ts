@@ -93,6 +93,7 @@ export * from "./RecruitmentApplication";
 export * from "./RecruitmentWorkflowStatus";
 export * from "./RegisterMaterialDamageRequest";
 export * from "./RegisterRequest";
+export * from "./ResubmitBudgetApplicationRequest";
 export * from "./ReviewActivityBudgetRequest";
 export * from "./ReviewActivityRequest";
 export * from "./ReviewAwardApplicationRequest";

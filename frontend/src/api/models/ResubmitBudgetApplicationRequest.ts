@@ -28,10 +28,10 @@ export interface ResubmitBudgetApplicationRequest {
   activityId?: number | null;
   /**
    * 申请类型。
-   * @type {string}
+   * @type {ResubmitBudgetApplicationRequestTypeEnum}
    * @memberof ResubmitBudgetApplicationRequest
    */
-  type?: string;
+  type?: ResubmitBudgetApplicationRequestTypeEnum;
   /**
    * 经费申请标题。
    * @type {string}
@@ -59,6 +59,17 @@ export interface ResubmitBudgetApplicationRequest {
 }
 
 /**
+ * @export
+ */
+export const ResubmitBudgetApplicationRequestTypeEnum = {
+  ActivityBudget: "activity_budget",
+  Purchase: "purchase",
+  Reimbursement: "reimbursement",
+} as const;
+export type ResubmitBudgetApplicationRequestTypeEnum =
+  (typeof ResubmitBudgetApplicationRequestTypeEnum)[keyof typeof ResubmitBudgetApplicationRequestTypeEnum];
+
+/**
  * Check if a given object implements the ResubmitBudgetApplicationRequest interface.
  */
 export function instanceOfResubmitBudgetApplicationRequest(
@@ -67,7 +78,9 @@ export function instanceOfResubmitBudgetApplicationRequest(
   return true;
 }
 
-export function ResubmitBudgetApplicationRequestFromJSON(json: any): ResubmitBudgetApplicationRequest {
+export function ResubmitBudgetApplicationRequestFromJSON(
+  json: any,
+): ResubmitBudgetApplicationRequest {
   return ResubmitBudgetApplicationRequestFromJSONTyped(json, false);
 }
 
@@ -80,17 +93,23 @@ export function ResubmitBudgetApplicationRequestFromJSONTyped(
   }
   return {
     activityId:
-      json["activityId"] === undefined ? undefined : json["activityId"] === null ? null : json["activityId"],
-    type: json["type"] === undefined ? undefined : json["type"],
-    title: json["title"] === undefined ? undefined : json["title"],
-    amount: json["amount"] === undefined ? undefined : json["amount"],
-    purpose: json["purpose"] === undefined ? undefined : json["purpose"],
+      json["activityId"] === undefined
+        ? undefined
+        : json["activityId"] === null
+          ? null
+          : json["activityId"],
+    type: json["type"] == null ? undefined : json["type"],
+    title: json["title"] == null ? undefined : json["title"],
+    amount: json["amount"] == null ? undefined : json["amount"],
+    purpose: json["purpose"] == null ? undefined : json["purpose"],
     detail:
       json["detail"] === undefined ? undefined : json["detail"] === null ? null : json["detail"],
   };
 }
 
-export function ResubmitBudgetApplicationRequestToJSON(json: any): ResubmitBudgetApplicationRequest {
+export function ResubmitBudgetApplicationRequestToJSON(
+  json: any,
+): ResubmitBudgetApplicationRequest {
   return ResubmitBudgetApplicationRequestToJSONTyped(json, false);
 }
 
