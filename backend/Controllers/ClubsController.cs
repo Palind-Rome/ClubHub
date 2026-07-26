@@ -246,6 +246,7 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPost("applications")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createClubApplication")]
     public async Task<IActionResult> CreateApplication([FromBody] CreateClubApplicationRequest req)
     {
         var currentUserId = User.GetUserId();
@@ -316,7 +317,7 @@ public class ClubsController : ControllerBase
             club.AdvisorName = DisplayUser(advisor.User);
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         try
         {
             _db.Clubs.Add(club);
@@ -339,6 +340,7 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("applications/{clubId:int}")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("resubmitClubApplication")]
     public async Task<IActionResult> ResubmitApplication(int clubId, [FromBody] CreateClubApplicationRequest req)
     {
         var currentUserId = User.GetUserId();
@@ -416,7 +418,7 @@ public class ClubsController : ControllerBase
         club.FoundedAt = null;
         club.UpdatedAt = now;
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         try
         {
             if (advisor.User is not null)
@@ -442,6 +444,7 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("applications/{clubId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewClubApplication")]
     public async Task<IActionResult> ReviewApplication(int clubId, [FromBody] ReviewClubApplicationRequest req)
     {
         var currentUserId = User.GetUserId();
@@ -837,7 +840,7 @@ public class ClubsController : ControllerBase
         department.DepartmentStatus = ToOrganizationStatus(req.DepartmentStatus) ?? OrganizationActive;
         department.UpdatedAt = DateTime.UtcNow;
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         try
         {
             await _db.SaveChangesAsync();
@@ -983,7 +986,7 @@ public class ClubsController : ControllerBase
         group.GroupStatus = ToOrganizationStatus(req.GroupStatus) ?? OrganizationActive;
         group.UpdatedAt = DateTime.UtcNow;
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         try
         {
             await _db.SaveChangesAsync();
@@ -1629,7 +1632,7 @@ public class ClubsController : ControllerBase
             createdCount++;
         }
 
-        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        await using (var transaction = await _db.Database.BeginJoinableTransactionAsync())
         {
             await _db.SaveChangesAsync();
             await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
@@ -1728,7 +1731,7 @@ public class ClubsController : ControllerBase
             CreatedAt = now
         };
 
-        await using (var transaction = await _db.Database.BeginTransactionAsync())
+        await using (var transaction = await _db.Database.BeginJoinableTransactionAsync())
         {
             _db.Evaluations.Add(evaluation);
             await _db.SaveChangesAsync();
@@ -2088,7 +2091,7 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = "当前用户账号不可用，不能变更社团成员身份。" });
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == clubId);
         if (club is null)
         {

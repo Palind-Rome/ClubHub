@@ -53,6 +53,14 @@ services:
       - Redis__Password=${REDIS_PASSWORD:?Copy .env.example to .env and set REDIS_PASSWORD}
       - Redis__EnvironmentPrefix=dev
       - Redis__Features__Cache=${REDIS_CACHE_ENABLED:-false}
+      - Redis__Features__AuthSessions=${REDIS_AUTH_SESSIONS_ENABLED:-false}
+      - Redis__Features__PermissionCache=${REDIS_PERMISSION_CACHE_ENABLED:-false}
+      - Redis__Features__PreviewSessions=${REDIS_PREVIEW_SESSIONS_ENABLED:-false}
+      - Redis__Features__RateLimiting=${REDIS_RATE_LIMITING_ENABLED:-false}
+      - Redis__Features__Idempotency=${REDIS_IDEMPOTENCY_ENABLED:-false}
+      - Authentication__Sessions__SlidingLifetimeMinutes=${AUTH_SESSION_SLIDING_MINUTES:-30}
+      - Authentication__Sessions__AbsoluteLifetimeHours=${AUTH_SESSION_ABSOLUTE_HOURS:-12}
+      - Authentication__Sessions__MaxSessionsPerUser=${AUTH_SESSION_MAX_PER_USER:-10}
       - Oss__Region=${OSS_REGION:-cn-shanghai}
       - Oss__Endpoint=${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
       - Oss__Bucket=${OSS_BUCKET:-}

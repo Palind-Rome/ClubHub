@@ -63,7 +63,7 @@ public class RecruitmentApplicationService
             return ServiceResult<RecruitmentApplicationDto>.Fail(403, "只有普通学生可以提交招募报名。");
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(recruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {
@@ -175,7 +175,7 @@ public class RecruitmentApplicationService
         User reviewer,
         ReviewRecruitmentApplicationRequest req)
     {
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {
@@ -243,7 +243,7 @@ public class RecruitmentApplicationService
         User reviewer,
         ReviewRecruitmentApplicationRequest req)
     {
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {

@@ -379,8 +379,12 @@ Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Sch
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
 | `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
-目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`。未设置时部署默认
-为 `false`；完成缓存验证后显式设为 `true`，无需修改镜像。
+目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`、
+`REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
+`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 和
+`REDIS_IDEMPOTENCY_ENABLED`。未设置时部署默认均为 `false`。幂等开关只能在人工执行
+`20260726_add_idempotency_records.sql` 后启用；认证会话开关最后启用，启用或回滚均会
+要求所有用户重新登录。
 部署 workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
 确保部署和回滚不依赖可变的 `latest` 标签。
 

@@ -293,6 +293,7 @@ public class BudgetController : ControllerBase
     }
 
     [HttpPost("applications")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createBudgetApplication")]
     public async Task<IActionResult> CreateApplication([FromBody] ApiCreateBudgetApplicationRequest req)
     {
         var currentUserId = User.GetUserId();
@@ -380,6 +381,7 @@ public class BudgetController : ControllerBase
     }
 
     [HttpPost("applications/{applicationId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewBudgetApplication")]
     public async Task<IActionResult> ReviewApplication(int applicationId, [FromBody] ApiReviewBudgetApplicationRequest req)
     {
         var currentUserId = User.GetUserId();
@@ -787,7 +789,7 @@ public class BudgetController : ControllerBase
     {
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(isolationLevel);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(isolationLevel);
             try
             {
                 var result = await action();

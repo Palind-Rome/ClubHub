@@ -179,6 +179,7 @@ public class VenueReservationsController : ControllerBase
     }
 
     [HttpPost]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createVenueReservation")]
     public async Task<IActionResult> Create([FromBody] CreateVenueReservationRequest req)
     {
         var applicantUserId = User.GetUserId();
@@ -267,6 +268,7 @@ public class VenueReservationsController : ControllerBase
     }
 
     [HttpPost("{reservationId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewVenueReservation")]
     public async Task<IActionResult> Review(int reservationId, [FromBody] ReviewVenueReservationRequest req)
     {
         var reviewerUserId = User.GetUserId();

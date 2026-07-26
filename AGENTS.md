@@ -61,6 +61,10 @@ Redis 生产实例只允许连接 `clubhub-net`，禁止映射公网 6379。认�
 `REDIS_PASSWORD` Secret 注入；不得提交 `.env`、真实密码或带密连接串。运维操作
 遵循 `docs/operations/redis-runbook.md`，恢复演练必须使用隔离卷。
 
+Redis 会话、权限快照、预览会话、限流与幂等分别使用独立开关，默认关闭。启用
+幂等前必须先人工执行 `20260726_add_idempotency_records.sql`；启用认证会话会使
+旧纯签名 Token 失效。限流、预览和幂等在 Redis 故障时禁止自动绕过。
+
 ## 开发规范
 
 详细开发流程、分支策略、Commit 格式、API-first 工作流、CI/CD 说明、命令速查等

@@ -130,6 +130,11 @@ jobs:
           AUTH_TOKEN_SIGNING_KEY: ${{ secrets.AUTH_TOKEN_SIGNING_KEY }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           REDIS_CACHE_ENABLED: ${{ vars.REDIS_CACHE_ENABLED || 'false' }}
+          REDIS_AUTH_SESSIONS_ENABLED: ${{ vars.REDIS_AUTH_SESSIONS_ENABLED || 'false' }}
+          REDIS_PERMISSION_CACHE_ENABLED: ${{ vars.REDIS_PERMISSION_CACHE_ENABLED || 'false' }}
+          REDIS_PREVIEW_SESSIONS_ENABLED: ${{ vars.REDIS_PREVIEW_SESSIONS_ENABLED || 'false' }}
+          REDIS_RATE_LIMITING_ENABLED: ${{ vars.REDIS_RATE_LIMITING_ENABLED || 'false' }}
+          REDIS_IDEMPOTENCY_ENABLED: ${{ vars.REDIS_IDEMPOTENCY_ENABLED || 'false' }}
           BACKEND_IMAGE: ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.sha_tag }}
           FRONTEND_IMAGE: ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.sha_tag }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -141,7 +146,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           timeout: 60s
           command_timeout: 20m
-          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,REDIS_PASSWORD,REDIS_CACHE_ENABLED,BACKEND_IMAGE,FRONTEND_IMAGE,GHCR_TOKEN,GHCR_USER
+          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,REDIS_PASSWORD,REDIS_CACHE_ENABLED,REDIS_AUTH_SESSIONS_ENABLED,REDIS_PERMISSION_CACHE_ENABLED,REDIS_PREVIEW_SESSIONS_ENABLED,REDIS_RATE_LIMITING_ENABLED,REDIS_IDEMPOTENCY_ENABLED,BACKEND_IMAGE,FRONTEND_IMAGE,GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -219,6 +224,11 @@ jobs:
               fi
               write_env_var REDIS_PASSWORD "$REDIS_PASSWORD" || return 1
               write_env_var REDIS_CACHE_ENABLED "${REDIS_CACHE_ENABLED:-false}" || return 1
+              write_env_var REDIS_AUTH_SESSIONS_ENABLED "${REDIS_AUTH_SESSIONS_ENABLED:-false}" || return 1
+              write_env_var REDIS_PERMISSION_CACHE_ENABLED "${REDIS_PERMISSION_CACHE_ENABLED:-false}" || return 1
+              write_env_var REDIS_PREVIEW_SESSIONS_ENABLED "${REDIS_PREVIEW_SESSIONS_ENABLED:-false}" || return 1
+              write_env_var REDIS_RATE_LIMITING_ENABLED "${REDIS_RATE_LIMITING_ENABLED:-false}" || return 1
+              write_env_var REDIS_IDEMPOTENCY_ENABLED "${REDIS_IDEMPOTENCY_ENABLED:-false}" || return 1
               if [ -z "${BACKEND_IMAGE:-}" ] || [ -z "${FRONTEND_IMAGE:-}" ]; then
                 echo "!!! 部署镜像引用为空，无法执行精确版本部署 !!!"
                 return 1

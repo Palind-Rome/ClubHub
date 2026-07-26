@@ -7,11 +7,11 @@ namespace ClubHub.Api.Services;
 
 public sealed class AuthTokenService
 {
-    private const int TokenLifetimeHours = 12;
     private const string PreviewTokenPrefix = "preview";
     private const string LocalDevelopmentSigningKey = "ClubHub.LocalDevelopment.TokenSigningKey.ChangeForProduction";
     private readonly byte[] _signingKey;
     private readonly int _previewSessionLifetimeMinutes;
+    private readonly int _tokenLifetimeHours;
 
     public const string PreviewCookieName = "clubhub-preview";
 
@@ -37,14 +37,21 @@ public sealed class AuthTokenService
             configuration.GetValue<int?>("LearningPreview:SessionLifetimeMinutes") ?? 30,
             1,
             120);
+        _tokenLifetimeHours = Math.Clamp(
+            configuration.GetValue<int?>("Authentication:Sessions:AbsoluteLifetimeHours") ?? 12,
+            1,
+            168);
     }
 
     public string CreateToken(User user)
     {
+        var issuedAt = DateTimeOffset.UtcNow;
         var payload = new AuthTokenPayload(
             user.UserId,
             user.Username,
-            DateTimeOffset.UtcNow.AddHours(TokenLifetimeHours).ToUnixTimeSeconds());
+            Guid.NewGuid().ToString("N"),
+            issuedAt.ToUnixTimeSeconds(),
+            issuedAt.AddHours(_tokenLifetimeHours).ToUnixTimeSeconds());
         var payloadJson = JsonSerializer.Serialize(payload);
         var payloadPart = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
         var signaturePart = Sign(payloadPart);
@@ -93,8 +100,74 @@ public sealed class AuthTokenService
             return false;
         }
 
-        principal = new AuthTokenPrincipal(payload.UserId, payload.Username);
+        if (string.IsNullOrWhiteSpace(payload.SessionId) ||
+            payload.IssuedAtUnix <= 0 ||
+            payload.IssuedAtUnix >= payload.ExpiresAtUnix)
+        {
+            return false;
+        }
+
+        principal = new AuthTokenPrincipal(
+            payload.UserId,
+            payload.Username,
+            payload.SessionId,
+            DateTimeOffset.FromUnixTimeSeconds(payload.IssuedAtUnix),
+            DateTimeOffset.FromUnixTimeSeconds(payload.ExpiresAtUnix));
         return true;
+    }
+
+    public bool TryValidateLegacyToken(string token, out AuthTokenPrincipal principal)
+    {
+        principal = default;
+        var parts = token.Split('.', 2);
+        if (parts.Length != 2 ||
+            string.IsNullOrWhiteSpace(parts[0]) ||
+            string.IsNullOrWhiteSpace(parts[1]) ||
+            !FixedTimeEquals(parts[1], Sign(parts[0])))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(Base64UrlDecode(parts[0]));
+            var root = document.RootElement;
+            if (root.TryGetProperty(nameof(AuthTokenPayload.SessionId), out _) ||
+                !root.TryGetProperty(nameof(AuthTokenPayload.UserId), out var userIdElement) ||
+                !root.TryGetProperty(nameof(AuthTokenPayload.ExpiresAtUnix), out var expiresElement) ||
+                !userIdElement.TryGetInt32(out var userId) ||
+                !expiresElement.TryGetInt64(out var expiresAtUnix) ||
+                userId <= 0 ||
+                expiresAtUnix <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                return false;
+            }
+
+            var username = root.TryGetProperty(nameof(AuthTokenPayload.Username), out var usernameElement) &&
+                           usernameElement.ValueKind == JsonValueKind.String
+                ? usernameElement.GetString()
+                : null;
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix);
+            principal = new AuthTokenPrincipal(
+                userId,
+                username,
+                "legacy",
+                expiresAt.AddHours(-_tokenLifetimeHours),
+                expiresAt);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
     }
 
     public string CreatePreviewToken(int userId, int itemId)
@@ -146,7 +219,12 @@ public sealed class AuthTokenService
             return false;
         }
 
-        principal = new AuthTokenPrincipal(payload.UserId, null);
+        principal = new AuthTokenPrincipal(
+            payload.UserId,
+            null,
+            $"preview-{payload.ItemId}",
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.FromUnixTimeSeconds(payload.ExpiresAtUnix));
         return true;
     }
 
@@ -177,9 +255,19 @@ public sealed class AuthTokenService
         return Convert.FromBase64String(base64);
     }
 
-    private sealed record AuthTokenPayload(int UserId, string? Username, long ExpiresAtUnix);
+    private sealed record AuthTokenPayload(
+        int UserId,
+        string? Username,
+        string SessionId,
+        long IssuedAtUnix,
+        long ExpiresAtUnix);
 
     private sealed record PreviewTokenPayload(int UserId, int ItemId, long ExpiresAtUnix);
 }
 
-public readonly record struct AuthTokenPrincipal(int UserId, string? Username);
+public readonly record struct AuthTokenPrincipal(
+    int UserId,
+    string? Username,
+    string SessionId,
+    DateTimeOffset IssuedAt,
+    DateTimeOffset ExpiresAt);

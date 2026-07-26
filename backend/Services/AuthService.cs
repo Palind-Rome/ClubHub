@@ -141,11 +141,19 @@ public class AuthService
 
     private readonly ClubHubDbContext _db;
     private readonly AuthTokenService _authTokenService;
+    private readonly IAuthSessionService _authSessions;
+    private readonly IPermissionSnapshotCache _permissionSnapshots;
 
-    public AuthService(ClubHubDbContext db, AuthTokenService authTokenService)
+    public AuthService(
+        ClubHubDbContext db,
+        AuthTokenService authTokenService,
+        IAuthSessionService authSessions,
+        IPermissionSnapshotCache permissionSnapshots)
     {
         _db = db;
         _authTokenService = authTokenService;
+        _authSessions = authSessions;
+        _permissionSnapshots = permissionSnapshots;
     }
 
     public async Task InitializeBaseRolesAsync()
@@ -255,7 +263,14 @@ public class AuthService
             throw;
         }
 
-        return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
+        try
+        {
+            return AuthServiceResult<AuthResponse>.Created(await BuildNewAuthResponseAsync(user));
+        }
+        catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(503, "会话服务暂不可用，请稍后重试。");
+        }
     }
 
     public async Task<AuthServiceResult<AuthResponse>> LoginAsync(LoginRequest request)
@@ -284,10 +299,17 @@ public class AuthService
             await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
-        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+        try
+        {
+            return AuthServiceResult<AuthResponse>.Ok(await BuildNewAuthResponseAsync(user));
+        }
+        catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(503, "会话服务暂不可用，请稍后重试。");
+        }
     }
 
-    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId)
+    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId, string token)
     {
         if (userId <= 0)
         {
@@ -312,7 +334,7 @@ public class AuthService
             await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
-        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user, token));
     }
 
     public Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync() => Task.FromResult(BaseRoles);
@@ -379,7 +401,9 @@ public class AuthService
         return AuthServiceResult<IReadOnlyList<int>>.Ok(clubIds);
     }
 
-    public async Task<AuthServiceResult<RoleAssignmentResult>> AssignRoleAsync(AssignRoleRequest request)
+    public async Task<AuthServiceResult<RoleAssignmentResult>> AssignRoleAsync(
+        AssignRoleRequest request,
+        int operatorUserId)
     {
         var roleCode = NormalizeText(request.RoleCode).ToUpperInvariant();
         var roleDef = BaseRoles.FirstOrDefault(r => r.Code == roleCode);
@@ -402,7 +426,7 @@ public class AuthService
         var roleRows = await GetBaseRoleRowsAsync();
         var role = roleRows.Single(r => r.RoleCode == roleCode);
         var clubId = roleDef.Scope == ClubScope ? request.ClubId : null;
-        var permissionResult = await CanAssignRoleAsync(request.OperatorUserId, roleDef, clubId);
+        var permissionResult = await CanAssignRoleAsync(operatorUserId, roleDef, clubId);
         if (!permissionResult.Allowed)
         {
             return AuthServiceResult<RoleAssignmentResult>.Fail(403, permissionResult.Message);
@@ -435,6 +459,9 @@ public class AuthService
         try
         {
             await _db.SaveChangesAsync();
+            await _permissionSnapshots.InvalidateAsync(
+                request.TargetUserId,
+                requiredForSafety: false);
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
@@ -502,7 +529,19 @@ public class AuthService
         return (false, "当前用户没有分配该角色的权限。");
     }
 
-    private async Task<AuthResponse> BuildAuthResponseAsync(User user)
+    private async Task<AuthResponse> BuildNewAuthResponseAsync(User user)
+    {
+        var token = _authTokenService.CreateToken(user);
+        if (!_authTokenService.TryValidateToken(token, out var principal))
+        {
+            throw new InvalidOperationException("Newly created authentication token is invalid.");
+        }
+
+        await _authSessions.CreateAsync(token, principal);
+        return await BuildAuthResponseAsync(user, token);
+    }
+
+    private async Task<AuthResponse> BuildAuthResponseAsync(User user, string token)
     {
         var rawRoles = await GetRawAuthRolesAsync(user.UserId);
         var displayRoles = await BuildDisplayRolesAsync(rawRoles);
@@ -513,7 +552,7 @@ public class AuthService
             .ToList();
 
         return new AuthResponse(
-            _authTokenService.CreateToken(user),
+            token,
             ToAuthUser(user),
             displayRoles,
             permissions);
@@ -521,8 +560,19 @@ public class AuthService
 
     public async Task<IReadOnlyList<AuthRole>> GetPermissionRolesAsync(int userId)
     {
-        var rawRoles = await GetRawAuthRolesAsync(userId);
-        return BuildPermissionRoles(rawRoles);
+        var snapshot = await _permissionSnapshots.GetOrCreateAsync(
+            userId,
+            async () =>
+            {
+                var user = await _db.Users
+                    .AsNoTracking()
+                    .SingleAsync(candidate => candidate.UserId == userId);
+                return new PermissionSnapshot(
+                    userId,
+                    user.AccountStatus,
+                    await GetRawAuthRolesAsync(userId));
+            });
+        return BuildPermissionRoles(snapshot.Roles);
     }
 
     private async Task<IReadOnlyList<AuthRole>> GetRawAuthRolesAsync(int userId)
@@ -913,6 +963,9 @@ public class AuthService
         return message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsRedisAvailabilityFailure(Exception ex) =>
+        ex is StackExchange.Redis.RedisException or TimeoutException or OperationCanceledException;
 
     private static bool IsValidStudentOrStaffNo(string value) => IsStudentNo(value) || IsStaffNo(value);
 

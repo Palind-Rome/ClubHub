@@ -50,6 +50,7 @@ public class LearningController : ControllerBase
     private readonly LearningPreviewService _previewService;
     private readonly LearningPreviewSessionStore _previewSessionStore;
     private readonly AuthTokenService _authTokenService;
+    private readonly IDistributedRateLimiter _rateLimiter;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
@@ -60,6 +61,7 @@ public class LearningController : ControllerBase
         LearningPreviewService previewService,
         LearningPreviewSessionStore previewSessionStore,
         AuthTokenService authTokenService,
+        IDistributedRateLimiter rateLimiter,
         ILogger<LearningController> logger)
     {
         _db = db;
@@ -69,6 +71,7 @@ public class LearningController : ControllerBase
         _previewService = previewService;
         _previewSessionStore = previewSessionStore;
         _authTokenService = authTokenService;
+        _rateLimiter = rateLimiter;
         _logger = logger;
     }
 
@@ -452,18 +455,57 @@ public class LearningController : ControllerBase
 
         try
         {
+            var previewLimit = await _rateLimiter.AcquireAsync(
+                "learning-preview",
+                access.UserId.ToString(),
+                20,
+                TimeSpan.FromMinutes(5),
+                HttpContext.RequestAborted);
+            if (!previewLimit.Allowed)
+            {
+                Response.Headers.RetryAfter = previewLimit.RetryAfterSeconds.ToString();
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    new { message = "在线预览请求过于频繁，请稍后重试。" });
+            }
+
+            if (RequiresOfficeConversion(access.Item!.FileUrl))
+            {
+                var conversionLimit = await _rateLimiter.AcquireAsync(
+                    "office-conversion",
+                    access.UserId.ToString(),
+                    3,
+                    TimeSpan.FromMinutes(10),
+                    HttpContext.RequestAborted);
+                if (!conversionLimit.Allowed)
+                {
+                    Response.Headers.RetryAfter = conversionLimit.RetryAfterSeconds.ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new { message = "Office 文件转换请求过于频繁，请稍后重试。" });
+                }
+            }
+
             var preview = await _previewService.PrepareAsync(
-                access.Item!.ItemId,
+                access.Item.ItemId,
                 access.Item.ClubId,
                 access.Item.FileUrl,
                 HttpContext.RequestAborted);
             var previewToken = _authTokenService.CreatePreviewToken(access.UserId, itemId);
-            _previewSessionStore.Store(
+            var stored = await _previewSessionStore.StoreAsync(
                 previewToken,
                 access.UserId,
                 itemId,
                 preview,
-                _authTokenService.PreviewSessionLifetime);
+                _authTokenService.PreviewSessionLifetime,
+                HttpContext.RequestAborted);
+            if (!stored)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "资源预览会话容量已满",
+                    detail: "当前在线预览会话过多，请稍后重试。");
+            }
             Response.Cookies.Append(
                 AuthTokenService.PreviewCookieName,
                 previewToken,
@@ -486,6 +528,22 @@ public class LearningController : ControllerBase
         {
             return PreviewFailure(exception);
         }
+        catch (LearningPreviewSessionUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法创建 Redis 预览会话。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览会话暂不可用",
+                detail: "无法确认在线预览会话，请稍后重试。");
+        }
+        catch (RateLimitUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法执行分布式限流。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "暂时无法安全校验预览请求，请稍后重试。");
+        }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
             _logger.LogError(exception, "资源 {ItemId} 无法准备在线预览。", itemId);
@@ -496,6 +554,16 @@ public class LearningController : ControllerBase
         }
     }
 
+    private static bool RequiresOfficeConversion(string? fileUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return false;
+        var path = Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri)
+            ? uri.AbsolutePath
+            : fileUrl.Split('?', '#')[0];
+        return Path.GetExtension(path).ToLowerInvariant() is
+            ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
+    }
+
     /// <summary>
     /// 使用短时预览会话重新校验权限后，以 inline 和 Range 语义返回预览内容。
     /// </summary>
@@ -504,24 +572,26 @@ public class LearningController : ControllerBase
     {
         var access = await GetPreviewAccessAsync(itemId);
         if (access.Error is not null) return access.Error;
+        var item = access.Item!;
 
         PreparedLearningPreview? preview = null;
         try
         {
-            if (!Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var previewToken) ||
-                !_previewSessionStore.TryGet(
-                    previewToken,
-                    access.UserId,
-                    itemId,
-                    out preview) || preview is null)
+            if (!Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var previewToken))
             {
                 return Unauthorized("在线预览会话已失效，请重新打开预览。");
             }
+            preview = await _previewSessionStore.GetAsync(
+                previewToken,
+                access.UserId,
+                itemId,
+                HttpContext.RequestAborted);
+            if (preview is null) return Unauthorized("在线预览会话已失效，请重新打开预览。");
             var preparedPreview = preview!;
             LearningPreviewHttpPolicy.Apply(
                 Response,
                 preparedPreview.ContentType,
-                BuildPreviewFileName(access.Item.Title, preparedPreview));
+                BuildPreviewFileName(item.Title, preparedPreview));
 
             var content = await _previewService.OpenAsync(
                 preparedPreview,
@@ -551,6 +621,14 @@ public class LearningController : ControllerBase
                 Response.Headers.ContentRange = $"bytes */{preview.Length}";
             }
             return PreviewFailure(exception);
+        }
+        catch (LearningPreviewSessionUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法读取 Redis 预览会话。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览会话暂不可用",
+                detail: "无法确认在线预览会话，请稍后重试。");
         }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
@@ -684,7 +762,7 @@ public class LearningController : ControllerBase
             ? item.FileUrl
             : null;
         var clubId = item.ClubId;
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         var records = await _db.LearningRecords
             .Where(record => record.ItemId == itemId)
             .ToListAsync();
@@ -762,6 +840,7 @@ public class LearningController : ControllerBase
     /// 社团管理员或系统管理员审核待发布的课程、资源。
     /// </summary>
     [HttpPost("items/{itemId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewLearningItem")]
     public async Task<IActionResult> ReviewItem(
         int itemId,
         [FromBody] ReviewLearningItemRequest? request)
@@ -796,7 +875,7 @@ public class LearningController : ControllerBase
         var rejected = request.Result == ReviewLearningItemRequest.ResultEnum.RejectedEnum;
         if (!approved && !rejected) return BadRequest("审核结果只能是 approved 或 rejected。");
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         item.ItemStatus = approved
             ? LearningWorkflow.ItemStatusPublished
             : LearningWorkflow.ItemStatusRejected;
@@ -938,6 +1017,7 @@ public class LearningController : ControllerBase
     /// 加入课程；退出后再次加入会恢复原学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/enrollments")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("enrollLearningItem")]
     public async Task<IActionResult> Enroll(int itemId)
     {
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
@@ -947,7 +1027,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await _db.LearningItems
                 .Include(candidate => candidate.Club)
@@ -1083,7 +1163,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await LoadLearningItemForAccessAsync(itemId);
             if (item is null) return NotFound("学习资源不存在。");
@@ -1172,7 +1252,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await LoadLearningItemForAccessAsync(itemId);
             if (item is null) return NotFound("学习资源不存在。");
