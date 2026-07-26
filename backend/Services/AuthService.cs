@@ -459,9 +459,6 @@ public class AuthService
         try
         {
             await _db.SaveChangesAsync();
-            await _permissionSnapshots.InvalidateAsync(
-                request.TargetUserId,
-                requiredForSafety: false);
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
@@ -562,16 +559,9 @@ public class AuthService
     {
         var snapshot = await _permissionSnapshots.GetOrCreateAsync(
             userId,
-            async () =>
-            {
-                var user = await _db.Users
-                    .AsNoTracking()
-                    .SingleAsync(candidate => candidate.UserId == userId);
-                return new PermissionSnapshot(
-                    userId,
-                    user.AccountStatus,
-                    await GetRawAuthRolesAsync(userId));
-            });
+            async () => new PermissionSnapshot(
+                userId,
+                await GetRawAuthRolesAsync(userId)));
         return BuildPermissionRoles(snapshot.Roles);
     }
 
@@ -965,7 +955,7 @@ public class AuthService
     }
 
     private static bool IsRedisAvailabilityFailure(Exception ex) =>
-        ex is StackExchange.Redis.RedisException or TimeoutException or OperationCanceledException;
+        ex is StackExchange.Redis.RedisException or TimeoutException;
 
     private static bool IsValidStudentOrStaffNo(string value) => IsStudentNo(value) || IsStaffNo(value);
 

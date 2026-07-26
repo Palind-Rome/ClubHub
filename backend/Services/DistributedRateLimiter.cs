@@ -29,6 +29,10 @@ public sealed class DistributedRateLimiter : IDistributedRateLimiter
         local current = redis.call('incr', KEYS[1])
         if current == 1 then redis.call('expire', KEYS[1], ARGV[1]) end
         local ttl = redis.call('ttl', KEYS[1])
+        if ttl <= 0 then
+          redis.call('expire', KEYS[1], ARGV[1])
+          ttl = tonumber(ARGV[1])
+        end
         local remaining = tonumber(ARGV[2]) - current
         if remaining < 0 then remaining = 0 end
         return {current <= tonumber(ARGV[2]) and 1 or 0, remaining, ttl}

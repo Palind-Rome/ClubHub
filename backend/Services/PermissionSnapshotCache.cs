@@ -25,7 +25,6 @@ public interface IPermissionSnapshotCache
 
 public sealed record PermissionSnapshot(
     int UserId,
-    string? AccountStatus,
     IReadOnlyList<AuthRole> Roles);
 
 public sealed record AccountStatusSnapshot(bool Exists, string? Status);

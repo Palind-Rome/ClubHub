@@ -45,7 +45,7 @@ function handleUnauthorizedResponse(init: RequestInit) {
   window.location.replace(`/auth?redirect=${encodeURIComponent(redirect)}`);
 }
 
-function attachIdempotencyKey(url: string, init: RequestInit) {
+export function attachIdempotencyKey(url: string, init: RequestInit) {
   const parsed = new URL(url, window.location.origin);
   if (!idempotentPaths.some((pattern) => pattern.test(parsed.pathname))) return init;
 
@@ -58,7 +58,7 @@ function attachIdempotencyKey(url: string, init: RequestInit) {
   return { ...init, headers };
 }
 
-function finishIdempotencyAttempt(init: RequestInit, response: Response) {
+export function finishIdempotencyAttempt(init: RequestInit, response: Response) {
   if (response.status === 409 || response.status >= 500) return;
   const headers = new Headers(init.headers);
   const key = headers.get("Idempotency-Key");
@@ -66,6 +66,11 @@ function finishIdempotencyAttempt(init: RequestInit, response: Response) {
   const fingerprint = idempotencyFingerprintsByKey.get(key);
   if (fingerprint) idempotencyKeys.delete(fingerprint);
   idempotencyFingerprintsByKey.delete(key);
+}
+
+export function resetIdempotencyAttemptsForTests() {
+  idempotencyKeys.clear();
+  idempotencyFingerprintsByKey.clear();
 }
 
 export const apiClient = new DefaultApi(

@@ -9073,6 +9073,7 @@ components:
         accountStatus:
           type: string
           enum: [normal, disabled]
+          example: disabled
           description: normal 表示启用，disabled 表示停用。
       required:
         - accountStatus

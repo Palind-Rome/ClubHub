@@ -8,6 +8,7 @@ import {
   type CancelProjectRequest,
   type Club,
   type Project,
+  type ProjectTask as ProjectTaskDto,
   type UserSummary,
 } from "../api";
 import { apiClient as api } from "../apiClient";
@@ -576,18 +577,17 @@ async function submitTaskDeliverable() {
 
   taskSavingId.value = activeTask.value.id;
   try {
-    const task = await projectApiRequest<ProjectTaskApi>(
-      `/api/projects/${selectedProject.value.id}/tasks/${activeTask.value.id}/deliverable`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          deliverableTitle: deliverableForm.deliverableTitle.trim(),
-          deliverableDesc: normalizeOptionalText(deliverableForm.deliverableDesc),
-          deliverableUrl: normalizeOptionalText(deliverableForm.deliverableUrl),
-        }),
+    const task = await api.submitProjectTaskDeliverable({
+      idempotencyKey: crypto.randomUUID(),
+      projectId: selectedProject.value.id,
+      taskId: activeTask.value.id,
+      submitProjectTaskDeliverableRequest: {
+        deliverableTitle: deliverableForm.deliverableTitle.trim(),
+        deliverableDesc: normalizeOptionalText(deliverableForm.deliverableDesc),
+        deliverableUrl: normalizeOptionalText(deliverableForm.deliverableUrl),
       },
-    );
-    upsertProjectTask(mapProjectTask(task));
+    });
+    upsertProjectTask(mapProjectTaskDto(task));
     ElMessage.success("任务成果已提交，等待审核");
     deliverableDialogVisible.value = false;
   } catch (error) {
@@ -620,17 +620,16 @@ async function reviewTaskDeliverable() {
 
   taskSavingId.value = activeTask.value.id;
   try {
-    const task = await projectApiRequest<ProjectTaskApi>(
-      `/api/projects/${selectedProject.value.id}/tasks/${activeTask.value.id}/deliverable/review`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          approved: deliverableReviewForm.approved,
-          reviewComment: normalizeOptionalText(deliverableReviewForm.reviewComment),
-        }),
+    const task = await api.reviewProjectTaskDeliverable({
+      idempotencyKey: crypto.randomUUID(),
+      projectId: selectedProject.value.id,
+      taskId: activeTask.value.id,
+      reviewProjectTaskDeliverableRequest: {
+        approved: deliverableReviewForm.approved,
+        reviewComment: normalizeOptionalText(deliverableReviewForm.reviewComment),
       },
-    );
-    upsertProjectTask(mapProjectTask(task));
+    });
+    upsertProjectTask(mapProjectTaskDto(task));
     ElMessage.success("任务成果审核结果已保存");
     deliverableReviewDialogVisible.value = false;
     await loadProjects();
@@ -893,6 +892,15 @@ function mapProjectTask(task: ProjectTaskApi): ProjectTask {
     deliverableStatus: normalizeDeliverableStatus(task.deliverableStatus),
     deliverableSubmittedAt: parseOptionalDate(task.deliverableSubmittedAt),
     deliverableReviewedAt: parseOptionalDate(task.deliverableReviewedAt),
+  };
+}
+
+function mapProjectTaskDto(task: ProjectTaskDto): ProjectTask {
+  return {
+    ...task,
+    assignees: task.assignees ?? [],
+    taskStatus: normalizeTaskStatus(task.taskStatus),
+    deliverableStatus: normalizeDeliverableStatus(task.deliverableStatus),
   };
 }
 

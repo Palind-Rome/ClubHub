@@ -13,7 +13,7 @@
 Oracle 是正式业务数据的唯一事实来源。Redis 不替代 Oracle 事务、外键、唯一约束
 和审计记录，也不能成为无法重建的业务事实的唯一存储位置。
 
-#156 新增 API 契约和 Oracle `IDEMPOTENCY_RECORDS` 台账，但 Oracle 仍是唯一事实来源。
+Issue `#156` 新增 API 契约和 Oracle `IDEMPOTENCY_RECORDS` 台账，但 Oracle 仍是唯一事实来源。
 
 ## 2. 当前行为
 

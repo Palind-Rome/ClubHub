@@ -60,7 +60,8 @@
    或重命名表、列、主键、外键，也不更新业务数据。执行期间必须停止旧后端，执行
    完成并验证通过后才能部署新后端。
 11. `20260726_add_idempotency_records.sql`：新增 `IDEMPOTENCY_RECORDS` 和
-    `SEQ_IDEMPOTENCY_RECORDS`，保存声明为幂等写接口的请求摘要、状态和可复用结果。
+    `SEQ_IDEMPOTENCY_RECORDS`，保存声明为幂等写接口的请求摘要、状态和可复用结果，
+    并为过期清理建立索引；脚本头部列出关闭功能后的人工回滚步骤。
     执行迁移并通过 `verify.sql` 前必须保持 `Redis:Features:Idempotency` 关闭；
     生产或演示库只能在人工确认后的维护窗口执行。
 
@@ -115,7 +116,7 @@
 11. 执行 `migrations/20260718_harden_evaluation_award_sources.sql`，确认成员考核奖项分来源表已带上社团和成员范围，并替换为组合外键。
 12. 执行 `migrations/20260720_add_budget_management_closed_loop.sql`，新增社团年度经费账户、经费申请、审批记录和经费流水表。执行前先备份并暂停经费申请/审核写入。
 13. 停止仍使用 `MAX(id) + 1` 的旧后端，执行 `migrations/20260723_add_remaining_id_sequences.sql`，确认 17 个新增 Sequence 和主键默认值均已生效。
-14. 执行 `migrations/20260726_add_idempotency_records.sql`，确认幂等台账、Sequence、唯一约束、状态检查和用户外键均已创建。
+14. 执行 `migrations/20260726_add_idempotency_records.sql`，确认幂等台账、Sequence、过期索引、唯一约束、状态检查和用户外键均已创建。
 15. 执行 `verify.sql`；41 张核心表计数应为 41，Sequence 缺失或落后、重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评奖评优申请复合外键列定义、评定细则范围/外键、考核奖项分来源错挂、经费闭环和幂等台账校验查询均应返回预期结果。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。

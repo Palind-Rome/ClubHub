@@ -243,6 +243,13 @@ async function revokeUserSessions(user: UserSummary) {
   try {
     await apiClient.revokeUserSessions({ userId: user.id });
     ElMessage.success(`已强制下线 ${user.displayName}`);
+    if (user.id === auth.value?.user.id) {
+      auth.value = null;
+      clearSession();
+      mode.value = "login";
+      await router.replace("/auth");
+      return;
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "强制下线失败");
   }

@@ -8,6 +8,12 @@
 -- 本脚本只新增 SEQ_IDEMPOTENCY_RECORDS、IDEMPOTENCY_RECORDS 及其约束，
 -- 不修改已有业务表或业务数据。Oracle DDL 会隐式提交，不能依赖 ROLLBACK 回滚。
 -- 脚本可重复执行；中断后修复原因并从头重跑。
+--
+-- 回滚方案（需先备份并进入维护窗口）：
+--   1. 关闭 Redis:Features:Idempotency，确认没有进行中的幂等请求。
+--   2. DROP TABLE IDEMPOTENCY_RECORDS PURGE;
+--   3. DROP SEQUENCE SEQ_IDEMPOTENCY_RECORDS;
+-- 影响范围仅为本迁移新增对象，不涉及既有业务表与数据。
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
 
@@ -65,6 +71,22 @@ BEGIN
 END;
 /
 
+DECLARE
+  index_count NUMBER;
+BEGIN
+  SELECT COUNT(*)
+    INTO index_count
+    FROM user_indexes
+   WHERE index_name = 'IX_IDEMPOTENCY_EXPIRES_AT';
+
+  IF index_count = 0 THEN
+    EXECUTE IMMEDIATE
+      'CREATE INDEX IX_IDEMPOTENCY_EXPIRES_AT ' ||
+      'ON IDEMPOTENCY_RECORDS (expires_at)';
+  END IF;
+END;
+/
+
 SELECT table_name
 FROM user_tables
 WHERE table_name = 'IDEMPOTENCY_RECORDS';
@@ -77,3 +99,7 @@ SELECT constraint_name, constraint_type, status
 FROM user_constraints
 WHERE table_name = 'IDEMPOTENCY_RECORDS'
 ORDER BY constraint_name;
+
+SELECT index_name, uniqueness, status
+FROM user_indexes
+WHERE index_name = 'IX_IDEMPOTENCY_EXPIRES_AT';

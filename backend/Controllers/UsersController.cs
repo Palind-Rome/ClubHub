@@ -169,7 +169,13 @@ public class UsersController : ControllerBase
                 .Where(userRole => userRole.Role != null &&
                                    userRole.Role.RoleCode == "SYSTEM_ADMIN" &&
                                    userRole.User != null &&
-                                   userRole.User.AccountStatus != "disabled")
+                                   (userRole.User.AccountStatus == null ||
+                                    userRole.User.AccountStatus == "" ||
+                                    userRole.User.AccountStatus.ToLower() == "active" ||
+                                    userRole.User.AccountStatus.ToLower() == "normal" ||
+                                    userRole.User.AccountStatus.ToLower() == "enabled" ||
+                                    userRole.User.AccountStatus == "在任" ||
+                                    userRole.User.AccountStatus == "正常"))
                 .Select(userRole => userRole.UserId)
                 .Distinct()
                 .CountAsync();

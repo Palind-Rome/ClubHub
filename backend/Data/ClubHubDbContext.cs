@@ -710,6 +710,8 @@ public class ClubHubDbContext : DbContext
             })
              .IsUnique()
              .HasDatabaseName("UQ_IDEMPOTENCY_USER_SCOPE_KEY");
+            e.HasIndex(record => record.ExpiresAt)
+             .HasDatabaseName("IX_IDEMPOTENCY_EXPIRES_AT");
             e.HasOne(record => record.User)
              .WithMany()
              .HasForeignKey(record => record.UserId)

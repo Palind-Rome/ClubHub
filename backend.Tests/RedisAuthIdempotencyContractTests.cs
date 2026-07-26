@@ -139,7 +139,7 @@ public sealed class RedisAuthIdempotencyContractTests
     [Fact]
     public async Task FixedWindowLuaIsAtomicAcrossConcurrentClientsWhenCiRedisIsAvailable()
     {
-        var connectionString = Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        var connectionString = RedisTestConnection();
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         await using var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
@@ -163,7 +163,7 @@ public sealed class RedisAuthIdempotencyContractTests
     [Fact]
     public async Task RedisSessionsAreSharedAndEvictTheOldestSessionWhenCiRedisIsAvailable()
     {
-        var connectionString = Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        var connectionString = RedisTestConnection();
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         await using var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
@@ -224,7 +224,7 @@ public sealed class RedisAuthIdempotencyContractTests
     [Fact]
     public async Task FixedWindowLimiterAllowsExactlyTheConfiguredConcurrencyWhenCiRedisIsAvailable()
     {
-        var connectionString = Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        var connectionString = RedisTestConnection();
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         await using var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
@@ -261,7 +261,7 @@ public sealed class RedisAuthIdempotencyContractTests
     [Fact]
     public async Task StoringPreviewSessionDoesNotEvictAnotherUnexpiredSessionWhenCiRedisIsAvailable()
     {
-        var connectionString = Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        var connectionString = RedisTestConnection();
         if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         await using var connection = await ConnectionMultiplexer.ConnectAsync(connectionString);
@@ -324,6 +324,22 @@ public sealed class RedisAuthIdempotencyContractTests
             current = current.Parent;
         }
         return current?.FullName ?? throw new InvalidOperationException("Repository root was not found.");
+    }
+
+    private static string? RedisTestConnection()
+    {
+        var connection =
+            Environment.GetEnvironmentVariable("CLUBHUB_REDIS_TEST_CONNECTION");
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("CI"),
+                "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Assert.False(
+                string.IsNullOrWhiteSpace(connection),
+                "CI must provide CLUBHUB_REDIS_TEST_CONNECTION for Redis integration tests.");
+        }
+        return connection;
     }
 
     private static string Base64UrlEncode(byte[] bytes) =>

@@ -193,6 +193,10 @@ WHERE table_name = 'IDEMPOTENCY_RECORDS'
   )
 ORDER BY constraint_name;
 
+SELECT index_name, uniqueness, status
+FROM user_indexes
+WHERE index_name = 'IX_IDEMPOTENCY_EXPIRES_AT';
+
 SELECT column_id, column_name, data_type, data_length, nullable, data_default
 FROM user_tab_columns
 WHERE table_name = 'PROJECT_MEMBERS'

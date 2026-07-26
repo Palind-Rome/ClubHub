@@ -91,10 +91,12 @@ public sealed partial class IdempotencyMiddleware
             }
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            context.RequestAborted);
-        var redisKey = keys.Build("idempotency", metadata.OperationId, userId, keyHash);
+        var redisKey = keys.Build(
+            "idempotency",
+            "operation",
+            metadata.OperationId,
+            userId,
+            keyHash);
         var owner = Guid.NewGuid().ToString("N");
         var processing = JsonSerializer.Serialize(new RedisIdempotencyState(
             "processing",
@@ -139,9 +141,6 @@ public sealed partial class IdempotencyMiddleware
             return;
         }
 
-        var originalBody = context.Response.Body;
-        await using var capture = new MemoryStream();
-        context.Response.Body = capture;
         using var leaseCancellation =
             CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
         var leaseTask = MaintainProcessingLeaseAsync(
@@ -150,102 +149,122 @@ public sealed partial class IdempotencyMiddleware
             processing,
             logger,
             leaseCancellation.Token);
-        var transactionCompleted = false;
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction;
         try
         {
-            await _next(context);
-            capture.Position = 0;
-            if (capture.Length > MaxResponseBytes)
-            {
-                await transaction.RollbackAsync(context.RequestAborted);
-                transactionCompleted = true;
-                await SafeReleaseAsync(redis, redisKey, processing, logger, context.RequestAborted);
-                capture.SetLength(0);
-                context.Response.Clear();
-                await WriteErrorAsync(
-                    context,
-                    503,
-                    "响应超过幂等重放上限，操作已回滚，请缩小请求后重试。");
-                capture.Position = 0;
-                context.Response.Body = originalBody;
-                await capture.CopyToAsync(originalBody, context.RequestAborted);
-                return;
-            }
-
-            var bodyBytes = capture.ToArray();
-            if (context.Response.StatusCode is >= 200 and < 300)
-            {
-                var body = Encoding.UTF8.GetString(bodyBytes);
-                var headers = CaptureHeaders(context.Response);
-                now = DateTime.UtcNow;
-                var record = existing ?? new IdempotencyRecord
-                {
-                    UserId = userId,
-                    OperationScope = metadata.OperationId,
-                    RequestKeyHash = keyHash,
-                    RequestHash = requestHash,
-                    CreatedAt = now
-                };
-                record.RecordStatus = "succeeded";
-                record.HttpStatus = context.Response.StatusCode;
-                record.ContentType = context.Response.ContentType;
-                record.ResponseHeaders = JsonSerializer.Serialize(headers);
-                record.ResponseBody = body;
-                record.ExpiresAt = now.Add(ResultLifetime);
-                record.UpdatedAt = now;
-                if (existing is null) db.IdempotencyRecords.Add(record);
-                await db.SaveChangesAsync(context.RequestAborted);
-                await transaction.CommitAsync(context.RequestAborted);
-                transactionCompleted = true;
-
-                var succeeded = new RedisIdempotencyState(
-                    "succeeded",
-                    requestHash,
-                    owner,
-                    context.Response.StatusCode,
-                    body,
-                    headers);
-                try
-                {
-                    await redis.StringSetAsync(
-                        redisKey,
-                        JsonSerializer.Serialize(succeeded),
-                        ResultLifetime,
-                        context.RequestAborted);
-                }
-                catch (Exception ex) when (ex is RedisException or TimeoutException)
-                {
-                    logger.LogWarning(
-                        ex,
-                        "Redis idempotency result write failed; Oracle ledger will replay {OperationId}.",
-                        metadata.OperationId);
-                }
-            }
-            else
-            {
-                await transaction.RollbackAsync(context.RequestAborted);
-                transactionCompleted = true;
-                await SafeReleaseAsync(redis, redisKey, processing, logger, context.RequestAborted);
-            }
-
-            context.Response.Body = originalBody;
-            capture.Position = 0;
-            await capture.CopyToAsync(originalBody, context.RequestAborted);
+            transaction = await db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                context.RequestAborted);
         }
         catch
         {
-            if (!transactionCompleted)
-            {
-                await transaction.RollbackAsync(CancellationToken.None);
-            }
+            leaseCancellation.Cancel();
+            await leaseTask;
             await SafeReleaseAsync(redis, redisKey, processing, logger, CancellationToken.None);
             throw;
         }
-        finally
+        await using (transaction)
         {
-            leaseCancellation.Cancel();
-            await leaseTask;
-            context.Response.Body = originalBody;
+            var originalBody = context.Response.Body;
+            await using var capture = new MemoryStream();
+            context.Response.Body = capture;
+            var transactionCompleted = false;
+            try
+            {
+                await _next(context);
+                capture.Position = 0;
+                if (capture.Length > MaxResponseBytes)
+                {
+                    await transaction.RollbackAsync(context.RequestAborted);
+                    transactionCompleted = true;
+                    await SafeReleaseAsync(redis, redisKey, processing, logger, context.RequestAborted);
+                    capture.SetLength(0);
+                    context.Response.Clear();
+                    await WriteErrorAsync(
+                        context,
+                        503,
+                        "响应超过幂等重放上限，操作已回滚，请缩小请求后重试。");
+                    capture.Position = 0;
+                    context.Response.Body = originalBody;
+                    await capture.CopyToAsync(originalBody, context.RequestAborted);
+                    return;
+                }
+
+                var bodyBytes = capture.ToArray();
+                if (context.Response.StatusCode is >= 200 and < 300)
+                {
+                    var body = Encoding.UTF8.GetString(bodyBytes);
+                    var headers = CaptureHeaders(context.Response);
+                    now = DateTime.UtcNow;
+                    var record = existing ?? new IdempotencyRecord
+                    {
+                        UserId = userId,
+                        OperationScope = metadata.OperationId,
+                        RequestKeyHash = keyHash,
+                        RequestHash = requestHash,
+                        CreatedAt = now
+                    };
+                    record.RecordStatus = "succeeded";
+                    record.HttpStatus = context.Response.StatusCode;
+                    record.ContentType = context.Response.ContentType;
+                    record.ResponseHeaders = JsonSerializer.Serialize(headers);
+                    record.ResponseBody = body;
+                    record.ExpiresAt = now.Add(ResultLifetime);
+                    record.UpdatedAt = now;
+                    if (existing is null) db.IdempotencyRecords.Add(record);
+                    await db.SaveChangesAsync(context.RequestAborted);
+                    await transaction.CommitAsync(context.RequestAborted);
+                    transactionCompleted = true;
+
+                    var succeeded = new RedisIdempotencyState(
+                        "succeeded",
+                        requestHash,
+                        owner,
+                        context.Response.StatusCode,
+                        body,
+                        headers);
+                    try
+                    {
+                        await redis.StringSetAsync(
+                            redisKey,
+                            JsonSerializer.Serialize(succeeded),
+                            ResultLifetime,
+                            context.RequestAborted);
+                    }
+                    catch (Exception ex) when (ex is RedisException or TimeoutException)
+                    {
+                        logger.LogWarning(
+                            ex,
+                            "Redis idempotency result write failed; Oracle ledger will replay {OperationId}.",
+                            metadata.OperationId);
+                    }
+                }
+                else
+                {
+                    await transaction.RollbackAsync(context.RequestAborted);
+                    transactionCompleted = true;
+                    await SafeReleaseAsync(redis, redisKey, processing, logger, context.RequestAborted);
+                }
+
+                context.Response.Body = originalBody;
+                capture.Position = 0;
+                await capture.CopyToAsync(originalBody, context.RequestAborted);
+            }
+            catch
+            {
+                if (!transactionCompleted)
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                await SafeReleaseAsync(redis, redisKey, processing, logger, CancellationToken.None);
+                throw;
+            }
+            finally
+            {
+                leaseCancellation.Cancel();
+                await leaseTask;
+                context.Response.Body = originalBody;
+            }
         }
     }
 

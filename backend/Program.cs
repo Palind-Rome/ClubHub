@@ -24,7 +24,14 @@ builder.Services.AddControllers()
 builder.Services.AddSingleton<AuthTokenService>();
 builder.Services
     .AddOptions<AuthSessionOptions>()
-    .Bind(builder.Configuration.GetSection(AuthSessionOptions.SectionName));
+    .Bind(builder.Configuration.GetSection(AuthSessionOptions.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(
+        options =>
+            TimeSpan.FromHours(options.AbsoluteLifetimeHours) >=
+            TimeSpan.FromMinutes(options.SlidingLifetimeMinutes),
+        "Authentication session absolute lifetime must not be shorter than sliding lifetime.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<IAuthSessionService, AuthSessionService>();
 builder.Services.AddSingleton<IPermissionSnapshotCache, PermissionSnapshotCache>();
 builder.Services.AddSingleton<IDistributedRateLimiter, DistributedRateLimiter>();
