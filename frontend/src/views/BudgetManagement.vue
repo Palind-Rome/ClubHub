@@ -9,7 +9,7 @@ import {
   BUDGET_APPLY_PERMISSION,
   BUDGET_REVIEW_PERMISSION,
 } from "../budgetPermissions";
-import type { BudgetAccount, BudgetApplication, BudgetTransaction } from "../api/models";
+import type { BudgetAccount, BudgetApplication, BudgetReviewRecord, BudgetTransaction } from "../api/models";
 import { apiClient, createIdempotencyKey } from "../apiClient";
 import { requestJson } from "../composables/useApiRequest";
 import { formatVenueReservationDateTime } from "../beijingTime";
@@ -50,6 +50,15 @@ interface ReviewForm {
   comment: string;
 }
 
+interface ResubmitForm {
+  activityId?: number | null;
+  type: "activity_budget" | "purchase" | "reimbursement";
+  title: string;
+  amount: number;
+  purpose: string;
+  detail: string;
+}
+
 const auth = ref(readAuth());
 const clubs = ref<ClubOption[]>([]);
 const accounts = ref<BudgetAccount[]>([]);
@@ -67,6 +76,12 @@ const reviewTarget = ref<BudgetApplication | null>(null);
 const accountFormRef = ref<FormInstance>();
 const applicationFormRef = ref<FormInstance>();
 const reviewFormRef = ref<FormInstance>();
+const resubmitDialogVisible = ref(false);
+const resubmitTarget = ref<BudgetApplication | null>(null);
+const resubmitFormRef = ref<FormInstance>();
+const reviewHistoryVisible = ref(false);
+const reviewRecords = ref<BudgetReviewRecord[]>([]);
+const loadingReviews = ref(false);
 
 const accountForm = reactive<AccountForm>({
   clubId: undefined,
@@ -89,6 +104,15 @@ const applicationForm = reactive<ApplicationForm>({
 const reviewForm = reactive<ReviewForm>({
   approved: true,
   comment: "",
+});
+
+const resubmitForm = reactive<ResubmitForm>({
+  activityId: undefined,
+  type: "activity_budget",
+  title: "",
+  amount: 0,
+  purpose: "",
+  detail: "",
 });
 
 const hasGlobalAccess = computed(() => {
@@ -230,6 +254,22 @@ const applicationRules: FormRules<ApplicationForm> = {
 
 const reviewRules: FormRules<ReviewForm> = {
   comment: [{ max: 255, message: "审核意见不能超过 255 个字符", trigger: "blur" }],
+};
+
+const resubmitRules: FormRules<ResubmitForm> = {
+  type: [{ required: true, message: "请选择申请类型", trigger: "change" }],
+  title: [
+    { required: true, message: "请输入申请标题", trigger: "blur" },
+    { max: 255, message: "申请标题不能超过 255 个字符", trigger: "blur" },
+  ],
+  amount: [
+    { required: true, message: "请输入申请金额", trigger: "change" },
+    { type: "number", min: 0.01, message: "申请金额必须大于 0", trigger: "change" },
+  ],
+  purpose: [
+    { required: true, message: "请输入经费用途", trigger: "blur" },
+    { max: 255, message: "经费用途不能超过 255 个字符", trigger: "blur" },
+  ],
 };
 
 function ensureActiveClub() {
@@ -536,6 +576,77 @@ async function cancelApplication(application: BudgetApplication) {
   }
 }
 
+function openResubmitApplication(application: BudgetApplication) {
+  const currentUserId = auth.value?.user.id;
+  if (application.applicantUserId !== currentUserId && !canApplyForClub(application.clubId)) {
+    ElMessage.warning("当前账号没有重新提交该经费申请的权限。");
+    return;
+  }
+
+  resubmitTarget.value = application;
+  resubmitForm.activityId = application.activityId;
+  resubmitForm.type = application.type;
+  resubmitForm.title = application.title;
+  resubmitForm.amount = application.amount;
+  resubmitForm.purpose = application.purpose;
+  resubmitForm.detail = application.detail ?? "";
+  resubmitDialogVisible.value = true;
+}
+
+async function submitResubmit() {
+  if (!resubmitTarget.value || !(await resubmitFormRef.value?.validate())) return;
+
+  try {
+    await requestJson<BudgetApplication>(
+      `/api/v1/budget/applications/${resubmitTarget.value.id}/resubmit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: resubmitForm.activityId ?? null,
+          type: resubmitForm.type,
+          title: resubmitForm.title,
+          amount: resubmitForm.amount,
+          purpose: resubmitForm.purpose,
+          detail: resubmitForm.detail.trim() || null,
+        }),
+      },
+    );
+
+    resubmitDialogVisible.value = false;
+    ElMessage.success("经费申请已重新提交，等待审核");
+    await refreshData();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "重新提交经费申请失败");
+  }
+}
+
+async function openReviewHistory(application: BudgetApplication) {
+  reviewHistoryVisible.value = true;
+  loadingReviews.value = true;
+  try {
+    reviewRecords.value = await requestJson<BudgetReviewRecord[]>(
+      `/api/v1/budget/applications/${application.id}/reviews`,
+    );
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "加载审核历史失败");
+    reviewRecords.value = [];
+  } finally {
+    loadingReviews.value = false;
+  }
+}
+
+function reviewActionLabel(approved: boolean) {
+  return approved ? "审核通过" : "审核驳回";
+}
+
+function activityOptionsForSelectedResubmitAccount() {
+  if (!resubmitTarget.value) return [];
+  return activities.value.filter(
+    (activity) => activity.clubId === resubmitTarget.value?.clubId,
+  );
+}
+
 onMounted(() => {
   refreshAllData();
 });
@@ -726,6 +837,23 @@ onMounted(() => {
             >
               撤销
             </el-button>
+            <el-button
+              v-if="row.status === 'rejected' && (row.applicantUserId === auth?.user.id || canApplyForClub(row.clubId))"
+              size="small"
+              type="primary"
+              text
+              @click="openResubmitApplication(row)"
+            >
+              重新提交
+            </el-button>
+            <el-button
+              size="small"
+              text
+              type="info"
+              @click="openReviewHistory(row)"
+            >
+              审核历史
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -900,6 +1028,92 @@ onMounted(() => {
       <template #footer>
         <el-button @click="reviewDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitReview">保存审核</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="resubmitDialogVisible" title="重新提交经费申请" width="560px">
+      <el-form
+        ref="resubmitFormRef"
+        :model="resubmitForm"
+        :rules="resubmitRules"
+        label-width="110px"
+      >
+        <el-form-item label="申请类型" prop="type">
+          <el-select v-model="resubmitForm.type">
+            <el-option label="活动预算" value="activity_budget" />
+            <el-option label="采购申请" value="purchase" />
+            <el-option label="报销申请" value="reimbursement" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联活动" prop="activityId">
+          <el-select
+            v-model="resubmitForm.activityId"
+            clearable
+            placeholder="可不选"
+          >
+            <el-option
+              v-for="activity in activityOptionsForSelectedResubmitAccount()"
+              :key="activity.id"
+              :label="activity.title"
+              :value="activity.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="申请标题" prop="title">
+          <el-input v-model="resubmitForm.title" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="申请金额" prop="amount">
+          <el-input-number v-model="resubmitForm.amount" :min="0.01" :precision="2" />
+        </el-form-item>
+        <el-form-item label="经费用途" prop="purpose">
+          <el-input v-model="resubmitForm.purpose" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="明细说明" prop="detail">
+          <el-input
+            v-model="resubmitForm.detail"
+            type="textarea"
+            :rows="3"
+            maxlength="4000"
+            show-word-limit
+            placeholder="可填写预算条目、数量、单价或报销说明"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resubmitDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitResubmit">重新提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="reviewHistoryVisible" title="审核历史" width="600px">
+      <div v-loading="loadingReviews">
+        <el-timeline v-if="reviewRecords.length > 0">
+          <el-timeline-item
+            v-for="record in reviewRecords"
+            :key="record.id"
+            :timestamp="formatDateTime(record.reviewedAt)"
+            :type="record.approved ? 'success' : 'danger'"
+            placement="top"
+          >
+            <p>
+              <strong>{{ record.reviewerName }}</strong>
+              <el-tag
+                :type="record.approved ? 'success' : 'danger'"
+                size="small"
+                style="margin-left: 8px"
+              >
+                {{ reviewActionLabel(record.approved) }}
+              </el-tag>
+            </p>
+            <p v-if="record.comment" style="color: #666; margin-top: 4px">
+              {{ record.comment }}
+            </p>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else description="暂无审核记录" />
+      </div>
+      <template #footer>
+        <el-button @click="reviewHistoryVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </section>
