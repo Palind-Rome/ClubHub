@@ -377,8 +377,14 @@ Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Sch
 | `SERVER_USER` | 部署用户 `deploy`，不用 root。 |
 | `SERVER_SSH_KEY` | GitHub Actions 专用 SSH 私钥。 |
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
+| `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
-服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle 容器和应用容器应连接到同一个网络。不把 Oracle 1521 端口直接暴露到公网。
+目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`。未设置时部署默认
+为 `false`；完成缓存验证后显式设为 `true`，无需修改镜像。
+部署 workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
+确保部署和回滚不依赖可变的 `latest` 标签。
+
+服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle、Redis 和应用容器连接到同一个网络。Oracle 1521 和 Redis 6379 均不得直接暴露到公网。Redis 的备份、恢复、升级和排障见 `docs/operations/redis-runbook.md`。
 
 ### PR 门禁（feature → dev）
 
@@ -494,6 +500,7 @@ dotnet run --project backend          # 后端 → localhost:5000
 cd frontend && pnpm run dev           # 前端 → localhost:5173
 
 # 方式二：Docker（只需 Docker，不需要装 SDK/Node）
+cp .env.example .env                       # 设置本机专用 REDIS_PASSWORD
 docker compose -f docker-compose.dev.yml up   # 一键启动，源码热重载
 ```
 

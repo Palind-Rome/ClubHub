@@ -54,6 +54,8 @@ public static class RedisServiceCollectionExtensions
         }
 
         var connectionOptions = ConfigurationOptions.Parse(options.ConnectionString);
+        connectionOptions.User = options.Username;
+        connectionOptions.Password = options.Password;
         connectionOptions.AbortOnConnectFail = false;
         connectionOptions.AllowAdmin = false;
         connectionOptions.ConnectRetry = options.ConnectRetry;

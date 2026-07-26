@@ -37,14 +37,18 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 
 ## Redis 后端基础组件
 
-Redis 默认关闭，现有业务请求仍直接访问 Oracle。需要在本地试用基础组件时，复制
-`backend/appsettings.Development.example.json`，再设置 `Redis:Enabled`、
-`Redis:ConnectionString`、`Redis:EnvironmentPrefix` 和对应的功能开关。真实密码和
-生产连接串只能放在被忽略的本地配置或环境变量中。
+直接运行后端时 Redis 默认关闭。使用 Docker 开发环境时，先复制 `.env.example`
+为 `.env` 并设置本机专用 `REDIS_PASSWORD`，再运行
+`docker compose -f docker-compose.dev.yml up`。Redis 只在容器网络内开放，宿主机
+不映射 6379；业务缓存由 `REDIS_CACHE_ENABLED` 独立控制。
 
 统一连接、Key、序列化和 Cache Aside 实现在 `backend/Infrastructure/Redis/`。
 `GET /health/live` 只检查 API 进程；`GET /health/ready` 还会检查已启用的 Redis。
-本任务没有把缓存接入任何业务 Controller，具体缓存项由后续 Issue 单独实施。
+启用 `REDIS_CACHE_ENABLED` 后，活动详情和场地详情使用统一缓存；活动报名人数和
+当前用户报名状态仍实时查询 Oracle。Redis 超时或断连时查询自动回源 Oracle，
+Oracle 写入成功后再失效对应详情缓存。
+部署、备份、恢复、升级、密码轮换和排障步骤见
+[Redis 运维手册](docs/operations/redis-runbook.md)。
 
 ## 课程要求摘要
 

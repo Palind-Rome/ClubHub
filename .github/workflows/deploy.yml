@@ -42,6 +42,7 @@ jobs:
         env:
           DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
           AUTH_TOKEN_SIGNING_KEY: ${{ secrets.AUTH_TOKEN_SIGNING_KEY }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |
           if [ -z "${DB_CONNECTION_STRING:-}" ]; then
             echo "::error::缺少 GitHub Secret：DB_CONNECTION_STRING。请先在仓库或目标环境的 Secrets 中配置 Oracle 连接串。"
@@ -49,6 +50,10 @@ jobs:
           fi
           if [ -z "${AUTH_TOKEN_SIGNING_KEY:-}" ]; then
             echo "::error::缺少 GitHub Secret：AUTH_TOKEN_SIGNING_KEY。请先在仓库或目标环境的 Secrets 中配置生产环境登录令牌签名密钥。"
+            exit 1
+          fi
+          if [ -z "${REDIS_PASSWORD:-}" ]; then
+            echo "::error::缺少 GitHub Secret：REDIS_PASSWORD。请先配置生产 Redis 认证密码。"
             exit 1
           fi
 
@@ -123,6 +128,10 @@ jobs:
         env:
           DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
           AUTH_TOKEN_SIGNING_KEY: ${{ secrets.AUTH_TOKEN_SIGNING_KEY }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_CACHE_ENABLED: ${{ vars.REDIS_CACHE_ENABLED || 'false' }}
+          BACKEND_IMAGE: ${{ steps.meta.outputs.backend_image }}:${{ steps.meta.outputs.sha_tag }}
+          FRONTEND_IMAGE: ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.sha_tag }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         with:
@@ -132,7 +141,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           timeout: 60s
           command_timeout: 20m
-          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,GHCR_TOKEN,GHCR_USER
+          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,REDIS_PASSWORD,REDIS_CACHE_ENABLED,BACKEND_IMAGE,FRONTEND_IMAGE,GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -181,6 +190,11 @@ jobs:
                 docker compose logs --tail 50
                 return 1
               fi
+              if ! docker compose ps --services --status running | grep -q "^redis$"; then
+                echo "!!! Redis 服务未运行 !!!"
+                docker compose logs --tail 50 redis
+                return 1
+              fi
             }
 
             deploy_once() {
@@ -198,6 +212,20 @@ jobs:
               fi
               write_env_var AUTH_TOKEN_SIGNING_KEY "$AUTH_TOKEN_SIGNING_KEY" || return 1
 
+              echo "=== 写入 Redis 认证配置 ==="
+              if [ -z "${REDIS_PASSWORD:-}" ]; then
+                echo "!!! REDIS_PASSWORD 为空，请检查 GitHub Secret 配置 !!!"
+                return 1
+              fi
+              write_env_var REDIS_PASSWORD "$REDIS_PASSWORD" || return 1
+              write_env_var REDIS_CACHE_ENABLED "${REDIS_CACHE_ENABLED:-false}" || return 1
+              if [ -z "${BACKEND_IMAGE:-}" ] || [ -z "${FRONTEND_IMAGE:-}" ]; then
+                echo "!!! 部署镜像引用为空，无法执行精确版本部署 !!!"
+                return 1
+              fi
+              write_env_var BACKEND_IMAGE "$BACKEND_IMAGE" || return 1
+              write_env_var FRONTEND_IMAGE "$FRONTEND_IMAGE" || return 1
+
               echo "=== 登录 ghcr.io ==="
               printf "%s" "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || return 1
 
@@ -212,7 +240,7 @@ jobs:
               retry 6 10 wait_for_services || return 1
 
               echo "=== 应用健康检查 ==="
-              retry 6 10 curl -fsS --connect-timeout 5 --max-time 10 http://127.0.0.1/api/health || return 1
+              retry 6 10 curl -fsS --connect-timeout 5 --max-time 10 http://127.0.0.1/health/ready || return 1
             }
 
             attempt=1

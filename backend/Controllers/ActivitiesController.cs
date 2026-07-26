@@ -32,11 +32,16 @@ public class ActivitiesController : ControllerBase
     private const string ActivityCheckinPermission = "activity:checkin";
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
+    private readonly PublicQueryCacheService _publicQueryCache;
 
-    public ActivitiesController(ClubHubDbContext db, AuthService authService)
+    public ActivitiesController(
+        ClubHubDbContext db,
+        AuthService authService,
+        PublicQueryCacheService publicQueryCache)
     {
         _db = db;
         _authService = authService;
+        _publicQueryCache = publicQueryCache;
     }
 
     [HttpGet]
@@ -153,6 +158,9 @@ public class ActivitiesController : ControllerBase
 
         _db.Activities.Add(activity);
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activity.ActivityId,
+            CancellationToken.None);
 
         return CreatedAtAction(nameof(GetById), new { activityId = activity.ActivityId }, ToDto(activity, 0));
     }
@@ -163,51 +171,31 @@ public class ActivitiesController : ControllerBase
         var shouldCheckRegistration = currentUserId is > 0;
         var viewerUserId = currentUserId.GetValueOrDefault();
 
-        var activity = await _db.Activities
-            .Where(a => a.ActivityId == activityId)
-            .Select(a => new ActivityDto(
-                a.ActivityId,
-                a.Title,
-                a.ActivityType,
-                a.Description,
-                a.Club != null ? a.Club.ClubName : "",
-                a.ClubId,
-                a.CreatorUserId,
-                a.StartAt,
-                a.EndAt,
-                a.Location,
-                a.ActivityStatus,
-                a.Capacity,
-                a.RegistrationDeadline,
-                a.ReviewerUserId,
-                a.ReviewComment,
-                a.BudgetAmount,
-                a.BudgetPurpose,
-                a.BudgetDetail,
-                a.BudgetStatus,
-                a.BudgetReviewerId,
-                a.BudgetComment,
-                a.PublishedAt,
-                a.CheckinStartAt,
-                a.CheckinEndAt,
-                a.CheckoutStartAt,
-                a.CheckoutEndAt,
-                _db.ActivityParticipations.Count(p =>
-                    p.ActivityId == a.ActivityId &&
-                    (p.RegisterStatus == RegisterStatusPending ||
-                     p.RegisterStatus == RegisterStatusAccepted ||
-                     p.RegisterStatus == RegisterStatusOnsite)),
-                shouldCheckRegistration &&
-                _db.ActivityParticipations.Any(p =>
-                    p.ActivityId == a.ActivityId &&
-                    p.UserId == viewerUserId &&
-                    (p.RegisterStatus == RegisterStatusPending ||
-                     p.RegisterStatus == RegisterStatusAccepted ||
-                     p.RegisterStatus == RegisterStatusOnsite))
-            ))
+        var activity = await _publicQueryCache.GetActivityAsync(
+            activityId,
+            HttpContext.RequestAborted);
+        if (activity is null) return NotFound();
+
+        var registrationStats = await _db.ActivityParticipations
+            .Where(participation =>
+                participation.ActivityId == activityId &&
+                (participation.RegisterStatus == RegisterStatusPending ||
+                 participation.RegisterStatus == RegisterStatusAccepted ||
+                 participation.RegisterStatus == RegisterStatusOnsite))
+            .GroupBy(_ => 1)
+            .Select(participations => new
+            {
+                CurrentParticipants = participations.Count(),
+                IsRegistered = shouldCheckRegistration &&
+                    participations.Any(participation =>
+                        participation.UserId == viewerUserId)
+            })
             .FirstOrDefaultAsync();
 
-        return activity is null ? NotFound() : Ok(activity);
+        return Ok(ToDto(
+            activity,
+            registrationStats?.CurrentParticipants ?? 0,
+            registrationStats?.IsRegistered ?? false));
     }
 
     [HttpPost("{activityId:int}/registrations")]
@@ -356,6 +344,9 @@ public class ActivitiesController : ControllerBase
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
 
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activityId,
+            CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
@@ -462,6 +453,9 @@ public class ActivitiesController : ControllerBase
         activity.CheckoutEndAt = req.CheckoutEndAt;
 
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activityId,
+            CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
@@ -748,6 +742,42 @@ public class ActivitiesController : ControllerBase
             currentParticipants,
             isRegistered
         );
+    }
+
+    private static ActivityDto ToDto(
+        ActivityPublicCacheEntry activity,
+        int currentParticipants,
+        bool isRegistered)
+    {
+        return new ActivityDto(
+            activity.Id,
+            activity.Title,
+            activity.ActivityType,
+            activity.Description,
+            activity.ClubName,
+            activity.ClubId,
+            activity.CreatorUserId,
+            activity.StartTime,
+            activity.EndTime,
+            activity.Location,
+            activity.Status,
+            activity.MaxParticipants,
+            activity.RegistrationDeadline,
+            activity.ReviewerUserId,
+            activity.ReviewComment,
+            activity.BudgetAmount,
+            activity.BudgetPurpose,
+            activity.BudgetDetail,
+            activity.BudgetStatus,
+            activity.BudgetReviewerId,
+            activity.BudgetComment,
+            activity.PublishedAt,
+            activity.CheckinStartAt,
+            activity.CheckinEndAt,
+            activity.CheckoutStartAt,
+            activity.CheckoutEndAt,
+            currentParticipants,
+            isRegistered);
     }
 
     private static ObjectResult Error(int statusCode, string code, string message)

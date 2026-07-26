@@ -10,6 +10,10 @@ public sealed class RedisOptions
 
     public string? ConnectionString { get; init; }
 
+    public string Username { get; init; } = "default";
+
+    public string? Password { get; init; }
+
     public string EnvironmentPrefix { get; init; } = "development";
 
     public int Database { get; init; }
@@ -59,6 +63,16 @@ internal sealed class RedisOptionsValidator : IValidateOptions<RedisOptions>
         if (options.Enabled && string.IsNullOrWhiteSpace(options.ConnectionString))
         {
             failures.Add("Redis:ConnectionString is required when Redis is enabled.");
+        }
+
+        if (options.Enabled && string.IsNullOrWhiteSpace(options.Password))
+        {
+            failures.Add("Redis:Password is required when Redis is enabled.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Username))
+        {
+            failures.Add("Redis:Username must not be empty.");
         }
 
         if (!RedisKeyBuilder.IsValidNamespaceSegment(options.EnvironmentPrefix))
