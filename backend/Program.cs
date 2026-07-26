@@ -33,6 +33,7 @@ builder.Services.AddSingleton<LearningPreviewSessionStore>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RecruitmentApplicationService>();
 builder.Services.AddScoped<ProjectMembershipService>();
+builder.Services.AddScoped<PublicQueryCacheService>();
 builder.Services
     .AddAuthentication(AuthTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, AuthTokenAuthenticationHandler>(

@@ -4,7 +4,10 @@ namespace ClubHub.Api.Infrastructure.Redis;
 
 public interface IRedisTtlPolicy
 {
-    TimeSpan GetExpiration(TimeSpan? requestedTtl = null, bool isNullValue = false);
+    TimeSpan GetExpiration(
+        TimeSpan? requestedTtl = null,
+        bool isNullValue = false,
+        double? jitterRatio = null);
 }
 
 public sealed class RedisTtlPolicy : IRedisTtlPolicy
@@ -23,7 +26,10 @@ public sealed class RedisTtlPolicy : IRedisTtlPolicy
         _nextSample = nextSample;
     }
 
-    public TimeSpan GetExpiration(TimeSpan? requestedTtl = null, bool isNullValue = false)
+    public TimeSpan GetExpiration(
+        TimeSpan? requestedTtl = null,
+        bool isNullValue = false,
+        double? jitterRatio = null)
     {
         var baseTtl = requestedTtl ??
             TimeSpan.FromSeconds(
@@ -38,8 +44,16 @@ public sealed class RedisTtlPolicy : IRedisTtlPolicy
                 "Cache TTL must be greater than zero.");
         }
 
+        var effectiveJitterRatio = jitterRatio ?? _options.TtlJitterRatio;
+        if (effectiveJitterRatio is < 0 or > 0.5)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(jitterRatio),
+                "Cache TTL jitter ratio must be between zero and 0.5.");
+        }
+
         var sample = Math.Clamp(_nextSample(), 0, 1);
-        var jitterMultiplier = 1 + ((sample * 2 - 1) * _options.TtlJitterRatio);
+        var jitterMultiplier = 1 + ((sample * 2 - 1) * effectiveJitterRatio);
         var jitteredMilliseconds = Math.Max(1_000, baseTtl.TotalMilliseconds * jitterMultiplier);
         return TimeSpan.FromMilliseconds(jitteredMilliseconds);
     }

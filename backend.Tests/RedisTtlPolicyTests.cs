@@ -36,6 +36,18 @@ public sealed class RedisTtlPolicyTests
     }
 
     [Fact]
+    public void GetExpirationAppliesPerCacheJitterRatio()
+    {
+        var policy = CreatePolicy(sample: 0);
+
+        var expiration = policy.GetExpiration(
+            TimeSpan.FromMinutes(5),
+            jitterRatio: 0.2);
+
+        Assert.Equal(TimeSpan.FromMinutes(4), expiration);
+    }
+
+    [Fact]
     public void GetExpirationRejectsNonPositiveTtl()
     {
         var policy = CreatePolicy(sample: 0.5);

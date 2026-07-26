@@ -379,6 +379,9 @@ Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Sch
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
 | `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
+目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`。未设置时部署默认
+为 `false`；完成缓存验证后显式设为 `true`，无需修改镜像。
+
 服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle、Redis 和应用容器连接到同一个网络。Oracle 1521 和 Redis 6379 均不得直接暴露到公网。Redis 的备份、恢复、升级和排障见 `docs/operations/redis-runbook.md`。
 
 ### PR 门禁（feature → dev）

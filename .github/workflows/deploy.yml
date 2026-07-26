@@ -129,6 +129,7 @@ jobs:
           DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
           AUTH_TOKEN_SIGNING_KEY: ${{ secrets.AUTH_TOKEN_SIGNING_KEY }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_CACHE_ENABLED: ${{ vars.REDIS_CACHE_ENABLED || 'false' }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         with:
@@ -138,7 +139,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           timeout: 60s
           command_timeout: 20m
-          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,REDIS_PASSWORD,GHCR_TOKEN,GHCR_USER
+          envs: DB_CONNECTION_STRING,AUTH_TOKEN_SIGNING_KEY,REDIS_PASSWORD,REDIS_CACHE_ENABLED,GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -215,6 +216,7 @@ jobs:
                 return 1
               fi
               write_env_var REDIS_PASSWORD "$REDIS_PASSWORD" || return 1
+              write_env_var REDIS_CACHE_ENABLED "${REDIS_CACHE_ENABLED:-false}" || return 1
 
               echo "=== 登录 ghcr.io ==="
               printf "%s" "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || return 1

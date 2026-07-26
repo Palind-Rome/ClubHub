@@ -75,7 +75,7 @@ public sealed class RedisRegistrationTests
     }
 
     [Fact]
-    public void OptionsValidatorRequiresConnectionOnlyWhenRedisIsEnabled()
+    public void OptionsValidatorRequiresConnectionAndPasswordOnlyWhenRedisIsEnabled()
     {
         var validator = new RedisOptionsValidator();
 
@@ -91,6 +91,9 @@ public sealed class RedisRegistrationTests
         Assert.Contains(
             enabled.Failures,
             failure => failure.Contains("ConnectionString", StringComparison.Ordinal));
+        Assert.Contains(
+            enabled.Failures,
+            failure => failure.Contains("Password", StringComparison.Ordinal));
     }
 }
 
@@ -220,8 +223,21 @@ public sealed class RedisHealthCheckTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<bool> StringSetIfNotExistsAsync(
+            RedisKey key,
+            RedisValue value,
+            TimeSpan expiration,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<bool> KeyDeleteAsync(
             RedisKey key,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> KeyDeleteIfValueMatchesAsync(
+            RedisKey key,
+            RedisValue expectedValue,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
@@ -301,8 +317,21 @@ public sealed class RedisHealthEndpointTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<bool> StringSetIfNotExistsAsync(
+            RedisKey key,
+            RedisValue value,
+            TimeSpan expiration,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<bool> KeyDeleteAsync(
             RedisKey key,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> KeyDeleteIfValueMatchesAsync(
+            RedisKey key,
+            RedisValue expectedValue,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }

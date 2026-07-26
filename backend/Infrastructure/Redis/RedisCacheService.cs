@@ -36,7 +36,7 @@ public interface IRedisCacheService
     Task<RedisCacheWriteStatus> SetAsync<T>(
         RedisKey key,
         T? value,
-        TimeSpan? ttl = null,
+        RedisCachePolicy? policy = null,
         CancellationToken cancellationToken = default);
 
     Task<RedisCacheWriteStatus> RemoveAsync(
@@ -46,7 +46,7 @@ public interface IRedisCacheService
     Task<T?> GetOrCreateAsync<T>(
         RedisKey key,
         Func<CancellationToken, Task<T?>> source,
-        TimeSpan? ttl = null,
+        RedisCachePolicy? policy = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -55,6 +55,7 @@ public sealed class RedisCacheService : IRedisCacheService
     private readonly IRedisDatabase _database;
     private readonly IRedisCacheSerializer _serializer;
     private readonly IRedisTtlPolicy _ttlPolicy;
+    private readonly IRedisKeyBuilder _keyBuilder;
     private readonly RedisOptions _options;
     private readonly RedisMetrics _metrics;
     private readonly ILogger<RedisCacheService> _logger;
@@ -65,6 +66,7 @@ public sealed class RedisCacheService : IRedisCacheService
         IRedisDatabase database,
         IRedisCacheSerializer serializer,
         IRedisTtlPolicy ttlPolicy,
+        IRedisKeyBuilder keyBuilder,
         IOptions<RedisOptions> options,
         RedisMetrics metrics,
         ILogger<RedisCacheService> logger)
@@ -72,6 +74,7 @@ public sealed class RedisCacheService : IRedisCacheService
         _database = database;
         _serializer = serializer;
         _ttlPolicy = ttlPolicy;
+        _keyBuilder = keyBuilder;
         _options = options.Value;
         _metrics = metrics;
         _logger = logger;
@@ -136,7 +139,7 @@ public sealed class RedisCacheService : IRedisCacheService
     public async Task<RedisCacheWriteStatus> SetAsync<T>(
         RedisKey key,
         T? value,
-        TimeSpan? ttl = null,
+        RedisCachePolicy? policy = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -180,7 +183,14 @@ public sealed class RedisCacheService : IRedisCacheService
 
         try
         {
-            var expiration = _ttlPolicy.GetExpiration(ttl, value is null);
+            policy?.Validate();
+            var isNullValue = value is null;
+            var expiration = _ttlPolicy.GetExpiration(
+                isNullValue ? policy?.NullTtl : policy?.Ttl,
+                isNullValue,
+                isNullValue
+                    ? policy?.NullTtlJitterRatio
+                    : policy?.TtlJitterRatio);
             var succeeded = await _database.StringSetAsync(
                 key,
                 payload,
@@ -241,10 +251,12 @@ public sealed class RedisCacheService : IRedisCacheService
     public async Task<T?> GetOrCreateAsync<T>(
         RedisKey key,
         Func<CancellationToken, Task<T?>> source,
-        TimeSpan? ttl = null,
+        RedisCachePolicy? policy = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
+        policy ??= CreateDefaultPolicy();
+        policy.Validate();
 
         var cached = await GetAsync<T>(key, cancellationToken);
         if (cached.Status == RedisCacheReadStatus.Hit)
@@ -254,7 +266,7 @@ public sealed class RedisCacheService : IRedisCacheService
 
         if (cached.Status is RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable)
         {
-            return await source(cancellationToken);
+            return await LoadSourceAsync(source, policy.Name, cancellationToken);
         }
 
         var lockKey = $"{typeof(T).AssemblyQualifiedName}:{key}";
@@ -271,14 +283,50 @@ public sealed class RedisCacheService : IRedisCacheService
                 return cached.Value;
             }
 
-            var sourceValue = await source(cancellationToken);
-            if (cached.Status is not (
-                RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable))
+            if (cached.Status is RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable)
             {
-                await SetAsync(key, sourceValue, ttl, cancellationToken);
+                return await LoadSourceAsync(source, policy.Name, cancellationToken);
             }
 
-            return sourceValue;
+            var leaseKey = _keyBuilder.Build(
+                "cache",
+                "rebuild",
+                _keyBuilder.HashSensitive(key.ToString()));
+            var leaseOwner = Guid.NewGuid().ToString("N");
+            var leaseAcquired = await TryAcquireRebuildLeaseAsync(
+                leaseKey,
+                leaseOwner,
+                policy,
+                cancellationToken);
+
+            if (!leaseAcquired)
+            {
+                var contendedValue = await WaitForRebuildAsync<T>(
+                    key,
+                    policy,
+                    cancellationToken);
+                if (contendedValue.HasValue)
+                {
+                    return contendedValue.Value;
+                }
+
+                return await LoadSourceAsync(source, policy.Name, cancellationToken);
+            }
+
+            try
+            {
+                var sourceValue = await LoadSourceAsync(source, policy.Name, cancellationToken);
+                await SetAsync(key, sourceValue, policy, cancellationToken);
+                return sourceValue;
+            }
+            finally
+            {
+                await ReleaseRebuildLeaseAsync(
+                    leaseKey,
+                    leaseOwner,
+                    policy.Name,
+                    CancellationToken.None);
+            }
         }
         finally
         {
@@ -292,6 +340,127 @@ public sealed class RedisCacheService : IRedisCacheService
     }
 
     private bool IsCacheEnabled => _options.Enabled && _options.Features.Cache;
+
+    private RedisCachePolicy CreateDefaultPolicy() =>
+        new(
+            "default",
+            TimeSpan.FromSeconds(_options.DefaultTtlSeconds),
+            TimeSpan.FromSeconds(_options.NullValueTtlSeconds),
+            _options.TtlJitterRatio,
+            _options.TtlJitterRatio);
+
+    private async Task<T?> LoadSourceAsync<T>(
+        Func<CancellationToken, Task<T?>> source,
+        string cacheName,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var value = await source(cancellationToken);
+            _metrics.RecordSourceLoad(
+                cacheName,
+                value is null ? "null" : "success",
+                stopwatch.Elapsed.TotalMilliseconds);
+            return value;
+        }
+        catch (Exception exception)
+        {
+            _metrics.RecordSourceLoad(
+                cacheName,
+                "failure",
+                stopwatch.Elapsed.TotalMilliseconds);
+            _metrics.RecordFailure("cache-source-load");
+            _logger.LogWarning(
+                exception,
+                "Cache source load failed for {CacheName}.",
+                cacheName);
+            throw;
+        }
+    }
+
+    private async Task<bool> TryAcquireRebuildLeaseAsync(
+        RedisKey leaseKey,
+        RedisValue leaseOwner,
+        RedisCachePolicy policy,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var acquired = await _database.StringSetIfNotExistsAsync(
+                leaseKey,
+                leaseOwner,
+                policy.EffectiveRebuildLeaseTtl,
+                cancellationToken);
+            _metrics.RecordRebuildLease(
+                policy.Name,
+                acquired ? "acquired" : "contended");
+            return acquired;
+        }
+        catch (Exception exception) when (IsRedisFailure(exception))
+        {
+            _metrics.RecordRebuildLease(policy.Name, "unavailable");
+            _metrics.RecordFailure("cache-rebuild-lease-acquire");
+            _logger.LogWarning(
+                exception,
+                "Redis cache rebuild lease acquisition failed for {CacheName}.",
+                policy.Name);
+            return false;
+        }
+    }
+
+    private async Task<(bool HasValue, T? Value)> WaitForRebuildAsync<T>(
+        RedisKey key,
+        RedisCachePolicy policy,
+        CancellationToken cancellationToken)
+    {
+        var deadline = Stopwatch.StartNew();
+        while (deadline.Elapsed < policy.EffectiveRebuildWaitTimeout)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
+            var cached = await GetAsync<T>(key, cancellationToken);
+            if (cached.Status == RedisCacheReadStatus.Hit)
+            {
+                _metrics.RecordRebuildLease(policy.Name, "wait-hit");
+                return (true, cached.Value);
+            }
+
+            if (cached.Status is RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable)
+            {
+                break;
+            }
+        }
+
+        _metrics.RecordRebuildLease(policy.Name, "wait-timeout");
+        return (false, default);
+    }
+
+    private async Task ReleaseRebuildLeaseAsync(
+        RedisKey leaseKey,
+        RedisValue leaseOwner,
+        string cacheName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var released = await _database.KeyDeleteIfValueMatchesAsync(
+                leaseKey,
+                leaseOwner,
+                cancellationToken);
+            _metrics.RecordRebuildLease(
+                cacheName,
+                released ? "released" : "owner-mismatch");
+        }
+        catch (Exception exception) when (IsRedisFailure(exception))
+        {
+            _metrics.RecordRebuildLease(cacheName, "release-failed");
+            _metrics.RecordFailure("cache-rebuild-lease-release");
+            _logger.LogWarning(
+                exception,
+                "Redis cache rebuild lease release failed for {CacheName}.",
+                cacheName);
+        }
+    }
 
     private MissLockEntry AddMissLockReference(string key)
     {
