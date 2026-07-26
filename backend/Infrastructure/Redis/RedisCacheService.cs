@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
@@ -57,6 +58,8 @@ public sealed class RedisCacheService : IRedisCacheService
     private readonly RedisOptions _options;
     private readonly RedisMetrics _metrics;
     private readonly ILogger<RedisCacheService> _logger;
+    private readonly object _missLocksSync = new();
+    private readonly Dictionary<string, MissLockEntry> _missLocks = new(StringComparer.Ordinal);
 
     public RedisCacheService(
         IRedisDatabase database,
@@ -87,8 +90,7 @@ public sealed class RedisCacheService : IRedisCacheService
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            var cached = await _database.StringGetAsync(key);
-            cancellationToken.ThrowIfCancellationRequested();
+            var cached = await _database.StringGetAsync(key, cancellationToken);
             if (!cached.HasValue)
             {
                 _metrics.RecordCacheRead("miss", stopwatch.Elapsed.TotalMilliseconds);
@@ -102,7 +104,7 @@ public sealed class RedisCacheService : IRedisCacheService
                 _logger.LogWarning(
                     "Redis cache payload exceeded the configured {MaxPayloadBytes} byte limit.",
                     _options.MaxPayloadBytes);
-                await TryDeleteInvalidPayloadAsync(key);
+                await TryDeleteInvalidPayloadAsync(key, cancellationToken);
                 return new(RedisCacheReadStatus.InvalidPayload, default, false);
             }
 
@@ -117,7 +119,7 @@ public sealed class RedisCacheService : IRedisCacheService
             _logger.LogWarning(
                 "Redis cache payload could not be read because its status was {PayloadStatus}.",
                 parsed.Status);
-            await TryDeleteInvalidPayloadAsync(key);
+            await TryDeleteInvalidPayloadAsync(key, cancellationToken);
             return new(RedisCacheReadStatus.InvalidPayload, default, false);
         }
         catch (Exception exception) when (IsRedisFailure(exception))
@@ -144,25 +146,46 @@ public sealed class RedisCacheService : IRedisCacheService
         }
 
         var stopwatch = Stopwatch.StartNew();
+        byte[] payload;
         try
         {
-            var payload = _serializer.Serialize(value);
-            if (payload.Length > _options.MaxPayloadBytes)
-            {
-                _metrics.RecordCacheWrite(
-                    "cache-write",
-                    "payload-too-large",
-                    stopwatch.Elapsed.TotalMilliseconds);
-                _logger.LogWarning(
-                    "Redis cache write skipped because the payload exceeded the configured "
-                    + "{MaxPayloadBytes} byte limit.",
-                    _options.MaxPayloadBytes);
-                return RedisCacheWriteStatus.PayloadTooLarge;
-            }
+            payload = _serializer.Serialize(value);
+        }
+        catch (Exception exception) when (
+            exception is JsonException or NotSupportedException)
+        {
+            _metrics.RecordCacheWrite(
+                "cache-write",
+                "serialization-failed",
+                stopwatch.Elapsed.TotalMilliseconds);
+            _metrics.RecordFailure("cache-write-serialization");
+            _logger.LogWarning(
+                exception,
+                "Redis cache write skipped because the value could not be serialized.");
+            return RedisCacheWriteStatus.Unavailable;
+        }
 
+        if (payload.Length > _options.MaxPayloadBytes)
+        {
+            _metrics.RecordCacheWrite(
+                "cache-write",
+                "payload-too-large",
+                stopwatch.Elapsed.TotalMilliseconds);
+            _logger.LogWarning(
+                "Redis cache write skipped because the payload exceeded the configured "
+                + "{MaxPayloadBytes} byte limit.",
+                _options.MaxPayloadBytes);
+            return RedisCacheWriteStatus.PayloadTooLarge;
+        }
+
+        try
+        {
             var expiration = _ttlPolicy.GetExpiration(ttl, value is null);
-            var succeeded = await _database.StringSetAsync(key, payload, expiration);
-            cancellationToken.ThrowIfCancellationRequested();
+            var succeeded = await _database.StringSetAsync(
+                key,
+                payload,
+                expiration,
+                cancellationToken);
             var outcome = succeeded ? "succeeded" : "rejected";
             _metrics.RecordCacheWrite("cache-write", outcome, stopwatch.Elapsed.TotalMilliseconds);
             return succeeded
@@ -196,8 +219,7 @@ public sealed class RedisCacheService : IRedisCacheService
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            await _database.KeyDeleteAsync(key);
-            cancellationToken.ThrowIfCancellationRequested();
+            await _database.KeyDeleteAsync(key, cancellationToken);
             _metrics.RecordCacheWrite(
                 "cache-delete",
                 "succeeded",
@@ -230,22 +252,82 @@ public sealed class RedisCacheService : IRedisCacheService
             return cached.Value;
         }
 
-        var sourceValue = await source(cancellationToken);
-        if (cached.Status is not (RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable))
+        if (cached.Status is RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable)
         {
-            await SetAsync(key, sourceValue, ttl, cancellationToken);
+            return await source(cancellationToken);
         }
 
-        return sourceValue;
+        var lockKey = $"{typeof(T).AssemblyQualifiedName}:{key}";
+        var entry = AddMissLockReference(lockKey);
+        var acquired = false;
+        try
+        {
+            await entry.Gate.WaitAsync(cancellationToken);
+            acquired = true;
+
+            cached = await GetAsync<T>(key, cancellationToken);
+            if (cached.Status == RedisCacheReadStatus.Hit)
+            {
+                return cached.Value;
+            }
+
+            var sourceValue = await source(cancellationToken);
+            if (cached.Status is not (
+                RedisCacheReadStatus.Disabled or RedisCacheReadStatus.Unavailable))
+            {
+                await SetAsync(key, sourceValue, ttl, cancellationToken);
+            }
+
+            return sourceValue;
+        }
+        finally
+        {
+            if (acquired)
+            {
+                entry.Gate.Release();
+            }
+
+            ReleaseMissLockReference(lockKey, entry);
+        }
     }
 
     private bool IsCacheEnabled => _options.Enabled && _options.Features.Cache;
 
-    private async Task TryDeleteInvalidPayloadAsync(RedisKey key)
+    private MissLockEntry AddMissLockReference(string key)
+    {
+        lock (_missLocksSync)
+        {
+            if (!_missLocks.TryGetValue(key, out var entry))
+            {
+                entry = new MissLockEntry();
+                _missLocks.Add(key, entry);
+            }
+
+            entry.ReferenceCount++;
+            return entry;
+        }
+    }
+
+    private void ReleaseMissLockReference(string key, MissLockEntry entry)
+    {
+        lock (_missLocksSync)
+        {
+            entry.ReferenceCount--;
+            if (entry.ReferenceCount == 0)
+            {
+                _missLocks.Remove(key);
+                entry.Gate.Dispose();
+            }
+        }
+    }
+
+    private async Task TryDeleteInvalidPayloadAsync(
+        RedisKey key,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await _database.KeyDeleteAsync(key);
+            await _database.KeyDeleteAsync(key, cancellationToken);
         }
         catch (Exception exception) when (IsRedisFailure(exception))
         {
@@ -258,4 +340,11 @@ public sealed class RedisCacheService : IRedisCacheService
 
     private static bool IsRedisFailure(Exception exception) =>
         exception is RedisException or TimeoutException or ObjectDisposedException;
+
+    private sealed class MissLockEntry
+    {
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+
+        public int ReferenceCount { get; set; }
+    }
 }

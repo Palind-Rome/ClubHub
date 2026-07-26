@@ -16,6 +16,8 @@ paths:
   /api/health:
     get:
       summary: 健康检查
+      description: 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
+      deprecated: true
       operationId: healthCheck
       responses:
         "200":
@@ -5583,14 +5585,20 @@ components:
             - healthy
             - degraded
             - unhealthy
+          example: healthy
         durationMs:
           type: number
           format: double
           minimum: 0
+          example: 12.5
         checks:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/DependencyHealthCheck"
+          example:
+            redis:
+              status: healthy
+              description: Redis is available.
       required:
         - status
         - durationMs
@@ -5605,9 +5613,11 @@ components:
             - healthy
             - degraded
             - unhealthy
+          example: healthy
         description:
           type: string
           nullable: true
+          example: Redis is available.
       required:
         - status
 

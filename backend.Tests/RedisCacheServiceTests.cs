@@ -118,6 +118,71 @@ public sealed class RedisCacheServiceTests
         Assert.Equal(0, context.Database.WriteCalls);
     }
 
+    [Fact]
+    public async Task SerializationFailureDoesNotHideSourceResult()
+    {
+        using var context = new CacheServiceTestContext();
+        var cyclic = new CyclicValue();
+        cyclic.Self = cyclic;
+
+        var writeStatus = await context.Service.SetAsync(TestKey, cyclic);
+        var sourceResult = await context.Service.GetOrCreateAsync(
+            TestKey,
+            _ => Task.FromResult<CyclicValue?>(cyclic));
+
+        Assert.Equal(RedisCacheWriteStatus.Unavailable, writeStatus);
+        Assert.Same(cyclic, sourceResult);
+        Assert.Equal(0, context.Database.WriteCalls);
+    }
+
+    [Fact]
+    public async Task ConcurrentMissesForSameKeyShareOneSourceCall()
+    {
+        using var context = new CacheServiceTestContext();
+        var sourceStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSource = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var sourceCalls = 0;
+
+        async Task<string?> Source(CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref sourceCalls);
+            sourceStarted.TrySetResult();
+            await releaseSource.Task.WaitAsync(cancellationToken);
+            return "oracle-value";
+        }
+
+        var first = context.Service.GetOrCreateAsync(TestKey, Source);
+        await sourceStarted.Task;
+        var second = context.Service.GetOrCreateAsync(TestKey, Source);
+        releaseSource.SetResult();
+
+        var results = await Task.WhenAll(first, second);
+
+        Assert.All(results, result => Assert.Equal("oracle-value", result));
+        Assert.Equal(1, sourceCalls);
+        Assert.Equal(1, context.Database.WriteCalls);
+    }
+
+    [Fact]
+    public async Task CacheReadHonorsCancellation()
+    {
+        using var context = new CacheServiceTestContext();
+        context.Database.BlockReads = true;
+        using var cancellation = new CancellationTokenSource();
+
+        var read = context.Service.GetAsync<string>(TestKey, cancellation.Token);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
+    }
+
+    private sealed class CyclicValue
+    {
+        public CyclicValue? Self { get; set; }
+    }
+
     private sealed class CacheServiceTestContext : IDisposable
     {
         private readonly ServiceProvider _serviceProvider;
@@ -172,21 +237,31 @@ public sealed class RedisCacheServiceTests
 
         public TimeSpan LastExpiration { get; private set; }
 
-        public Task<RedisValue> StringGetAsync(RedisKey key)
+        public bool BlockReads { get; set; }
+
+        public async Task<RedisValue> StringGetAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default)
         {
             ReadCalls++;
             ThrowIfConfigured();
-            return Task.FromResult(
-                _values.TryGetValue(key.ToString(), out var value)
-                    ? value
-                    : RedisValue.Null);
+            if (BlockReads)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
+            return _values.TryGetValue(key.ToString(), out var value)
+                ? value
+                : RedisValue.Null;
         }
 
         public Task<bool> StringSetAsync(
             RedisKey key,
             RedisValue value,
-            TimeSpan expiration)
+            TimeSpan expiration,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             WriteCalls++;
             ThrowIfConfigured();
             _values[key.ToString()] = value;
@@ -194,15 +269,19 @@ public sealed class RedisCacheServiceTests
             return Task.FromResult(true);
         }
 
-        public Task<bool> KeyDeleteAsync(RedisKey key)
+        public Task<bool> KeyDeleteAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             DeleteCalls++;
             ThrowIfConfigured();
             return Task.FromResult(_values.Remove(key.ToString()));
         }
 
-        public Task<TimeSpan> PingAsync()
+        public Task<TimeSpan> PingAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfConfigured();
             return Task.FromResult(TimeSpan.FromMilliseconds(1));
         }

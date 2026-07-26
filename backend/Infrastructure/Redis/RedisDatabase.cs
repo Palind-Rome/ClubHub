@@ -4,13 +4,21 @@ namespace ClubHub.Api.Infrastructure.Redis;
 
 public interface IRedisDatabase
 {
-    Task<RedisValue> StringGetAsync(RedisKey key);
+    Task<RedisValue> StringGetAsync(
+        RedisKey key,
+        CancellationToken cancellationToken = default);
 
-    Task<bool> StringSetAsync(RedisKey key, RedisValue value, TimeSpan expiration);
+    Task<bool> StringSetAsync(
+        RedisKey key,
+        RedisValue value,
+        TimeSpan expiration,
+        CancellationToken cancellationToken = default);
 
-    Task<bool> KeyDeleteAsync(RedisKey key);
+    Task<bool> KeyDeleteAsync(
+        RedisKey key,
+        CancellationToken cancellationToken = default);
 
-    Task<TimeSpan> PingAsync();
+    Task<TimeSpan> PingAsync(CancellationToken cancellationToken = default);
 }
 
 internal sealed class StackExchangeRedisDatabase : IRedisDatabase
@@ -26,17 +34,28 @@ internal sealed class StackExchangeRedisDatabase : IRedisDatabase
         _options = options.Value;
     }
 
-    public Task<RedisValue> StringGetAsync(RedisKey key) =>
-        GetDatabase().StringGetAsync(key);
+    public async Task<RedisValue> StringGetAsync(
+        RedisKey key,
+        CancellationToken cancellationToken = default) =>
+        await GetDatabase().StringGetAsync(key).WaitAsync(cancellationToken);
 
-    public Task<bool> StringSetAsync(RedisKey key, RedisValue value, TimeSpan expiration) =>
-        GetDatabase().StringSetAsync(key, value, expiration);
+    public async Task<bool> StringSetAsync(
+        RedisKey key,
+        RedisValue value,
+        TimeSpan expiration,
+        CancellationToken cancellationToken = default) =>
+        await GetDatabase()
+            .StringSetAsync(key, value, expiration)
+            .WaitAsync(cancellationToken);
 
-    public Task<bool> KeyDeleteAsync(RedisKey key) =>
-        GetDatabase().KeyDeleteAsync(key);
+    public async Task<bool> KeyDeleteAsync(
+        RedisKey key,
+        CancellationToken cancellationToken = default) =>
+        await GetDatabase().KeyDeleteAsync(key).WaitAsync(cancellationToken);
 
-    public Task<TimeSpan> PingAsync() =>
-        GetDatabase().PingAsync();
+    public async Task<TimeSpan> PingAsync(
+        CancellationToken cancellationToken = default) =>
+        await GetDatabase().PingAsync().WaitAsync(cancellationToken);
 
     private IDatabase GetDatabase()
     {

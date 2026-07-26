@@ -36,8 +36,7 @@ public sealed class RedisHealthCheck : IHealthCheck
 
         try
         {
-            var latency = await _database.PingAsync();
-            cancellationToken.ThrowIfCancellationRequested();
+            var latency = await _database.PingAsync(cancellationToken);
             return HealthCheckResult.Healthy(
                 "Redis is available.",
                 new Dictionary<string, object>

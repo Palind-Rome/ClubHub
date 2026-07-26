@@ -126,6 +126,21 @@ public sealed class RedisHealthCheckTests
         Assert.Equal(1, database.PingCalls);
     }
 
+    [Fact]
+    public async Task HealthCheckHonorsCancellation()
+    {
+        using var metrics = new TestMetrics();
+        var database = new HealthCheckRedisDatabase { BlockPing = true };
+        var check = CreateHealthCheck(database, enabled: true, metrics.Value);
+        var context = CreateContext(check);
+        using var cancellation = new CancellationTokenSource();
+
+        var healthCheck = check.CheckHealthAsync(context, cancellation.Token);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => healthCheck);
+    }
+
     private static RedisHealthCheck CreateHealthCheck(
         IRedisDatabase database,
         bool enabled,
@@ -170,7 +185,10 @@ public sealed class RedisHealthCheckTests
 
         public int PingCalls { get; private set; }
 
-        public Task<TimeSpan> PingAsync()
+        public bool BlockPing { get; init; }
+
+        public async Task<TimeSpan> PingAsync(
+            CancellationToken cancellationToken = default)
         {
             PingCalls++;
             if (ExceptionToThrow is not null)
@@ -178,19 +196,29 @@ public sealed class RedisHealthCheckTests
                 throw ExceptionToThrow;
             }
 
-            return Task.FromResult(TimeSpan.FromMilliseconds(1));
+            if (BlockPing)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
+            return TimeSpan.FromMilliseconds(1);
         }
 
-        public Task<RedisValue> StringGetAsync(RedisKey key) =>
+        public Task<RedisValue> StringGetAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<bool> StringSetAsync(
             RedisKey key,
             RedisValue value,
-            TimeSpan expiration) =>
+            TimeSpan expiration,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<bool> KeyDeleteAsync(RedisKey key) =>
+        public Task<bool> KeyDeleteAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }
@@ -253,19 +281,24 @@ public sealed class RedisHealthEndpointTests
 
     private sealed class UnavailableRedisDatabase : IRedisDatabase
     {
-        public Task<TimeSpan> PingAsync() =>
+        public Task<TimeSpan> PingAsync(CancellationToken cancellationToken = default) =>
             throw new TimeoutException("simulated");
 
-        public Task<RedisValue> StringGetAsync(RedisKey key) =>
+        public Task<RedisValue> StringGetAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<bool> StringSetAsync(
             RedisKey key,
             RedisValue value,
-            TimeSpan expiration) =>
+            TimeSpan expiration,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<bool> KeyDeleteAsync(RedisKey key) =>
+        public Task<bool> KeyDeleteAsync(
+            RedisKey key,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }
