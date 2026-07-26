@@ -2434,6 +2434,15 @@ export class DefaultApi extends runtime.BaseAPI {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
     }
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/clubs/applications`;
 
     return {
@@ -2506,6 +2515,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["idempotencyKey"] != null) {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
     }
 
     let urlPath = `/api/clubs/{clubId}/award-applications`;
@@ -3519,6 +3537,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["idempotencyKey"] != null) {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
     }
 
     let urlPath = `/api/recruitments/{recruitId}/applications`;
@@ -8225,6 +8252,15 @@ export class DefaultApi extends runtime.BaseAPI {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
     }
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/clubs/applications/{clubId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
@@ -8623,6 +8659,15 @@ export class DefaultApi extends runtime.BaseAPI {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
     }
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/clubs/applications/{clubId}/review`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
@@ -8701,6 +8746,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["idempotencyKey"] != null) {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
     }
 
     let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/review`;
@@ -9052,6 +9106,15 @@ export class DefaultApi extends runtime.BaseAPI {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
     }
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/recruitments/{recruitId}/review`;
     urlPath = urlPath.replace(
       "{recruitId}",
@@ -9128,6 +9191,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["idempotencyKey"] != null) {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
     }
 
     let urlPath = `/api/recruitments/applications/{applicationId}/review`;
@@ -9418,6 +9490,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     if (requestParameters["idempotencyKey"] != null) {
       headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
     }
 
     let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/submit`;
