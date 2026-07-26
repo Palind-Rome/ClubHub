@@ -60,15 +60,14 @@ public sealed partial class IdempotencyMiddleware
 
         var requestHash = await BuildRequestHashAsync(context, metadata.OperationId);
         var keyHash = keys.HashSensitive(requestKey);
+        var now = DateTime.UtcNow;
         var existing = await db.IdempotencyRecords
-            .AsNoTracking()
             .Where(record =>
                 record.UserId == userId &&
                 record.OperationScope == metadata.OperationId &&
-                record.RequestKeyHash == keyHash &&
-                record.ExpiresAt > DateTime.UtcNow)
+                record.RequestKeyHash == keyHash)
             .SingleOrDefaultAsync(context.RequestAborted);
-        if (existing is not null)
+        if (existing is not null && existing.ExpiresAt > now)
         {
             if (!CryptographicOperations.FixedTimeEquals(
                     Encoding.ASCII.GetBytes(existing.RequestHash),
@@ -163,7 +162,7 @@ public sealed partial class IdempotencyMiddleware
             {
                 var body = Encoding.UTF8.GetString(bodyBytes);
                 var headers = CaptureHeaders(context.Response);
-                var now = DateTime.UtcNow;
+                now = DateTime.UtcNow;
                 var record = existing ?? new IdempotencyRecord
                 {
                     UserId = userId,
