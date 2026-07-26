@@ -55,6 +55,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
+        /* <example>healthy</example> */
         [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }
@@ -62,6 +63,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets DurationMs
         /// </summary>
+        /* <example>12.5</example> */
         [Required]
         [DataMember(Name="durationMs", EmitDefaultValue=true)]
         public double DurationMs { get; set; }
@@ -69,6 +71,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets Checks
         /// </summary>
+        /* <example>{&quot;redis&quot;:{&quot;status&quot;:&quot;healthy&quot;,&quot;description&quot;:&quot;Redis is available.&quot;}}</example> */
         [Required]
         [DataMember(Name="checks", EmitDefaultValue=false)]
         public Dictionary<string, DependencyHealthCheck> Checks { get; set; }

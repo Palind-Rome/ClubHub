@@ -7198,6 +7198,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for healthCheck without sending the request
+   * @deprecated
    */
   async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
@@ -7215,7 +7216,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
    * 健康检查
+   * @deprecated
    */
   async healthCheckRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -7227,7 +7230,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
    * 健康检查
+   * @deprecated
    */
   async healthCheck(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,

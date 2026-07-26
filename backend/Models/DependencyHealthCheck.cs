@@ -55,6 +55,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets Status
         /// </summary>
+        /* <example>healthy</example> */
         [Required]
         [DataMember(Name="status", EmitDefaultValue=true)]
         public StatusEnum Status { get; set; }
@@ -62,6 +63,7 @@ namespace Org.OpenAPITools.Models
         /// <summary>
         /// Gets or Sets Description
         /// </summary>
+        /* <example>Redis is available.</example> */
         [DataMember(Name="description", EmitDefaultValue=true)]
         public string? Description { get; set; }
 
