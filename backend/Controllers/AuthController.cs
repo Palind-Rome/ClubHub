@@ -134,6 +134,7 @@ public class AuthController : ControllerBase
         return Ok(_authService.GetPermissionCatalog());
     }
 
+    [Authorize]
     [HttpGet("permissions/check")]
     public async Task<IActionResult> CheckPermission(
         [FromQuery] string permission,
