@@ -176,16 +176,26 @@ public class ActivitiesController : ControllerBase
             HttpContext.RequestAborted);
         if (activity is null) return NotFound();
 
-        var currentParticipants = await CountActiveParticipants(activityId);
-        var isRegistered = shouldCheckRegistration &&
-            await _db.ActivityParticipations.AnyAsync(participation =>
+        var registrationStats = await _db.ActivityParticipations
+            .Where(participation =>
                 participation.ActivityId == activityId &&
-                participation.UserId == viewerUserId &&
                 (participation.RegisterStatus == RegisterStatusPending ||
                  participation.RegisterStatus == RegisterStatusAccepted ||
-                 participation.RegisterStatus == RegisterStatusOnsite));
+                 participation.RegisterStatus == RegisterStatusOnsite))
+            .GroupBy(_ => 1)
+            .Select(participations => new
+            {
+                CurrentParticipants = participations.Count(),
+                IsRegistered = shouldCheckRegistration &&
+                    participations.Any(participation =>
+                        participation.UserId == viewerUserId)
+            })
+            .FirstOrDefaultAsync();
 
-        return Ok(ToDto(activity, currentParticipants, isRegistered));
+        return Ok(ToDto(
+            activity,
+            registrationStats?.CurrentParticipants ?? 0,
+            registrationStats?.IsRegistered ?? false));
     }
 
     [HttpPost("{activityId:int}/registrations")]

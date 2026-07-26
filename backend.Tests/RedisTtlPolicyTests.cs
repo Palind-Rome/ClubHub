@@ -55,6 +55,17 @@ public sealed class RedisTtlPolicyTests
         Assert.Throws<ArgumentOutOfRangeException>(() => policy.GetExpiration(TimeSpan.Zero));
     }
 
+    [Fact]
+    public void GetExpirationRejectsOutOfRangeJitterRatio()
+    {
+        var policy = CreatePolicy(sample: 0.5);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => policy.GetExpiration(
+                TimeSpan.FromMinutes(5),
+                jitterRatio: 0.9));
+    }
+
     private static RedisTtlPolicy CreatePolicy(double sample) =>
         new(
             Options.Create(

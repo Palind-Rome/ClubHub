@@ -7,13 +7,17 @@ public sealed record RedisCachePolicy(
     double TtlJitterRatio = 0.2,
     double NullTtlJitterRatio = 0.1,
     TimeSpan? RebuildLeaseTtl = null,
-    TimeSpan? RebuildWaitTimeout = null)
+    TimeSpan? RebuildWaitTimeout = null,
+    TimeSpan? RebuildPollInterval = null)
 {
     public TimeSpan EffectiveRebuildLeaseTtl =>
         RebuildLeaseTtl ?? TimeSpan.FromSeconds(5);
 
     public TimeSpan EffectiveRebuildWaitTimeout =>
         RebuildWaitTimeout ?? TimeSpan.FromSeconds(1);
+
+    public TimeSpan EffectiveRebuildPollInterval =>
+        RebuildPollInterval ?? TimeSpan.FromMilliseconds(50);
 
     public void Validate()
     {
@@ -40,7 +44,8 @@ public sealed record RedisCachePolicy(
         }
 
         if (EffectiveRebuildLeaseTtl <= TimeSpan.Zero ||
-            EffectiveRebuildWaitTimeout < TimeSpan.Zero)
+            EffectiveRebuildWaitTimeout < TimeSpan.Zero ||
+            EffectiveRebuildPollInterval <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(RebuildLeaseTtl),

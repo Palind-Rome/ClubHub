@@ -44,9 +44,20 @@ REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning ping
 异机存储。下面的命令不会打印密码：
 
 ```powershell
-docker compose exec redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning BGSAVE'
-docker compose exec redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning LASTSAVE'
-docker compose cp redis:/data/dump.rdb ./redis-backup-dump.rdb
+$composeFile = 'docker-compose.dev.yml' # 生产备份时改为 docker-compose.yml
+$before = [long](docker compose -f $composeFile exec -T redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning LASTSAVE')
+docker compose -f $composeFile exec -T redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning BGSAVE'
+do {
+  Start-Sleep -Seconds 1
+  $persistence = docker compose -f $composeFile exec -T redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning INFO persistence'
+  $persistenceText = $persistence -join "`n"
+  $after = [long](docker compose -f $composeFile exec -T redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning LASTSAVE')
+} while (
+  $persistenceText -notmatch 'rdb_bgsave_in_progress:0' -or
+  $persistenceText -notmatch 'rdb_last_bgsave_status:ok' -or
+  $after -le $before
+)
+docker compose -f $composeFile cp redis:/data/dump.rdb ./redis-backup-dump.rdb
 Get-FileHash ./redis-backup-dump.rdb -Algorithm SHA256
 ```
 
@@ -101,6 +112,7 @@ Get-FileHash ./redis-backup-dump.rdb -Algorithm SHA256
 | `aof_last_write_status`、`aof_last_bgrewrite_status` | 非 `ok` 立即告警 |
 | `/health/ready` | 连续失败立即停止部署并通知维护者 |
 | 缓存命中、未命中、回源和重建失败 | 回源或失败率突增时检查 Redis 与 Oracle |
+| 缓存重建租约 `owner-mismatch` | 持续出现时检查 Oracle 慢查询并调整租约 TTL |
 
 常用只读检查：
 

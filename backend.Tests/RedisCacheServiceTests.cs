@@ -190,7 +190,13 @@ public sealed class RedisCacheServiceTests
         var first = firstContext.Service.GetOrCreateAsync(TestKey, Source);
         await sourceStarted.Task;
         var second = secondContext.Service.GetOrCreateAsync(TestKey, Source);
-        await Task.Delay(100);
+        var waitDeadline = DateTime.UtcNow.AddSeconds(5);
+        while (database.LeaseContentionCount == 0 && DateTime.UtcNow < waitDeadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(database.LeaseContentionCount >= 1);
         releaseSource.SetResult();
 
         var results = await Task.WhenAll(first, second);
@@ -255,8 +261,7 @@ public sealed class RedisCacheServiceTests
     public async Task ContendedLeaseWaitTimeoutFallsBackWithoutHanging()
     {
         using var context = new CacheServiceTestContext();
-        var options = Options.Create(new RedisOptions { EnvironmentPrefix = "test" });
-        var keyBuilder = new RedisKeyBuilder(options);
+        var keyBuilder = new RedisKeyBuilder(context.Configuration);
         var leaseKey = keyBuilder.Build(
             "cache",
             "rebuild",
@@ -280,6 +285,7 @@ public sealed class RedisCacheServiceTests
 
         Assert.Equal("oracle-value", result);
         Assert.Equal(1, sourceCalls);
+        Assert.True(context.Database.LeaseContentionCount >= 1);
     }
 
     [Fact]
@@ -323,7 +329,7 @@ public sealed class RedisCacheServiceTests
             FakeRedisDatabase? database = null)
         {
             Database = database ?? new FakeRedisDatabase();
-            var options = Options.Create(
+            Configuration = Options.Create(
                 new RedisOptions
                 {
                     Enabled = enabled,
@@ -343,14 +349,16 @@ public sealed class RedisCacheServiceTests
             Service = new RedisCacheService(
                 Database,
                 new RedisCacheSerializer(),
-                new RedisTtlPolicy(options),
-                new RedisKeyBuilder(options),
-                options,
+                new RedisTtlPolicy(Configuration),
+                new RedisKeyBuilder(Configuration),
+                Configuration,
                 metrics,
                 NullLogger<RedisCacheService>.Instance);
         }
 
         public FakeRedisDatabase Database { get; }
+
+        public IOptions<RedisOptions> Configuration { get; }
 
         public RedisCacheService Service { get; }
 
@@ -360,16 +368,20 @@ public sealed class RedisCacheServiceTests
     private sealed class FakeRedisDatabase : IRedisDatabase
     {
         private readonly ConcurrentDictionary<string, RedisValue> _values = [];
+        private readonly ConcurrentDictionary<string, DateTimeOffset> _expirations = [];
+        private int _deleteCalls;
         private int _leaseAcquisitionCount;
         private int _leaseContentionCount;
+        private int _readCalls;
+        private int _writeCalls;
 
         public Exception? ExceptionToThrow { get; set; }
 
-        public int ReadCalls { get; private set; }
+        public int ReadCalls => Volatile.Read(ref _readCalls);
 
-        public int DeleteCalls { get; private set; }
+        public int DeleteCalls => Volatile.Read(ref _deleteCalls);
 
-        public int WriteCalls { get; private set; }
+        public int WriteCalls => Volatile.Read(ref _writeCalls);
 
         public TimeSpan LastExpiration { get; private set; }
 
@@ -385,13 +397,14 @@ public sealed class RedisCacheServiceTests
             RedisKey key,
             CancellationToken cancellationToken = default)
         {
-            ReadCalls++;
+            Interlocked.Increment(ref _readCalls);
             ThrowIfConfigured();
             if (BlockReads)
             {
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             }
 
+            RemoveIfExpired(key.ToString());
             return _values.TryGetValue(key.ToString(), out var value)
                 ? value
                 : RedisValue.Null;
@@ -404,9 +417,11 @@ public sealed class RedisCacheServiceTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WriteCalls++;
+            Interlocked.Increment(ref _writeCalls);
             ThrowIfConfigured();
-            _values[key.ToString()] = value;
+            var stringKey = key.ToString();
+            _values[stringKey] = value;
+            _expirations[stringKey] = DateTimeOffset.UtcNow.Add(expiration);
             LastExpiration = expiration;
             return Task.FromResult(true);
         }
@@ -419,12 +434,15 @@ public sealed class RedisCacheServiceTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfConfigured();
-            if (!_values.TryAdd(key.ToString(), value))
+            var stringKey = key.ToString();
+            RemoveIfExpired(stringKey);
+            if (!_values.TryAdd(stringKey, value))
             {
                 Interlocked.Increment(ref _leaseContentionCount);
                 return Task.FromResult(false);
             }
 
+            _expirations[stringKey] = DateTimeOffset.UtcNow.Add(expiration);
             Interlocked.Increment(ref _leaseAcquisitionCount);
             return Task.FromResult(true);
         }
@@ -434,9 +452,11 @@ public sealed class RedisCacheServiceTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            DeleteCalls++;
+            Interlocked.Increment(ref _deleteCalls);
             ThrowIfConfigured();
-            return Task.FromResult(_values.TryRemove(key.ToString(), out _));
+            var stringKey = key.ToString();
+            _expirations.TryRemove(stringKey, out _);
+            return Task.FromResult(_values.TryRemove(stringKey, out _));
         }
 
         public Task<bool> KeyDeleteIfValueMatchesAsync(
@@ -457,6 +477,7 @@ public sealed class RedisCacheServiceTests
                 return Task.FromResult(false);
             }
 
+            _expirations.TryRemove(stringKey, out _);
             return Task.FromResult(_values.TryRemove(stringKey, out _));
         }
 
@@ -469,6 +490,16 @@ public sealed class RedisCacheServiceTests
 
         public void SetRaw(RedisKey key, RedisValue value) =>
             _values[key.ToString()] = value;
+
+        private void RemoveIfExpired(string key)
+        {
+            if (_expirations.TryGetValue(key, out var expiresAt) &&
+                expiresAt <= DateTimeOffset.UtcNow)
+            {
+                _expirations.TryRemove(key, out _);
+                _values.TryRemove(key, out _);
+            }
+        }
 
         private void ThrowIfConfigured()
         {

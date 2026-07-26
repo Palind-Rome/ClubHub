@@ -143,6 +143,7 @@ public sealed class RedisCacheService : IRedisCacheService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        policy?.Validate();
         if (!IsCacheEnabled)
         {
             return RedisCacheWriteStatus.Disabled;
@@ -183,7 +184,6 @@ public sealed class RedisCacheService : IRedisCacheService
 
         try
         {
-            policy?.Validate();
             var isNullValue = value is null;
             var expiration = _ttlPolicy.GetExpiration(
                 isNullValue ? policy?.NullTtl : policy?.Ttl,
@@ -364,6 +364,14 @@ public sealed class RedisCacheService : IRedisCacheService
                 stopwatch.Elapsed.TotalMilliseconds);
             return value;
         }
+        catch (OperationCanceledException)
+        {
+            _metrics.RecordSourceLoad(
+                cacheName,
+                "canceled",
+                stopwatch.Elapsed.TotalMilliseconds);
+            throw;
+        }
         catch (Exception exception)
         {
             _metrics.RecordSourceLoad(
@@ -417,7 +425,6 @@ public sealed class RedisCacheService : IRedisCacheService
         var deadline = Stopwatch.StartNew();
         while (deadline.Elapsed < policy.EffectiveRebuildWaitTimeout)
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
             var cached = await GetAsync<T>(key, cancellationToken);
             if (cached.Status == RedisCacheReadStatus.Hit)
             {
@@ -429,6 +436,18 @@ public sealed class RedisCacheService : IRedisCacheService
             {
                 break;
             }
+
+            var remaining = policy.EffectiveRebuildWaitTimeout - deadline.Elapsed;
+            if (remaining <= TimeSpan.Zero)
+            {
+                break;
+            }
+
+            await Task.Delay(
+                remaining < policy.EffectiveRebuildPollInterval
+                    ? remaining
+                    : policy.EffectiveRebuildPollInterval,
+                cancellationToken);
         }
 
         _metrics.RecordRebuildLease(policy.Name, "wait-timeout");
