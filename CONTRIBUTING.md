@@ -16,6 +16,7 @@
 - `api/`：OpenAPI 规范文件，用于生成 API 客户端代码（待补充）。
 - `backend/`：后端 ASP.NET Core Web API。
 - `backend.Tests/`：xUnit 后端测试；API 测试使用内存数据库隔离，不连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，只允许连接隔离测试 Schema 或一次性数据库。
 - `frontend/`：前端 Vue 3 / Vite。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图、迁移说明。
 - `docs/`：课程最终交付文档，包括需求分析、数据库设计、系统设计与实现、答辩 PPT。
@@ -359,6 +360,9 @@ draft PR 策略：
 `ClubHubWebApplicationFactory` 将 Oracle `DbContext` 替换为内存测试数据库；前端测试使用
 jsdom 和 Mock HTTP。两类测试都不得依赖共享远程 Oracle。Oracle sequence、迁移脚本和
 Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Schema 或一次性数据库。
+Oracle 集成测试位于 `backend.OracleIntegrationTests/`，仅在同时设置
+`CLUBHUB_ORACLE_INTEGRATION_CONNECTION` 和
+`CLUBHUB_ORACLE_INTEGRATION_ISOLATED=true` 后运行；普通 CI 不提供这些变量。
 
 后续补充：
 

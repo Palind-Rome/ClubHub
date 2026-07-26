@@ -22,6 +22,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ├── api/              # OpenAPI 规范文件，用于生成 API 客户端代码
 ├── backend/          # ASP.NET Core Web API
 ├── backend.Tests/    # 不连接远程 Oracle 的后端单元测试与 API 边界测试
+├── backend.OracleIntegrationTests/ # 仅用于隔离 Oracle Schema 的专属集成测试
 ├── database/         # Oracle 建表脚本、种子数据、视图、迁移说明
 ├── docs/             # 课程交付文档
 ├── frontend/         # Vue 3 / Vite 前端
@@ -93,3 +94,6 @@ pnpm test
 
 CI 会在相关目录发生变更时自动运行对应测试。需要验证 Oracle sequence、迁移脚本或
 Oracle 特有查询时，应另行使用隔离的测试 Schema 或一次性数据库，禁止使用共享开发库。
+`backend.OracleIntegrationTests` 默认跳过；只有同时提供
+`CLUBHUB_ORACLE_INTEGRATION_CONNECTION` 和
+`CLUBHUB_ORACLE_INTEGRATION_ISOLATED=true` 时才会执行，具体见该目录的 README。

@@ -40,6 +40,7 @@ jobs:
             backend:
               - 'backend/**'
               - 'backend.Tests/**'
+              - 'backend.OracleIntegrationTests/**'
               - 'ClubHub.sln'
               - '.github/workflows/ci.yml'
             frontend:
@@ -100,7 +101,7 @@ jobs:
           echo "数据库脚本检查通过：共 $table_count 张表。"
 
   # ============================================================
-  # 后端构建与测试（backend/**、backend.Tests/** 或 .sln 变更时运行）
+  # 后端构建与测试（后端、两类后端测试或 .sln 变更时运行）
   # draft PR 阶段也运行，用于尽早发现编译问题
   # ============================================================
   build-backend:

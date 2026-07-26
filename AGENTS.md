@@ -29,7 +29,7 @@
 
 - `backend/`：ASP.NET Core Web API，负责 C# 业务逻辑、权限、Oracle 数据访问。
 - `backend.Tests/`：后端单元测试和 API 边界测试；统一使用内存测试数据库，禁止连接共享 Oracle。
-- Oracle 专属集成测试必须放在独立测试项目或目录中，并使用隔离测试 Schema 或一次性数据库，禁止连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，必须使用隔离测试 Schema 或一次性数据库，禁止连接共享 Oracle。
 - `frontend/`：Vue 3 + Vite + Element Plus，负责页面和交互。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图和迁移脚本。
 - `docs/`：各类文档。
