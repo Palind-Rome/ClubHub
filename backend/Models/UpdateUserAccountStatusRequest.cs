@@ -51,6 +51,7 @@ namespace Org.OpenAPITools.Models
         /// normal 表示启用，disabled 表示停用。
         /// </summary>
         /// <value>normal 表示启用，disabled 表示停用。</value>
+        /* <example>disabled</example> */
         [Required]
         [DataMember(Name="accountStatus", EmitDefaultValue=true)]
         public AccountStatusEnum AccountStatus { get; set; }
