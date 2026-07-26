@@ -20,20 +20,11 @@ using System.Text.Json;
 namespace Org.OpenAPITools.Models
 { 
     /// <summary>
-    /// 为目标用户分配系统级或社团级角色。
+    /// 为目标用户分配系统级或社团级角色；操作人从 Bearer 登录令牌读取。
     /// </summary>
     [DataContract]
     public partial class AssignRoleRequest 
     {
-        /// <summary>
-        /// 发起分配操作的用户 ID。
-        /// </summary>
-        /// <value>发起分配操作的用户 ID。</value>
-        /* <example>1</example> */
-        [Required]
-        [DataMember(Name="operatorUserId", EmitDefaultValue=true)]
-        public int OperatorUserId { get; set; }
-
         /// <summary>
         /// 被分配角色的用户 ID。
         /// </summary>

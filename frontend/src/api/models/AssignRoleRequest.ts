@@ -15,17 +15,11 @@
 
 import { mapValues } from "../runtime";
 /**
- * 为目标用户分配系统级或社团级角色。
+ * 为目标用户分配系统级或社团级角色；操作人从 Bearer 登录令牌读取。
  * @export
  * @interface AssignRoleRequest
  */
 export interface AssignRoleRequest {
-  /**
-   * 发起分配操作的用户 ID。
-   * @type {number}
-   * @memberof AssignRoleRequest
-   */
-  operatorUserId: number;
   /**
    * 被分配角色的用户 ID。
    * @type {number}
@@ -50,7 +44,6 @@ export interface AssignRoleRequest {
  * Check if a given object implements the AssignRoleRequest interface.
  */
 export function instanceOfAssignRoleRequest(value: object): value is AssignRoleRequest {
-  if (!("operatorUserId" in value) || value["operatorUserId"] === undefined) return false;
   if (!("targetUserId" in value) || value["targetUserId"] === undefined) return false;
   if (!("roleCode" in value) || value["roleCode"] === undefined) return false;
   return true;
@@ -68,7 +61,6 @@ export function AssignRoleRequestFromJSONTyped(
     return json;
   }
   return {
-    operatorUserId: json["operatorUserId"],
     targetUserId: json["targetUserId"],
     roleCode: json["roleCode"],
     clubId:
@@ -89,7 +81,6 @@ export function AssignRoleRequestToJSONTyped(
   }
 
   return {
-    operatorUserId: value["operatorUserId"],
     targetUserId: value["targetUserId"],
     roleCode: value["roleCode"],
     clubId: value["clubId"],

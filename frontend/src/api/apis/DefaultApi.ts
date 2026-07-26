@@ -523,6 +523,11 @@ import {
   UpdateRecruitmentRequestToJSON,
 } from "../models/UpdateRecruitmentRequest";
 import {
+  type UpdateUserAccountStatusRequest,
+  UpdateUserAccountStatusRequestFromJSON,
+  UpdateUserAccountStatusRequestToJSON,
+} from "../models/UpdateUserAccountStatusRequest";
+import {
   type UpdateVenueRequest,
   UpdateVenueRequestFromJSON,
   UpdateVenueRequestToJSON,
@@ -588,7 +593,6 @@ export interface CancelProjectOperationRequest {
 }
 
 export interface CheckPermissionRequest {
-  userId: number;
   permission: string;
   clubId?: number;
 }
@@ -1087,6 +1091,10 @@ export interface ReviewVenueReservationOperationRequest {
   reviewVenueReservationRequest: ReviewVenueReservationRequest;
 }
 
+export interface RevokeUserSessionsRequest {
+  userId: number;
+}
+
 export interface StartLearningItemRequest {
   itemId: number;
 }
@@ -1200,6 +1208,11 @@ export interface UpdateProjectTaskProgressOperationRequest {
 export interface UpdateRecruitmentOperationRequest {
   recruitId: number;
   updateRecruitmentRequest: UpdateRecruitmentRequest;
+}
+
+export interface UpdateUserAccountStatusOperationRequest {
+  userId: number;
+  updateUserAccountStatusRequest: UpdateUserAccountStatusRequest;
 }
 
 export interface UpdateVenueOperationRequest {
@@ -1545,6 +1558,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/auth/roles/assign`;
 
     return {
@@ -1863,13 +1885,6 @@ export class DefaultApi extends runtime.BaseAPI {
   async checkPermissionRequestOpts(
     requestParameters: CheckPermissionRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["userId"] == null) {
-      throw new runtime.RequiredError(
-        "userId",
-        'Required parameter "userId" was null or undefined when calling checkPermission().',
-      );
-    }
-
     if (requestParameters["permission"] == null) {
       throw new runtime.RequiredError(
         "permission",
@@ -1878,10 +1893,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const queryParameters: any = {};
-
-    if (requestParameters["userId"] != null) {
-      queryParameters["userId"] = requestParameters["userId"];
-    }
 
     if (requestParameters["permission"] != null) {
       queryParameters["permission"] = requestParameters["permission"];
@@ -1892,6 +1903,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/auth/permissions/check`;
 
@@ -1904,7 +1924,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
+   * 检查当前用户是否拥有指定权限
    */
   async checkPermissionRaw(
     requestParameters: CheckPermissionRequest,
@@ -1919,7 +1939,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
+   * 检查当前用户是否拥有指定权限
    */
   async checkPermission(
     requestParameters: CheckPermissionRequest,
@@ -7382,6 +7402,56 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for logoutCurrentSession without sending the request
+   */
+  async logoutCurrentSessionRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/auth/logout`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+   * 注销当前登录会话
+   */
+  async logoutCurrentSessionRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.logoutCurrentSessionRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+   * 注销当前登录会话
+   */
+  async logoutCurrentSession(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.logoutCurrentSessionRaw(initOverrides);
+  }
+
+  /**
    * Creates request options for markNoticeRead without sending the request
    */
   async markNoticeReadRequestOpts(
@@ -7689,7 +7759,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSessionRaw(
@@ -7702,7 +7772,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSession(
@@ -8924,6 +8994,66 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<VenueReservation> {
     const response = await this.reviewVenueReservationRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for revokeUserSessions without sending the request
+   */
+  async revokeUserSessionsRequestOpts(
+    requestParameters: RevokeUserSessionsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling revokeUserSessions().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/users/{userId}/sessions/revoke`;
+    urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 强制撤销用户的全部登录会话
+   */
+  async revokeUserSessionsRaw(
+    requestParameters: RevokeUserSessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.revokeUserSessionsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 强制撤销用户的全部登录会话
+   */
+  async revokeUserSessions(
+    requestParameters: RevokeUserSessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.revokeUserSessionsRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -10498,6 +10628,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Recruitment> {
     const response = await this.updateRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateUserAccountStatus without sending the request
+   */
+  async updateUserAccountStatusRequestOpts(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling updateUserAccountStatus().',
+      );
+    }
+
+    if (requestParameters["updateUserAccountStatusRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateUserAccountStatusRequest",
+        'Required parameter "updateUserAccountStatusRequest" was null or undefined when calling updateUserAccountStatus().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/users/{userId}/status`;
+    urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateUserAccountStatusRequestToJSON(
+        requestParameters["updateUserAccountStatusRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+   * 更新用户账号状态
+   */
+  async updateUserAccountStatusRaw(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<UserSummary>> {
+    const requestOptions = await this.updateUserAccountStatusRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => UserSummaryFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+   * 更新用户账号状态
+   */
+  async updateUserAccountStatus(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<UserSummary> {
+    const response = await this.updateUserAccountStatusRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
