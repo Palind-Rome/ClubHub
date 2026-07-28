@@ -1833,9 +1833,10 @@ public class LearningController : ControllerBase
             LearningPreviewFailure.Unsupported => StatusCodes.Status415UnsupportedMediaType,
             LearningPreviewFailure.InvalidRange => StatusCodes.Status416RangeNotSatisfiable,
             LearningPreviewFailure.ConversionFailed => StatusCodes.Status422UnprocessableEntity,
+            LearningPreviewFailure.Timeout => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status404NotFound
         };
-        if (exception.Failure == LearningPreviewFailure.Busy)
+        if (exception.Failure is LearningPreviewFailure.Busy or LearningPreviewFailure.Timeout)
         {
             Response.Headers.RetryAfter = "2";
         }

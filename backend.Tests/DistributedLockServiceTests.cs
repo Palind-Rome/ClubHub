@@ -74,11 +74,11 @@ public sealed class DistributedLockServiceTests
         var key = (RedisKey)"clubhub:test:lock:v1:takeover";
         var expiring = Policy(
             wait: TimeSpan.Zero,
-            lease: TimeSpan.FromMilliseconds(70));
+            lease: TimeSpan.FromMilliseconds(700));
 
         var oldHandle = await locks.TryAcquireAsync(key, expiring);
         Assert.NotNull(oldHandle);
-        await Task.Delay(110);
+        await Task.Delay(1100);
 
         var replacement = await locks.TryAcquireAsync(
             key,
@@ -103,12 +103,12 @@ public sealed class DistributedLockServiceTests
         var key = (RedisKey)"clubhub:test:lock:v1:renew";
         var renewing = Policy(
             wait: TimeSpan.Zero,
-            lease: TimeSpan.FromMilliseconds(100),
-            renewal: TimeSpan.FromMilliseconds(25));
+            lease: TimeSpan.FromMilliseconds(600),
+            renewal: TimeSpan.FromMilliseconds(100));
 
         await using var handle = await locks.TryAcquireAsync(key, renewing);
         Assert.NotNull(handle);
-        await Task.Delay(260);
+        await Task.Delay(1200);
 
         var contender = await locks.TryAcquireAsync(key, Policy(wait: TimeSpan.Zero));
 
@@ -200,6 +200,53 @@ public sealed class DistributedLockServiceTests
         Assert.Contains("clubhub.redis.lock.lease.losses", measurements);
         Assert.Contains("clubhub.redis.lock.releases", measurements);
         Assert.Contains("clubhub.redis.lock.hold.duration", measurements);
+    }
+
+    [Fact]
+    public async Task ContentionMetricsDistinguishImmediateTimeoutFromWaitedContention()
+    {
+        var outcomes = new ConcurrentBag<string>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Meter.Name == RedisMetrics.MeterName &&
+                    instrument.Name == "clubhub.redis.lock.acquisitions")
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        listener.SetMeasurementEventCallback<long>(
+            (_, _, tags, _) =>
+            {
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "outcome" && tag.Value is string outcome)
+                    {
+                        outcomes.Add(outcome);
+                    }
+                }
+            });
+        listener.Start();
+
+        var database = new InMemoryRedisDatabase();
+        database.SetRaw(
+            "clubhub:test:lock:v1:outcomes",
+            "another-owner",
+            TimeSpan.FromSeconds(5));
+        using var services = CreateServices(database);
+        var locks = services.GetRequiredService<IDistributedLockService>();
+
+        Assert.Null(await locks.TryAcquireAsync(
+            "clubhub:test:lock:v1:outcomes",
+            Policy(wait: TimeSpan.Zero)));
+        Assert.Null(await locks.TryAcquireAsync(
+            "clubhub:test:lock:v1:outcomes",
+            Policy(wait: TimeSpan.FromMilliseconds(40))));
+
+        Assert.Contains("timeout", outcomes);
+        Assert.Contains("contended", outcomes);
     }
 
     private static ServiceProvider CreateServices(IRedisDatabase database)

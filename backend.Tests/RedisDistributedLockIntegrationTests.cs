@@ -311,6 +311,18 @@ public sealed class RedisDistributedLockIntegrationTests
             return Task.FromResult(_objects.ContainsKey(storageReference));
         }
 
+        public Task<IReadOnlyList<string>> ListByPrefixAsync(
+            string storagePrefix,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<string>>(
+                _objects.Keys
+                    .Where(key => key.StartsWith(storagePrefix, StringComparison.Ordinal))
+                    .OrderBy(key => key, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
         public Task<StoredObjectDownload> OpenReadAsync(
             string storageReference,
             StoredObjectRange? range,
@@ -356,6 +368,19 @@ public sealed class RedisDistributedLockIntegrationTests
             CancellationToken cancellationToken)
         {
             _objects.TryRemove(storageReference, out _);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveManyAsync(
+            IReadOnlyCollection<string> storageReferences,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var storageReference in storageReferences)
+            {
+                _objects.TryRemove(storageReference, out _);
+            }
+
             return Task.CompletedTask;
         }
     }

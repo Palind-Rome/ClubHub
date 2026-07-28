@@ -1602,10 +1602,13 @@ public class ClubsController : ControllerBase
             .Select(group => group.First())
             .ToList();
 
+        var termPrefilterToken = EvaluationTermPrefilterToken(termWindow);
         var existingEvaluations = (await _db.Evaluations
                 .Where(ev =>
                     ev.ClubId == clubId &&
-                    ev.EvaluationType == EvaluationSemester)
+                    ev.EvaluationType == EvaluationSemester &&
+                    ev.TermName != null &&
+                    ev.TermName.Contains(termPrefilterToken))
                 .OrderByDescending(ev => ev.CreatedAt)
                 .ToListAsync(cancellationToken))
             .Where(ev => EvaluationTermMatches(ev.TermName, termWindow))
@@ -1696,7 +1699,9 @@ public class ClubsController : ControllerBase
         var records = (await EvaluationQuery()
                 .Where(ev =>
                     ev.ClubId == clubId &&
-                    ev.EvaluationType == EvaluationSemester)
+                    ev.EvaluationType == EvaluationSemester &&
+                    ev.TermName != null &&
+                    ev.TermName.Contains(termPrefilterToken))
                 .ToListAsync(cancellationToken))
             .Where(ev => EvaluationTermMatches(ev.TermName, termWindow))
             .OrderBy(ev => ev.User?.RealName ?? ev.User?.Username)
@@ -4322,6 +4327,15 @@ public class ClubsController : ControllerBase
                 CultureInfo.InvariantCulture,
                 $"{window.Start:yyyyMMdd}:{window.End:yyyyMMdd}");
     }
+
+    internal static string? EvaluationTermPrefilterToken(string termName)
+    {
+        var window = ResolveEvaluationTermWindow(termName);
+        return window is null ? null : EvaluationTermPrefilterToken(window);
+    }
+
+    private static string EvaluationTermPrefilterToken(EvaluationTermWindow window) =>
+        window.Start.Year.ToString(CultureInfo.InvariantCulture);
 
     private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
     {

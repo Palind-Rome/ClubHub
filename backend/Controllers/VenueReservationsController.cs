@@ -31,6 +31,7 @@ public class VenueReservationsController : ControllerBase
     private const string ReservationStatusRejected = "rejected";
     private const string ReservePermission = "venue:reserve";
     private const string ReviewPermission = "venue:review";
+    internal const int MaxReservationLockedDays = 31;
     private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
 
     private static readonly HashSet<string> AllowedReservationStatuses = new(StringComparer.OrdinalIgnoreCase)
@@ -363,11 +364,21 @@ public class VenueReservationsController : ControllerBase
             reservationSnapshot.StartAt is not null &&
             reservationSnapshot.EndAt is not null)
         {
+            var snapshotStartTime = StoredTimeToUtc(reservationSnapshot.StartAt.Value);
+            var snapshotEndTime = StoredTimeToUtc(reservationSnapshot.EndAt.Value);
+            var lockPlanValidation = ValidateReservationLockSpan(
+                snapshotStartTime,
+                snapshotEndTime);
+            if (lockPlanValidation is not null)
+            {
+                return lockPlanValidation;
+            }
+
             lockKeys.AddRange(BuildVenueDateLockKeys(
                 _keyBuilder,
                 reservationSnapshot.VenueId,
-                StoredTimeToUtc(reservationSnapshot.StartAt.Value),
-                StoredTimeToUtc(reservationSnapshot.EndAt.Value)));
+                snapshotStartTime,
+                snapshotEndTime));
         }
 
         return await ExecuteWithVenueLocksAsync(
@@ -614,15 +625,16 @@ public class VenueReservationsController : ControllerBase
             throw new ArgumentException("Reservation end time must be later than start time.");
         }
 
-        var startInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.SpecifyKind(startTimeUtc, DateTimeKind.Utc),
-            BeijingTimeZone);
-        var finalInstantInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.SpecifyKind(endTimeUtc, DateTimeKind.Utc).AddTicks(-1),
-            BeijingTimeZone);
-        var startDate = DateOnly.FromDateTime(startInBeijing);
-        var finalDate = DateOnly.FromDateTime(finalInstantInBeijing);
-        var keys = new List<RedisKey>();
+        var (startDate, finalDate) = ResolveVenueLockDates(startTimeUtc, endTimeUtc);
+        var lockedDayCount = finalDate.DayNumber - startDate.DayNumber + 1;
+        if (lockedDayCount > MaxReservationLockedDays)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(endTimeUtc),
+                $"Reservation must not cover more than {MaxReservationLockedDays} Beijing calendar days.");
+        }
+
+        var keys = new List<RedisKey>(lockedDayCount);
         for (var date = startDate; date <= finalDate; date = date.AddDays(1))
         {
             keys.Add(keyBuilder.Build(
@@ -633,6 +645,21 @@ public class VenueReservationsController : ControllerBase
         }
 
         return keys;
+    }
+
+    private static (DateOnly StartDate, DateOnly FinalDate) ResolveVenueLockDates(
+        DateTime startTimeUtc,
+        DateTime endTimeUtc)
+    {
+        var startInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(startTimeUtc, DateTimeKind.Utc),
+            BeijingTimeZone);
+        var finalInstantInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(endTimeUtc, DateTimeKind.Utc).AddTicks(-1),
+            BeijingTimeZone);
+        var startDate = DateOnly.FromDateTime(startInBeijing);
+        var finalDate = DateOnly.FromDateTime(finalInstantInBeijing);
+        return (startDate, finalDate);
     }
 
     private IActionResult? ValidateReservationTime(DateTime startTime, DateTime endTime)
@@ -655,6 +682,24 @@ public class VenueReservationsController : ControllerBase
         if (endTime < DateTime.UtcNow)
         {
             return BadRequest(Error("reservation_end_time_in_past", "预约结束时间不能早于当前时间。"));
+        }
+
+        return ValidateReservationLockSpan(startTime, endTime);
+    }
+
+    private IActionResult? ValidateReservationLockSpan(DateTime startTime, DateTime endTime)
+    {
+        if (endTime <= startTime)
+        {
+            return BadRequest(Error("reservation_time_invalid", "预约开始时间必须早于结束时间。"));
+        }
+
+        var (startDate, finalDate) = ResolveVenueLockDates(startTime, endTime);
+        if (finalDate.DayNumber - startDate.DayNumber + 1 > MaxReservationLockedDays)
+        {
+            return BadRequest(Error(
+                "reservation_duration_too_long",
+                $"单次预约最多覆盖 {MaxReservationLockedDays} 个北京时间日期。"));
         }
 
         return null;

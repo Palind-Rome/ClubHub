@@ -1,10 +1,14 @@
+using System.Diagnostics;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Services;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace ClubHub.Api.Tests;
 
@@ -47,6 +51,15 @@ public class LearningPreviewTests
 
         Assert.Equal(LearningPreviewFailure.Unsupported, exception.Failure);
         Assert.Contains("扩展名不一致", exception.Message);
+    }
+
+    [Fact]
+    public void BusyFailureRemainsTheLastEnumMember()
+    {
+        var failures = Enum.GetValues<LearningPreviewFailure>();
+
+        Assert.Equal(LearningPreviewFailure.Busy, failures[^1]);
+        Assert.NotEqual(LearningPreviewFailure.Busy, default);
     }
 
     [Fact]
@@ -213,6 +226,110 @@ public class LearningPreviewTests
         Assert.Equal(limiter.MaxConcurrency, maximumActive);
     }
 
+    [Fact]
+    public async Task OfficeOperationTimeoutIsDistinctFromConversionFailure()
+    {
+        var storage = new InMemoryPreviewStorage();
+        var previewOptions = Options.Create(new LearningPreviewOptions
+        {
+            EnableOfficeConversion = true,
+            ConversionTimeoutSeconds = -29,
+            MaxConcurrentConversions = 1
+        });
+        var redisOptions = Options.Create(new RedisOptions
+        {
+            Enabled = false,
+            EnvironmentPrefix = "test"
+        });
+        using var limiter = new OfficeConversionLimiter(previewOptions);
+        using var service = new LearningPreviewService(
+            storage,
+            new TestHostEnvironment(),
+            new TimeoutPreviewConverter(),
+            limiter,
+            new UnexpectedDistributedLockService(),
+            new RedisKeyBuilder(redisOptions),
+            previewOptions,
+            redisOptions);
+
+        var exception = await Assert.ThrowsAsync<LearningPreviewException>(() =>
+            service.PrepareAsync(
+                144,
+                7,
+                InMemoryPreviewStorage.SourceReference,
+                CancellationToken.None));
+
+        Assert.Equal(LearningPreviewFailure.Timeout, exception.Failure);
+    }
+
+    [Fact]
+    public async Task RemovePreviewDeletesEveryStoredVersionAndLegacyObject()
+    {
+        var storage = new InMemoryPreviewStorage();
+        storage.Add("clubs/7/learning/144/preview/old-version.pdf", "%PDF-old"u8.ToArray());
+        storage.Add("clubs/7/learning/144/preview/new-version.pdf", "%PDF-new"u8.ToArray());
+        storage.Add("clubs/7/learning/144/preview/converted.pdf", "%PDF-legacy"u8.ToArray());
+        storage.Add("clubs/7/learning/145/preview/other.pdf", "%PDF-other"u8.ToArray());
+        var previewOptions = Options.Create(new LearningPreviewOptions());
+        var redisOptions = Options.Create(new RedisOptions
+        {
+            Enabled = false,
+            EnvironmentPrefix = "test"
+        });
+        using var limiter = new OfficeConversionLimiter(previewOptions);
+        using var service = new LearningPreviewService(
+            storage,
+            new TestHostEnvironment(),
+            new UnexpectedPreviewConverter(),
+            limiter,
+            new UnexpectedDistributedLockService(),
+            new RedisKeyBuilder(redisOptions),
+            previewOptions,
+            redisOptions);
+
+        await service.RemovePreviewAsync(
+            144,
+            7,
+            InMemoryPreviewStorage.SourceReference,
+            CancellationToken.None);
+
+        Assert.DoesNotContain(
+            storage.Keys,
+            key => key.StartsWith(
+                "clubs/7/learning/144/preview/",
+                StringComparison.Ordinal));
+        Assert.Contains(InMemoryPreviewStorage.SourceReference, storage.Keys);
+        Assert.Contains("clubs/7/learning/145/preview/other.pdf", storage.Keys);
+    }
+
+    [Fact]
+    public async Task PublishLocalPreviewKeepsExistingDestinationAndPropagatesOtherIoFailures()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            $"clubhub-preview-publish-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, "preview.tmp");
+        var previewPath = Path.Combine(directory, "preview.pdf");
+        try
+        {
+            await File.WriteAllBytesAsync(temporaryPath, "new"u8.ToArray());
+            await File.WriteAllBytesAsync(previewPath, "existing"u8.ToArray());
+
+            LearningPreviewService.PublishLocalPreview(temporaryPath, previewPath);
+
+            Assert.Equal("existing"u8.ToArray(), await File.ReadAllBytesAsync(previewPath));
+            Assert.True(File.Exists(temporaryPath));
+            File.Delete(temporaryPath);
+            Assert.ThrowsAny<IOException>(() =>
+                LearningPreviewService.PublishLocalPreview(temporaryPath, previewPath));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static AuthTokenService CreateTokenService()
     {
         var configuration = new ConfigurationBuilder()
@@ -225,11 +342,161 @@ public class LearningPreviewTests
         return new AuthTokenService(configuration, new TestHostEnvironment());
     }
 
-    private sealed class TestHostEnvironment : IHostEnvironment
+    private sealed class TestHostEnvironment : IWebHostEnvironment
     {
         public string EnvironmentName { get; set; } = Environments.Development;
         public string ApplicationName { get; set; } = "ClubHub.Api.Tests";
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+        public string WebRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private sealed class InMemoryPreviewStorage : ILearningObjectStorage
+    {
+        public const string SourceReference = "clubs/7/learning/144/source.docx";
+        private readonly Dictionary<string, byte[]> _objects = new(StringComparer.Ordinal)
+        {
+            [SourceReference] = [0x50, 0x4b, 0x03, 0x04]
+        };
+
+        public IReadOnlyCollection<string> Keys => _objects.Keys;
+
+        public void Add(string storageReference, byte[] content) =>
+            _objects[storageReference] = content;
+
+        public bool IsStorageReference(string? value) =>
+            value?.StartsWith("clubs/", StringComparison.Ordinal) == true;
+
+        public Task<string> UploadAsync(
+            int clubId,
+            int itemId,
+            string extension,
+            Stream content,
+            long contentLength,
+            string? contentType,
+            string originalFileName,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<StoredObjectMetadata> GetMetadataAsync(
+            string storageReference,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var content = _objects[storageReference];
+            return Task.FromResult(new StoredObjectMetadata(
+                content.LongLength,
+                storageReference.EndsWith(".pdf", StringComparison.Ordinal)
+                    ? "application/pdf"
+                    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                null,
+                "etag",
+                DateTimeOffset.UnixEpoch));
+        }
+
+        public Task<bool> ExistsAsync(
+            string storageReference,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_objects.ContainsKey(storageReference));
+        }
+
+        public Task<IReadOnlyList<string>> ListByPrefixAsync(
+            string storagePrefix,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<string>>(
+                _objects.Keys
+                    .Where(key => key.StartsWith(storagePrefix, StringComparison.Ordinal))
+                    .OrderBy(key => key, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        public Task<StoredObjectDownload> OpenReadAsync(
+            string storageReference,
+            StoredObjectRange? range,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var content = _objects[storageReference];
+            return Task.FromResult(
+                new StoredObjectDownload(new MemoryStream(content, writable: false)));
+        }
+
+        public async Task SaveAsync(
+            string storageReference,
+            Stream content,
+            long contentLength,
+            string contentType,
+            string contentDisposition,
+            CancellationToken cancellationToken)
+        {
+            await using var copy = new MemoryStream();
+            await content.CopyToAsync(copy, cancellationToken);
+            _objects[storageReference] = copy.ToArray();
+        }
+
+        public Task RemoveAsync(
+            string storageReference,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _objects.Remove(storageReference);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveManyAsync(
+            IReadOnlyCollection<string> storageReferences,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var storageReference in storageReferences)
+            {
+                _objects.Remove(storageReference);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class TimeoutPreviewConverter : IOfficePreviewConverter
+    {
+        public async Task<OfficePreviewArtifact> ConvertAsync(
+            Stream source,
+            long contentLength,
+            string extension,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new UnreachableException();
+        }
+    }
+
+    private sealed class UnexpectedPreviewConverter : IOfficePreviewConverter
+    {
+        public Task<OfficePreviewArtifact> ConvertAsync(
+            Stream source,
+            long contentLength,
+            string extension,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The converter should not be called.");
+    }
+
+    private sealed class UnexpectedDistributedLockService : IDistributedLockService
+    {
+        public Task<IDistributedLockHandle?> TryAcquireAsync(
+            RedisKey resource,
+            DistributedLockPolicy policy,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Distributed locking should be disabled.");
+
+        public Task<IDistributedLockHandle?> TryAcquireAsync(
+            IReadOnlyCollection<RedisKey> resources,
+            DistributedLockPolicy policy,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Distributed locking should be disabled.");
     }
 }

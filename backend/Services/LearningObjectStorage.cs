@@ -151,6 +151,65 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
         }
     }
 
+    public async Task<IReadOnlyList<string>> ListByPrefixAsync(
+        string storagePrefix,
+        CancellationToken cancellationToken)
+    {
+        var client = GetClient();
+        var objectPrefix = ParseOwnedPrefix(storagePrefix);
+        var references = new List<string>();
+        string? continuationToken = null;
+        try
+        {
+            do
+            {
+                var result = await client.ListObjectsV2Async(
+                    new OSS.Models.ListObjectsV2Request
+                    {
+                        Bucket = _options.Bucket,
+                        Prefix = objectPrefix,
+                        MaxKeys = 999,
+                        ContinuationToken = continuationToken
+                    },
+                    cancellationToken: cancellationToken);
+                foreach (var item in result.Contents ?? [])
+                {
+                    if (!string.IsNullOrWhiteSpace(item.Key) &&
+                        item.Key.StartsWith(objectPrefix, StringComparison.Ordinal))
+                    {
+                        references.Add(item.Key);
+                    }
+                }
+
+                continuationToken = result.IsTruncated == true
+                    ? result.NextContinuationToken
+                    : null;
+                if (result.IsTruncated == true &&
+                    string.IsNullOrWhiteSpace(continuationToken))
+                {
+                    throw new LearningObjectStorageException(
+                        "OSS returned a truncated object list without a continuation token.");
+                }
+            } while (continuationToken is not null);
+
+            return references;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (LearningObjectStorageException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException(
+                "Failed to list learning previews in object storage.",
+                exception);
+        }
+    }
+
     public async Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
         StoredObjectRange? range,
@@ -250,6 +309,52 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
         }
     }
 
+    public async Task RemoveManyAsync(
+        IReadOnlyCollection<string> storageReferences,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(storageReferences);
+        var objectNames = storageReferences
+            .Select(ParseOwnedReference)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (objectNames.Length == 0)
+        {
+            return;
+        }
+
+        var client = GetClient();
+        try
+        {
+            foreach (var chunk in objectNames.Chunk(1000))
+            {
+                await client.DeleteMultipleObjectsAsync(
+                    new OSS.Models.DeleteMultipleObjectsRequest
+                    {
+                        Bucket = _options.Bucket,
+                        Quiet = true,
+                        Objects = chunk
+                            .Select(objectName => new OSS.Models.DeleteObject
+                            {
+                                Key = objectName
+                            })
+                            .ToArray()
+                    },
+                    cancellationToken: cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new LearningObjectStorageException(
+                "Failed to delete learning previews from object storage.",
+                exception);
+        }
+    }
+
     public void Dispose() => _client?.Dispose();
 
     private OSS.Client GetClient() => _client ?? throw new LearningObjectStorageException(
@@ -271,6 +376,35 @@ public sealed class OssLearningObjectStorage : ILearningObjectStorage, IDisposab
         }
 
         return objectName;
+    }
+
+    private string ParseOwnedPrefix(string storagePrefix)
+    {
+        var normalized = storagePrefix.Trim();
+        string? bucket = null;
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
+        {
+            if (!string.Equals(uri.Scheme, LegacyReferenceScheme, StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(uri.Host))
+            {
+                throw new LearningObjectStorageException(
+                    "The learning preview OSS prefix is invalid.");
+            }
+
+            bucket = uri.Host;
+            normalized = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/');
+        }
+
+        if ((bucket is not null &&
+             !string.Equals(bucket, _options.Bucket, StringComparison.Ordinal)) ||
+            !normalized.EndsWith("/", StringComparison.Ordinal) ||
+            !IsValidObjectKey($"{normalized}prefix-probe"))
+        {
+            throw new LearningObjectStorageException(
+                "The learning preview OSS prefix is invalid.");
+        }
+
+        return normalized;
     }
 
     private static bool TryParseReference(

@@ -72,7 +72,7 @@ public sealed class LearningPreviewService : IDisposable
         {
             throw new LearningPreviewException(
                 LearningPreviewFailure.Unsupported,
-                "Office 在线转换在独立隔离服务完成前暂不可用，请在获得权限后下载查看。");
+                "Office 在线转换仅在 Development 环境且 EnableOfficeConversion 开启时可用，请下载文件查看。");
         }
 
         using var operationTimeout = CancellationTokenSource.CreateLinkedTokenSource(
@@ -98,7 +98,7 @@ public sealed class LearningPreviewService : IDisposable
             !cancellationToken.IsCancellationRequested)
         {
             throw new LearningPreviewException(
-                LearningPreviewFailure.ConversionFailed,
+                LearningPreviewFailure.Timeout,
                 "Office 文档预览处理超时，请稍后重试。");
         }
     }
@@ -140,26 +140,16 @@ public sealed class LearningPreviewService : IDisposable
     {
         if (_objectStorage.IsStorageReference(fileUrl))
         {
-            var metadata = await _objectStorage.GetMetadataAsync(fileUrl!, cancellationToken);
-            if (metadata.ContentLength is > 0)
-            {
-                var fileVersion = BuildFileVersion(
-                    fileUrl!,
-                    metadata.ETag,
-                    metadata.ContentLength.Value,
-                    metadata.LastModified);
-                var previewReference = BuildPreviewReference(clubId, itemId, fileVersion);
-                if (await _objectStorage.ExistsAsync(previewReference, cancellationToken))
-                {
-                    await _objectStorage.RemoveAsync(previewReference, cancellationToken);
-                }
-            }
-
+            var previewReferences = await _objectStorage.ListByPrefixAsync(
+                BuildPreviewPrefix(clubId, itemId),
+                cancellationToken);
             var legacyReference = BuildLegacyPreviewReference(clubId, itemId);
-            if (await _objectStorage.ExistsAsync(legacyReference, cancellationToken))
-            {
-                await _objectStorage.RemoveAsync(legacyReference, cancellationToken);
-            }
+            await _objectStorage.RemoveManyAsync(
+                previewReferences
+                    .Append(legacyReference)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                cancellationToken);
         }
 
         var localDirectory = GetLocalPreviewDirectory(clubId);
@@ -392,7 +382,7 @@ public sealed class LearningPreviewService : IDisposable
                             File.Copy(artifact.PdfPath, temporaryPath, false);
                             operationToken.ThrowIfCancellationRequested();
                             ensureLease();
-                            File.Move(temporaryPath, previewPath, false);
+                            PublishLocalPreview(temporaryPath, previewPath);
                         }
                         finally
                         {
@@ -474,8 +464,23 @@ public sealed class LearningPreviewService : IDisposable
     private static string BuildPreviewReference(int clubId, int itemId, string fileVersion) =>
         $"clubs/{clubId}/learning/{itemId}/preview/{fileVersion}.pdf";
 
+    private static string BuildPreviewPrefix(int clubId, int itemId) =>
+        $"clubs/{clubId}/learning/{itemId}/preview/";
+
     private static string BuildLegacyPreviewReference(int clubId, int itemId) =>
         $"clubs/{clubId}/learning/{itemId}/preview/converted.pdf";
+
+    internal static void PublishLocalPreview(string temporaryPath, string previewPath)
+    {
+        try
+        {
+            File.Move(temporaryPath, previewPath, false);
+        }
+        catch (IOException) when (File.Exists(temporaryPath) && File.Exists(previewPath))
+        {
+            // 其他实例已经发布同一文件版本的预览，保留现有产物。
+        }
+    }
 
     private SemaphoreSlim GetConversionLock(string key)
     {
@@ -933,11 +938,12 @@ internal sealed record LearningPreviewFormat(
 
 public enum LearningPreviewFailure
 {
-    Busy,
     Unsupported,
     InvalidRange,
     ConversionFailed,
-    NotFound
+    NotFound,
+    Timeout,
+    Busy
 }
 
 public sealed class LearningPreviewException : Exception

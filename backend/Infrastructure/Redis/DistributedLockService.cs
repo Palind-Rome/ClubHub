@@ -124,12 +124,11 @@ public sealed class DistributedLockService : IDistributedLockService
         cancellationToken.ThrowIfCancellationRequested();
         var owner = Guid.NewGuid().ToString("N");
         var elapsed = Stopwatch.StartNew();
-        var attempted = false;
+        var waited = false;
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            attempted = true;
             var acquired = new List<RedisKey>(orderedResources.Length);
             try
             {
@@ -197,7 +196,7 @@ public sealed class DistributedLockService : IDistributedLockService
             {
                 _metrics.RecordLockAcquisition(
                     policy.Name,
-                    attempted ? "contended" : "timeout",
+                    waited ? "contended" : "timeout",
                     elapsed.Elapsed.TotalMilliseconds,
                     orderedResources.Length);
                 return null;
@@ -207,6 +206,7 @@ public sealed class DistributedLockService : IDistributedLockService
                 0,
                 Math.Max(1, Math.Min(51, (int)Math.Ceiling(policy.RetryInterval.TotalMilliseconds / 2))));
             var delay = policy.RetryInterval + TimeSpan.FromMilliseconds(jitterMilliseconds);
+            waited = true;
             await Task.Delay(delay < remaining ? delay : remaining, cancellationToken);
         }
     }

@@ -259,6 +259,11 @@ public sealed class LearningPreviewEndpointTests
             CancellationToken cancellationToken) =>
             Task.FromResult(false);
 
+        public Task<IReadOnlyList<string>> ListByPrefixAsync(
+            string storagePrefix,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
         public Task SaveAsync(
             string storageReference,
             Stream content,
@@ -270,6 +275,11 @@ public sealed class LearningPreviewEndpointTests
 
         public Task RemoveAsync(
             string storageReference,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task RemoveManyAsync(
+            IReadOnlyCollection<string> storageReferences,
             CancellationToken cancellationToken) =>
             Task.CompletedTask;
     }

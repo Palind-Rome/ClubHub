@@ -171,8 +171,12 @@ public sealed class RedisCacheServiceTests
     public async Task SeparateInstancesUseOneDistributedRebuildLease()
     {
         var database = new FakeRedisDatabase();
-        using var firstContext = new CacheServiceTestContext(database: database);
-        using var secondContext = new CacheServiceTestContext(database: database);
+        using var firstContext = new CacheServiceTestContext(
+            database: database,
+            distributedLocksEnabled: true);
+        using var secondContext = new CacheServiceTestContext(
+            database: database,
+            distributedLocksEnabled: true);
         var sourceStarted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseSource = new TaskCompletionSource(
@@ -210,8 +214,12 @@ public sealed class RedisCacheServiceTests
     public async Task SourceFailureReleasesLeaseForNextRebuild()
     {
         var database = new FakeRedisDatabase();
-        using var firstContext = new CacheServiceTestContext(database: database);
-        using var secondContext = new CacheServiceTestContext(database: database);
+        using var firstContext = new CacheServiceTestContext(
+            database: database,
+            distributedLocksEnabled: true);
+        using var secondContext = new CacheServiceTestContext(
+            database: database,
+            distributedLocksEnabled: true);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             firstContext.Service.GetOrCreateAsync<string>(
@@ -229,7 +237,7 @@ public sealed class RedisCacheServiceTests
     [Fact]
     public async Task SourceAndLeaseMetricsArePublished()
     {
-        using var context = new CacheServiceTestContext();
+        using var context = new CacheServiceTestContext(distributedLocksEnabled: true);
         var measurements = new ConcurrentBag<string>();
         using var listener = new MeterListener
         {
@@ -260,7 +268,7 @@ public sealed class RedisCacheServiceTests
     [Fact]
     public async Task ContendedLeaseWaitTimeoutFallsBackWithoutHanging()
     {
-        using var context = new CacheServiceTestContext();
+        using var context = new CacheServiceTestContext(distributedLocksEnabled: true);
         var keyBuilder = new RedisKeyBuilder(context.Configuration);
         var leaseKey = keyBuilder.Build(
             "cache",
@@ -291,7 +299,7 @@ public sealed class RedisCacheServiceTests
     [Fact]
     public async Task LeaseReleaseFailureDoesNotHideSourceResult()
     {
-        using var context = new CacheServiceTestContext();
+        using var context = new CacheServiceTestContext(distributedLocksEnabled: true);
         context.Database.LeaseReleaseException = new TimeoutException("simulated");
 
         var result = await context.Service.GetOrCreateAsync(
@@ -299,6 +307,20 @@ public sealed class RedisCacheServiceTests
             _ => Task.FromResult<string?>("oracle-value"));
 
         Assert.Equal("oracle-value", result);
+    }
+
+    [Fact]
+    public async Task DisabledDistributedLocksRebuildWithoutLeaseAcquisition()
+    {
+        using var context = new CacheServiceTestContext(distributedLocksEnabled: false);
+
+        var result = await context.Service.GetOrCreateAsync(
+            TestKey,
+            _ => Task.FromResult<string?>("oracle-value"));
+
+        Assert.Equal("oracle-value", result);
+        Assert.Equal(0, context.Database.LeaseAcquisitionAttempts);
+        Assert.Equal(1, context.Database.WriteCalls);
     }
 
     [Fact]
@@ -326,7 +348,8 @@ public sealed class RedisCacheServiceTests
         public CacheServiceTestContext(
             bool enabled = true,
             int maxPayloadBytes = 256 * 1024,
-            FakeRedisDatabase? database = null)
+            FakeRedisDatabase? database = null,
+            bool distributedLocksEnabled = false)
         {
             Database = database ?? new FakeRedisDatabase();
             Configuration = Options.Create(
@@ -337,7 +360,11 @@ public sealed class RedisCacheServiceTests
                     NullValueTtlSeconds = 30,
                     MaxPayloadBytes = maxPayloadBytes,
                     TtlJitterRatio = 0.1,
-                    Features = new RedisFeatureOptions { Cache = enabled }
+                    Features = new RedisFeatureOptions
+                    {
+                        Cache = enabled,
+                        DistributedLocks = distributedLocksEnabled
+                    }
                 });
 
             var services = new ServiceCollection();
@@ -376,6 +403,7 @@ public sealed class RedisCacheServiceTests
         private readonly ConcurrentDictionary<string, DateTimeOffset> _expirations = [];
         private int _deleteCalls;
         private int _leaseAcquisitionCount;
+        private int _leaseAcquisitionAttempts;
         private int _leaseContentionCount;
         private int _readCalls;
         private int _writeCalls;
@@ -395,6 +423,8 @@ public sealed class RedisCacheServiceTests
         public Exception? LeaseReleaseException { get; set; }
 
         public int LeaseAcquisitionCount => Volatile.Read(ref _leaseAcquisitionCount);
+
+        public int LeaseAcquisitionAttempts => Volatile.Read(ref _leaseAcquisitionAttempts);
 
         public int LeaseContentionCount => Volatile.Read(ref _leaseContentionCount);
 
@@ -439,6 +469,7 @@ public sealed class RedisCacheServiceTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfConfigured();
+            Interlocked.Increment(ref _leaseAcquisitionAttempts);
             var stringKey = key.ToString();
             RemoveIfExpired(stringKey);
             if (!_values.TryAdd(stringKey, value))

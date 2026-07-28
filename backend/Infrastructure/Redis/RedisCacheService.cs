@@ -291,6 +291,13 @@ public sealed class RedisCacheService : IRedisCacheService
                 return await LoadSourceAsync(source, policy.Name, cancellationToken);
             }
 
+            if (!_options.Features.DistributedLocks)
+            {
+                var sourceValue = await LoadSourceAsync(source, policy.Name, cancellationToken);
+                await SetAsync(key, sourceValue, policy, cancellationToken);
+                return sourceValue;
+            }
+
             var leaseKey = _keyBuilder.Build(
                 "cache",
                 "rebuild",

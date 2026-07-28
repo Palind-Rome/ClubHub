@@ -25,6 +25,10 @@ public interface ILearningObjectStorage
         string storageReference,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<string>> ListByPrefixAsync(
+        string storagePrefix,
+        CancellationToken cancellationToken);
+
     Task<StoredObjectDownload> OpenReadAsync(
         string storageReference,
         StoredObjectRange? range,
@@ -39,6 +43,10 @@ public interface ILearningObjectStorage
         CancellationToken cancellationToken);
 
     Task RemoveAsync(string storageReference, CancellationToken cancellationToken);
+
+    Task RemoveManyAsync(
+        IReadOnlyCollection<string> storageReferences,
+        CancellationToken cancellationToken);
 }
 
 public sealed record StoredObjectMetadata(

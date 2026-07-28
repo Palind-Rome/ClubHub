@@ -40,6 +40,31 @@ public sealed class DistributedBusinessLockPlanningTests
             keys.Select(key => key.ToString()));
     }
 
+    [Fact]
+    public void VenueDatesAllowAtMostThirtyOneBeijingCalendarDays()
+    {
+        var keys = VenueReservationsController.BuildVenueDateLockKeys(
+            Keys,
+            42,
+            new DateTime(2026, 6, 30, 16, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 7, 31, 16, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(VenueReservationsController.MaxReservationLockedDays, keys.Count);
+    }
+
+    [Fact]
+    public void VenueDatesRejectMoreThanThirtyOneBeijingCalendarDays()
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            VenueReservationsController.BuildVenueDateLockKeys(
+                Keys,
+                42,
+                new DateTime(2026, 6, 30, 16, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 8, 1, 16, 0, 0, DateTimeKind.Utc)));
+
+        Assert.Contains("31", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("2025-2026学年春季", "2026春季")]
     [InlineData("2026-2027学年秋季", "2026秋季")]
@@ -48,5 +73,9 @@ public sealed class DistributedBusinessLockPlanningTests
         Assert.Equal(
             ClubsController.EvaluationTermWindowIdentity(first),
             ClubsController.EvaluationTermWindowIdentity(second));
+        Assert.Equal(
+            ClubsController.EvaluationTermPrefilterToken(first),
+            ClubsController.EvaluationTermPrefilterToken(second));
+        Assert.Equal("2026", ClubsController.EvaluationTermPrefilterToken(first));
     }
 }

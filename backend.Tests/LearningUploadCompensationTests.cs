@@ -143,6 +143,11 @@ public sealed class LearningUploadCompensationTests
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<IReadOnlyList<string>> ListByPrefixAsync(
+            string storagePrefix,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<StoredObjectDownload> OpenReadAsync(
             string storageReference,
             StoredObjectRange? range,
@@ -160,6 +165,11 @@ public sealed class LearningUploadCompensationTests
 
         public Task RemoveAsync(
             string storageReference,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task RemoveManyAsync(
+            IReadOnlyCollection<string> storageReferences,
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
