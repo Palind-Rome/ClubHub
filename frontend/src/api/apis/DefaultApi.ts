@@ -3144,7 +3144,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换仅在 Development 环境且 EnableOfficeConversion 开启时可用；未启用时返回 415，启用后再按文件格式与签名、转换锁竞争和转换结果分别返回 415、409 或 422。
    * 准备学习资源在线预览会话
    */
   async createLearningPreviewSessionRaw(
@@ -3158,7 +3158,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
+   * 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换仅在 Development 环境且 EnableOfficeConversion 开启时可用；未启用时返回 415，启用后再按文件格式与签名、转换锁竞争和转换结果分别返回 415、409 或 422。
    * 准备学习资源在线预览会话
    */
   async createLearningPreviewSession(
@@ -6042,7 +6042,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 文件仅能使用在 Development 环境且 EnableOfficeConversion 开启时由预览会话准备的 PDF 副本，准备阶段可能返回 415、409 或 422。该操作不会写入下载时间或下载 IP。
    * 获取受保护的学习资源在线预览内容
    */
   async getLearningPreviewRaw(
@@ -6056,7 +6056,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
+   * 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 文件仅能使用在 Development 环境且 EnableOfficeConversion 开启时由预览会话准备的 PDF 副本，准备阶段可能返回 415、409 或 422。该操作不会写入下载时间或下载 IP。
    * 获取受保护的学习资源在线预览内容
    */
   async getLearningPreview(
