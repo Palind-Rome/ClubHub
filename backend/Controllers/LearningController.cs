@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -527,6 +528,22 @@ public class LearningController : ControllerBase
         catch (LearningPreviewException exception)
         {
             return PreviewFailure(exception);
+        }
+        catch (DistributedLockUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法获取 Office 转换锁。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "暂时无法安全协调 Office 文件转换，请稍后重试。");
+        }
+        catch (DistributedLockLeaseLostException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 的 Office 转换锁租约已丢失。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "Office 文件转换协调状态已失效，请稍后重试。");
         }
         catch (LearningPreviewSessionUnavailableException exception)
         {
@@ -1812,11 +1829,16 @@ public class LearningController : ControllerBase
     {
         var statusCode = exception.Failure switch
         {
+            LearningPreviewFailure.Busy => StatusCodes.Status409Conflict,
             LearningPreviewFailure.Unsupported => StatusCodes.Status415UnsupportedMediaType,
             LearningPreviewFailure.InvalidRange => StatusCodes.Status416RangeNotSatisfiable,
             LearningPreviewFailure.ConversionFailed => StatusCodes.Status422UnprocessableEntity,
             _ => StatusCodes.Status404NotFound
         };
+        if (exception.Failure == LearningPreviewFailure.Busy)
+        {
+            Response.Headers.RetryAfter = "2";
+        }
         _logger.LogWarning(
             exception,
             "学习资源在线预览失败，类型 {Failure}。",

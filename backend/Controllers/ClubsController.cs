@@ -1,13 +1,17 @@
 using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Org.OpenAPITools.Converters;
 using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
 using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
@@ -58,6 +62,10 @@ public class ClubsController : ControllerBase
     private const decimal ActivityAcceptedScore = 5m;
 
     private readonly ClubHubDbContext _db;
+    private readonly IDistributedLockService _distributedLocks;
+    private readonly IRedisKeyBuilder _keyBuilder;
+    private readonly bool _distributedLocksEnabled;
+    private readonly ILogger<ClubsController> _logger;
     private static readonly JsonSerializerOptions RequestJsonOptions = CreateRequestJsonOptions();
     private static readonly TimeZoneInfo BusinessTimeZone = ResolveBusinessTimeZone();
     private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
@@ -95,7 +103,20 @@ public class ClubsController : ControllerBase
         "minister"
     };
 
-    public ClubsController(ClubHubDbContext db) => _db = db;
+    public ClubsController(
+        ClubHubDbContext db,
+        IDistributedLockService distributedLocks,
+        IRedisKeyBuilder keyBuilder,
+        IOptions<RedisOptions> redisOptions,
+        ILogger<ClubsController> logger)
+    {
+        _db = db;
+        _distributedLocks = distributedLocks;
+        _keyBuilder = keyBuilder;
+        _distributedLocksEnabled =
+            redisOptions.Value.Enabled && redisOptions.Value.Features.DistributedLocks;
+        _logger = logger;
+    }
 
     [HttpGet("advisor-candidates")]
     public async Task<IActionResult> GetAdvisorCandidates()
@@ -1538,6 +1559,34 @@ public class ClubsController : ControllerBase
             return BadRequest(new { message = termValidationError });
         }
 
+        var termWindow = ResolveEvaluationTermWindow(termName)!;
+        return await ExecuteWithEvaluationLockAsync(
+            clubId,
+            termWindow,
+            (lockHandle, operationToken) => GenerateEvaluationsWithinLockAsync(
+                clubId,
+                currentUserId.Value,
+                termName,
+                termWindow,
+                req.OverwriteDrafts,
+                lockHandle,
+                operationToken));
+    }
+
+    private async Task<IActionResult> GenerateEvaluationsWithinLockAsync(
+        int clubId,
+        int evaluatorUserId,
+        string termName,
+        EvaluationTermWindow termWindow,
+        bool overwriteDrafts,
+        IDistributedLockHandle? lockHandle,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction =
+            await _db.Database.BeginJoinableTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+
         var today = BusinessToday();
         var members = await _db.ClubMembers
             .Include(cm => cm.User)
@@ -1546,20 +1595,21 @@ public class ClubsController : ControllerBase
             .Where(cm => cm.TermEnd == null || cm.TermEnd >= today)
             .OrderByDescending(cm => cm.TermStart)
             .ThenByDescending(cm => cm.JoinAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         members = members
             .Where(IsCurrentMemberTerm)
             .GroupBy(cm => cm.UserId)
             .Select(group => group.First())
             .ToList();
 
-        var existingEvaluations = await _db.Evaluations
-            .Where(ev =>
-                ev.ClubId == clubId &&
-                ev.EvaluationType == EvaluationSemester &&
-                ev.TermName == termName)
-            .OrderByDescending(ev => ev.CreatedAt)
-            .ToListAsync();
+        var existingEvaluations = (await _db.Evaluations
+                .Where(ev =>
+                    ev.ClubId == clubId &&
+                    ev.EvaluationType == EvaluationSemester)
+                .OrderByDescending(ev => ev.CreatedAt)
+                .ToListAsync(cancellationToken))
+            .Where(ev => EvaluationTermMatches(ev.TermName, termWindow))
+            .ToList();
         var existingByUser = existingEvaluations
             .GroupBy(ev => ev.UserId)
             .ToDictionary(group => group.Key, group => group.First());
@@ -1568,14 +1618,17 @@ public class ClubsController : ControllerBase
         var createdCount = 0;
         var refreshedCount = 0;
         var skippedPublishedCount = 0;
-        var sourceSyncs = new List<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)>();
+        var sourceSyncs =
+            new List<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)>();
         var scoreByUser = await CalculateSemesterEvaluationScoresForUsersAsync(
             clubId,
             members.Select(member => member.UserId).ToList(),
-            termName);
+            termName,
+            cancellationToken);
 
         foreach (var member in members)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var scores = scoreByUser[member.UserId];
             var totalScore = CalculateEvaluationTotal(
                 scores.ActivityScore,
@@ -1591,7 +1644,7 @@ public class ClubsController : ControllerBase
                     continue;
                 }
 
-                if (!req.OverwriteDrafts)
+                if (!overwriteDrafts)
                 {
                     continue;
                 }
@@ -1603,8 +1656,9 @@ public class ClubsController : ControllerBase
                 existing.TotalScore = totalScore;
                 existing.Grade = EvaluationGrade(totalScore);
                 existing.PublicStatus = EvaluationDraft;
-                existing.EvaluatorUserId = currentUserId.Value;
-                existing.CommentText = EmptyToNull(existing.CommentText) ?? "系统自动生成，待负责人或指导老师确认。";
+                existing.EvaluatorUserId = evaluatorUserId;
+                existing.CommentText =
+                    EmptyToNull(existing.CommentText) ?? "系统自动生成，待负责人或指导老师确认。";
                 sourceSyncs.Add((existing, scores.AwardSources));
                 refreshedCount++;
                 continue;
@@ -1615,7 +1669,7 @@ public class ClubsController : ControllerBase
                 EvaluationType = EvaluationSemester,
                 ClubId = clubId,
                 UserId = member.UserId,
-                EvaluatorUserId = currentUserId.Value,
+                EvaluatorUserId = evaluatorUserId,
                 TermName = termName,
                 ActivityScore = scores.ActivityScore,
                 TaskScore = scores.TaskScore,
@@ -1632,26 +1686,25 @@ public class ClubsController : ControllerBase
             createdCount++;
         }
 
-        await using (var transaction = await _db.Database.BeginJoinableTransactionAsync())
+        await _db.SaveChangesAsync(cancellationToken);
+        await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now, cancellationToken);
+        if (sourceSyncs.Count > 0)
         {
-            await _db.SaveChangesAsync();
-            await ReplaceEvaluationAwardSourcesAsync(sourceSyncs, now);
-            if (sourceSyncs.Count > 0)
-            {
-                await _db.SaveChangesAsync();
-            }
-
-            await transaction.CommitAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
-        var records = await EvaluationQuery()
-            .Where(ev =>
-                ev.ClubId == clubId &&
-                ev.EvaluationType == EvaluationSemester &&
-                ev.TermName == termName)
-            .OrderBy(ev => ev.User!.RealName ?? ev.User!.Username)
+        var records = (await EvaluationQuery()
+                .Where(ev =>
+                    ev.ClubId == clubId &&
+                    ev.EvaluationType == EvaluationSemester)
+                .ToListAsync(cancellationToken))
+            .Where(ev => EvaluationTermMatches(ev.TermName, termWindow))
+            .OrderBy(ev => ev.User?.RealName ?? ev.User?.Username)
             .ThenBy(ev => ev.UserId)
-            .ToListAsync();
+            .ToList();
+
+        lockHandle?.ThrowIfLeaseLost();
+        await transaction.CommitAsync(cancellationToken);
 
         return Ok(new GenerateClubEvaluationsResultDto(
             termName,
@@ -1660,6 +1713,90 @@ public class ClubsController : ControllerBase
             refreshedCount,
             skippedPublishedCount,
             records.Select(ToEvaluationRecordDto).ToList()));
+    }
+
+    private async Task<IActionResult> ExecuteWithEvaluationLockAsync(
+        int clubId,
+        EvaluationTermWindow termWindow,
+        Func<IDistributedLockHandle?, CancellationToken, Task<IActionResult>> operation)
+    {
+        if (!_distributedLocksEnabled)
+        {
+            return await operation(null, HttpContext.RequestAborted);
+        }
+
+        using var operationTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+            HttpContext.RequestAborted);
+        operationTimeout.CancelAfter(TimeSpan.FromSeconds(60));
+
+        try
+        {
+            var lockKey = _keyBuilder.Build(
+                "evaluation",
+                "generate",
+                clubId,
+                termWindow.Start.ToString("yyyyMMdd", CultureInfo.InvariantCulture),
+                termWindow.End.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
+            var handle = await _distributedLocks.TryAcquireAsync(
+                lockKey,
+                new DistributedLockPolicy(
+                    "evaluation-generate",
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(30),
+                    TimeSpan.FromMilliseconds(100),
+                    TimeSpan.FromSeconds(10)),
+                operationTimeout.Token);
+            if (handle is null)
+            {
+                Response.Headers.RetryAfter = "2";
+                return Conflict(new
+                {
+                    message = "同一社团和学期的成员考核正在生成，请稍后重试。"
+                });
+            }
+
+            await using (handle)
+            using (var leaseCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                operationTimeout.Token,
+                handle.LeaseLost))
+            {
+                try
+                {
+                    return await operation(handle, leaseCancellation.Token);
+                }
+                catch (OperationCanceledException) when (handle.LeaseLost.IsCancellationRequested)
+                {
+                    handle.ThrowIfLeaseLost();
+                    throw;
+                }
+            }
+        }
+        catch (DistributedLockUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "成员考核批量生成分布式锁暂不可用。");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "暂时无法安全生成成员考核，请稍后重试。"
+            });
+        }
+        catch (DistributedLockLeaseLostException exception)
+        {
+            _logger.LogWarning(exception, "成员考核批量生成分布式锁租约已丢失。");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "成员考核生成协调状态已失效，请稍后重试。"
+            });
+        }
+        catch (OperationCanceledException) when (
+            operationTimeout.IsCancellationRequested &&
+            !HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogWarning("成员考核批量生成锁内业务处理超时。");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "成员考核生成超时，请稍后重试。"
+            });
+        }
     }
 
     [HttpPost("{clubId:int}/evaluations")]
@@ -3485,7 +3622,8 @@ public class ClubsController : ControllerBase
     private async Task<Dictionary<int, EvaluationScoreSnapshot>> CalculateSemesterEvaluationScoresForUsersAsync(
         int clubId,
         IReadOnlyCollection<int> userIds,
-        string termName)
+        string termName,
+        CancellationToken cancellationToken = default)
     {
         var ids = userIds.Distinct().ToList();
         if (ids.Count == 0)
@@ -3495,10 +3633,26 @@ public class ClubsController : ControllerBase
 
         var termWindow = ResolveEvaluationTermWindow(termName)
             ?? throw new InvalidOperationException("Semester evaluation termName must be validated before calculating scores.");
-        var activityScores = await CalculateSemesterActivityScoresAsync(clubId, ids, termWindow);
-        var taskScores = await CalculateSemesterTaskScoresAsync(clubId, ids, termWindow);
-        var learningScores = await CalculateSemesterLearningScoresAsync(clubId, ids, termWindow);
-        var awardScores = await CalculateSemesterAwardScoresAsync(clubId, ids, termName);
+        var activityScores = await CalculateSemesterActivityScoresAsync(
+            clubId,
+            ids,
+            termWindow,
+            cancellationToken);
+        var taskScores = await CalculateSemesterTaskScoresAsync(
+            clubId,
+            ids,
+            termWindow,
+            cancellationToken);
+        var learningScores = await CalculateSemesterLearningScoresAsync(
+            clubId,
+            ids,
+            termWindow,
+            cancellationToken);
+        var awardScores = await CalculateSemesterAwardScoresAsync(
+            clubId,
+            ids,
+            termName,
+            cancellationToken: cancellationToken);
 
         return ids.ToDictionary(
             userId => userId,
@@ -3549,7 +3703,8 @@ public class ClubsController : ControllerBase
     private async Task<Dictionary<int, decimal>> CalculateSemesterActivityScoresAsync(
         int clubId,
         IReadOnlyCollection<int> userIds,
-        EvaluationTermWindow? termWindow)
+        EvaluationTermWindow? termWindow,
+        CancellationToken cancellationToken = default)
     {
         var query =
             from participation in _db.ActivityParticipations.AsNoTracking()
@@ -3575,7 +3730,7 @@ public class ClubsController : ControllerBase
                 (row.EndAt ?? row.StartAt ?? row.CreatedAt) >= termWindow.Start);
         }
 
-        var participations = await query.ToListAsync();
+        var participations = await query.ToListAsync(cancellationToken);
         return participations
             .GroupBy(row => row.UserId)
             .ToDictionary(
@@ -3644,7 +3799,8 @@ public class ClubsController : ControllerBase
     private async Task<Dictionary<int, decimal>> CalculateSemesterTaskScoresAsync(
         int clubId,
         IReadOnlyCollection<int> userIds,
-        EvaluationTermWindow? termWindow)
+        EvaluationTermWindow? termWindow,
+        CancellationToken cancellationToken = default)
     {
         var assigneeTaskQuery =
             from task in _db.ProjectTasks.AsNoTracking()
@@ -3727,7 +3883,7 @@ public class ClubsController : ControllerBase
             query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
         }
 
-        var taskScores = await query.ToListAsync();
+        var taskScores = await query.ToListAsync(cancellationToken);
         return taskScores
             .GroupBy(row => row.UserId)
             .ToDictionary(
@@ -3796,7 +3952,8 @@ public class ClubsController : ControllerBase
     private async Task<Dictionary<int, decimal>> CalculateSemesterLearningScoresAsync(
         int clubId,
         IReadOnlyCollection<int> userIds,
-        EvaluationTermWindow? termWindow)
+        EvaluationTermWindow? termWindow,
+        CancellationToken cancellationToken = default)
     {
         var query =
             from record in _db.LearningRecords.AsNoTracking()
@@ -3824,7 +3981,7 @@ public class ClubsController : ControllerBase
             query = query.Where(row => row.StartAt <= termWindow.End && row.EndAt >= termWindow.Start);
         }
 
-        var recordScores = await query.ToListAsync();
+        var recordScores = await query.ToListAsync(cancellationToken);
         return recordScores
             .GroupBy(row => row.UserId)
             .ToDictionary(
@@ -3855,7 +4012,8 @@ public class ClubsController : ControllerBase
         int clubId,
         IReadOnlyCollection<int> userIds,
         string termName,
-        int? ignoredEvaluationId = null)
+        int? ignoredEvaluationId = null,
+        CancellationToken cancellationToken = default)
     {
         var ids = userIds.Distinct().ToList();
         if (ids.Count == 0)
@@ -3887,7 +4045,7 @@ public class ClubsController : ControllerBase
                     ? null
                     : application.Scheme.TermName
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         var result = awardApplicationRows
             .Where(row => AwardSchemeMatchesEvaluationTerm(
@@ -3932,7 +4090,6 @@ public class ClubsController : ControllerBase
                 ev.ClubId == clubId &&
                 legacyUserIds.Contains(ev.UserId) &&
                 ev.EvaluationType == EvaluationAward &&
-                ev.TermName == normalizedTerm &&
                 ev.PublicStatus == EvaluationPublished);
 
         if (ignoredEvaluationId is not null)
@@ -3940,14 +4097,24 @@ public class ClubsController : ControllerBase
             legacyQuery = legacyQuery.Where(ev => ev.EvaluationId != ignoredEvaluationId.Value);
         }
 
-        var legacyAwardScores = await legacyQuery
+        var legacyAwardScores = (await legacyQuery
+                .Select(ev => new
+                {
+                    ev.UserId,
+                    ev.TermName,
+                    Score = ev.AwardScore ?? 0
+                })
+                .ToListAsync(cancellationToken))
+            .Where(ev => termWindow is null
+                ? string.Equals(ev.TermName, normalizedTerm, StringComparison.Ordinal)
+                : EvaluationTermMatches(ev.TermName, termWindow))
             .GroupBy(ev => ev.UserId)
             .Select(group => new
             {
                 UserId = group.Key,
-                Score = group.Sum(ev => ev.AwardScore ?? 0)
+                Score = group.Sum(ev => ev.Score)
             })
-            .ToListAsync();
+            .ToList();
 
         foreach (var row in legacyAwardScores)
         {
@@ -3961,7 +4128,8 @@ public class ClubsController : ControllerBase
 
     private async Task ReplaceEvaluationAwardSourcesAsync(
         IEnumerable<(Evaluation Evaluation, IReadOnlyList<AwardScoreSource> Sources)> syncs,
-        DateTime now)
+        DateTime now,
+        CancellationToken cancellationToken = default)
     {
         var materialized = syncs
             .Where(sync => sync.Evaluation.EvaluationId > 0)
@@ -3978,7 +4146,7 @@ public class ClubsController : ControllerBase
             .ToList();
         var existingSources = await _db.EvaluationAwardSources
             .Where(source => evaluationIds.Contains(source.EvaluationId))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         _db.EvaluationAwardSources.RemoveRange(existingSources);
 
         foreach (var sync in materialized)
@@ -4138,6 +4306,22 @@ public class ClubsController : ControllerBase
         ResolveEvaluationTermWindow(termName) is null
             ? "考核学期格式无法识别，请填写如 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间必须为相邻学年。"
             : null;
+
+    private static bool EvaluationTermMatches(
+        string? termName,
+        EvaluationTermWindow expectedWindow) =>
+        !string.IsNullOrWhiteSpace(termName) &&
+        ResolveEvaluationTermWindow(termName) == expectedWindow;
+
+    internal static string? EvaluationTermWindowIdentity(string termName)
+    {
+        var window = ResolveEvaluationTermWindow(termName);
+        return window is null
+            ? null
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"{window.Start:yyyyMMdd}:{window.End:yyyyMMdd}");
+    }
 
     private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
     {

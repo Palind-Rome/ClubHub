@@ -2258,7 +2258,15 @@ paths:
         "404":
           description: 当前用户或社团不存在
         "409":
-          description: 社团状态不允许维护
+          description: 社团状态不允许维护，或同一社团和学期的生成任务正在执行
+          headers:
+            Retry-After:
+              description: 仅锁竞争时返回的建议重试秒数。
+              schema:
+                type: integer
+                example: 2
+        "503":
+          description: 分布式锁不可用、租约丢失或锁内业务处理超时
 
   /api/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
@@ -4557,7 +4565,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 同一场地存在时间重叠的已通过预约
+          description: 同一场地存在时间重叠的已通过预约，或同一场地日期正在处理
+          headers:
+            Retry-After:
+              description: 仅锁竞争时返回的建议重试秒数。
+              schema:
+                type: integer
+                example: 2
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 分布式锁不可用、租约丢失或锁内业务处理超时
           content:
             application/json:
               schema:
@@ -4727,7 +4747,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 审批通过时发现同一场地存在时间重叠的已通过预约
+          description: 审批通过时发现时间冲突，或同一预约、场地日期正在处理
+          headers:
+            Retry-After:
+              description: 仅锁竞争时返回的建议重试秒数。
+              schema:
+                type: integer
+                example: 2
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 分布式锁不可用、租约丢失或锁内业务处理超时
           content:
             application/json:
               schema:
@@ -4953,12 +4985,20 @@ paths:
           description: 当前用户不在可见范围内，或没有预览非公开资源的管理权限。
         "404":
           description: 用户、资源或文件不存在。
+        "409":
+          description: 同一资源版本的 Office 文件正在转换；响应包含短 Retry-After。
+          headers:
+            Retry-After:
+              description: 建议重试秒数。
+              schema:
+                type: integer
+                example: 2
         "415":
           description: 文件格式不受支持、文件签名与扩展名不一致，或 Office 在线转换尚未启用。
         "422":
           description: Office 文件转换失败、超时、超出大小或内存限制。
         "503":
-          description: 私有 OSS 或预览缓存暂不可用。
+          description: 私有 OSS、预览缓存或分布式锁暂不可用，或锁租约已丢失。
 
   /api/learning/items/{itemId}/preview:
     get:

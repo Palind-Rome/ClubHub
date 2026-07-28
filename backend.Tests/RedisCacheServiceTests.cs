@@ -345,12 +345,17 @@ public sealed class RedisCacheServiceTests
             _serviceProvider = services.BuildServiceProvider();
             var metrics = new RedisMetrics(
                 _serviceProvider.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>());
+            var distributedLocks = new DistributedLockService(
+                Database,
+                metrics,
+                NullLogger<DistributedLockService>.Instance);
 
             Service = new RedisCacheService(
                 Database,
                 new RedisCacheSerializer(),
                 new RedisTtlPolicy(Configuration),
                 new RedisKeyBuilder(Configuration),
+                distributedLocks,
                 Configuration,
                 metrics,
                 NullLogger<RedisCacheService>.Instance);

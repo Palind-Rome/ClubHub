@@ -24,6 +24,7 @@ public static class RedisServiceCollectionExtensions
         services.TryAddSingleton<IRedisTtlPolicy, RedisTtlPolicy>();
         services.TryAddSingleton<IRedisDatabase, StackExchangeRedisDatabase>();
         services.TryAddSingleton<IRedisCacheService, RedisCacheService>();
+        services.TryAddSingleton<IDistributedLockService, DistributedLockService>();
         services.TryAddSingleton<RedisMetrics>();
         services.TryAddSingleton<IConnectionMultiplexer>(CreateConnection);
 

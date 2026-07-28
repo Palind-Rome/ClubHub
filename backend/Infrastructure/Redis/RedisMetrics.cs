@@ -13,6 +13,12 @@ public sealed class RedisMetrics
     private readonly Counter<long> _sourceLoads;
     private readonly Histogram<double> _sourceDuration;
     private readonly Counter<long> _rebuildLeases;
+    private readonly Counter<long> _lockAcquisitions;
+    private readonly Histogram<double> _lockWaitDuration;
+    private readonly Counter<long> _lockRenewals;
+    private readonly Counter<long> _lockLeaseLosses;
+    private readonly Counter<long> _lockReleases;
+    private readonly Histogram<double> _lockHoldDuration;
 
     public RedisMetrics(IMeterFactory meterFactory)
     {
@@ -40,6 +46,26 @@ public sealed class RedisMetrics
         _rebuildLeases = meter.CreateCounter<long>(
             "clubhub.redis.cache.rebuild.leases",
             description: "Cache rebuild lease outcomes.");
+        _lockAcquisitions = meter.CreateCounter<long>(
+            "clubhub.redis.lock.acquisitions",
+            description: "Distributed lock acquisition outcomes.");
+        _lockWaitDuration = meter.CreateHistogram<double>(
+            "clubhub.redis.lock.wait.duration",
+            unit: "ms",
+            description: "Distributed lock acquisition wait duration.");
+        _lockRenewals = meter.CreateCounter<long>(
+            "clubhub.redis.lock.renewals",
+            description: "Distributed lock renewal outcomes.");
+        _lockLeaseLosses = meter.CreateCounter<long>(
+            "clubhub.redis.lock.lease.losses",
+            description: "Distributed lock leases that became invalid.");
+        _lockReleases = meter.CreateCounter<long>(
+            "clubhub.redis.lock.releases",
+            description: "Distributed lock release outcomes.");
+        _lockHoldDuration = meter.CreateHistogram<double>(
+            "clubhub.redis.lock.hold.duration",
+            unit: "ms",
+            description: "Distributed lock hold duration.");
     }
 
     public void RecordCacheRead(string outcome, double elapsedMilliseconds)
@@ -85,4 +111,44 @@ public sealed class RedisMetrics
             1,
             new KeyValuePair<string, object?>("cache", cacheName),
             new KeyValuePair<string, object?>("outcome", outcome));
+
+    public void RecordLockAcquisition(
+        string policyName,
+        string outcome,
+        double elapsedMilliseconds,
+        int resourceCount)
+    {
+        _lockAcquisitions.Add(
+            1,
+            new KeyValuePair<string, object?>("policy", policyName),
+            new KeyValuePair<string, object?>("outcome", outcome),
+            new KeyValuePair<string, object?>("resource_count", resourceCount));
+        _lockWaitDuration.Record(
+            elapsedMilliseconds,
+            new KeyValuePair<string, object?>("policy", policyName),
+            new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    public void RecordLockRenewal(string policyName, string outcome) =>
+        _lockRenewals.Add(
+            1,
+            new KeyValuePair<string, object?>("policy", policyName),
+            new KeyValuePair<string, object?>("outcome", outcome));
+
+    public void RecordLockLeaseLost(string policyName, string reason) =>
+        _lockLeaseLosses.Add(
+            1,
+            new KeyValuePair<string, object?>("policy", policyName),
+            new KeyValuePair<string, object?>("reason", reason));
+
+    public void RecordLockRelease(string policyName, string outcome) =>
+        _lockReleases.Add(
+            1,
+            new KeyValuePair<string, object?>("policy", policyName),
+            new KeyValuePair<string, object?>("outcome", outcome));
+
+    public void RecordLockHold(string policyName, double elapsedMilliseconds) =>
+        _lockHoldDuration.Record(
+            elapsedMilliseconds,
+            new KeyValuePair<string, object?>("policy", policyName));
 }

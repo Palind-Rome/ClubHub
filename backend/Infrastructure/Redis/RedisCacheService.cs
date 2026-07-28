@@ -56,6 +56,7 @@ public sealed class RedisCacheService : IRedisCacheService
     private readonly IRedisCacheSerializer _serializer;
     private readonly IRedisTtlPolicy _ttlPolicy;
     private readonly IRedisKeyBuilder _keyBuilder;
+    private readonly IDistributedLockService _distributedLocks;
     private readonly RedisOptions _options;
     private readonly RedisMetrics _metrics;
     private readonly ILogger<RedisCacheService> _logger;
@@ -67,6 +68,7 @@ public sealed class RedisCacheService : IRedisCacheService
         IRedisCacheSerializer serializer,
         IRedisTtlPolicy ttlPolicy,
         IRedisKeyBuilder keyBuilder,
+        IDistributedLockService distributedLocks,
         IOptions<RedisOptions> options,
         RedisMetrics metrics,
         ILogger<RedisCacheService> logger)
@@ -75,6 +77,7 @@ public sealed class RedisCacheService : IRedisCacheService
         _serializer = serializer;
         _ttlPolicy = ttlPolicy;
         _keyBuilder = keyBuilder;
+        _distributedLocks = distributedLocks;
         _options = options.Value;
         _metrics = metrics;
         _logger = logger;
@@ -292,14 +295,32 @@ public sealed class RedisCacheService : IRedisCacheService
                 "cache",
                 "rebuild",
                 _keyBuilder.HashSensitive(key.ToString()));
-            var leaseOwner = Guid.NewGuid().ToString("N");
-            var leaseAcquired = await TryAcquireRebuildLeaseAsync(
-                leaseKey,
-                leaseOwner,
-                policy,
-                cancellationToken);
+            IDistributedLockHandle? rebuildLock = null;
+            try
+            {
+                rebuildLock = await _distributedLocks.TryAcquireAsync(
+                    leaseKey.ToString(),
+                    new DistributedLockPolicy(
+                        "cache-rebuild",
+                        TimeSpan.Zero,
+                        policy.EffectiveRebuildLeaseTtl,
+                        policy.EffectiveRebuildPollInterval),
+                    cancellationToken);
+                _metrics.RecordRebuildLease(
+                    policy.Name,
+                    rebuildLock is null ? "contended" : "acquired");
+            }
+            catch (DistributedLockUnavailableException exception)
+            {
+                _metrics.RecordRebuildLease(policy.Name, "unavailable");
+                _metrics.RecordFailure("cache-rebuild-lease-acquire");
+                _logger.LogWarning(
+                    exception,
+                    "Redis cache rebuild lease acquisition failed for {CacheName}.",
+                    policy.Name);
+            }
 
-            if (!leaseAcquired)
+            if (rebuildLock is null)
             {
                 var contendedValue = await WaitForRebuildAsync<T>(
                     key,
@@ -313,19 +334,11 @@ public sealed class RedisCacheService : IRedisCacheService
                 return await LoadSourceAsync(source, policy.Name, cancellationToken);
             }
 
-            try
+            await using (rebuildLock)
             {
                 var sourceValue = await LoadSourceAsync(source, policy.Name, cancellationToken);
                 await SetAsync(key, sourceValue, policy, cancellationToken);
                 return sourceValue;
-            }
-            finally
-            {
-                await ReleaseRebuildLeaseAsync(
-                    leaseKey,
-                    leaseOwner,
-                    policy.Name,
-                    CancellationToken.None);
             }
         }
         finally
@@ -387,36 +400,6 @@ public sealed class RedisCacheService : IRedisCacheService
         }
     }
 
-    private async Task<bool> TryAcquireRebuildLeaseAsync(
-        RedisKey leaseKey,
-        RedisValue leaseOwner,
-        RedisCachePolicy policy,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var acquired = await _database.StringSetIfNotExistsAsync(
-                leaseKey,
-                leaseOwner,
-                policy.EffectiveRebuildLeaseTtl,
-                cancellationToken);
-            _metrics.RecordRebuildLease(
-                policy.Name,
-                acquired ? "acquired" : "contended");
-            return acquired;
-        }
-        catch (Exception exception) when (IsRedisFailure(exception))
-        {
-            _metrics.RecordRebuildLease(policy.Name, "unavailable");
-            _metrics.RecordFailure("cache-rebuild-lease-acquire");
-            _logger.LogWarning(
-                exception,
-                "Redis cache rebuild lease acquisition failed for {CacheName}.",
-                policy.Name);
-            return false;
-        }
-    }
-
     private async Task<(bool HasValue, T? Value)> WaitForRebuildAsync<T>(
         RedisKey key,
         RedisCachePolicy policy,
@@ -452,33 +435,6 @@ public sealed class RedisCacheService : IRedisCacheService
 
         _metrics.RecordRebuildLease(policy.Name, "wait-timeout");
         return (false, default);
-    }
-
-    private async Task ReleaseRebuildLeaseAsync(
-        RedisKey leaseKey,
-        RedisValue leaseOwner,
-        string cacheName,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var released = await _database.KeyDeleteIfValueMatchesAsync(
-                leaseKey,
-                leaseOwner,
-                cancellationToken);
-            _metrics.RecordRebuildLease(
-                cacheName,
-                released ? "released" : "owner-mismatch");
-        }
-        catch (Exception exception) when (IsRedisFailure(exception))
-        {
-            _metrics.RecordRebuildLease(cacheName, "release-failed");
-            _metrics.RecordFailure("cache-rebuild-lease-release");
-            _logger.LogWarning(
-                exception,
-                "Redis cache rebuild lease release failed for {CacheName}.",
-                cacheName);
-        }
     }
 
     private MissLockEntry AddMissLockReference(string key)

@@ -46,11 +46,14 @@ REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning ping
    `database/migrations/20260726_add_idempotency_records.sql`。
 2. 人工执行迁移后启用 `REDIS_IDEMPOTENCY_ENABLED`，再按需启用权限缓存、预览会话
    和限流。
-3. 最后启用 `REDIS_AUTH_SESSIONS_ENABLED`；已有纯签名 Token 会全部失效，需提前通知
+3. 确认 Redis readiness、延迟和告警正常后启用
+   `REDIS_DISTRIBUTED_LOCKS_ENABLED`；Office 转换、场地预约和成员考核生成从此在
+   Redis 故障或租约丢失时安全返回 503，不允许无锁降级。
+4. 最后启用 `REDIS_AUTH_SESSIONS_ENABLED`；已有纯签名 Token 会全部失效，需提前通知
    用户重新登录。
 
-认证会话回滚也会要求全员重新登录。权限缓存可关闭并直接回源 Oracle；限流、预览
-与幂等在 Redis 故障时不得绕过。若幂等写回 Redis 失败，先保留
+认证会话回滚也会要求全员重新登录。权限缓存可关闭并直接回源 Oracle；限流、
+预览、幂等与强一致写锁在 Redis 故障时不得绕过。若幂等写回 Redis 失败，先保留
 `IDEMPOTENCY_RECORDS`，由 Oracle 台账继续重放已提交结果。
 
 ## 备份
@@ -128,6 +131,7 @@ Get-FileHash ./redis-backup-dump.rdb -Algorithm SHA256
 | `/health/ready` | 连续失败立即停止部署并通知维护者 |
 | 缓存命中、未命中、回源和重建失败 | 回源或失败率突增时检查 Redis 与 Oracle |
 | 缓存重建租约 `owner-mismatch` | 持续出现时检查 Oracle 慢查询并调整租约 TTL |
+| 分布式锁获取、等待、续租和租约丢失 | 竞争或续租失败持续增长时检查热点请求、Redis 延迟和业务超时 |
 | 会话/限流/预览 503 比例 | 任一持续增长时停止新流量并检查 Redis 连通性、AOF 和容量 |
 | `IDEMPOTENCY_RECORDS` 过期清理积压 | 连续两个清理周期增长时检查 Oracle 任务和索引 |
 
@@ -149,4 +153,5 @@ docker compose logs --tail 100 redis
   Key、TTL 和 Stream backlog；不得临时改为淘汰策略。
 - **AOF/RDB 错误**：停止写流量，保留卷和日志，使用最近备份在隔离卷恢复。
 - **Redis 暂时断连**：普通缓存自动回源 Oracle；恢复连接后让缓存自然重建，不执行
-  `FLUSHALL`。
+  `FLUSHALL`。已启用分布式锁时，Office 转换、场地预约和成员考核生成保持 503；
+  Redis 恢复后至少等待最长遗留租约 30 秒，再在 Oracle 中复查业务结果后恢复写流量。

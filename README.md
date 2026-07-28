@@ -44,7 +44,7 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 不映射 6379；业务缓存和可靠状态能力分别由 `REDIS_CACHE_ENABLED`、
 `REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
 `REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 与
-`REDIS_IDEMPOTENCY_ENABLED` 控制，默认全部关闭。
+`REDIS_IDEMPOTENCY_ENABLED`、`REDIS_DISTRIBUTED_LOCKS_ENABLED` 控制，默认全部关闭。
 
 统一连接、Key、序列化和 Cache Aside 实现在 `backend/Infrastructure/Redis/`。
 `GET /health/live` 只检查 API 进程；`GET /health/ready` 还会检查已启用的 Redis。
@@ -55,6 +55,9 @@ Issue #156 还提供 Redis 登录会话 allowlist、5 分钟权限快照、跨�
 固定窗口限流和 Oracle 幂等台账。启用幂等前必须先人工执行
 `database/migrations/20260726_add_idempotency_records.sql`；最后启用认证会话，
 启用时已有纯签名 Token 将失效并要求重新登录。
+启用 `REDIS_DISTRIBUTED_LOCKS_ENABLED` 后，Office 预览转换、场地预约和成员考核
+批量生成会使用带自动续租的 Redis 锁；Redis 不可用或租约丢失时返回 503，不会
+退回无锁写入。普通缓存重建仍允许在锁不可用时回源 Oracle。
 部署、备份、恢复、升级、密码轮换和排障步骤见
 [Redis 运维手册](docs/operations/redis-runbook.md)。
 

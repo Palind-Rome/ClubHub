@@ -2,6 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using ClubHub.Api.Infrastructure.Redis;
 using Microsoft.Extensions.Options;
 
 namespace ClubHub.Api.Services;
@@ -14,9 +17,13 @@ public sealed class LearningPreviewService : IDisposable
 
     private readonly ILearningObjectStorage _objectStorage;
     private readonly IWebHostEnvironment _environment;
-    private readonly OfficePreviewConverter _converter;
+    private readonly IOfficePreviewConverter _converter;
     private readonly OfficeConversionLimiter _conversionLimiter;
+    private readonly IDistributedLockService _distributedLocks;
+    private readonly IRedisKeyBuilder _keyBuilder;
+    private readonly LearningPreviewOptions _options;
     private readonly bool _officeConversionEnabled;
+    private readonly bool _distributedLocksEnabled;
     private readonly SemaphoreSlim[] _conversionLocks = Enumerable.Range(0, ConversionLockStripeCount)
         .Select(_ => new SemaphoreSlim(1, 1))
         .ToArray();
@@ -24,15 +31,23 @@ public sealed class LearningPreviewService : IDisposable
     public LearningPreviewService(
         ILearningObjectStorage objectStorage,
         IWebHostEnvironment environment,
-        OfficePreviewConverter converter,
+        IOfficePreviewConverter converter,
         OfficeConversionLimiter conversionLimiter,
-        IOptions<LearningPreviewOptions> options)
+        IDistributedLockService distributedLocks,
+        IRedisKeyBuilder keyBuilder,
+        IOptions<LearningPreviewOptions> options,
+        IOptions<RedisOptions> redisOptions)
     {
         _objectStorage = objectStorage;
         _environment = environment;
         _converter = converter;
         _conversionLimiter = conversionLimiter;
-        _officeConversionEnabled = environment.IsDevelopment() && options.Value.EnableOfficeConversion;
+        _distributedLocks = distributedLocks;
+        _keyBuilder = keyBuilder;
+        _options = options.Value;
+        _officeConversionEnabled = environment.IsDevelopment() && _options.EnableOfficeConversion;
+        _distributedLocksEnabled =
+            redisOptions.Value.Enabled && redisOptions.Value.Features.DistributedLocks;
     }
 
     public async Task<PreparedLearningPreview> PrepareAsync(
@@ -60,9 +75,32 @@ public sealed class LearningPreviewService : IDisposable
                 "Office 在线转换在独立隔离服务完成前暂不可用，请在获得权限后下载查看。");
         }
 
-        return source.StorageReference is not null
-            ? await PrepareStoredOfficePreviewAsync(source, itemId, clubId, cancellationToken)
-            : await PrepareLocalOfficePreviewAsync(source, itemId, clubId, cancellationToken);
+        using var operationTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken);
+        operationTimeout.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(1, _options.ConversionTimeoutSeconds + 30)));
+        try
+        {
+            return source.StorageReference is not null
+                ? await PrepareStoredOfficePreviewAsync(
+                    source,
+                    itemId,
+                    clubId,
+                    operationTimeout.Token)
+                : await PrepareLocalOfficePreviewAsync(
+                    source,
+                    itemId,
+                    clubId,
+                    operationTimeout.Token);
+        }
+        catch (OperationCanceledException) when (
+            operationTimeout.IsCancellationRequested &&
+            !cancellationToken.IsCancellationRequested)
+        {
+            throw new LearningPreviewException(
+                LearningPreviewFailure.ConversionFailed,
+                "Office 文档预览处理超时，请稍后重试。");
+        }
     }
 
     public async Task<LearningPreviewStream> OpenAsync(
@@ -102,15 +140,39 @@ public sealed class LearningPreviewService : IDisposable
     {
         if (_objectStorage.IsStorageReference(fileUrl))
         {
-            var previewReference = BuildPreviewReference(clubId, itemId);
-            if (await _objectStorage.ExistsAsync(previewReference, cancellationToken))
+            var metadata = await _objectStorage.GetMetadataAsync(fileUrl!, cancellationToken);
+            if (metadata.ContentLength is > 0)
             {
-                await _objectStorage.RemoveAsync(previewReference, cancellationToken);
+                var fileVersion = BuildFileVersion(
+                    fileUrl!,
+                    metadata.ETag,
+                    metadata.ContentLength.Value,
+                    metadata.LastModified);
+                var previewReference = BuildPreviewReference(clubId, itemId, fileVersion);
+                if (await _objectStorage.ExistsAsync(previewReference, cancellationToken))
+                {
+                    await _objectStorage.RemoveAsync(previewReference, cancellationToken);
+                }
+            }
+
+            var legacyReference = BuildLegacyPreviewReference(clubId, itemId);
+            if (await _objectStorage.ExistsAsync(legacyReference, cancellationToken))
+            {
+                await _objectStorage.RemoveAsync(legacyReference, cancellationToken);
             }
         }
 
-        var localPath = GetLocalPreviewPath(clubId, itemId);
-        if (File.Exists(localPath)) File.Delete(localPath);
+        var localDirectory = GetLocalPreviewDirectory(clubId);
+        if (Directory.Exists(localDirectory))
+        {
+            foreach (var localPath in Directory.EnumerateFiles(localDirectory, $"{itemId}-*.pdf"))
+            {
+                File.Delete(localPath);
+            }
+        }
+
+        var legacyLocalPath = Path.Combine(localDirectory, $"{itemId}.pdf");
+        if (File.Exists(legacyLocalPath)) File.Delete(legacyLocalPath);
     }
 
     internal static PreviewByteRange? ParseRange(string? rangeHeader, long contentLength)
@@ -175,7 +237,12 @@ public sealed class LearningPreviewService : IDisposable
                 metadata.ContentLength.Value,
                 fileUrl,
                 null,
-                metadata.LastModified);
+                metadata.LastModified,
+                BuildFileVersion(
+                    fileUrl!,
+                    metadata.ETag,
+                    metadata.ContentLength.Value,
+                    metadata.LastModified));
         }
 
         if (fileUrl == $"{LocalFileUrlPrefix}{itemId}/file")
@@ -198,7 +265,17 @@ public sealed class LearningPreviewService : IDisposable
             var info = new FileInfo(storedPath);
             var signature = await ReadLocalSignatureAsync(storedPath, cancellationToken);
             var format = LearningPreviewFormatDetector.Detect(info.Extension, signature);
-            return new PreviewSource(format, info.Length, null, storedPath, info.LastWriteTimeUtc);
+            return new PreviewSource(
+                format,
+                info.Length,
+                null,
+                storedPath,
+                info.LastWriteTimeUtc,
+                BuildFileVersion(
+                    Path.GetFullPath(storedPath),
+                    null,
+                    info.Length,
+                    info.LastWriteTimeUtc));
         }
 
         throw new LearningPreviewException(
@@ -212,54 +289,65 @@ public sealed class LearningPreviewService : IDisposable
         int clubId,
         CancellationToken cancellationToken)
     {
-        var previewReference = BuildPreviewReference(clubId, itemId);
+        var previewReference = BuildPreviewReference(clubId, itemId, source.FileVersion);
         var gate = GetConversionLock(previewReference);
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (!await _objectStorage.ExistsAsync(previewReference, cancellationToken))
-            {
-                var storedObject = await _objectStorage.OpenReadAsync(
-                    source.StorageReference!,
-                    null,
-                    cancellationToken);
-                await using var sourceStream = storedObject.Content;
-                await using var artifact = await ConvertWithLimitAsync(
-                    sourceStream,
-                    source.Length,
-                    source.Format.Extension,
-                    cancellationToken);
-                await using var pdf = new FileStream(
-                    artifact.PdfPath,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    64 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await _objectStorage.SaveAsync(
-                    previewReference,
-                    pdf,
-                    pdf.Length,
-                    "application/pdf",
-                    "inline; filename=preview.pdf",
-                    cancellationToken);
-            }
+            return await RunOfficeConversionOperationAsync(
+                itemId,
+                source.FileVersion,
+                async (operationToken, ensureLease) =>
+                {
+                    if (!await _objectStorage.ExistsAsync(previewReference, operationToken))
+                    {
+                        var storedObject = await _objectStorage.OpenReadAsync(
+                            source.StorageReference!,
+                            null,
+                            operationToken);
+                        await using var sourceStream = storedObject.Content;
+                        await using var artifact = await ConvertWithLimitAsync(
+                            sourceStream,
+                            source.Length,
+                            source.Format.Extension,
+                            operationToken);
+                        await using var pdf = new FileStream(
+                            artifact.PdfPath,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.Read,
+                            64 * 1024,
+                            FileOptions.Asynchronous | FileOptions.SequentialScan);
+                        ensureLease();
+                        await _objectStorage.SaveAsync(
+                            previewReference,
+                            pdf,
+                            pdf.Length,
+                            "application/pdf",
+                            "inline; filename=preview.pdf",
+                            operationToken);
+                    }
 
-            var metadata = await _objectStorage.GetMetadataAsync(previewReference, cancellationToken);
-            if (metadata.ContentLength is null or <= 0)
-            {
-                throw new LearningPreviewException(
-                    LearningPreviewFailure.ConversionFailed,
-                    "Office 文档转换后的预览文件为空。");
-            }
+                    var metadata = await _objectStorage.GetMetadataAsync(
+                        previewReference,
+                        operationToken);
+                    if (metadata.ContentLength is null or <= 0)
+                    {
+                        throw new LearningPreviewException(
+                            LearningPreviewFailure.ConversionFailed,
+                            "Office 文档转换后的预览文件为空。");
+                    }
 
-            return new PreparedLearningPreview(
-                LearningPreviewKind.Pdf,
-                "application/pdf",
-                metadata.ContentLength.Value,
-                previewReference,
-                null,
-                true);
+                    ensureLease();
+                    return new PreparedLearningPreview(
+                        LearningPreviewKind.Pdf,
+                        "application/pdf",
+                        metadata.ContentLength.Value,
+                        previewReference,
+                        null,
+                        true);
+                },
+                cancellationToken);
         }
         finally
         {
@@ -273,38 +361,56 @@ public sealed class LearningPreviewService : IDisposable
         int clubId,
         CancellationToken cancellationToken)
     {
-        var previewPath = GetLocalPreviewPath(clubId, itemId);
+        var previewPath = GetLocalPreviewPath(clubId, itemId, source.FileVersion);
         var gate = GetConversionLock(previewPath);
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (!File.Exists(previewPath) ||
-                File.GetLastWriteTimeUtc(previewPath) < source.LastModified?.UtcDateTime)
-            {
-                await using var sourceStream = new FileStream(
-                    source.PhysicalPath!,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read,
-                    64 * 1024,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await using var artifact = await ConvertWithLimitAsync(
-                    sourceStream,
-                    source.Length,
-                    source.Format.Extension,
-                    cancellationToken);
-                Directory.CreateDirectory(Path.GetDirectoryName(previewPath)!);
-                File.Copy(artifact.PdfPath, previewPath, true);
-            }
+            return await RunOfficeConversionOperationAsync(
+                itemId,
+                source.FileVersion,
+                async (operationToken, ensureLease) =>
+                {
+                    if (!File.Exists(previewPath))
+                    {
+                        await using var sourceStream = new FileStream(
+                            source.PhysicalPath!,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.Read,
+                            64 * 1024,
+                            FileOptions.Asynchronous | FileOptions.SequentialScan);
+                        await using var artifact = await ConvertWithLimitAsync(
+                            sourceStream,
+                            source.Length,
+                            source.Format.Extension,
+                            operationToken);
+                        Directory.CreateDirectory(Path.GetDirectoryName(previewPath)!);
+                        var temporaryPath = $"{previewPath}.{Guid.NewGuid():N}.tmp";
+                        try
+                        {
+                            File.Copy(artifact.PdfPath, temporaryPath, false);
+                            operationToken.ThrowIfCancellationRequested();
+                            ensureLease();
+                            File.Move(temporaryPath, previewPath, false);
+                        }
+                        finally
+                        {
+                            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                        }
+                    }
 
-            var info = new FileInfo(previewPath);
-            return new PreparedLearningPreview(
-                LearningPreviewKind.Pdf,
-                "application/pdf",
-                info.Length,
-                null,
-                previewPath,
-                true);
+                    var info = new FileInfo(previewPath);
+                    ensureLease();
+                    return new PreparedLearningPreview(
+                        LearningPreviewKind.Pdf,
+                        "application/pdf",
+                        info.Length,
+                        null,
+                        previewPath,
+                        true);
+                },
+                cancellationToken);
         }
         finally
         {
@@ -355,20 +461,95 @@ public sealed class LearningPreviewService : IDisposable
         return buffer[..total];
     }
 
-    private string GetLocalPreviewPath(int clubId, int itemId) => Path.Combine(
+    private string GetLocalPreviewDirectory(int clubId) => Path.Combine(
         _environment.ContentRootPath,
         "App_Data",
         "learning-previews",
-        clubId.ToString(CultureInfo.InvariantCulture),
-        $"{itemId}.pdf");
+        clubId.ToString(CultureInfo.InvariantCulture));
 
-    private static string BuildPreviewReference(int clubId, int itemId) =>
+    private string GetLocalPreviewPath(int clubId, int itemId, string fileVersion) => Path.Combine(
+        GetLocalPreviewDirectory(clubId),
+        $"{itemId}-{fileVersion}.pdf");
+
+    private static string BuildPreviewReference(int clubId, int itemId, string fileVersion) =>
+        $"clubs/{clubId}/learning/{itemId}/preview/{fileVersion}.pdf";
+
+    private static string BuildLegacyPreviewReference(int clubId, int itemId) =>
         $"clubs/{clubId}/learning/{itemId}/preview/converted.pdf";
 
     private SemaphoreSlim GetConversionLock(string key)
     {
         var index = (key.GetHashCode(StringComparison.Ordinal) & int.MaxValue) % _conversionLocks.Length;
         return _conversionLocks[index];
+    }
+
+    private async Task<T> RunOfficeConversionOperationAsync<T>(
+        int itemId,
+        string fileVersion,
+        Func<CancellationToken, Action, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        if (!_distributedLocksEnabled)
+        {
+            return await operation(cancellationToken, static () => { });
+        }
+
+        var lockKey = _keyBuilder.Build(
+            "learning",
+            "preview-convert",
+            itemId,
+            fileVersion);
+        var policy = new DistributedLockPolicy(
+            "preview-convert",
+            TimeSpan.FromSeconds(Math.Max(1, _options.ConversionTimeoutSeconds + 15)),
+            TimeSpan.FromSeconds(30),
+            TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromSeconds(10));
+        var handle = await _distributedLocks.TryAcquireAsync(
+            lockKey,
+            policy,
+            cancellationToken);
+        if (handle is null)
+        {
+            throw new LearningPreviewException(
+                LearningPreviewFailure.Busy,
+                "同一版本的 Office 文件正在转换，请稍后重试。");
+        }
+
+        await using (handle)
+        using (var leaseCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            handle.LeaseLost))
+        {
+            try
+            {
+                var result = await operation(
+                    leaseCancellation.Token,
+                    handle.ThrowIfLeaseLost);
+                handle.ThrowIfLeaseLost();
+                return result;
+            }
+            catch (OperationCanceledException) when (handle.LeaseLost.IsCancellationRequested)
+            {
+                handle.ThrowIfLeaseLost();
+                throw;
+            }
+        }
+    }
+
+    private static string BuildFileVersion(
+        string resourceReference,
+        string? etag,
+        long contentLength,
+        DateTimeOffset? lastModified)
+    {
+        var material = string.Join(
+            '\n',
+            resourceReference,
+            etag ?? string.Empty,
+            contentLength.ToString(CultureInfo.InvariantCulture),
+            lastModified?.UtcDateTime.Ticks.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(material)));
     }
 
     private Task<OfficePreviewArtifact> ConvertWithLimitAsync(
@@ -400,7 +581,8 @@ public sealed class LearningPreviewService : IDisposable
         long Length,
         string? StorageReference,
         string? PhysicalPath,
-        DateTimeOffset? LastModified);
+        DateTimeOffset? LastModified,
+        string FileVersion);
 }
 
 internal static class LearningPreviewFormatDetector
@@ -458,7 +640,16 @@ internal static class LearningPreviewFormatDetector
     }
 }
 
-public sealed class OfficePreviewConverter
+public interface IOfficePreviewConverter
+{
+    Task<OfficePreviewArtifact> ConvertAsync(
+        Stream source,
+        long contentLength,
+        string extension,
+        CancellationToken cancellationToken);
+}
+
+public sealed class OfficePreviewConverter : IOfficePreviewConverter
 {
     private readonly LearningPreviewOptions _options;
 
@@ -742,6 +933,7 @@ internal sealed record LearningPreviewFormat(
 
 public enum LearningPreviewFailure
 {
+    Busy,
     Unsupported,
     InvalidRange,
     ConversionFailed,

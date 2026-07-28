@@ -58,6 +58,7 @@ services:
       - Redis__Features__PreviewSessions=${REDIS_PREVIEW_SESSIONS_ENABLED:-false}
       - Redis__Features__RateLimiting=${REDIS_RATE_LIMITING_ENABLED:-false}
       - Redis__Features__Idempotency=${REDIS_IDEMPOTENCY_ENABLED:-false}
+      - Redis__Features__DistributedLocks=${REDIS_DISTRIBUTED_LOCKS_ENABLED:-false}
       - Authentication__Sessions__SlidingLifetimeMinutes=${AUTH_SESSION_SLIDING_MINUTES:-30}
       - Authentication__Sessions__AbsoluteLifetimeHours=${AUTH_SESSION_ABSOLUTE_HOURS:-12}
       - Authentication__Sessions__MaxSessionsPerUser=${AUTH_SESSION_MAX_PER_USER:-10}

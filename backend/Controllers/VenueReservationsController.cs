@@ -1,11 +1,16 @@
+using System.Data;
+using System.Globalization;
 using System.Security.Claims;
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Org.OpenAPITools.Models;
+using StackExchange.Redis;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using VenueReservationEntity = ClubHub.Api.Data.Entities.VenueReservation;
 
@@ -38,11 +43,26 @@ public class VenueReservationsController : ControllerBase
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
+    private readonly IDistributedLockService _distributedLocks;
+    private readonly IRedisKeyBuilder _keyBuilder;
+    private readonly bool _distributedLocksEnabled;
+    private readonly ILogger<VenueReservationsController> _logger;
 
-    public VenueReservationsController(ClubHubDbContext db, AuthService authService)
+    public VenueReservationsController(
+        ClubHubDbContext db,
+        AuthService authService,
+        IDistributedLockService distributedLocks,
+        IRedisKeyBuilder keyBuilder,
+        IOptions<RedisOptions> redisOptions,
+        ILogger<VenueReservationsController> logger)
     {
         _db = db;
         _authService = authService;
+        _distributedLocks = distributedLocks;
+        _keyBuilder = keyBuilder;
+        _distributedLocksEnabled =
+            redisOptions.Value.Enabled && redisOptions.Value.Features.DistributedLocks;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -207,64 +227,103 @@ public class VenueReservationsController : ControllerBase
             return BadRequest(Error("purpose_required", "预约用途不能为空。"));
         }
 
-        var venue = await _db.Venues.FindAsync(req.VenueId);
-        if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
-        if (!string.Equals(NormalizeStatus(venue.VenueStatus), VenueStatusAvailable, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(Error("venue_unavailable", "场地当前不可预约。"));
-        }
-
-        var club = await _db.Clubs.FindAsync(req.ClubId);
-        if (club is null) return NotFound(Error("club_not_found", "社团不存在。"));
-        if (!IsActiveClub(club.ClubStatus))
-        {
-            return BadRequest(Error("club_not_active", "只有正常运营中的社团可以提交场地预约。"));
-        }
-
-        var applicant = await _db.Users.FindAsync(applicantUserId.Value);
-        if (applicant is null) return NotFound(Error("applicant_not_found", "申请人不存在。"));
-        if (!IsActiveAccount(applicant.AccountStatus))
-        {
-            return BadRequest(Error("applicant_account_inactive", "申请人账号不可用，不能提交场地预约。"));
-        }
-
-        ClubHub.Api.Data.Entities.Activity? activity = null;
-        if (req.ActivityId is not null)
-        {
-            activity = await _db.Activities.FindAsync(req.ActivityId.Value);
-            if (activity is null) return NotFound(Error("activity_not_found", "关联活动不存在。"));
-            if (activity.ClubId != req.ClubId)
+        var lockKeys = BuildVenueDateLockKeys(
+            _keyBuilder,
+            req.VenueId,
+            startTime,
+            endTime);
+        return await ExecuteWithVenueLocksAsync(
+            lockKeys,
+            async (lockHandle, operationToken) =>
             {
-                return BadRequest(Error("activity_club_mismatch", "关联活动不属于该社团。"));
-            }
-        }
+                await using var transaction =
+                    await _db.Database.BeginJoinableTransactionAsync(
+                        IsolationLevel.Serializable,
+                        operationToken);
 
-        if (await HasApprovedConflictAsync(req.VenueId, startTime, endTime))
-        {
-            return Conflict(Error("venue_reservation_conflict", "该场地在所选时间段已有已通过预约。"));
-        }
+                var venue = await _db.Venues.FindAsync([req.VenueId], operationToken);
+                if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
+                if (!string.Equals(
+                        NormalizeStatus(venue.VenueStatus),
+                        VenueStatusAvailable,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(Error("venue_unavailable", "场地当前不可预约。"));
+                }
 
-        var reservation = new VenueReservationEntity
-        {
-            VenueId = req.VenueId,
-            ClubId = req.ClubId,
-            ActivityId = req.ActivityId,
-            ApplicantUserId = applicantUserId.Value,
-            StartAt = startTime,
-            EndAt = endTime,
-            Purpose = req.Purpose.Trim(),
-            ReservationStatus = ReservationStatusPending,
-            CreatedAt = DateTime.UtcNow,
-            Venue = venue,
-            Club = club,
-            Activity = activity,
-            ApplicantUser = applicant
-        };
+                var club = await _db.Clubs.FindAsync([req.ClubId], operationToken);
+                if (club is null) return NotFound(Error("club_not_found", "社团不存在。"));
+                if (!IsActiveClub(club.ClubStatus))
+                {
+                    return BadRequest(Error("club_not_active", "只有正常运营中的社团可以提交场地预约。"));
+                }
 
-        _db.VenueReservations.Add(reservation);
-        await _db.SaveChangesAsync();
+                var applicant = await _db.Users.FindAsync(
+                    [applicantUserId.Value],
+                    operationToken);
+                if (applicant is null)
+                {
+                    return NotFound(Error("applicant_not_found", "申请人不存在。"));
+                }
+                if (!IsActiveAccount(applicant.AccountStatus))
+                {
+                    return BadRequest(Error("applicant_account_inactive", "申请人账号不可用，不能提交场地预约。"));
+                }
 
-        return CreatedAtAction(nameof(GetById), new { reservationId = reservation.ReservationId }, ToDto(reservation));
+                ClubHub.Api.Data.Entities.Activity? activity = null;
+                if (req.ActivityId is not null)
+                {
+                    activity = await _db.Activities.FindAsync(
+                        [req.ActivityId.Value],
+                        operationToken);
+                    if (activity is null)
+                    {
+                        return NotFound(Error("activity_not_found", "关联活动不存在。"));
+                    }
+                    if (activity.ClubId != req.ClubId)
+                    {
+                        return BadRequest(Error("activity_club_mismatch", "关联活动不属于该社团。"));
+                    }
+                }
+
+                if (await HasApprovedConflictAsync(
+                        req.VenueId,
+                        startTime,
+                        endTime,
+                        cancellationToken: operationToken))
+                {
+                    return Conflict(Error(
+                        "venue_reservation_conflict",
+                        "该场地在所选时间段已有已通过预约。"));
+                }
+
+                var reservation = new VenueReservationEntity
+                {
+                    VenueId = req.VenueId,
+                    ClubId = req.ClubId,
+                    ActivityId = req.ActivityId,
+                    ApplicantUserId = applicantUserId.Value,
+                    StartAt = startTime,
+                    EndAt = endTime,
+                    Purpose = req.Purpose.Trim(),
+                    ReservationStatus = ReservationStatusPending,
+                    CreatedAt = DateTime.UtcNow,
+                    Venue = venue,
+                    Club = club,
+                    Activity = activity,
+                    ApplicantUser = applicant
+                };
+
+                _db.VenueReservations.Add(reservation);
+                await _db.SaveChangesAsync(operationToken);
+                lockHandle?.ThrowIfLeaseLost();
+                await transaction.CommitAsync(operationToken);
+
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { reservationId = reservation.ReservationId },
+                    ToDto(reservation));
+            });
     }
 
     [HttpPost("{reservationId:int}/review")]
@@ -285,54 +344,113 @@ public class VenueReservationsController : ControllerBase
             return StatusCode(403, Error("venue_review_forbidden", permission.Value?.Message ?? "当前用户没有场地预约审批权限。"));
         }
 
-        var reservation = await ReservationQuery()
-            .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
+        var reservationSnapshot = await _db.VenueReservations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                r => r.ReservationId == reservationId,
+                HttpContext.RequestAborted);
 
-        if (reservation is null) return NotFound(Error("reservation_not_found", "预约不存在。"));
-
-        if (!string.Equals(NormalizeStatus(reservation.ReservationStatus), ReservationStatusPending, StringComparison.OrdinalIgnoreCase))
+        if (reservationSnapshot is null)
         {
-            return BadRequest(Error("reservation_not_pending", "只有待审批的预约可以审核。"));
+            return NotFound(Error("reservation_not_found", "预约不存在。"));
         }
 
-        var reviewer = await _db.Users.FindAsync(reviewerUserId.Value);
-        if (reviewer is null) return NotFound(Error("reviewer_not_found", "审批人不存在。"));
-
-        if (req.Approved)
+        var lockKeys = new List<RedisKey>
         {
-            if (reservation.StartAt is null || reservation.EndAt is null)
-            {
-                return BadRequest(Error("reservation_time_invalid", "预约时间数据不完整，不能审批通过。"));
-            }
-
-            var startTime = StoredTimeToUtc(reservation.StartAt.Value);
-            var endTime = StoredTimeToUtc(reservation.EndAt.Value);
-
-            if (startTime <= DateTime.UtcNow)
-            {
-                return BadRequest(Error("reservation_start_time_not_future", "预约开始时间必须晚于当前时间，不能审批通过。"));
-            }
-
-            if (await HasApprovedConflictAsync(
-                    reservation.VenueId,
-                    startTime,
-                    endTime,
-                    reservation.ReservationId))
-            {
-                return Conflict(Error("venue_reservation_conflict", "审批通过失败：该场地在所选时间段已有已通过预约。"));
-            }
+            _keyBuilder.Build("venue", "reservation-lock", reservationId)
+        };
+        if (req.Approved &&
+            reservationSnapshot.StartAt is not null &&
+            reservationSnapshot.EndAt is not null)
+        {
+            lockKeys.AddRange(BuildVenueDateLockKeys(
+                _keyBuilder,
+                reservationSnapshot.VenueId,
+                StoredTimeToUtc(reservationSnapshot.StartAt.Value),
+                StoredTimeToUtc(reservationSnapshot.EndAt.Value)));
         }
 
-        reservation.ReservationStatus = req.Approved ? ReservationStatusApproved : ReservationStatusRejected;
-        reservation.ReviewerUserId = reviewerUserId.Value;
-        reservation.ReviewerUser = reviewer;
-        reservation.ReviewComment = string.IsNullOrWhiteSpace(req.ReviewComment)
-            ? null
-            : req.ReviewComment.Trim();
+        return await ExecuteWithVenueLocksAsync(
+            lockKeys,
+            async (lockHandle, operationToken) =>
+            {
+                await using var transaction =
+                    await _db.Database.BeginJoinableTransactionAsync(
+                        IsolationLevel.Serializable,
+                        operationToken);
 
-        await _db.SaveChangesAsync();
+                var reservation = await ReservationQuery()
+                    .FirstOrDefaultAsync(
+                        r => r.ReservationId == reservationId,
+                        operationToken);
+                if (reservation is null)
+                {
+                    return NotFound(Error("reservation_not_found", "预约不存在。"));
+                }
 
-        return Ok(ToDto(reservation));
+                if (!string.Equals(
+                        NormalizeStatus(reservation.ReservationStatus),
+                        ReservationStatusPending,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(Error(
+                        "reservation_not_pending",
+                        "只有待审批的预约可以审核。"));
+                }
+
+                var reviewer = await _db.Users.FindAsync(
+                    [reviewerUserId.Value],
+                    operationToken);
+                if (reviewer is null)
+                {
+                    return NotFound(Error("reviewer_not_found", "审批人不存在。"));
+                }
+
+                if (req.Approved)
+                {
+                    if (reservation.StartAt is null || reservation.EndAt is null)
+                    {
+                        return BadRequest(Error(
+                            "reservation_time_invalid",
+                            "预约时间数据不完整，不能审批通过。"));
+                    }
+
+                    var startTime = StoredTimeToUtc(reservation.StartAt.Value);
+                    var endTime = StoredTimeToUtc(reservation.EndAt.Value);
+                    if (startTime <= DateTime.UtcNow)
+                    {
+                        return BadRequest(Error(
+                            "reservation_start_time_not_future",
+                            "预约开始时间必须晚于当前时间，不能审批通过。"));
+                    }
+
+                    if (await HasApprovedConflictAsync(
+                            reservation.VenueId,
+                            startTime,
+                            endTime,
+                            reservation.ReservationId,
+                            operationToken))
+                    {
+                        return Conflict(Error(
+                            "venue_reservation_conflict",
+                            "审批通过失败：该场地在所选时间段已有已通过预约。"));
+                    }
+                }
+
+                reservation.ReservationStatus = req.Approved
+                    ? ReservationStatusApproved
+                    : ReservationStatusRejected;
+                reservation.ReviewerUserId = reviewerUserId.Value;
+                reservation.ReviewerUser = reviewer;
+                reservation.ReviewComment = string.IsNullOrWhiteSpace(req.ReviewComment)
+                    ? null
+                    : req.ReviewComment.Trim();
+
+                await _db.SaveChangesAsync(operationToken);
+                lockHandle?.ThrowIfLeaseLost();
+                await transaction.CommitAsync(operationToken);
+                return Ok(ToDto(reservation));
+            });
     }
 
     [HttpDelete("{reservationId:int}")]
@@ -392,7 +510,8 @@ public class VenueReservationsController : ControllerBase
         int venueId,
         DateTime startTime,
         DateTime endTime,
-        int? excludedReservationId = null)
+        int? excludedReservationId = null,
+        CancellationToken cancellationToken = default)
     {
         return await _db.VenueReservations.AnyAsync(r =>
             r.VenueId == venueId &&
@@ -401,7 +520,119 @@ public class VenueReservationsController : ControllerBase
             r.StartAt.HasValue &&
             r.EndAt.HasValue &&
             r.StartAt.Value < endTime &&
-            r.EndAt.Value > startTime);
+            r.EndAt.Value > startTime,
+            cancellationToken);
+    }
+
+    private async Task<IActionResult> ExecuteWithVenueLocksAsync(
+        IReadOnlyCollection<RedisKey> lockKeys,
+        Func<IDistributedLockHandle?, CancellationToken, Task<IActionResult>> operation)
+    {
+        if (!_distributedLocksEnabled)
+        {
+            return await operation(null, HttpContext.RequestAborted);
+        }
+
+        using var operationTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+            HttpContext.RequestAborted);
+        operationTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+
+        try
+        {
+            var handle = await _distributedLocks.TryAcquireAsync(
+                lockKeys,
+                new DistributedLockPolicy(
+                    "venue-reservation",
+                    TimeSpan.FromSeconds(3),
+                    TimeSpan.FromSeconds(15),
+                    TimeSpan.FromMilliseconds(100),
+                    TimeSpan.FromSeconds(5)),
+                operationTimeout.Token);
+            if (handle is null)
+            {
+                Response.Headers.RetryAfter = "2";
+                return Conflict(Error(
+                    "venue_reservation_lock_contended",
+                    "同一场地或预约正在处理中，请稍后重试。"));
+            }
+
+            await using (handle)
+            using (var leaseCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                operationTimeout.Token,
+                handle.LeaseLost))
+            {
+                try
+                {
+                    return await operation(handle, leaseCancellation.Token);
+                }
+                catch (OperationCanceledException) when (handle.LeaseLost.IsCancellationRequested)
+                {
+                    handle.ThrowIfLeaseLost();
+                    throw;
+                }
+            }
+        }
+        catch (DistributedLockUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "场地预约分布式锁暂不可用。");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                Error(
+                    "venue_reservation_lock_unavailable",
+                    "暂时无法安全处理场地预约，请稍后重试。"));
+        }
+        catch (DistributedLockLeaseLostException exception)
+        {
+            _logger.LogWarning(exception, "场地预约分布式锁租约已丢失。");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                Error(
+                    "venue_reservation_lock_lost",
+                    "场地预约协调状态已失效，请稍后重试。"));
+        }
+        catch (OperationCanceledException) when (
+            operationTimeout.IsCancellationRequested &&
+            !HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogWarning("场地预约锁内业务处理超时。");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                Error(
+                    "venue_reservation_processing_timeout",
+                    "场地预约处理超时，请稍后重试。"));
+        }
+    }
+
+    internal static IReadOnlyList<RedisKey> BuildVenueDateLockKeys(
+        IRedisKeyBuilder keyBuilder,
+        int venueId,
+        DateTime startTimeUtc,
+        DateTime endTimeUtc)
+    {
+        if (endTimeUtc <= startTimeUtc)
+        {
+            throw new ArgumentException("Reservation end time must be later than start time.");
+        }
+
+        var startInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(startTimeUtc, DateTimeKind.Utc),
+            BeijingTimeZone);
+        var finalInstantInBeijing = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(endTimeUtc, DateTimeKind.Utc).AddTicks(-1),
+            BeijingTimeZone);
+        var startDate = DateOnly.FromDateTime(startInBeijing);
+        var finalDate = DateOnly.FromDateTime(finalInstantInBeijing);
+        var keys = new List<RedisKey>();
+        for (var date = startDate; date <= finalDate; date = date.AddDays(1))
+        {
+            keys.Add(keyBuilder.Build(
+                "venue",
+                "lock",
+                venueId,
+                date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        }
+
+        return keys;
     }
 
     private IActionResult? ValidateReservationTime(DateTime startTime, DateTime endTime)
