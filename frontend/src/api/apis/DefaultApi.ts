@@ -9391,7 +9391,8 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/{postId}/moderation`;
+
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/{postId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
 
