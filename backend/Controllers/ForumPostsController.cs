@@ -112,8 +112,8 @@ public sealed class ForumPostsController : ControllerBase
         var userId = User.GetUserId();
         if (userId is null) return new(Unauthorized(new { message = "\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548\u3002" }), null, null);
         var user = await _db.Users.FindAsync(userId.Value);
-        if (user is null) return new(NotFound(new { message = "\u5f53\u524d\u7528\u6237\u4e0d\u5b58\u5728\u3002" }), null, null);
-        if (!UsersController.IsActive(user.AccountStatus)) return new(StatusCode(403, new { message = "\u5f53\u524d\u8d26\u53f7\u4e0d\u53ef\u7528\u3002" }), null, null);
+        if (user is null) return new(Unauthorized(new { message = "\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548\u3002" }), null, null);
+        if (!UsersController.IsActive(user.AccountStatus)) return new(Unauthorized(new { message = "\u5f53\u524d\u8d26\u53f7\u4e0d\u53ef\u7528\u3002" }), null, null);
         if (!await _db.Clubs.AnyAsync(club => club.ClubId == clubId)) return new(NotFound(new { message = "\u793e\u56e2\u4e0d\u5b58\u5728\u3002" }), null, null);
         var roles = await _authService.GetPermissionRolesAsync(user.UserId);
         var canModerate = Allows(roles, ForumModeratePermission, clubId);
