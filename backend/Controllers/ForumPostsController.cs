@@ -25,11 +25,16 @@ public sealed class ForumPostsController : ControllerBase
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
+    private readonly ProjectMembershipService _projectMembershipService;
 
-    public ForumPostsController(ClubHubDbContext db, AuthService authService)
+    public ForumPostsController(
+        ClubHubDbContext db,
+        AuthService authService,
+        ProjectMembershipService projectMembershipService)
     {
         _db = db;
         _authService = authService;
+        _projectMembershipService = projectMembershipService;
     }
 
     [HttpGet]
@@ -117,15 +122,9 @@ public sealed class ForumPostsController : ControllerBase
         if (!await _db.Clubs.AnyAsync(club => club.ClubId == clubId)) return new(NotFound(new { message = "\u793e\u56e2\u4e0d\u5b58\u5728\u3002" }), null, null);
         var roles = await _authService.GetPermissionRolesAsync(user.UserId);
         var canModerate = Allows(roles, ForumModeratePermission, clubId);
-        if (!canModerate && !await IsActiveMemberAsync(user.UserId, clubId)) return new(StatusCode(403, new { message = "\u53ea\u6709\u5f53\u524d\u6709\u6548\u6210\u5458\u53ef\u8bbf\u95ee\u3002" }), null, null);
+        if (!canModerate && !await _projectMembershipService.IsActiveClubMemberAsync(clubId, user.UserId)) return new(StatusCode(403, new { message = "\u53ea\u6709\u5f53\u524d\u6709\u6548\u6210\u5458\u53ef\u8bbf\u95ee\u3002" }), null, null);
         if (!Allows(roles, ClubViewPermission, clubId) && !Allows(roles, ForumPostPermission, clubId) && !canModerate) return new(StatusCode(403, new { message = "\u6ca1\u6709\u8bbf\u95ee\u6743\u9650\u3002" }), null, null);
         return new(null, user, roles);
-    }
-
-    private Task<bool> IsActiveMemberAsync(int userId, int clubId)
-    {
-        var today = DateTime.UtcNow.Date;
-        return _db.ClubMembers.AnyAsync(member => member.UserId == userId && member.ClubId == clubId && (member.MemberStatus == null || member.MemberStatus == "" || member.MemberStatus.ToLower() == "active" || member.MemberStatus.ToLower() == "normal" || member.MemberStatus.ToLower() == "enabled") && (member.TermStart == null || member.TermStart <= today) && (member.TermEnd == null || member.TermEnd >= today));
     }
 
     private static bool Allows(IReadOnlyList<PermissionRole> roles, string permission, int clubId) =>

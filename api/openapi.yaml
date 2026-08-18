@@ -1360,10 +1360,22 @@ paths:
                   $ref: "#/components/schemas/ForumPost"
         "401":
           description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
     post:
       summary: 发布社团讨论区话题或回复
       operationId: createClubForumPost
@@ -1391,12 +1403,28 @@ paths:
                 $ref: "#/components/schemas/ForumPost"
         "400":
           description: 内容、父级帖子或层级不符合规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "401":
           description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 社团或父级话题不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/clubs/{clubId}/forum-posts/{postId}/moderation:
     patch:
@@ -1432,12 +1460,28 @@ paths:
                 $ref: "#/components/schemas/ForumPost"
         "400":
           description: 回复不能置顶，或状态不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "401":
           description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有讨论区管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 社团或帖子不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/clubs/{clubId}/award-rule-documents:
     get:
@@ -6420,35 +6464,58 @@ components:
       properties:
         id:
           type: integer
+          description: 帖子 ID。
+          example: 101
         clubId:
           type: integer
+          description: 所属社团 ID。
+          example: 1
         userId:
           type: integer
+          description: 发布用户 ID。
+          example: 42
         userName:
           type: string
+          description: 发布用户显示名称。
           nullable: true
+          example: 张三
         parentPostId:
           type: integer
+          description: 父级话题 ID；为空表示话题，非空表示对该话题的回复。
           nullable: true
+          example: 100
         title:
           type: string
+          description: 话题标题；回复时为空。
           nullable: true
+          example: 下周活动分工讨论
         content:
           type: string
+          description: 帖子正文内容。
+          example: 请大家在今晚前确认可参与的工作内容。
         isTop:
           type: boolean
+          description: 是否置顶；仅话题可以置顶，回复不可置顶。
+          example: false
         postStatus:
           type: string
+          description: 帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。
           enum: [published, hidden]
+          example: published
         createdAt:
           type: string
           format: date-time
+          description: 创建时间。
+          example: 2026-08-18T09:30:00Z
         updatedAt:
           type: string
           format: date-time
+          description: 最后更新时间。
           nullable: true
+          example: 2026-08-18T10:00:00Z
         replies:
           type: array
+          description: 该话题的回复列表；回复对象的该字段为空数组。
           items:
             $ref: "#/components/schemas/ForumPost"
       required: [id, clubId, userId, content, isTop, postStatus, createdAt, replies]
@@ -6458,15 +6525,21 @@ components:
       properties:
         parentPostId:
           type: integer
+          description: 要回复的话题 ID；为空时创建话题，不能指向回复。
           nullable: true
+          example: 100
         title:
           type: string
+          description: 话题标题；创建回复时必须为空。
           nullable: true
           maxLength: 120
+          example: 下周活动分工讨论
         content:
           type: string
+          description: 帖子正文，去除首尾空白后不能为空。
           minLength: 1
           maxLength: 4000
+          example: 请大家在今晚前确认可参与的工作内容。
       required: [content]
 
     ModerateForumPostRequest:
@@ -6474,9 +6547,13 @@ components:
       properties:
         isTop:
           type: boolean
+          description: 是否置顶；仅一级话题可以置顶，回复必须为 false。
+          example: true
         postStatus:
           type: string
+          description: 管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。
           enum: [published, hidden]
+          example: published
       required: [isTop, postStatus]
 
     NoticeReadResult:
