@@ -130,6 +130,59 @@ public sealed class ForumPostsController : ControllerBase
         return Ok(ToApiPost(post, []));
     }
 
+    [HttpDelete("{postId:int}")]
+    public async Task<IActionResult> Delete(int clubId, int postId)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+
+        var post = await _db.ForumPosts.FirstOrDefaultAsync(item => item.PostId == postId && item.ClubId == clubId);
+        if (post is null) return NotFound(new { message = "\u8ba8\u8bba\u533a\u5185\u5bb9\u4e0d\u5b58\u5728\u3002" });
+
+        var canModerate = Allows(context.Roles!, ForumModeratePermission, clubId);
+        var isOwner = post.UserId == context.User!.UserId;
+
+        if (!canModerate && !isOwner)
+            return StatusCode(403, new { message = "\u4f60\u65e0\u6743\u524a\u9664\u8fd9\u4e2a\u5185\u5bb9\u3002" });
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var isTopicDelete = post.ParentPostId is null;
+
+        if (isTopicDelete)
+        {
+            var replies = await _db.ForumPosts.Where(r => r.ParentPostId == postId).ToListAsync();
+            _db.ForumPosts.RemoveRange(replies);
+            foreach (var reply in replies)
+            {
+                _db.OperationLogs.Add(new OperationLog
+                {
+                    UserId = context.User.UserId,
+                    ModuleName = "forum",
+                    OperationType = "reply_deleted",
+                    TargetTable = "FORUM_POSTS",
+                    TargetId = reply.PostId,
+                    IpAddress = ipAddress,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        _db.ForumPosts.Remove(post);
+        _db.OperationLogs.Add(new OperationLog
+        {
+            UserId = context.User.UserId,
+            ModuleName = "forum",
+            OperationType = isTopicDelete ? "topic_deleted" : "reply_deleted",
+            TargetTable = "FORUM_POSTS",
+            TargetId = postId,
+            IpAddress = ipAddress,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<UserContext> GetUserContextAsync(int clubId)
     {
         var userId = User.GetUserId();

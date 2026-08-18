@@ -91,6 +91,67 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         Assert.Equal(0, document.RootElement.GetArrayLength());
     }
 
+    [Fact]
+    public async Task DeleteTopic_ByOwner_Succeeds()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTopic_ByNonOwnerNonModerator_IsForbidden()
+    {
+        var (ownerClient, clubId, ownerUserId) = await SeedForMultiUserTestAsync();
+        var (otherClient, _) = await SeedForMultiUserTestAsync();
+
+        var topic = await PostAndReadId(ownerClient, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        using var response = await otherClient.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTopic_ByModerator_Succeeds()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: true);
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTopic_DeletesRepliesAlso()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply1\"}}");
+        await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply2\"}}");
+
+        using var beforeDelete = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var beforeDocument = System.Text.Json.JsonDocument.Parse(await beforeDelete.Content.ReadAsStringAsync());
+        var repliesBeforeDelete = beforeDocument.RootElement[0].GetProperty("replies").GetArrayLength();
+        Assert.Equal(2, repliesBeforeDelete);
+
+        using var deleteResponse = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using var afterDelete = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var afterDocument = System.Text.Json.JsonDocument.Parse(await afterDelete.Content.ReadAsStringAsync());
+        Assert.Equal(0, afterDocument.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task DeleteReply_ByOwner_Succeeds()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
+
+        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{reply}");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
     private async Task<(HttpClient Client, int ClubId)> SeedAsync(bool member, bool moderate)
     {
         var baseId = 9000 + Interlocked.Increment(ref _sequence) * 10;
@@ -107,6 +168,29 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return (client, baseId + 1);
+    }
+
+    private async Task<(HttpClient Client, int ClubId, int UserId)> SeedForMultiUserTestAsync()
+    {
+        var baseId = 9000 + Interlocked.Increment(ref _sequence) * 10;
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var now = DateTime.UtcNow;
+        var userId = baseId;
+        var clubId = baseId + 1;
+        var roleId = baseId + 2;
+
+        db.Add(new User { UserId = userId, Username = $"forum-{baseId}", PasswordHash = "unused", RealName = "Forum Test", AccountStatus = "normal", CreatedAt = now });
+        db.Add(new Club { ClubId = clubId, ClubName = "Forum Club", ClubStatus = "active", CreatedAt = now });
+        db.Add(new Role { RoleId = roleId, RoleCode = "CLUB_MEMBER", RoleName = "Member", RoleScope = "club", CreatedAt = now });
+        db.Add(new UserRole { UserRoleId = baseId + 3, UserId = userId, RoleId = roleId, ClubId = clubId, AssignedAt = now });
+        db.Add(new ClubMember { MemberId = baseId + 4, UserId = userId, ClubId = clubId, MemberStatus = "active", JoinAt = now });
+        await db.SaveChangesAsync();
+
+        var token = scope.ServiceProvider.GetRequiredService<AuthTokenService>().CreateToken(new User { UserId = userId, Username = $"forum-{baseId}" });
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return (client, clubId, userId);
     }
 
     private static StringContent Json(string value) => new(value, Encoding.UTF8, "application/json");

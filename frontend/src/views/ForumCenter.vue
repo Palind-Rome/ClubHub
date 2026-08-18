@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { ChatDotRound, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
-import { ElMessage, type FormInstance, type FormRules } from "element-plus";
+import { ChatDotRound, Delete, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import type { Club, UserSummary } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
@@ -12,6 +12,7 @@ interface Post {
   title?: string | null;
   content: string;
   userName?: string | null;
+  userId: number;
   isTop: boolean;
   postStatus: Status;
   createdAt: string;
@@ -146,6 +147,39 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
   }
 }
 
+async function deletePost(post: Post) {
+  if (!selectedClubId.value) return;
+  const isTopicDelete = !post.title ? false : true;
+  const replyCount = post.replies?.length ?? 0;
+  const confirmMessage = isTopicDelete
+    ? `确定要删除话题"${post.title}"吗？此操作无法撤销。${replyCount > 0 ? `该话题有${replyCount}条回复，删除话题时它们也会被删除。` : ""}`
+    : "确定要删除这条回复吗？此操作无法撤销。";
+
+  try {
+    await ElMessageBox.confirm(confirmMessage, "警告", {
+      confirmButtonText: "确定删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
+      method: "DELETE",
+    });
+    ElMessage.success("删除成功");
+    await loadPosts();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "删除失败");
+  }
+}
+
+function canDeletePost(post: Post): boolean {
+  return (auth.value?.userId && post.userId === auth.value.userId) || canModerate.value;
+}
+
 const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN", { hour12: false });
 watch(selectedClubId, () => void loadPosts());
 watch(showHidden, () => void loadPosts());
@@ -255,7 +289,21 @@ onUnmounted(() => stopSessionListener?.());
               })
             "
             >{{ topic.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
+          ><el-button
+            link
+            type="danger"
+            :icon="Delete"
+            @click="deletePost(topic)"
+            >删除</el-button
           ></template
+        >
+        <el-button
+          v-if="!canModerate && canDeletePost(topic)"
+          link
+          type="danger"
+          :icon="Delete"
+          @click="deletePost(topic)"
+          >删除</el-button
         >
       </div>
       <div
@@ -268,15 +316,33 @@ onUnmounted(() => stopSessionListener?.());
           >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
         >
         <p>{{ reply.content }}</p>
-        <el-button
-          v-if="canModerate"
-          link
-          :icon="reply.postStatus === 'hidden' ? View : Hide"
-          @click="
-            moderate(reply, { postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden' })
-          "
-          >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
-        >
+        <div class="reply-actions">
+          <el-button
+            v-if="canModerate"
+            link
+            :icon="reply.postStatus === 'hidden' ? View : Hide"
+            @click="
+              moderate(reply, { postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden' })
+            "
+            >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
+          >
+          <el-button
+            v-if="canModerate"
+            link
+            type="danger"
+            :icon="Delete"
+            @click="deletePost(reply)"
+            >删除</el-button
+          >
+          <el-button
+            v-if="!canModerate && canDeletePost(reply)"
+            link
+            type="danger"
+            :icon="Delete"
+            @click="deletePost(reply)"
+            >删除</el-button
+          >
+        </div>
       </div>
     </article>
     <el-dialog
@@ -389,6 +455,11 @@ onUnmounted(() => stopSessionListener?.());
   border-left: 3px solid color-mix(in srgb, var(--club-primary) 54%, var(--club-border));
   border-radius: 0 var(--club-radius-sm) var(--club-radius-sm) 0;
   background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
+}
+.reply-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 small {
   color: var(--el-text-color-secondary);
