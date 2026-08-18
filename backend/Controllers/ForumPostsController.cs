@@ -128,7 +128,8 @@ public sealed class ForumPostsController : ControllerBase
         return _db.ClubMembers.AnyAsync(member => member.UserId == userId && member.ClubId == clubId && (member.MemberStatus == null || member.MemberStatus == "" || member.MemberStatus.ToLower() == "active" || member.MemberStatus.ToLower() == "normal" || member.MemberStatus.ToLower() == "enabled") && (member.TermStart == null || member.TermStart <= today) && (member.TermEnd == null || member.TermEnd >= today));
     }
 
-    private static bool Allows(IReadOnlyList<PermissionRole> roles, string permission, int clubId) => roles.Any(role => role.Permissions.Contains("*") || (role.Permissions.Contains(permission) && (role.ClubId is null || role.ClubId == clubId || role.ClubIds.Contains(clubId))));
+    private static bool Allows(IReadOnlyList<PermissionRole> roles, string permission, int clubId) =>
+        AuthService.RolesAllow(roles, permission, clubId);
     private static bool IsPublished(ForumPost post) => string.Equals(post.PostStatus, Published, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(post.PostStatus);
     private static ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = post.Content, IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = post.CreatedAt, UpdatedAt = post.UpdatedAt, Replies = replies };
     private sealed record UserContext(IActionResult? Result, User? User, IReadOnlyList<PermissionRole>? Roles);
