@@ -124,7 +124,7 @@ public class AuthService
             "社团管理员",
             SystemScope,
             "校级社团管理角色，可审核社团注册申请、管理社团状态、审核资源并维护全校社团物资库存和年度经费账户，不参与社团内部档案、成员任期和干部换届维护。",
-            ["public:view", "club:review", "activity:review", "venue:review", "budget:view", "forum:moderate", "budget:account:manage", "budget:review", "project:review", "resource:review", "resource:delete", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
+            ["public:view", "club:review", "activity:review", "venue:review", "budget:view", "budget:account:manage", "budget:review", "project:review", "resource:review", "resource:delete", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
         new(
             VenueAdminRole,
             "场地管理员",
