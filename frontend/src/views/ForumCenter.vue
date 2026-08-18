@@ -183,6 +183,7 @@ onUnmounted(() => stopSessionListener?.());
       <p>{{ topic.content }}</p>
       <div class="actions">
         <el-button
+          v-if="canPost"
           link
           :icon="ChatDotRound"
           :disabled="topic.postStatus === 'hidden'"
