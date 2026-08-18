@@ -103,8 +103,8 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     [Fact]
     public async Task DeleteTopic_ByNonOwnerNonModerator_IsForbidden()
     {
-        var (ownerClient, clubId, ownerUserId) = await SeedForMultiUserTestAsync();
-        var (otherClient, _) = await SeedForMultiUserTestAsync();
+        var (ownerClient, clubId, _) = await SeedForMultiUserTestAsync();
+        var (otherClient, _, _) = await SeedForMultiUserTestAsync();
 
         var topic = await PostAndReadId(ownerClient, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         using var response = await otherClient.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
