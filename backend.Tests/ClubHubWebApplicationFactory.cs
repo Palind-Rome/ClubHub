@@ -13,6 +13,8 @@ namespace ClubHub.Api.Tests;
 
 public sealed class ClubHubWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName = $"ClubHubTests-{Guid.NewGuid():N}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -29,7 +31,7 @@ public sealed class ClubHubWebApplicationFactory : WebApplicationFactory<Program
             services.RemoveAll<IDbContextOptionsConfiguration<ClubHubDbContext>>();
             services.RemoveAll<IDatabaseProvider>();
             services.AddDbContext<ClubHubDbContext>(options =>
-                options.UseInMemoryDatabase($"ClubHubTests-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase(_databaseName));
         });
     }
 }
