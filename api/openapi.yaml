@@ -1330,6 +1330,115 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/forum-posts:
+    get:
+      summary: 查询社团讨论区话题
+      operationId: getClubForumPosts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: includeHidden
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 当前用户可见的话题及其回复
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumPost"
+        "401":
+          description: 登录状态缺失或无效
+        "403":
+          description: 当前用户不是该社团的有效成员
+        "404":
+          description: 社团不存在
+    post:
+      summary: 发布社团讨论区话题或回复
+      operationId: createClubForumPost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateForumPostRequest"
+      responses:
+        "201":
+          description: 话题或回复发布成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          description: 内容、父级帖子或层级不符合规则
+        "401":
+          description: 登录状态缺失或无效
+        "403":
+          description: 当前用户不是该社团的有效成员
+        "404":
+          description: 社团或父级话题不存在
+
+  /api/clubs/{clubId}/forum-posts/{postId}/moderation:
+    patch:
+      summary: 置顶或隐藏社团讨论区内容
+      operationId: moderateClubForumPost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerateForumPostRequest"
+      responses:
+        "200":
+          description: 管理状态已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          description: 回复不能置顶，或状态不合法
+        "401":
+          description: 登录状态缺失或无效
+        "403":
+          description: 当前用户没有讨论区管理权限
+        "404":
+          description: 社团或帖子不存在
+
   /api/clubs/{clubId}/award-rule-documents:
     get:
       summary: 查询评奖评优评定细则
@@ -6304,6 +6413,71 @@ components:
         - title
         - content
         - targetType
+
+    ForumPost:
+      type: object
+      description: 社团讨论区话题或回复
+      properties:
+        id:
+          type: integer
+        clubId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+          nullable: true
+        parentPostId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        isTop:
+          type: boolean
+        postStatus:
+          type: string
+          enum: [published, hidden]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForumPost"
+      required: [id, clubId, userId, content, isTop, postStatus, createdAt, replies]
+
+    CreateForumPostRequest:
+      type: object
+      properties:
+        parentPostId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      required: [content]
+
+    ModerateForumPostRequest:
+      type: object
+      properties:
+        isTop:
+          type: boolean
+        postStatus:
+          type: string
+          enum: [published, hidden]
+      required: [isTop, postStatus]
 
     NoticeReadResult:
       type: object
