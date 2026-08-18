@@ -203,6 +203,11 @@ import {
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
 import {
+  type CreateForumPostRequest,
+  CreateForumPostRequestFromJSON,
+  CreateForumPostRequestToJSON,
+} from "../models/CreateForumPostRequest";
+import {
   type CreateLearningItemRequest,
   CreateLearningItemRequestFromJSON,
   CreateLearningItemRequestToJSON,
@@ -267,6 +272,7 @@ import {
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
 } from "../models/ExitClubMemberRequest";
+import { type ForumPost, ForumPostFromJSON, ForumPostToJSON } from "../models/ForumPost";
 import {
   type GenerateClubEvaluationsRequest,
   GenerateClubEvaluationsRequestFromJSON,
@@ -318,6 +324,11 @@ import {
   MaterialBorrowFromJSON,
   MaterialBorrowToJSON,
 } from "../models/MaterialBorrow";
+import {
+  type ModerateForumPostRequest,
+  ModerateForumPostRequestFromJSON,
+  ModerateForumPostRequestToJSON,
+} from "../models/ModerateForumPostRequest";
 import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
 import {
   type NoticeReadResult,
@@ -661,6 +672,11 @@ export interface CreateClubEvaluationOperationRequest {
   createClubEvaluationRequest: CreateClubEvaluationRequest;
 }
 
+export interface CreateClubForumPostRequest {
+  clubId: number;
+  createForumPostRequest: CreateForumPostRequest;
+}
+
 export interface CreateClubGroupOperationRequest {
   clubId: number;
   departmentId: number;
@@ -868,6 +884,11 @@ export interface GetClubEvaluationsRequest {
   evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
+export interface GetClubForumPostsRequest {
+  clubId: number;
+  includeHidden?: boolean;
+}
+
 export interface GetClubMembersRequest {
   clubId: number;
   includeHistory?: boolean;
@@ -997,6 +1018,12 @@ export interface LoginUserRequest {
 
 export interface MarkNoticeReadRequest {
   noticeId: number;
+}
+
+export interface ModerateClubForumPostRequest {
+  clubId: number;
+  postId: number;
+  moderateForumPostRequest: ModerateForumPostRequest;
 }
 
 export interface PreviewClubEvaluationScoresRequest {
@@ -2897,6 +2924,77 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubEvaluationRecord> {
     const response = await this.createClubEvaluationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createClubForumPost without sending the request
+   */
+  async createClubForumPostRequestOpts(
+    requestParameters: CreateClubForumPostRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubForumPost().',
+      );
+    }
+
+    if (requestParameters["createForumPostRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createForumPostRequest",
+        'Required parameter "createForumPostRequest" was null or undefined when calling createClubForumPost().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateForumPostRequestToJSON(requestParameters["createForumPostRequest"]),
+    };
+  }
+
+  /**
+   * 发布社团讨论区话题或回复
+   */
+  async createClubForumPostRaw(
+    requestParameters: CreateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumPost>> {
+    const requestOptions = await this.createClubForumPostRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ForumPostFromJSON(jsonValue));
+  }
+
+  /**
+   * 发布社团讨论区话题或回复
+   */
+  async createClubForumPost(
+    requestParameters: CreateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumPost> {
+    const response = await this.createClubForumPostRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5683,6 +5781,71 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubForumPosts without sending the request
+   */
+  async getClubForumPostsRequestOpts(
+    requestParameters: GetClubForumPostsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubForumPosts().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["includeHidden"] != null) {
+      queryParameters["includeHidden"] = requestParameters["includeHidden"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查询社团讨论区话题
+   */
+  async getClubForumPostsRaw(
+    requestParameters: GetClubForumPostsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ForumPost>>> {
+    const requestOptions = await this.getClubForumPostsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ForumPostFromJSON));
+  }
+
+  /**
+   * 查询社团讨论区话题
+   */
+  async getClubForumPosts(
+    requestParameters: GetClubForumPostsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ForumPost>> {
+    const response = await this.getClubForumPostsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubMembers without sending the request
    */
   async getClubMembersRequestOpts(
@@ -7666,6 +7829,85 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for moderateClubForumPost without sending the request
+   */
+  async moderateClubForumPostRequestOpts(
+    requestParameters: ModerateClubForumPostRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    if (requestParameters["postId"] == null) {
+      throw new runtime.RequiredError(
+        "postId",
+        'Required parameter "postId" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    if (requestParameters["moderateForumPostRequest"] == null) {
+      throw new runtime.RequiredError(
+        "moderateForumPostRequest",
+        'Required parameter "moderateForumPostRequest" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts/{postId}/moderation`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ModerateForumPostRequestToJSON(requestParameters["moderateForumPostRequest"]),
+    };
+  }
+
+  /**
+   * 置顶或隐藏社团讨论区内容
+   */
+  async moderateClubForumPostRaw(
+    requestParameters: ModerateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumPost>> {
+    const requestOptions = await this.moderateClubForumPostRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ForumPostFromJSON(jsonValue));
+  }
+
+  /**
+   * 置顶或隐藏社团讨论区内容
+   */
+  async moderateClubForumPost(
+    requestParameters: ModerateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumPost> {
+    const response = await this.moderateClubForumPostRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
