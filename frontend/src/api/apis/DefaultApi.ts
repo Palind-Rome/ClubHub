@@ -941,6 +941,11 @@ export interface DamageMaterialBorrowRequest {
   registerMaterialDamageRequest: RegisterMaterialDamageRequest;
 }
 
+export interface DeleteClubForumPostRequest {
+  clubId: number;
+  postId: number;
+}
+
 export interface DeleteLearningResourceRequest {
   /**
    *
@@ -5182,6 +5187,76 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<MaterialBorrow> {
     const response = await this.damageMaterialBorrowRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for deleteClubForumPost without sending the request
+   */
+  async deleteClubForumPostRequestOpts(
+    requestParameters: DeleteClubForumPostRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling deleteClubForumPost().',
+      );
+    }
+
+    if (requestParameters["postId"] == null) {
+      throw new runtime.RequiredError(
+        "postId",
+        'Required parameter "postId" was null or undefined when calling deleteClubForumPost().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts/{postId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除社团讨论区话题或回复
+   */
+  async deleteClubForumPostRaw(
+    requestParameters: DeleteClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteClubForumPostRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除社团讨论区话题或回复
+   */
+  async deleteClubForumPost(
+    requestParameters: DeleteClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteClubForumPostRaw(requestParameters, initOverrides);
   }
 
   /**
