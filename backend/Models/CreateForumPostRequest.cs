@@ -26,21 +26,27 @@ namespace Org.OpenAPITools.Models
     public partial class CreateForumPostRequest 
     {
         /// <summary>
-        /// Gets or Sets ParentPostId
+        /// 要回复的话题 ID；为空时创建话题，不能指向回复。
         /// </summary>
+        /// <value>要回复的话题 ID；为空时创建话题，不能指向回复。</value>
+        /* <example>100</example> */
         [DataMember(Name="parentPostId", EmitDefaultValue=true)]
         public int? ParentPostId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Title
+        /// 话题标题；创建回复时必须为空。
         /// </summary>
+        /// <value>话题标题；创建回复时必须为空。</value>
+        /* <example>下周活动分工讨论</example> */
         [MaxLength(120)]
         [DataMember(Name="title", EmitDefaultValue=true)]
         public string? Title { get; set; }
 
         /// <summary>
-        /// Gets or Sets Content
+        /// 帖子正文，去除首尾空白后不能为空。
         /// </summary>
+        /// <value>帖子正文，去除首尾空白后不能为空。</value>
+        /* <example>请大家在今晚前确认可参与的工作内容。</example> */
         [Required]
         [StringLength(4000, MinimumLength=1)]
         [DataMember(Name="content", EmitDefaultValue=false)]

@@ -21,73 +21,73 @@ import { mapValues } from "../runtime";
  */
 export interface ForumPost {
   /**
-   *
+   * 帖子 ID。
    * @type {number}
    * @memberof ForumPost
    */
   id: number;
   /**
-   *
+   * 所属社团 ID。
    * @type {number}
    * @memberof ForumPost
    */
   clubId: number;
   /**
-   *
+   * 发布用户 ID。
    * @type {number}
    * @memberof ForumPost
    */
   userId: number;
   /**
-   *
+   * 发布用户显示名称。
    * @type {string}
    * @memberof ForumPost
    */
   userName?: string | null;
   /**
-   *
+   * 父级话题 ID；为空表示话题，非空表示对该话题的回复。
    * @type {number}
    * @memberof ForumPost
    */
   parentPostId?: number | null;
   /**
-   *
+   * 话题标题；回复时为空。
    * @type {string}
    * @memberof ForumPost
    */
   title?: string | null;
   /**
-   *
+   * 帖子正文内容。
    * @type {string}
    * @memberof ForumPost
    */
   content: string;
   /**
-   *
+   * 是否置顶；仅话题可以置顶，回复不可置顶。
    * @type {boolean}
    * @memberof ForumPost
    */
   isTop: boolean;
   /**
-   *
+   * 帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。
    * @type {ForumPostPostStatusEnum}
    * @memberof ForumPost
    */
   postStatus: ForumPostPostStatusEnum;
   /**
-   *
+   * 创建时间。
    * @type {Date}
    * @memberof ForumPost
    */
   createdAt: Date;
   /**
-   *
+   * 最后更新时间。
    * @type {Date}
    * @memberof ForumPost
    */
   updatedAt?: Date | null;
   /**
-   *
+   * 该话题的回复列表；回复对象的该字段为空数组。
    * @type {Array<ForumPost>}
    * @memberof ForumPost
    */

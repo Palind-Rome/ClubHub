@@ -21,19 +21,19 @@ import { mapValues } from "../runtime";
  */
 export interface CreateForumPostRequest {
   /**
-   *
+   * 要回复的话题 ID；为空时创建话题，不能指向回复。
    * @type {number}
    * @memberof CreateForumPostRequest
    */
   parentPostId?: number | null;
   /**
-   *
+   * 话题标题；创建回复时必须为空。
    * @type {string}
    * @memberof CreateForumPostRequest
    */
   title?: string | null;
   /**
-   *
+   * 帖子正文，去除首尾空白后不能为空。
    * @type {string}
    * @memberof CreateForumPostRequest
    */

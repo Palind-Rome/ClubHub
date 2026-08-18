@@ -27,54 +27,70 @@ namespace Org.OpenAPITools.Models
     public partial class ForumPost 
     {
         /// <summary>
-        /// Gets or Sets Id
+        /// 帖子 ID。
         /// </summary>
+        /// <value>帖子 ID。</value>
+        /* <example>101</example> */
         [Required]
         [DataMember(Name="id", EmitDefaultValue=true)]
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or Sets ClubId
+        /// 所属社团 ID。
         /// </summary>
+        /// <value>所属社团 ID。</value>
+        /* <example>1</example> */
         [Required]
         [DataMember(Name="clubId", EmitDefaultValue=true)]
         public int ClubId { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserId
+        /// 发布用户 ID。
         /// </summary>
+        /// <value>发布用户 ID。</value>
+        /* <example>42</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
         public int UserId { get; set; }
 
         /// <summary>
-        /// Gets or Sets UserName
+        /// 发布用户显示名称。
         /// </summary>
+        /// <value>发布用户显示名称。</value>
+        /* <example>张三</example> */
         [DataMember(Name="userName", EmitDefaultValue=true)]
         public string? UserName { get; set; }
 
         /// <summary>
-        /// Gets or Sets ParentPostId
+        /// 父级话题 ID；为空表示话题，非空表示对该话题的回复。
         /// </summary>
+        /// <value>父级话题 ID；为空表示话题，非空表示对该话题的回复。</value>
+        /* <example>100</example> */
         [DataMember(Name="parentPostId", EmitDefaultValue=true)]
         public int? ParentPostId { get; set; }
 
         /// <summary>
-        /// Gets or Sets Title
+        /// 话题标题；回复时为空。
         /// </summary>
+        /// <value>话题标题；回复时为空。</value>
+        /* <example>下周活动分工讨论</example> */
         [DataMember(Name="title", EmitDefaultValue=true)]
         public string? Title { get; set; }
 
         /// <summary>
-        /// Gets or Sets Content
+        /// 帖子正文内容。
         /// </summary>
+        /// <value>帖子正文内容。</value>
+        /* <example>请大家在今晚前确认可参与的工作内容。</example> */
         [Required]
         [DataMember(Name="content", EmitDefaultValue=false)]
         public string Content { get; set; }
 
         /// <summary>
-        /// Gets or Sets IsTop
+        /// 是否置顶；仅话题可以置顶，回复不可置顶。
         /// </summary>
+        /// <value>是否置顶；仅话题可以置顶，回复不可置顶。</value>
+        /* <example>false</example> */
         [JsonRequired]
         [Required]
         [DataMember(Name="isTop", EmitDefaultValue=true)]
@@ -82,8 +98,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets PostStatus
+        /// 帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。
         /// </summary>
+        /// <value>帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。</value>
         
         public enum PostStatusEnum
         {
@@ -102,28 +119,35 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PostStatus
+        /// 帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。
         /// </summary>
+        /// <value>帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。</value>
+        /* <example>published</example> */
         [Required]
         [DataMember(Name="postStatus", EmitDefaultValue=true)]
         public PostStatusEnum PostStatus { get; set; }
 
         /// <summary>
-        /// Gets or Sets CreatedAt
+        /// 创建时间。
         /// </summary>
+        /// <value>创建时间。</value>
+        /* <example>2026-08-18T09:30Z</example> */
         [Required]
         [DataMember(Name="createdAt", EmitDefaultValue=true)]
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets UpdatedAt
+        /// 最后更新时间。
         /// </summary>
+        /// <value>最后更新时间。</value>
+        /* <example>2026-08-18T10:00Z</example> */
         [DataMember(Name="updatedAt", EmitDefaultValue=true)]
         public DateTime? UpdatedAt { get; set; }
 
         /// <summary>
-        /// Gets or Sets Replies
+        /// 该话题的回复列表；回复对象的该字段为空数组。
         /// </summary>
+        /// <value>该话题的回复列表；回复对象的该字段为空数组。</value>
         [Required]
         [DataMember(Name="replies", EmitDefaultValue=false)]
         public List<ForumPost> Replies { get; set; }

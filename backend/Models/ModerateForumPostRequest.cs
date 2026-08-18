@@ -27,8 +27,10 @@ namespace Org.OpenAPITools.Models
     public partial class ModerateForumPostRequest 
     {
         /// <summary>
-        /// Gets or Sets IsTop
+        /// 是否置顶；仅一级话题可以置顶，回复必须为 false。
         /// </summary>
+        /// <value>是否置顶；仅一级话题可以置顶，回复必须为 false。</value>
+        /* <example>true</example> */
         [JsonRequired]
         [Required]
         [DataMember(Name="isTop", EmitDefaultValue=true)]
@@ -36,8 +38,9 @@ namespace Org.OpenAPITools.Models
 
 
         /// <summary>
-        /// Gets or Sets PostStatus
+        /// 管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。
         /// </summary>
+        /// <value>管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。</value>
         
         public enum PostStatusEnum
         {
@@ -56,8 +59,10 @@ namespace Org.OpenAPITools.Models
         }
 
         /// <summary>
-        /// Gets or Sets PostStatus
+        /// 管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。
         /// </summary>
+        /// <value>管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。</value>
+        /* <example>published</example> */
         [Required]
         [DataMember(Name="postStatus", EmitDefaultValue=true)]
         public PostStatusEnum PostStatus { get; set; }
