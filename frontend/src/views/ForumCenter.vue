@@ -119,7 +119,7 @@ async function moderate(post: ForumPost, change: Partial<Pick<ForumPost, "isTop"
   if (moderatingPostIds.value.has(post.id)) return;
   moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
   try {
-    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
