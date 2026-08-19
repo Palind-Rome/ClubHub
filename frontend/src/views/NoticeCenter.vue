@@ -940,14 +940,14 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 18px;
   padding: 24px;
-  color: #20262e;
+  color: var(--el-text-color-primary);
 }
 
 .notice-head,
 .summary-band,
 .filter-band {
-  border: 1px solid #d9e1ea;
-  background: #fff;
+  border: 1px solid var(--el-border-color-light);
+  background: var(--club-surface-solid);
 }
 
 .notice-head {
@@ -965,7 +965,7 @@ onUnmounted(() => {
 
 .notice-head p {
   margin: 6px 0 0;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
 }
 
 .head-actions,
@@ -989,12 +989,12 @@ onUnmounted(() => {
 }
 
 .summary-band div + div {
-  border-left: 1px solid #d9e1ea;
+  border-left: 1px solid var(--el-border-color-light);
 }
 
 .summary-band span {
   display: block;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1027,7 +1027,7 @@ onUnmounted(() => {
 
 .notice-dialog__heading h3 {
   margin: 10px 0 0;
-  color: #20262e;
+  color: var(--el-text-color-primary);
   font-size: 22px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -1035,13 +1035,13 @@ onUnmounted(() => {
 
 .notice-dialog__content {
   padding: 18px 20px;
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--el-fill-color-light);
 }
 
 .notice-dialog__content span {
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1059,7 +1059,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1086,7 +1086,7 @@ onUnmounted(() => {
 
   .summary-band div + div {
     border-left: none;
-    border-top: 1px solid #d9e1ea;
+    border-top: 1px solid var(--el-border-color-light);
   }
 
   .filter-item {

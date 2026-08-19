@@ -1205,7 +1205,7 @@ onUnmounted(() => {
 .process-strip div {
   padding: 14px 16px;
   border-right: 1px solid var(--el-border-color-light);
-  background: #fff;
+  background: var(--club-surface-solid);
 }
 
 .process-strip div:last-child {

@@ -556,10 +556,12 @@ loadPermissionCatalog();
 
 .auth-panel,
 .info-panel {
-  background: #fff;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-md);
   padding: 20px;
+  background: var(--club-bg-elevated);
+  box-shadow: var(--club-shadow-sm);
+  backdrop-filter: var(--club-glass-blur);
 }
 
 .auth-panel h2,

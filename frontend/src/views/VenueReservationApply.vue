@@ -1133,7 +1133,7 @@ onMounted(refreshVenueData);
   padding: 12px;
   border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #fff;
+  background: var(--club-surface-solid);
 }
 .slot-date {
   display: flex;
