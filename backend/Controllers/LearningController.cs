@@ -512,7 +512,9 @@ public class LearningController : ControllerBase
                 new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = !_environment.IsDevelopment() || Request.IsHttps,
+                    // UseForwardedHeaders 已在认证前解析 X-Forwarded-Proto；仅在浏览器实际
+                    // 使用 HTTPS 时标记 Secure，避免当前 HTTP 部署静默丢弃预览 Cookie。
+                    Secure = Request.IsHttps,
                     SameSite = SameSiteMode.Strict,
                     Path = $"/api/learning/items/{itemId}/preview",
                     MaxAge = _authTokenService.PreviewSessionLifetime,

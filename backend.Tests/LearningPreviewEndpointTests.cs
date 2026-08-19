@@ -82,6 +82,57 @@ public sealed class LearningPreviewEndpointTests
         Assert.Equal(1, storage.MetadataReads);
     }
 
+    [Fact]
+    public async Task PreviewSession_OverHttp_AllowsCookieAuthenticatedContentRequest()
+    {
+        const string imageReference = "clubs/156102/learning/156104/test.png";
+        var imageBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        var storage = new PreviewObjectStorage(imageReference, imageBytes, "image/png");
+        await using var factory = CreateFactory(
+            new TestRateLimiter(RateLimiterMode.Allowed),
+            storage,
+            previewRedisUnavailable: false);
+        var (client, itemId) = await SeedAndAuthenticateAsync(factory, imageReference);
+
+        using var sessionResponse = await client.PostAsync(
+            $"/api/learning/items/{itemId}/preview-session",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, sessionResponse.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = null;
+        using var previewResponse = await client.GetAsync(
+            $"/api/learning/items/{itemId}/preview");
+
+        Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+        Assert.Equal("image/png", previewResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(imageBytes, await previewResponse.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task PreviewSession_OverHttps_MarksPreviewCookieSecure()
+    {
+        var storage = new PreviewObjectStorage();
+        await using var factory = CreateFactory(
+            new TestRateLimiter(RateLimiterMode.Allowed),
+            storage,
+            previewRedisUnavailable: false);
+        var (client, itemId) = await SeedAndAuthenticateAsync(factory);
+        client.BaseAddress = new Uri("https://localhost");
+
+        using var response = await client.PostAsync(
+            $"/api/learning/items/{itemId}/preview-session",
+            null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            $"path=/api/learning/items/{itemId}/preview",
+            cookie,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(
         IDistributedRateLimiter limiter,
         ILearningObjectStorage storage,
@@ -123,7 +174,8 @@ public sealed class LearningPreviewEndpointTests
     }
 
     private static async Task<(HttpClient Client, int ItemId)> SeedAndAuthenticateAsync(
-        WebApplicationFactory<Program> factory)
+        WebApplicationFactory<Program> factory,
+        string fileUrl = PreviewObjectStorage.Reference)
     {
         const int userId = 156101;
         const int clubId = 156102;
@@ -172,7 +224,7 @@ public sealed class LearningPreviewEndpointTests
                     UploaderUserId = userId,
                     Title = "Redis 预览端点测试",
                     ItemType = "document",
-                    FileUrl = PreviewObjectStorage.Reference,
+                    FileUrl = fileUrl,
                     Visibility = "public",
                     ItemStatus = "published",
                     CreatedAt = now
@@ -220,9 +272,22 @@ public sealed class LearningPreviewEndpointTests
     private sealed class PreviewObjectStorage : ILearningObjectStorage
     {
         public const string Reference = "clubs/156102/learning/156104/test.pdf";
+        private readonly string _reference;
+        private readonly byte[] _content;
+        private readonly string _contentType;
         public int MetadataReads { get; private set; }
 
-        public bool IsStorageReference(string? value) => value == Reference;
+        public PreviewObjectStorage(
+            string reference = Reference,
+            byte[]? content = null,
+            string contentType = "application/pdf")
+        {
+            _reference = reference;
+            _content = content ?? "%PDF-1.7"u8.ToArray();
+            _contentType = contentType;
+        }
+
+        public bool IsStorageReference(string? value) => value == _reference;
 
         public Task<StoredObjectMetadata> GetMetadataAsync(
             string storageReference,
@@ -230,8 +295,8 @@ public sealed class LearningPreviewEndpointTests
         {
             MetadataReads++;
             return Task.FromResult(new StoredObjectMetadata(
-                8,
-                "application/pdf",
+                _content.Length,
+                _contentType,
                 null,
                 "etag",
                 DateTimeOffset.UtcNow));
@@ -241,7 +306,7 @@ public sealed class LearningPreviewEndpointTests
             string storageReference,
             StoredObjectRange? range,
             CancellationToken cancellationToken) =>
-            Task.FromResult(new StoredObjectDownload(new MemoryStream("%PDF-1.7"u8.ToArray())));
+            Task.FromResult(new StoredObjectDownload(new MemoryStream(_content)));
 
         public Task<string> UploadAsync(
             int clubId,
