@@ -12,18 +12,8 @@ describe("生产前端 Docker 构建", () => {
 
       execFileSync(
         "docker",
-        [
-          "build",
-          "--file",
-          "frontend/Dockerfile",
-          "--tag",
-          "clubhub-frontend:ci",
-          ".",
-        ],
-        {
-          cwd: repoRoot,
-          stdio: "inherit",
-        },
+        ["build", "--file", "frontend/Dockerfile", "--tag", "clubhub-frontend:ci", "."],
+        { cwd: repoRoot, stdio: "inherit" },
       );
     },
     300_000,
