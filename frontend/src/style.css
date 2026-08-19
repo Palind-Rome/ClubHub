@@ -11,7 +11,7 @@
     "Segoe UI",
     sans-serif;
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
 
   --club-primary: #1976d2;
   --club-primary-soft: #e8f2ff;
@@ -165,6 +165,7 @@ a {
 .el-table {
   --el-table-header-bg-color: var(--club-bg-muted);
   --el-table-row-hover-bg-color: var(--club-surface-hover);
+
   border-radius: var(--club-radius-md);
 }
 
