@@ -40,7 +40,7 @@ function changeTheme(command: string | number | object) {
   <div class="app-shell">
     <aside class="desktop-sidebar">
       <div class="brand-lockup">
-        <img class="brand-logo" src="/logo_small.svg" alt="" aria-hidden="true" />
+        <img class="brand-logo" src="/favicon.svg" alt="" aria-hidden="true" />
         <div>
           <strong>ClubHub</strong>
           <small>社团协作中心</small>
@@ -145,7 +145,7 @@ function changeTheme(command: string | number | object) {
     >
       <template #header>
         <div class="brand-lockup drawer-brand">
-          <img class="brand-logo" src="/logo_small.svg" alt="" aria-hidden="true" />
+          <img class="brand-logo" src="/favicon.svg" alt="" aria-hidden="true" />
           <div><strong>ClubHub</strong><small>社团协作中心</small></div>
         </div>
       </template>
@@ -205,9 +205,9 @@ function changeTheme(command: string | number | object) {
   height: 38px;
   flex: 0 0 auto;
   border-radius: 13px;
-  background: #ffffff;
+  background: transparent;
   box-shadow: 0 8px 20px color-mix(in srgb, var(--club-primary) 24%, transparent);
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .sidebar-footer {

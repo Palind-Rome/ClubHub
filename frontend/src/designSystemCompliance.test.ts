@@ -64,4 +64,10 @@ describe("设计系统样式约束", () => {
     expect(appShellSource).toContain("max-width: 100% !important");
     expect(appShellSource).toContain("margin-inline: auto !important");
   });
+
+  it("应用壳层使用透明背景品牌图标", () => {
+    expect(appShellSource.match(/src="\/favicon\.svg"/g)).toHaveLength(2);
+    expect(appShellSource).toContain("background: transparent");
+    expect(appShellSource).toContain("object-fit: contain");
+  });
 });
