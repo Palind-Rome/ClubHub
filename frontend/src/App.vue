@@ -14,6 +14,7 @@ const healthChecking = ref(false);
 const route = useRoute();
 const router = useRouter();
 const auth = ref<AuthResponse | null>(null);
+const sessionResolved = ref(false);
 let stopSessionListener: (() => void) | null = null;
 
 initializeTheme();
@@ -38,8 +39,13 @@ function refreshSession() {
   auth.value = nextAuth;
 
   if (!nextAuth && route.path !== "/auth") {
-    router.replace({ path: "/auth", query: { redirect: route.fullPath } });
+    void router.replace({ path: "/auth", query: { redirect: route.fullPath } }).finally(() => {
+      sessionResolved.value = true;
+    });
+    return;
   }
+
+  sessionResolved.value = true;
 }
 
 async function checkHealth() {
@@ -79,7 +85,7 @@ onUnmounted(() => {
 <template>
   <el-config-provider :locale="zhCn">
     <AppShell
-      v-if="hasSession"
+      v-if="sessionResolved && hasSession"
       :navigation-groups="navigationGroups"
       :active-menu="activeMenu"
       :page-title="pageTitle"
@@ -97,7 +103,7 @@ onUnmounted(() => {
       </router-view>
     </AppShell>
 
-    <router-view v-else />
+    <router-view v-else-if="sessionResolved && route.path === '/auth'" />
   </el-config-provider>
 </template>
 
