@@ -10,6 +10,7 @@ const clubs = ref<Club[]>([]);
 const topics = ref<ForumPost[]>([]);
 const selectedClubId = ref<number>();
 const loading = ref(false);
+const loadError = ref<string | null>(null);
 const showHidden = ref(false);
 const replyingTo = ref<ForumPost | null>(null);
 const saving = ref(false);
@@ -72,14 +73,17 @@ async function loadPosts() {
   const clubId = selectedClubId.value;
   const includeHidden = showHidden.value;
   loading.value = true;
+  loadError.value = null;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
     const posts = await requestJson<ForumPost[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
-    if (requestVersion === postsRequestVersion) topics.value = posts;
+    if (requestVersion === postsRequestVersion) {
+      topics.value = posts;
+      loadError.value = null;
+    }
   } catch (error) {
     if (requestVersion === postsRequestVersion) {
-      topics.value = [];
-      ElMessage.error(error instanceof Error ? error.message : "讨论区加载失败");
+      loadError.value = error instanceof Error ? error.message : "讨论区加载失败";
     }
   } finally {
     loading.value = false;
@@ -175,6 +179,7 @@ onMounted(() => {
     auth.value = readAuth();
     postsRequestVersion++;
     topics.value = [];
+    loadError.value = null;
     if (!canModerate.value) showHidden.value = false;
     void loadPosts();
   });
@@ -230,7 +235,15 @@ onUnmounted(() => stopSessionListener?.());
         <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
       </el-form>
     </el-card>
-    <el-skeleton v-if="loading" :rows="5" animated />
+    <el-alert
+      v-if="loadError"
+      :title="loadError"
+      type="error"
+      :closable="false"
+      show-icon
+      class="load-error-alert"
+    />
+    <el-skeleton v-else-if="loading" :rows="5" animated />
     <el-empty v-else-if="selectedClubId && !topics.length" description="暂时还没有话题" />
     <article
       v-for="topic in topics"
@@ -383,6 +396,9 @@ onUnmounted(() => stopSessionListener?.());
 }
 .membership-notice :deep(.el-alert__title) {
   color: var(--club-text);
+}
+.load-error-alert {
+  margin-top: 12px;
 }
 .topic {
   margin-top: 14px;
