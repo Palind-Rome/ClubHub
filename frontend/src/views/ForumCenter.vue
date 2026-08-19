@@ -177,7 +177,7 @@ async function deletePost(post: Post) {
 }
 
 function canDeletePost(post: Post): boolean {
-  return (auth.value?.userId && post.userId === auth.value.userId) || canModerate.value;
+  return (auth.value?.user.id && post.userId === auth.value.user.id) || canModerate.value;
 }
 
 const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN", { hour12: false });
@@ -289,11 +289,7 @@ onUnmounted(() => stopSessionListener?.());
               })
             "
             >{{ topic.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
-          ><el-button
-            link
-            type="danger"
-            :icon="Delete"
-            @click="deletePost(topic)"
+          ><el-button link type="danger" :icon="Delete" @click="deletePost(topic)"
             >删除</el-button
           ></template
         >
@@ -322,16 +318,13 @@ onUnmounted(() => stopSessionListener?.());
             link
             :icon="reply.postStatus === 'hidden' ? View : Hide"
             @click="
-              moderate(reply, { postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden' })
+              moderate(reply, {
+                postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden',
+              })
             "
             >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
           >
-          <el-button
-            v-if="canModerate"
-            link
-            type="danger"
-            :icon="Delete"
-            @click="deletePost(reply)"
+          <el-button v-if="canModerate" link type="danger" :icon="Delete" @click="deletePost(reply)"
             >删除</el-button
           >
           <el-button
