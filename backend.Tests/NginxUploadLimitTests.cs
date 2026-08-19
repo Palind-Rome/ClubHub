@@ -10,9 +10,14 @@ public sealed class NginxUploadLimitTests
         var repositoryRoot = FindRepositoryRoot();
         var configuration = File.ReadAllText(Path.Combine(repositoryRoot, "nginx.conf"));
 
+        var apiLocation = Regex.Match(
+            configuration,
+            @"(?mi)^[ \t]*location[ \t]+/api/[ \t]*\{(?<body>[^}]*)^[ \t]*\}");
+        Assert.True(apiLocation.Success, "Cannot locate the /api/ location.");
         Assert.Matches(
-            new Regex(@"client_max_body_size\s+51m\s*;", RegexOptions.IgnoreCase),
-            configuration);
+            new Regex(
+                @"(?mi)^[ \t]*client_max_body_size[ \t]+51m[ \t]*;[ \t]*(?:#.*)?$"),
+            apiLocation.Groups["body"].Value);
     }
 
     private static string FindRepositoryRoot()

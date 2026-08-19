@@ -86,7 +86,8 @@ public sealed class LearningPreviewEndpointTests
     public async Task PreviewSession_OverHttp_AllowsCookieAuthenticatedContentRequest()
     {
         const string imageReference = "clubs/156102/learning/156104/test.png";
-        var imageBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+        var imageBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
         var storage = new PreviewObjectStorage(imageReference, imageBytes, "image/png");
         await using var factory = CreateFactory(
             new TestRateLimiter(RateLimiterMode.Allowed),
@@ -125,12 +126,17 @@ public sealed class LearningPreviewEndpointTests
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"));
-        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(
-            $"path=/api/learning/items/{itemId}/preview",
-            cookie,
-            StringComparison.OrdinalIgnoreCase);
+        var cookieAttributes = cookie.Split(';', StringSplitOptions.TrimEntries);
+        Assert.Contains(cookieAttributes,
+            attribute => attribute.Equals("Secure", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(cookieAttributes,
+            attribute => attribute.Equals("HttpOnly", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(cookieAttributes,
+            attribute => attribute.Equals("SameSite=Strict", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(cookieAttributes,
+            attribute => attribute.Equals(
+                $"Path=/api/learning/items/{itemId}/preview",
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private static WebApplicationFactory<Program> CreateFactory(
