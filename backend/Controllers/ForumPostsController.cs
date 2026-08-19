@@ -102,6 +102,11 @@ public sealed class ForumPostsController : ControllerBase
         else if (string.IsNullOrWhiteSpace(title))
             return BadRequest(new { message = "\u8bdd\u9898\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002" });
 
+        if (content.Length < 1 || content.Length > 4000)
+            return BadRequest(new { message = "\u6b63\u6587\u9577\u5ea6\u5fc5\u9808\u4e3a 1-4000 \u5b57\u7b26\u3002" });
+        if (!isReply && (title.Length < 1 || title.Length > 120))
+            return BadRequest(new { message = "\u6807\u9898\u9577\u5ea6\u5fc5\u9808\u4e3a 1-120 \u5b57\u7b26\u3002" });
+
         var now = DateTime.UtcNow;
         var post = new ForumPost { ClubId = clubId, UserId = context.User!.UserId, ParentPostId = parent?.PostId, Title = isReply ? null : title, Content = content, IsTop = 0, PostStatus = Published, CreatedAt = now, UpdatedAt = now };
         _db.ForumPosts.Add(post);
