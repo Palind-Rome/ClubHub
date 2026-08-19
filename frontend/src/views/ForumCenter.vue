@@ -2,29 +2,16 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ChatDotRound, Delete, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import type { Club, UserSummary } from "../api/models";
+import type { Club, ForumPost, UserSummary } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 
-type Status = "published" | "hidden";
-interface Post {
-  id: number;
-  title?: string | null;
-  content: string;
-  userName?: string | null;
-  userId: number;
-  isTop: boolean;
-  postStatus: Status;
-  createdAt: string;
-  replies: Post[];
-}
-
 const clubs = ref<Club[]>([]);
-const topics = ref<Post[]>([]);
+const topics = ref<ForumPost[]>([]);
 const selectedClubId = ref<number>();
 const loading = ref(false);
 const showHidden = ref(false);
-const replyingTo = ref<Post | null>(null);
+const replyingTo = ref<ForumPost | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
 const currentMemberClubIds = ref(new Set<number>());
@@ -87,7 +74,7 @@ async function loadPosts() {
   loading.value = true;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const posts = await requestJson<Post[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const posts = await requestJson<ForumPost[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     if (requestVersion === postsRequestVersion) topics.value = posts;
   } catch (error) {
     if (requestVersion === postsRequestVersion) {
@@ -123,7 +110,7 @@ async function createPost(parentPostId?: number) {
   }
 }
 
-async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postStatus">>) {
+async function moderate(post: ForumPost, change: Partial<Pick<ForumPost, "isTop" | "postStatus">>) {
   if (!selectedClubId.value) return;
   if (moderatingPostIds.value.has(post.id)) return;
   moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
@@ -147,7 +134,7 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
   }
 }
 
-async function deletePost(post: Post) {
+async function deletePost(post: ForumPost) {
   if (!selectedClubId.value) return;
   const isTopicDelete = !post.title ? false : true;
   const replyCount = post.replies?.length ?? 0;
@@ -176,11 +163,11 @@ async function deletePost(post: Post) {
   }
 }
 
-function canDeletePost(post: Post): boolean {
+function canDeletePost(post: ForumPost): boolean {
   return (auth.value?.user.id && post.userId === auth.value.user.id) || canModerate.value;
 }
 
-const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN", { hour12: false });
+const formatTime = (value: Date) => value.toLocaleString("zh-CN", { hour12: false });
 watch(selectedClubId, () => void loadPosts());
 watch(showHidden, () => void loadPosts());
 onMounted(() => {
