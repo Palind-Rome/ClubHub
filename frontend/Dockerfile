@@ -2,6 +2,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
+# Corepack resolves the exact pnpm version from package.json#packageManager.
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm run build

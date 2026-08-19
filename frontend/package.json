@@ -2,6 +2,7 @@
   "name": "clubhub-frontend",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@10.34.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
