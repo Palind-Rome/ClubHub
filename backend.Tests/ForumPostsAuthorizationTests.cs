@@ -55,7 +55,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
-        using var response = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{reply}/moderation", Json("{\"isTop\":true,\"postStatus\":\"published\"}"));
+        using var response = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{reply}", Json("{\"isTop\":true,\"postStatus\":\"published\"}"));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -64,13 +64,13 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}/moderation", Json("{\"isTop\":true,\"postStatus\":\"hidden\"}"));
+        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":true,\"postStatus\":\"hidden\"}"));
         Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
         using var hiddenDocument = System.Text.Json.JsonDocument.Parse(
             await hidden.Content.ReadAsStringAsync());
         Assert.Equal("hidden", hiddenDocument.RootElement.GetProperty("postStatus").GetString());
 
-        using var restored = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}/moderation", Json("{\"isTop\":false,\"postStatus\":\"published\"}"));
+        using var restored = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"published\"}"));
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
         using var restoredDocument = System.Text.Json.JsonDocument.Parse(
             await restored.Content.ReadAsStringAsync());
@@ -82,7 +82,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}/moderation", Json("{\"isTop\":false,\"postStatus\":\"hidden\"}"));
+        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"hidden\"}"));
         Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
 
         using var response = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");

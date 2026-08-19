@@ -110,7 +110,7 @@ public sealed class ForumPostsController : ControllerBase
         return Created($"/api/clubs/{clubId}/forum-posts/{post.PostId}", ToApiPost(post, []));
     }
 
-    [HttpPatch("{postId:int}/moderation")]
+    [HttpPatch("{postId:int}")]
     public async Task<IActionResult> Moderate(int clubId, int postId, [FromBody] ApiModerateForumPostRequest request)
     {
         var context = await GetUserContextAsync(clubId);
