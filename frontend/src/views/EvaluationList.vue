@@ -747,7 +747,7 @@ onUnmounted(() => {
 
 <template>
   <section class="evaluation-page">
-    <div class="page-head">
+    <div class="page-head app-page-header">
       <div>
         <h2>成员考核</h2>
         <div class="subtitle">四项分数由系统生成，负责人和指导老师确认后公示。</div>

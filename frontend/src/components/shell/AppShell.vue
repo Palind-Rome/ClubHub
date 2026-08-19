@@ -360,7 +360,7 @@ function changeTheme(command: string | number | object) {
 
 .page-canvas {
   min-width: 0;
-  padding: var(--club-space-6);
+  padding: clamp(var(--club-space-5), 2.2vw, 40px);
   scrollbar-gutter: stable;
 }
 
@@ -368,6 +368,34 @@ function changeTheme(command: string | number | object) {
   width: 100%;
   max-width: var(--club-content-width);
   margin: 0 auto;
+}
+
+:global(.page-content > *) {
+  width: 100%;
+  max-width: 100% !important;
+  margin-inline: auto !important;
+  padding: 0 !important;
+}
+
+:global(.app-page-header) {
+  width: 100%;
+  min-height: 84px;
+  padding: 18px 20px !important;
+  border: 1px solid var(--club-border) !important;
+  border-radius: var(--club-radius-lg) !important;
+  background: var(--club-surface) !important;
+  box-shadow: var(--club-shadow-sm);
+  backdrop-filter: var(--club-glass-blur);
+}
+
+:global(.app-page-header h1),
+:global(.app-page-header h2) {
+  margin: 0 !important;
+  color: var(--club-text) !important;
+  font-size: clamp(25px, 2vw, 30px) !important;
+  font-weight: 720 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.025em;
 }
 
 .drawer-brand {
@@ -415,6 +443,16 @@ function changeTheme(command: string | number | object) {
 
   .page-canvas {
     padding: var(--club-space-4);
+  }
+
+  :global(.app-page-header) {
+    min-height: 72px;
+    padding: var(--club-space-4) !important;
+  }
+
+  :global(.app-page-header h1),
+  :global(.app-page-header h2) {
+    font-size: 24px !important;
   }
 }
 

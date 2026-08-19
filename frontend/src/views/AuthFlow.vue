@@ -414,7 +414,7 @@ loadPermissionCatalog();
     </section>
 
     <section v-else-if="auth" class="account-page">
-      <div class="page-title">
+      <div class="page-title app-page-header">
         <div>
           <h2>当前账号</h2>
           <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）</p>

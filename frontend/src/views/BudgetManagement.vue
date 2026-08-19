@@ -541,7 +541,7 @@ onMounted(() => {
 
 <template>
   <section class="budget-page" v-loading="loading">
-    <div class="page-header">
+    <div class="page-header app-page-header">
       <div>
         <p class="eyebrow">社团经费闭环</p>
         <h1>经费管理</h1>

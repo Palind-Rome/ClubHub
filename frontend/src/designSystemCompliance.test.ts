@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import appShellSource from "./components/shell/AppShell.vue?raw";
 
 const viewSources = import.meta.glob("./views/*.vue", {
   eager: true,
@@ -13,6 +14,24 @@ const darkModeCriticalViews = [
   "EvaluationList.vue",
   "MaterialBorrow.vue",
   "NoticeCenter.vue",
+  "VenueReservationApply.vue",
+];
+
+const standardizedHeaderViews = [
+  "ActivityList.vue",
+  "AuthFlow.vue",
+  "AwardList.vue",
+  "BudgetManagement.vue",
+  "ClubList.vue",
+  "EvaluationList.vue",
+  "ForumCenter.vue",
+  "LearningCenter.vue",
+  "MaterialBorrow.vue",
+  "NoticeCenter.vue",
+  "ProjectList.vue",
+  "ProjectWorkspace.vue",
+  "RecruitmentList.vue",
+  "VenueManage.vue",
   "VenueReservationApply.vue",
 ];
 
@@ -33,4 +52,16 @@ describe("设计系统样式约束", () => {
       expect(source).not.toMatch(/color:\s*#(?:1f2d3d|20262e|374151|66727f|6b7280);/i);
     },
   );
+
+  it.each(standardizedHeaderViews)("%s 使用统一页面标题规范", (fileName) => {
+    expect(viewSources[`./views/${fileName}`]).toContain("app-page-header");
+  });
+
+  it("由应用壳层统一页面宽度、居中和全屏留白", () => {
+    expect(appShellSource).toContain("max-width: var(--club-content-width)");
+    expect(appShellSource).toContain("padding: clamp(var(--club-space-5), 2.2vw, 40px)");
+    expect(appShellSource).toContain(":global(.page-content > *)");
+    expect(appShellSource).toContain("max-width: 100% !important");
+    expect(appShellSource).toContain("margin-inline: auto !important");
+  });
 });

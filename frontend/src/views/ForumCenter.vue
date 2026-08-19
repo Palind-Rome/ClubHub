@@ -143,7 +143,7 @@ onUnmounted(() => stopSessionListener?.());
 
 <template>
   <section class="forum-page">
-    <div class="heading">
+    <div class="heading app-page-header">
       <div>
         <h1>社团讨论区</h1>
         <p>来聊点有意思的。一起建设社团的精神家园！</p>

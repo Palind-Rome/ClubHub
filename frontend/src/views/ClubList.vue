@@ -3074,7 +3074,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page">
-    <section class="toolbar">
+    <section class="toolbar app-page-header">
       <div>
         <h2>{{ workspaceTitle }}</h2>
         <div class="subtitle">{{ workspaceSubtitle }}</div>

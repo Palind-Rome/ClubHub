@@ -696,7 +696,7 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <div>
         <h2>物资借还</h2>
         <p class="subtitle">登记活动物资借用、归还、损坏和赔偿情况。</p>

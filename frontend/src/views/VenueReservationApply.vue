@@ -699,7 +699,7 @@ onMounted(refreshVenueData);
 
 <template>
   <div class="page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <div>
         <h2>场地预约</h2>
         <p class="subtitle">选择可用场地，提交预约申请后等待管理员审批。</p>

@@ -1680,7 +1680,7 @@ onUnmounted(() => {
 
 <template>
   <section class="award-page">
-    <div class="page-head">
+    <div class="page-head app-page-header">
       <div>
         <h2>评奖评优</h2>
         <div class="subtitle">申请、审核、公示与成员考核奖项分联动</div>

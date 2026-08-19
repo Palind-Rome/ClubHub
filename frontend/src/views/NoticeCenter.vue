@@ -562,7 +562,7 @@ onUnmounted(() => {
 
 <template>
   <div class="notice-page">
-    <section class="notice-head">
+    <section class="notice-head app-page-header">
       <div>
         <h2>公告通知</h2>
         <p>发布定向通知，查看当前账号可见公告，并维护已读记录。</p>
