@@ -103,8 +103,8 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     [Fact]
     public async Task DeleteTopic_ByNonOwnerNonModerator_IsForbidden()
     {
-        var (ownerClient, clubId, _) = await SeedForMultiUserTestAsync();
-        var (otherClient, _, _) = await SeedForMultiUserTestAsync();
+        var (ownerClient, clubId) = await SeedAsync(member: true, moderate: false);
+        var otherClient = await SeedAdditionalMemberAsync(clubId);
 
         var topic = await PostAndReadId(ownerClient, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         using var response = await otherClient.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
@@ -191,6 +191,27 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return (client, clubId, userId);
+    }
+
+    private async Task<HttpClient> SeedAdditionalMemberAsync(int clubId)
+    {
+        var baseId = 9000 + Interlocked.Increment(ref _sequence) * 10;
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var now = DateTime.UtcNow;
+        var userId = baseId;
+        var roleId = baseId + 1;
+
+        db.Add(new User { UserId = userId, Username = $"forum-{baseId}", PasswordHash = "unused", RealName = "Forum Test", AccountStatus = "normal", CreatedAt = now });
+        db.Add(new Role { RoleId = roleId, RoleCode = "CLUB_MEMBER", RoleName = "Member", RoleScope = "club", CreatedAt = now });
+        db.Add(new UserRole { UserRoleId = baseId + 2, UserId = userId, RoleId = roleId, ClubId = clubId, AssignedAt = now });
+        db.Add(new ClubMember { MemberId = baseId + 3, UserId = userId, ClubId = clubId, MemberStatus = "active", JoinAt = now });
+        await db.SaveChangesAsync();
+
+        var token = scope.ServiceProvider.GetRequiredService<AuthTokenService>().CreateToken(new User { UserId = userId, Username = $"forum-{baseId}" });
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     private static StringContent Json(string value) => new(value, Encoding.UTF8, "application/json");
