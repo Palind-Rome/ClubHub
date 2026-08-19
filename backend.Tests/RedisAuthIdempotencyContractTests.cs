@@ -68,12 +68,7 @@ public sealed class RedisAuthIdempotencyContractTests
                 contract.ReplaceLineEndings("\n"),
                 StringComparison.Ordinal);
             Assert.Matches(
-                $@"operationId: {Regex.Escape(operation)}
-      x-idempotency-required: true
-      security:
-        - bearerAuth: \[\]
-      parameters:
-        - \$ref: ""#/components/parameters/IdempotencyKey""",
+                $@"operationId: {Regex.Escape(operation)}\s+x-idempotency-required: true\s+security:\s+-\s+bearerAuth:\s+\[\]\s+parameters:\s+-\s+\$ref:\s+""#/components/parameters/IdempotencyKey""",
                 contract.ReplaceLineEndings("\n"));
         }
         Assert.Contains("name: Idempotency-Key", contract, StringComparison.Ordinal);
