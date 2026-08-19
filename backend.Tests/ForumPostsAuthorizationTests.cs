@@ -66,8 +66,15 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}/moderation", Json("{\"isTop\":true,\"postStatus\":\"hidden\"}"));
         Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
+        using var hiddenDocument = System.Text.Json.JsonDocument.Parse(
+            await hidden.Content.ReadAsStringAsync());
+        Assert.Equal("hidden", hiddenDocument.RootElement.GetProperty("postStatus").GetString());
+
         using var restored = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}/moderation", Json("{\"isTop\":false,\"postStatus\":\"published\"}"));
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        using var restoredDocument = System.Text.Json.JsonDocument.Parse(
+            await restored.Content.ReadAsStringAsync());
+        Assert.Equal("published", restoredDocument.RootElement.GetProperty("postStatus").GetString());
     }
 
     [Fact]
