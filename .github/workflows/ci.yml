@@ -100,6 +100,35 @@ jobs:
           fi
           echo "数据库脚本检查通过：共 $table_count 张表。"
 
+      - name: 检查 production Redis 暂停配置
+        shell: bash
+        env:
+          BACKEND_IMAGE: ghcr.io/example/clubhub-backend:test
+          FRONTEND_IMAGE: ghcr.io/example/clubhub-frontend:test
+          DB_CONNECTION_STRING: validation-placeholder
+          AUTH_TOKEN_SIGNING_KEY: validation-placeholder
+        run: |
+          set -euo pipefail
+
+          services="$(docker compose -f docker-compose.yml config --services)"
+          if printf '%s\n' "$services" | grep -qx 'redis'; then
+            echo "::error::production docker-compose.yml 不应在 Redis 暂停期间定义 redis service。"
+            exit 1
+          fi
+
+          rendered="$(docker compose -f docker-compose.yml config)"
+          if ! printf '%s\n' "$rendered" | grep -Fq 'Redis__Enabled: "false"'; then
+            echo "::error::production backend 必须显式设置 Redis__Enabled=false。"
+            exit 1
+          fi
+
+          if grep -Fq 'REDIS_PASSWORD' .github/workflows/deploy.yml; then
+            echo "::error::Redis 暂停期间 Deploy workflow 不应要求或传递 REDIS_PASSWORD。"
+            exit 1
+          fi
+
+          echo "production Redis 暂停配置检查通过。"
+
   # ============================================================
   # 后端构建与测试（后端、两类后端测试或 .sln 变更时运行）
   # draft PR 阶段也运行，用于尽早发现编译问题
