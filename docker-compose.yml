@@ -14,7 +14,7 @@ services:
       Authentication__TokenSigningKey: ${AUTH_TOKEN_SIGNING_KEY}
       Redis__Enabled: "false"
       Authentication__Sessions__SlidingLifetimeMinutes: ${AUTH_SESSION_SLIDING_MINUTES:-30}
-      Authentication__Sessions__AbsoluteLifetimeHours: ${AUTH_SESSION_ABSOLUTE_LIFETIME_HOURS:-12}
+      Authentication__Sessions__AbsoluteLifetimeHours: ${AUTH_SESSION_ABSOLUTE_HOURS:-12}
       Authentication__Sessions__MaxSessionsPerUser: ${AUTH_SESSION_MAX_PER_USER:-10}
       Oss__Region: ${OSS_REGION:-cn-shanghai}
       Oss__Endpoint: ${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
