@@ -28,7 +28,7 @@ const emit = defineEmits<{
       <h3>{{ title }}</h3>
       <p>{{ description }}</p>
     </div>
-    <el-button type="primary" plain @click="emit('retry')">
+    <el-button v-if="retryLabel" type="primary" plain @click="emit('retry')">
       <el-icon><Refresh /></el-icon>{{ retryLabel }}
     </el-button>
   </div>

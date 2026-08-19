@@ -1,4 +1,5 @@
 import { createApp, type Component } from "vue";
+import ElementPlus from "element-plus";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AppEmptyState from "./AppEmptyState.vue";
 import AppErrorState from "./AppErrorState.vue";
@@ -11,7 +12,7 @@ function mount(component: Component, props: Record<string, unknown> = {}) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const app = createApp(component, props);
-  app.config.warnHandler = () => undefined;
+  app.use(ElementPlus);
   app.mount(host);
   mountedApps.push(app);
   return host;
@@ -58,8 +59,14 @@ describe("公共页面组件", () => {
     const host = mount(AppErrorState, { title: "请求失败", onRetry });
 
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
-    (host.querySelector("el-button") as HTMLElement).click();
+    (host.querySelector("button") as HTMLButtonElement).click();
     await Promise.resolve();
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("错误状态在重试文案为空时不渲染无名称按钮", () => {
+    const host = mount(AppErrorState, { retryLabel: "" });
+
+    expect(host.querySelector("button")).toBeNull();
   });
 });
