@@ -40,7 +40,7 @@ function changeTheme(command: string | number | object) {
   <div class="app-shell">
     <aside class="desktop-sidebar">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><span>C</span></div>
+        <img class="brand-logo" src="/logo_small.svg" alt="" aria-hidden="true" />
         <div>
           <strong>ClubHub</strong>
           <small>社团协作中心</small>
@@ -145,7 +145,7 @@ function changeTheme(command: string | number | object) {
     >
       <template #header>
         <div class="brand-lockup drawer-brand">
-          <div class="brand-mark" aria-hidden="true"><span>C</span></div>
+          <img class="brand-logo" src="/logo_small.svg" alt="" aria-hidden="true" />
           <div><strong>ClubHub</strong><small>社团协作中心</small></div>
         </div>
       </template>
@@ -200,32 +200,14 @@ function changeTheme(command: string | number | object) {
   font-size: 11px;
 }
 
-.brand-mark {
-  position: relative;
-  display: grid;
+.brand-logo {
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  place-items: center;
-  overflow: hidden;
   border-radius: 13px;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--club-primary), var(--club-accent));
+  background: #ffffff;
   box-shadow: 0 8px 20px color-mix(in srgb, var(--club-primary) 24%, transparent);
-}
-
-.brand-mark::after {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  content: "";
-}
-
-.brand-mark span {
-  z-index: 1;
-  font-weight: 800;
+  object-fit: cover;
 }
 
 .sidebar-footer {
