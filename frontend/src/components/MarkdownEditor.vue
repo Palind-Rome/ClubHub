@@ -120,6 +120,7 @@ function triggerImageUpload() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
 .toolbar {
@@ -145,6 +146,7 @@ function triggerImageUpload() {
   font-size: 14px;
   resize: vertical;
   transition: border-color 0.3s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;

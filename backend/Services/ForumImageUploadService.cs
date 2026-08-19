@@ -105,9 +105,12 @@ public sealed class ForumImageUploadService : IDisposable
         if (!validation.IsValid)
             return (false, null, null, validation.ErrorMessage);
 
-        var client = GetClient();
-        if (client == null)
+        if (_client == null)
+        {
+            if (_configurationError != null)
+                return (false, null, null, $"OSS 服务未正确配置：{_configurationError.Message}");
             return (false, null, null, "OSS 服务未正确配置，请检查配置和 ECS RAM 角色");
+        }
 
         var fileName = file.FileName ?? "image.jpg";
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -116,7 +119,7 @@ public sealed class ForumImageUploadService : IDisposable
         try
         {
             using var stream = file.OpenReadStream();
-            await client.PutObjectAsync(
+            await _client.PutObjectAsync(
                 new OSS.Models.PutObjectRequest
                 {
                     Bucket = _options.Bucket,
