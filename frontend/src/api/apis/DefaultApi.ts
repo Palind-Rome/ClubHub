@@ -267,6 +267,21 @@ import {
   DependencyHealthReportFromJSON,
   DependencyHealthReportToJSON,
 } from "../models/DependencyHealthReport";
+import {
+  type DissolveClubRequest,
+  DissolveClubRequestFromJSON,
+  DissolveClubRequestToJSON,
+} from "../models/DissolveClubRequest";
+import {
+  type ExitClubMemberRequest,
+  ExitClubMemberRequestFromJSON,
+  ExitClubMemberRequestToJSON,
+} from "../models/ExitClubMemberRequest";
+import {
+  type ForumImageUploadResponse,
+  ForumImageUploadResponseFromJSON,
+  ForumImageUploadResponseToJSON,
+} from "../models/ForumImageUploadResponse";
 import { type ForumPost, ForumPostFromJSON, ForumPostToJSON } from "../models/ForumPost";
 import {
   type GenerateClubEvaluationsRequest,
@@ -2459,6 +2474,11 @@ export interface UploadClubAwardRuleDocumentFileRequest {
    * 最大 50 MB 的评定细则附件。
    */
   file: Blob;
+}
+
+export interface UploadForumImageRequest {
+  clubId: number;
+  image: Blob;
 }
 
 export interface UploadLearningResourceRequest {
@@ -13363,6 +13383,94 @@ export class DefaultApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for uploadForumImage without sending the request
+   */
+  async uploadForumImageRequestOpts(
+    requestParameters: UploadForumImageRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadForumImage().',
+      );
+    }
+
+    if (requestParameters["image"] == null) {
+      throw new runtime.RequiredError(
+        "image",
+        'Required parameter "image" was null or undefined when calling uploadForumImage().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["image"] != null) {
+      formParams.append("image", requestParameters["image"] as any);
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts/upload-image`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 上传论坛图片到 OSS
+   */
+  async uploadForumImageRaw(
+    requestParameters: UploadForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumImageUploadResponse>> {
+    const requestOptions = await this.uploadForumImageRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ForumImageUploadResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 上传论坛图片到 OSS
+   */
+  async uploadForumImage(
+    requestParameters: UploadForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumImageUploadResponse> {
+    const response = await this.uploadForumImageRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
