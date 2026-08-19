@@ -122,8 +122,13 @@ jobs:
             exit 1
           fi
 
-          if grep -Fq 'REDIS_PASSWORD' .github/workflows/deploy.yml; then
-            echo "::error::Redis 暂停期间 Deploy workflow 不应要求或传递 REDIS_PASSWORD。"
+          if grep -Fq 'secrets.REDIS_PASSWORD' .github/workflows/deploy.yml; then
+            echo "::error::Redis 暂停期间 Deploy workflow 不应引用 REDIS_PASSWORD Secret。"
+            exit 1
+          fi
+
+          if grep -Eq '^[[:space:]]+envs:.*REDIS_' .github/workflows/deploy.yml; then
+            echo "::error::Redis 暂停期间 Deploy workflow 不应向服务器传递 Redis 环境变量。"
             exit 1
           fi
 
