@@ -139,6 +139,10 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         using var afterDelete = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
         using var afterDocument = System.Text.Json.JsonDocument.Parse(await afterDelete.Content.ReadAsStringAsync());
         Assert.Equal(0, afterDocument.RootElement.GetArrayLength());
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        Assert.False(await db.ForumPosts.AnyAsync(post => post.ParentPostId == topic));
     }
 
     [Fact]
