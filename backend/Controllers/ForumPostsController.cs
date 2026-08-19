@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using ApiCreateForumPostRequest = Org.OpenAPITools.Models.CreateForumPostRequest;
 using ApiForumPost = Org.OpenAPITools.Models.ForumPost;
 using ApiModerateForumPostRequest = Org.OpenAPITools.Models.ModerateForumPostRequest;
+using ApiForumImageUploadResponse = Org.OpenAPITools.Models.ForumImageUploadResponse;
 using PermissionRole = ClubHub.Api.Services.AuthRole;
 
 namespace ClubHub.Api.Controllers;
@@ -27,15 +28,18 @@ public sealed class ForumPostsController : ControllerBase
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
     private readonly ProjectMembershipService _projectMembershipService;
+    private readonly ForumImageUploadService _imageUploadService;
 
     public ForumPostsController(
         ClubHubDbContext db,
         AuthService authService,
-        ProjectMembershipService projectMembershipService)
+        ProjectMembershipService projectMembershipService,
+        ForumImageUploadService imageUploadService)
     {
         _db = db;
         _authService = authService;
         _projectMembershipService = projectMembershipService;
+        _imageUploadService = imageUploadService;
     }
 
     [HttpGet]
@@ -186,6 +190,39 @@ public sealed class ForumPostsController : ControllerBase
 
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("upload-image")]
+    public async Task<IActionResult> UploadImage(int clubId, IFormFile? image)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+        if (!Allows(context.Roles!, ForumPostPermission, clubId))
+            return StatusCode(403, new { message = "\u5f53\u524d\u7528\u6237\u6ca1\u6709\u53d1\u5e03\u8ba8\u8bba\u5185\u5bb9\u7684\u6743\u9650\u3002" });
+
+        if (image == null)
+            return BadRequest(new { message = "\u6587\u4ef6\u4e0d\u5b58\u5728" });
+
+        var (success, imageUrl, fileName, errorMessage) = await _imageUploadService.UploadAsync(
+            clubId,
+            image,
+            HttpContext.RequestAborted);
+
+        if (!success)
+        {
+            if (image.Length > 5 * 1024 * 1024)
+                return StatusCode(413, new { message = errorMessage ?? "\u6587\u4ef6\u8d85\u8fc7\u5927\u5c0f\u9650\u5236" });
+            return BadRequest(new { message = errorMessage ?? "\u4e0a\u4f20\u5931\u8d25" });
+        }
+
+        var response = new ApiForumImageUploadResponse
+        {
+            ImageUrl = imageUrl,
+            FileName = fileName,
+            UploadedAt = DateTime.UtcNow
+        };
+
+        return Ok(response);
     }
 
     private async Task<UserContext> GetUserContextAsync(int clubId)
