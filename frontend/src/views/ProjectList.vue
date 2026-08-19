@@ -974,7 +974,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page project-page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <div>
         <h2>项目管理</h2>
         <p class="subtitle">演示社团项目立项申请、负责人分配和立项审核流程。</p>

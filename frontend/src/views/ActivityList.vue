@@ -716,7 +716,7 @@ async function openParticipations(activity: Activity) {
 
 <template>
   <div class="page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <h2>{{ pageTitle }}</h2>
       <div class="toolbar-actions">
         <el-select v-model="statusFilter" placeholder="筛选状态" class="status-filter">

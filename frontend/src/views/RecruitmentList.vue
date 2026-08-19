@@ -725,7 +725,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page">
-    <div class="page-header">
+    <div class="page-header app-page-header">
       <div>
         <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
         <p>

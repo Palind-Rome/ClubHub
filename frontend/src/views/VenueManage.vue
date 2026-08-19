@@ -578,7 +578,7 @@ onMounted(() => Promise.all([loadVenues(), loadManagerOptions()]));
 
 <template>
   <div class="page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <div>
         <h2>场地管理</h2>
         <p class="subtitle">维护可预约场地基础信息，并控制场地可预约、维护或停用状态。</p>

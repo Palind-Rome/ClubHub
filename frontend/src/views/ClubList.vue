@@ -3074,7 +3074,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page">
-    <section class="toolbar">
+    <section class="toolbar app-page-header">
       <div>
         <h2>{{ workspaceTitle }}</h2>
         <div class="subtitle">{{ workspaceSubtitle }}</div>
@@ -4931,14 +4931,14 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 18px;
   padding: 24px;
-  color: #20262e;
+  color: var(--el-text-color-primary);
 }
 
 .toolbar,
 .identity-band,
 .workspace-tabs {
-  border: 1px solid #d9e1ea;
-  background: #fff;
+  border: 1px solid var(--el-border-color-light);
+  background: var(--club-surface-solid);
 }
 
 .toolbar {
@@ -4958,7 +4958,7 @@ onUnmounted(() => {
 .subtitle,
 .workspace-head p,
 .muted {
-  color: #66727f;
+  color: var(--el-text-color-secondary);
 }
 
 .subtitle {
@@ -4997,7 +4997,7 @@ onUnmounted(() => {
 .identity-main span {
   display: block;
   margin-top: 2px;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -5017,7 +5017,7 @@ onUnmounted(() => {
 .identity-switch span,
 .identity-switch small,
 .context-option span {
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -5044,8 +5044,8 @@ onUnmounted(() => {
 }
 
 .empty-workspace {
-  border: 1px solid #d9e1ea;
-  background: #fff;
+  border: 1px solid var(--el-border-color-light);
+  background: var(--club-surface-solid);
   padding: 48px 0;
 }
 
@@ -5132,12 +5132,12 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 10px;
   padding: 0 0 14px;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
 .member-summary span {
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--el-border-color-light);
   padding: 4px 8px;
 }
 
@@ -5202,11 +5202,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #455a6f;
+  color: var(--el-text-color-regular);
 }
 
 .group-member-panel-head strong {
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
   font-weight: 650;
 }
 
@@ -5230,8 +5230,8 @@ onUnmounted(() => {
   height: 30px;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
-  color: #66727f;
-  background: #fff;
+  color: var(--el-text-color-secondary);
+  background: var(--club-surface-solid);
   cursor: grab;
   transition:
     color 0.18s ease,
@@ -5249,8 +5249,8 @@ onUnmounted(() => {
   height: 30px;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
-  color: #66727f;
-  background: #fff;
+  color: var(--el-text-color-secondary);
+  background: var(--club-surface-solid);
   cursor: pointer;
   transition:
     color 0.18s ease,
@@ -5292,7 +5292,7 @@ onUnmounted(() => {
 
 .organization-map {
   margin-top: 18px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--el-border-color-light);
   padding-top: 18px;
 }
 
@@ -5328,7 +5328,7 @@ onUnmounted(() => {
   position: relative;
   margin-left: 46px;
   padding: 16px 0 0 24px;
-  border-left: 2px solid #d7e2ee;
+  border-left: 2px solid var(--el-border-color-light);
 }
 
 .tree-department-branch {
@@ -5341,7 +5341,7 @@ onUnmounted(() => {
   content: "";
   position: absolute;
   width: 24px;
-  border-top: 2px solid #d7e2ee;
+  border-top: 2px solid var(--el-border-color-light);
 }
 
 .tree-department-branch::before {
@@ -5353,7 +5353,7 @@ onUnmounted(() => {
   position: relative;
   margin-left: 58px;
   padding: 12px 0 0 22px;
-  border-left: 2px solid #e4edf6;
+  border-left: 2px solid var(--el-border-color-light);
 }
 
 .tree-group-line {
@@ -5365,14 +5365,14 @@ onUnmounted(() => {
   top: 17px;
   left: -22px;
   width: 22px;
-  border-color: #e4edf6;
+  border-color: var(--el-border-color-light);
 }
 
 .tree-member-list {
   position: relative;
   margin-left: 58px;
   padding: 2px 0 6px 22px;
-  border-left: 2px solid #edf2d7;
+  border-left: 2px solid var(--el-border-color-light);
 }
 
 .tree-member-line {
@@ -5386,18 +5386,18 @@ onUnmounted(() => {
   top: 16px;
   left: -22px;
   width: 22px;
-  border-top: 2px solid #edf2d7;
+  border-top: 2px solid var(--el-border-color-light);
 }
 
 .tree-empty-member {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
-  border: 1px dashed #d7dfca;
+  border: 1px dashed var(--el-border-color-light);
   border-radius: 8px;
   padding: 0 12px;
-  color: #7a8794;
-  background: #fcfdf8;
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-light);
   font-size: 13px;
 }
 
@@ -5408,10 +5408,10 @@ onUnmounted(() => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid #bfcedc;
+  border: 1px solid var(--el-border-color);
   border-radius: 50%;
-  color: #455a6f;
-  background: #fff;
+  color: var(--el-text-color-regular);
+  background: var(--club-surface-solid);
   cursor: pointer;
   transition:
     color 0.18s ease,
@@ -5428,9 +5428,9 @@ onUnmounted(() => {
 }
 
 .tree-toggle:disabled {
-  color: #a6b2bf;
+  color: var(--el-text-color-disabled);
   cursor: default;
-  background: #f7fafc;
+  background: var(--el-fill-color-light);
 }
 
 .tree-node {
@@ -5439,10 +5439,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid #d7e2ee;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 10px 24px rgb(31 41 55 / 6%);
+  background: var(--club-surface-solid);
+  box-shadow: var(--club-shadow-sm);
 }
 
 .tree-node > div > strong,
@@ -5451,14 +5451,14 @@ onUnmounted(() => {
 }
 
 .tree-node > div > strong {
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
   font-size: 14px;
   font-weight: 650;
 }
 
 .tree-node > div > span {
   margin-top: 3px;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -5468,14 +5468,14 @@ onUnmounted(() => {
 }
 
 .tree-node-member strong {
-  color: #1f2d3d;
+  color: var(--el-text-color-primary);
   font-size: 13px;
   font-weight: 650;
 }
 
 .tree-node-member span {
   margin-top: 2px;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -5490,8 +5490,8 @@ onUnmounted(() => {
 .tree-node-root {
   min-width: 230px;
   padding: 12px 16px;
-  border-color: #9ac1ea;
-  background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+  border-color: color-mix(in srgb, var(--club-primary) 45%, var(--club-border));
+  background: linear-gradient(180deg, var(--club-primary-soft), var(--club-surface-solid));
 }
 
 .tree-node-department {
@@ -5502,8 +5502,8 @@ onUnmounted(() => {
 .tree-node-group {
   min-width: 230px;
   padding: 9px 12px;
-  border-color: #dce7d5;
-  background: #fbfdf9;
+  border-color: var(--el-border-color-light);
+  background: var(--el-fill-color-light);
 }
 
 .tree-node-member {
@@ -5512,8 +5512,8 @@ onUnmounted(() => {
   justify-content: flex-start;
   display: block;
   padding: 8px 12px;
-  border-color: #e1e8cf;
-  background: #fdfef9;
+  border-color: var(--el-border-color-light);
+  background: var(--el-fill-color-light);
   box-shadow: none;
 }
 
@@ -5530,7 +5530,7 @@ onUnmounted(() => {
 
 .transition-toolbar p {
   margin: 0;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
 }
 
 .transition-actions {

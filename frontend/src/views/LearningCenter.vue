@@ -1272,7 +1272,7 @@ onUnmounted(() => {
 
 <template>
   <section class="learning-page">
-    <div class="page-header">
+    <div class="page-header app-page-header">
       <div>
         <h1>学习中心</h1>
         <p>课程用于报名与排期，资源用于在线学习与下载，两类内容独立管理。</p>

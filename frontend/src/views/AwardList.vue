@@ -1680,7 +1680,7 @@ onUnmounted(() => {
 
 <template>
   <section class="award-page">
-    <div class="page-head">
+    <div class="page-head app-page-header">
       <div>
         <h2>评奖评优</h2>
         <div class="subtitle">申请、审核、公示与成员考核奖项分联动</div>
@@ -2737,22 +2737,22 @@ onUnmounted(() => {
 
 .subtitle,
 .muted {
-  color: #6b7280;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .summary-strip > div {
   padding: 14px 18px;
-  border-right: 1px solid #e5e7eb;
-  background: #fff;
+  border-right: 1px solid var(--el-border-color-light);
+  background: var(--club-surface-solid);
 }
 
 .summary-strip > div:last-child {
@@ -2761,7 +2761,7 @@ onUnmounted(() => {
 
 .summary-strip span {
   display: block;
-  color: #6b7280;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -2793,9 +2793,9 @@ onUnmounted(() => {
 
 .workspace-panel {
   min-height: 380px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #fff;
+  background: var(--club-surface-solid);
   padding: 8px;
 }
 
@@ -2812,7 +2812,7 @@ onUnmounted(() => {
 .rule-expand p,
 .rule-reader-content {
   margin: 8px 0 0;
-  color: #374151;
+  color: var(--el-text-color-primary);
   line-height: 1.7;
   white-space: pre-wrap;
 }
@@ -2841,9 +2841,9 @@ onUnmounted(() => {
 }
 
 .rule-reader-content {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--el-fill-color-light);
   padding: 14px 16px;
 }
 
@@ -2890,7 +2890,7 @@ onUnmounted(() => {
 }
 
 .field-tip {
-  color: #6b7280;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -2914,9 +2914,9 @@ onUnmounted(() => {
 }
 
 .level-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--el-fill-color-light);
   padding: 12px;
 }
 
@@ -2929,7 +2929,7 @@ onUnmounted(() => {
 }
 
 .level-card-title {
-  color: #374151;
+  color: var(--el-text-color-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -2951,7 +2951,7 @@ onUnmounted(() => {
 }
 
 .field-label {
-  color: #6b7280;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1;
 }
@@ -2981,7 +2981,7 @@ onUnmounted(() => {
 
   .summary-strip > div {
     border-right: 0;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--el-border-color-light);
   }
 
   .summary-strip > div:last-child {

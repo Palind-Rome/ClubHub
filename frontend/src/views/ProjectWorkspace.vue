@@ -137,7 +137,7 @@ watch(projectId, loadWorkspace, { immediate: true });
     </el-result>
 
     <template v-else>
-      <section class="workspace-header">
+      <section class="workspace-header app-page-header">
         <div class="workspace-heading">
           <div class="eyebrow">项目空间 · #{{ project.id }}</div>
           <div class="title-row">
