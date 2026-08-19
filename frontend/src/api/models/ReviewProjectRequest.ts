@@ -65,7 +65,12 @@ export function ReviewProjectRequestFromJSONTyped(
   }
   return {
     projectStatus: json["projectStatus"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
   };
 }
 

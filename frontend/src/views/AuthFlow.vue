@@ -1,10 +1,12 @@
 ﻿<script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import type { PermissionDefinition, RegisterRequest } from "../api/models";
+import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/models";
+import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
+import { apiClient } from "../apiClient";
 
 const router = useRouter();
 const route = useRoute();
@@ -12,6 +14,8 @@ const auth = ref<AuthResponse | null>(readAuth());
 const mode = ref<"login" | "register">("login");
 const loading = ref(false);
 const permissionCatalog = ref<PermissionDefinition[]>([]);
+const managedUsers = ref<UserSummary[]>([]);
+const usersLoading = ref(false);
 const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
 
@@ -87,6 +91,11 @@ const permissionNameMap = computed(() => {
 });
 
 const registerIdentity = computed(() => identityLabel(registerForm.value.studentNo));
+const isSystemAdmin = computed(
+  () =>
+    auth.value?.permissions.includes("*") ||
+    auth.value?.roles.some((role) => role.code === "SYSTEM_ADMIN"),
+);
 
 async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -189,11 +198,64 @@ function applyAuth(nextAuth: AuthResponse) {
   saveAuth(nextAuth);
 }
 
-function logout() {
-  auth.value = null;
-  clearSession();
-  mode.value = "login";
+async function logout() {
+  try {
+    await apiClient.logoutCurrentSession();
+    auth.value = null;
+    clearSession();
+    mode.value = "login";
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "注销失败，请稍后重试");
+  }
 }
+
+async function loadManagedUsers() {
+  if (!isSystemAdmin.value) return;
+  usersLoading.value = true;
+  try {
+    managedUsers.value = await apiClient.getUsers({});
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "用户列表加载失败");
+  } finally {
+    usersLoading.value = false;
+  }
+}
+
+async function toggleUserStatus(user: UserSummary) {
+  const disabled = user.accountStatus === "disabled";
+  try {
+    await apiClient.updateUserAccountStatus({
+      userId: user.id,
+      updateUserAccountStatusRequest: {
+        accountStatus: disabled
+          ? UpdateUserAccountStatusRequestAccountStatusEnum.Normal
+          : UpdateUserAccountStatusRequestAccountStatusEnum.Disabled,
+      },
+    });
+    ElMessage.success(disabled ? "账号已启用" : "账号已停用并撤销全部会话");
+    await loadManagedUsers();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "账号状态更新失败");
+  }
+}
+
+async function revokeUserSessions(user: UserSummary) {
+  try {
+    await apiClient.revokeUserSessions({ userId: user.id });
+    ElMessage.success(`已强制下线 ${user.displayName}`);
+    if (user.id === auth.value?.user.id) {
+      auth.value = null;
+      clearSession();
+      mode.value = "login";
+      await router.replace("/auth");
+      return;
+    }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "强制下线失败");
+  }
+}
+
+onMounted(loadManagedUsers);
 
 function scopeLabel(scope: string) {
   return scope === "club" ? "社团范围" : "全局";
@@ -352,7 +414,7 @@ loadPermissionCatalog();
     </section>
 
     <section v-else-if="auth" class="account-page">
-      <div class="page-title">
+      <div class="page-title app-page-header">
         <div>
           <h2>当前账号</h2>
           <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）</p>
@@ -423,6 +485,41 @@ loadPermissionCatalog();
           </div>
         </div>
       </div>
+
+      <div v-if="isSystemAdmin" class="info-panel user-admin-panel">
+        <div class="panel-heading">
+          <div>
+            <h3>账号状态与会话</h3>
+            <p>停用账号会立即撤销该用户的全部登录会话。</p>
+          </div>
+          <el-button :loading="usersLoading" @click="loadManagedUsers">刷新</el-button>
+        </div>
+        <el-table :data="managedUsers" v-loading="usersLoading" stripe>
+          <el-table-column prop="displayName" label="用户" min-width="180" />
+          <el-table-column prop="studentNo" label="学工号" min-width="120" />
+          <el-table-column prop="accountStatus" label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.accountStatus === 'disabled' ? 'danger' : 'success'">
+                {{ row.accountStatus === "disabled" ? "已停用" : "正常" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="220" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                size="small"
+                :type="row.accountStatus === 'disabled' ? 'success' : 'danger'"
+                plain
+                :disabled="row.id === auth.user.id"
+                @click="toggleUserStatus(row)"
+              >
+                {{ row.accountStatus === "disabled" ? "启用" : "停用" }}
+              </el-button>
+              <el-button size="small" plain @click="revokeUserSessions(row)">强制下线</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </section>
   </div>
 </template>
@@ -459,10 +556,12 @@ loadPermissionCatalog();
 
 .auth-panel,
 .info-panel {
-  background: #fff;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-md);
   padding: 20px;
+  background: var(--club-bg-elevated);
+  box-shadow: var(--club-shadow-sm);
+  backdrop-filter: var(--club-glass-blur);
 }
 
 .auth-panel h2,

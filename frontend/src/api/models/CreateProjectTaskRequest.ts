@@ -91,7 +91,8 @@ export function CreateProjectTaskRequestFromJSONTyped(
   return {
     assigneeUserIds: new Set(json["assigneeUserIds"]),
     title: json["title"],
-    content: json["content"] == null ? undefined : json["content"],
+    content:
+      json["content"] === undefined ? undefined : json["content"] === null ? null : json["content"],
     priority: json["priority"],
     dueDate: new Date(json["dueDate"]),
   };

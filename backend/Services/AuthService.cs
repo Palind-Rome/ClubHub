@@ -53,7 +53,9 @@ public class AuthService
         new("club:info:manage", "维护社团信息", "维护社团简介、联系方式、指导老师和负责人信息。"),
         new("club:member:manage", "管理社团成员", "维护成员部门、小组、职位、任期和成员状态。"),
         new("club:role:assign", "分配社团内部角色", "为本社团成员分配成员或干部角色。"),
-        new("budget:apply", "提交经费申请", "提交活动经费预算申请。"),
+        new("budget:view", "查看经费", "查看授权范围内的经费账户、申请、审核记录和流水。"),
+        new("budget:account:manage", "维护经费账户", "维护社团年度经费账户和额度。"),
+        new("budget:apply", "提交经费申请", "提交活动经费预算、采购或报销申请。"),
         new("project:apply", "提交项目申请", "提交社团项目立项申请。"),
         new("club:stats:view", "查看社团统计", "查看指定社团的成员、活动、项目、课程和考核统计。"),
         new("club:operation:view", "查看指导社团运营", "查看指导社团的活动、项目、资源和考核情况。"),
@@ -103,26 +105,26 @@ public class AuthService
             ClubOfficerRole,
             "社团干部",
             ClubScope,
-            "指定社团内角色，可管理招募、活动、通知、资源、项目任务，并处理本社团物资借还记录。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "evaluation:draft", "venue:reserve"]),
+            "指定社团内角色，可管理招募、活动、通知、资源、项目任务，查看本社团经费，并处理本社团物资借还记录。",
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "evaluation:draft", "budget:view", "venue:reserve"]),
         new(
             ClubLeaderRole,
             "社团负责人",
             ClubScope,
-            "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色、运营统计和本社团物资库存。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:apply", "project:apply", "club:stats:view", "venue:reserve"]),
+            "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色、运营统计、本社团物资库存和经费申请。",
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:view", "budget:apply", "project:apply", "club:stats:view", "venue:reserve"]),
         new(
             AdvisorRole,
             "指导老师",
             ClubScope,
-            "指定社团指导角色，可查看社团运营、处理本社团物资借还记录、维护并审核学习资源，以及审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
-            ["club:internal:view", "club:operation:view", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
+            "指定社团指导角色，可查看社团运营与通知、发布社团通知、处理本社团物资借还记录、维护并审核学习资源，以及审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
+            ["club:internal:view", "club:notice:view", "club:operation:view", "notice:publish", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:view", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
         new(
             "CLUB_ADMIN",
             "社团管理员",
             SystemScope,
-            "校级社团管理角色，可审核社团注册申请、管理社团状态、审核资源并维护全校社团物资库存，不参与社团内部档案、成员任期和干部换届维护。",
-            ["public:view", "club:review", "activity:review", "venue:review", "budget:review", "project:review", "resource:review", "resource:delete", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
+            "校级社团管理角色，可审核社团注册申请、管理社团状态、审核资源并维护全校社团物资库存和年度经费账户，不参与社团内部档案、成员任期和干部换届维护。",
+            ["public:view", "club:review", "activity:review", "venue:review", "budget:view", "budget:account:manage", "budget:review", "project:review", "resource:review", "resource:delete", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "club:status:manage", "notice:publish:school", "forum:moderate", "stats:view"]),
         new(
             VenueAdminRole,
             "场地管理员",
@@ -139,11 +141,19 @@ public class AuthService
 
     private readonly ClubHubDbContext _db;
     private readonly AuthTokenService _authTokenService;
+    private readonly IAuthSessionService _authSessions;
+    private readonly IPermissionSnapshotCache _permissionSnapshots;
 
-    public AuthService(ClubHubDbContext db, AuthTokenService authTokenService)
+    public AuthService(
+        ClubHubDbContext db,
+        AuthTokenService authTokenService,
+        IAuthSessionService authSessions,
+        IPermissionSnapshotCache permissionSnapshots)
     {
         _db = db;
         _authTokenService = authTokenService;
+        _authSessions = authSessions;
+        _permissionSnapshots = permissionSnapshots;
     }
 
     public async Task InitializeBaseRolesAsync()
@@ -253,7 +263,14 @@ public class AuthService
             throw;
         }
 
-        return AuthServiceResult<AuthResponse>.Created(await BuildAuthResponseAsync(user));
+        try
+        {
+            return AuthServiceResult<AuthResponse>.Created(await BuildNewAuthResponseAsync(user));
+        }
+        catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(503, "账号已创建，但会话服务暂不可用，请稍后直接登录。");
+        }
     }
 
     public async Task<AuthServiceResult<AuthResponse>> LoginAsync(LoginRequest request)
@@ -282,10 +299,17 @@ public class AuthService
             await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
-        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+        try
+        {
+            return AuthServiceResult<AuthResponse>.Ok(await BuildNewAuthResponseAsync(user));
+        }
+        catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
+        {
+            return AuthServiceResult<AuthResponse>.Fail(503, "会话服务暂不可用，请稍后重试。");
+        }
     }
 
-    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId)
+    public async Task<AuthServiceResult<AuthResponse>> GetSessionAsync(int userId, string token)
     {
         if (userId <= 0)
         {
@@ -310,7 +334,7 @@ public class AuthService
             await SaveIdentityRoleAsync(user, roles, identityRole);
         }
 
-        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user));
+        return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user, token));
     }
 
     public Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync() => Task.FromResult(BaseRoles);
@@ -377,7 +401,9 @@ public class AuthService
         return AuthServiceResult<IReadOnlyList<int>>.Ok(clubIds);
     }
 
-    public async Task<AuthServiceResult<RoleAssignmentResult>> AssignRoleAsync(AssignRoleRequest request)
+    public async Task<AuthServiceResult<RoleAssignmentResult>> AssignRoleAsync(
+        AssignRoleRequest request,
+        int operatorUserId)
     {
         var roleCode = NormalizeText(request.RoleCode).ToUpperInvariant();
         var roleDef = BaseRoles.FirstOrDefault(r => r.Code == roleCode);
@@ -400,7 +426,7 @@ public class AuthService
         var roleRows = await GetBaseRoleRowsAsync();
         var role = roleRows.Single(r => r.RoleCode == roleCode);
         var clubId = roleDef.Scope == ClubScope ? request.ClubId : null;
-        var permissionResult = await CanAssignRoleAsync(request.OperatorUserId, roleDef, clubId);
+        var permissionResult = await CanAssignRoleAsync(operatorUserId, roleDef, clubId);
         if (!permissionResult.Allowed)
         {
             return AuthServiceResult<RoleAssignmentResult>.Fail(403, permissionResult.Message);
@@ -500,7 +526,19 @@ public class AuthService
         return (false, "当前用户没有分配该角色的权限。");
     }
 
-    private async Task<AuthResponse> BuildAuthResponseAsync(User user)
+    private async Task<AuthResponse> BuildNewAuthResponseAsync(User user)
+    {
+        var token = _authTokenService.CreateToken(user);
+        if (!_authTokenService.TryValidateToken(token, out var principal))
+        {
+            throw new InvalidOperationException("Newly created authentication token is invalid.");
+        }
+
+        await _authSessions.CreateAsync(token, principal);
+        return await BuildAuthResponseAsync(user, token);
+    }
+
+    private async Task<AuthResponse> BuildAuthResponseAsync(User user, string token)
     {
         var rawRoles = await GetRawAuthRolesAsync(user.UserId);
         var displayRoles = await BuildDisplayRolesAsync(rawRoles);
@@ -511,7 +549,7 @@ public class AuthService
             .ToList();
 
         return new AuthResponse(
-            _authTokenService.CreateToken(user),
+            token,
             ToAuthUser(user),
             displayRoles,
             permissions);
@@ -519,8 +557,12 @@ public class AuthService
 
     public async Task<IReadOnlyList<AuthRole>> GetPermissionRolesAsync(int userId)
     {
-        var rawRoles = await GetRawAuthRolesAsync(userId);
-        return BuildPermissionRoles(rawRoles);
+        var snapshot = await _permissionSnapshots.GetOrCreateAsync(
+            userId,
+            async () => new PermissionSnapshot(
+                userId,
+                await GetRawAuthRolesAsync(userId)));
+        return BuildPermissionRoles(snapshot.Roles);
     }
 
     private async Task<IReadOnlyList<AuthRole>> GetRawAuthRolesAsync(int userId)
@@ -699,7 +741,7 @@ public class AuthService
         return $"{clubName}{roleSuffix}";
     }
 
-    private static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
+    internal static IReadOnlyList<string> GetRolePermissions(string roleCode) =>
         BaseRoles.FirstOrDefault(role => role.Code == roleCode)?.Permissions ?? [];
 
     private static IReadOnlyList<string> MergePermissions(params IReadOnlyList<string>[] permissionGroups) =>
@@ -791,7 +833,6 @@ public class AuthService
     private async Task<List<Role>> EnsureBaseRolesAsync()
     {
         var roles = await _db.Roles.ToListAsync();
-        var nextId = (roles.Count == 0 ? 0 : roles.Max(r => r.RoleId)) + 1;
         var changed = false;
 
         foreach (var roleDef in BaseRoles)
@@ -802,7 +843,6 @@ public class AuthService
             {
                 existing = new Role
                 {
-                    RoleId = nextId++,
                     RoleCode = roleDef.Code,
                     RoleName = roleDef.Name,
                     RoleScope = roleDef.Scope,
@@ -913,6 +953,9 @@ public class AuthService
         return message.Contains("ORA-00001", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsRedisAvailabilityFailure(Exception ex) =>
+        ex is StackExchange.Redis.RedisException or TimeoutException;
 
     private static bool IsValidStudentOrStaffNo(string value) => IsStudentNo(value) || IsStaffNo(value);
 

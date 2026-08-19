@@ -189,28 +189,115 @@ export function ClubFromJSONTyped(json: any, ignoreDiscriminator: boolean): Club
   return {
     id: json["id"],
     name: json["name"],
-    description: json["description"] == null ? undefined : json["description"],
-    category: json["category"] == null ? undefined : json["category"],
-    foundedAt: json["foundedAt"] == null ? undefined : new Date(json["foundedAt"]),
-    status: json["status"] == null ? undefined : json["status"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    category:
+      json["category"] === undefined
+        ? undefined
+        : json["category"] === null
+          ? null
+          : json["category"],
+    foundedAt:
+      json["foundedAt"] === undefined
+        ? undefined
+        : json["foundedAt"] === null
+          ? null
+          : new Date(json["foundedAt"]),
+    status:
+      json["status"] === undefined ? undefined : json["status"] === null ? null : json["status"],
     statusText: json["statusText"],
-    logoUrl: json["logoUrl"] == null ? undefined : json["logoUrl"],
-    presidentUserId: json["presidentUserId"] == null ? undefined : json["presidentUserId"],
-    presidentName: json["presidentName"] == null ? undefined : json["presidentName"],
-    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
-    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
-    auditStatus: json["auditStatus"] == null ? undefined : json["auditStatus"],
+    logoUrl:
+      json["logoUrl"] === undefined ? undefined : json["logoUrl"] === null ? null : json["logoUrl"],
+    presidentUserId:
+      json["presidentUserId"] === undefined
+        ? undefined
+        : json["presidentUserId"] === null
+          ? null
+          : json["presidentUserId"],
+    presidentName:
+      json["presidentName"] === undefined
+        ? undefined
+        : json["presidentName"] === null
+          ? null
+          : json["presidentName"],
+    advisorUserId:
+      json["advisorUserId"] === undefined
+        ? undefined
+        : json["advisorUserId"] === null
+          ? null
+          : json["advisorUserId"],
+    advisorName:
+      json["advisorName"] === undefined
+        ? undefined
+        : json["advisorName"] === null
+          ? null
+          : json["advisorName"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
+    auditStatus:
+      json["auditStatus"] === undefined
+        ? undefined
+        : json["auditStatus"] === null
+          ? null
+          : json["auditStatus"],
     auditStatusText: json["auditStatusText"],
-    applicantUserId: json["applicantUserId"] == null ? undefined : json["applicantUserId"],
-    applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
-    applyReason: json["applyReason"] == null ? undefined : json["applyReason"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
+    applicantUserId:
+      json["applicantUserId"] === undefined
+        ? undefined
+        : json["applicantUserId"] === null
+          ? null
+          : json["applicantUserId"],
+    applicantName:
+      json["applicantName"] === undefined
+        ? undefined
+        : json["applicantName"] === null
+          ? null
+          : json["applicantName"],
+    applyReason:
+      json["applyReason"] === undefined
+        ? undefined
+        : json["applyReason"] === null
+          ? null
+          : json["applyReason"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerName:
+      json["reviewerName"] === undefined
+        ? undefined
+        : json["reviewerName"] === null
+          ? null
+          : json["reviewerName"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
     createdAt: new Date(json["createdAt"]),
-    updatedAt: json["updatedAt"] == null ? undefined : new Date(json["updatedAt"]),
+    updatedAt:
+      json["updatedAt"] === undefined
+        ? undefined
+        : json["updatedAt"] === null
+          ? null
+          : new Date(json["updatedAt"]),
   };
 }
 

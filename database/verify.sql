@@ -27,7 +27,29 @@ WHERE sequence_name IN (
   'SEQ_EVALUATIONS',
   'SEQ_ACTIVITIES',
   'SEQ_ACTIVITY_PARTICIPATIONS',
-  'SEQ_NOTICE_READS'
+  'SEQ_BUDGET_ACCOUNTS',
+  'SEQ_BUDGET_APPLICATIONS',
+  'SEQ_BUDGET_REVIEW_RECORDS',
+  'SEQ_BUDGET_TRANSACTIONS',
+  'SEQ_NOTICE_READS',
+  'SEQ_ROLES',
+  'SEQ_RECRUITMENTS',
+  'SEQ_RECRUITMENT_APPLICATIONS',
+  'SEQ_VENUES',
+  'SEQ_VENUE_RESERVATIONS',
+  'SEQ_PROJECTS',
+  'SEQ_PROJECT_MEMBERS',
+  'SEQ_PROJECT_TASKS',
+  'SEQ_PROJECT_TASK_ASSIGNEES',
+  'SEQ_PROJECT_TASK_PROGRESS_REPORTS',
+  'SEQ_LEARNING_ITEMS',
+  'SEQ_LEARNING_RECORDS',
+  'SEQ_MATERIALS',
+  'SEQ_MATERIAL_BORROWS',
+  'SEQ_NOTICES',
+  'SEQ_FORUM_POSTS',
+  'SEQ_OPERATION_LOGS',
+  'SEQ_IDEMPOTENCY_RECORDS'
 )
 ORDER BY sequence_name;
 
@@ -37,6 +59,11 @@ WHERE index_name IN (
   'UQ_USERS_USERNAME',
   'UQ_USERS_STUDENT_NO',
   'UQ_USER_ROLES_SCOPE',
+  'UQ_BUDGET_ACCOUNTS_SCOPE',
+  'UQ_BUDGET_ACCOUNTS_YEAR',
+  'UQ_BUDGET_APPLICATIONS_ACCOUNT_SCOPE',
+  'UQ_BUDGET_APPLICATIONS_SCOPE',
+  'UQ_BUDGET_TXN_APPLICATION',
   'UQ_NOTICE_READS_NOTICE_USER'
 )
 ORDER BY index_name;
@@ -61,25 +88,114 @@ WHERE (table_name, column_name) IN (
   ('EVALUATIONS', 'EVALUATION_ID'),
   ('ACTIVITIES', 'ACTIVITY_ID'),
   ('ACTIVITY_PARTICIPATIONS', 'PARTICIPATION_ID'),
-  ('NOTICE_READS', 'READ_ID')
+  ('BUDGET_ACCOUNTS', 'ACCOUNT_ID'),
+  ('BUDGET_APPLICATIONS', 'APPLICATION_ID'),
+  ('BUDGET_REVIEW_RECORDS', 'REVIEW_ID'),
+  ('BUDGET_TRANSACTIONS', 'TRANSACTION_ID'),
+  ('NOTICE_READS', 'READ_ID'),
+  ('ROLES', 'ROLE_ID'),
+  ('RECRUITMENTS', 'RECRUIT_ID'),
+  ('RECRUITMENT_APPLICATIONS', 'APPLICATION_ID'),
+  ('VENUES', 'VENUE_ID'),
+  ('VENUE_RESERVATIONS', 'RESERVATION_ID'),
+  ('PROJECTS', 'PROJECT_ID'),
+  ('PROJECT_MEMBERS', 'PROJECT_MEMBER_ID'),
+  ('PROJECT_TASKS', 'TASK_ID'),
+  ('PROJECT_TASK_ASSIGNEES', 'TASK_ASSIGNEE_ID'),
+  ('PROJECT_TASK_PROGRESS_REPORTS', 'TASK_PROGRESS_REPORT_ID'),
+  ('LEARNING_ITEMS', 'ITEM_ID'),
+  ('LEARNING_RECORDS', 'RECORD_ID'),
+  ('MATERIALS', 'MATERIAL_ID'),
+  ('MATERIAL_BORROWS', 'BORROW_ID'),
+  ('NOTICES', 'NOTICE_ID'),
+  ('FORUM_POSTS', 'POST_ID'),
+  ('OPERATION_LOGS', 'LOG_ID'),
+  ('IDEMPOTENCY_RECORDS', 'IDEMPOTENCY_ID')
 )
 ORDER BY table_name, column_name;
 
--- ClubHub 核心表应为 36 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
+-- 以下查询应返回 0 行：每个主键 sequence 必须存在，且下一个值必须大于当前最大主键。
+WITH sequence_targets AS (
+  SELECT 'SEQ_USERS' AS sequence_name, NVL(MAX(user_id), 0) AS max_id FROM users
+  UNION ALL SELECT 'SEQ_USER_ROLES', NVL(MAX(user_role_id), 0) FROM user_roles
+  UNION ALL SELECT 'SEQ_CLUBS', NVL(MAX(club_id), 0) FROM clubs
+  UNION ALL SELECT 'SEQ_CLUB_MEMBERS', NVL(MAX(member_id), 0) FROM club_members
+  UNION ALL SELECT 'SEQ_CLUB_DEPARTMENTS', NVL(MAX(department_id), 0) FROM club_departments
+  UNION ALL SELECT 'SEQ_CLUB_GROUPS', NVL(MAX(group_id), 0) FROM club_groups
+  UNION ALL SELECT 'SEQ_AWARD_SCHEMES', NVL(MAX(award_scheme_id), 0) FROM award_schemes
+  UNION ALL SELECT 'SEQ_AWARD_LEVELS', NVL(MAX(award_level_id), 0) FROM award_levels
+  UNION ALL SELECT 'SEQ_AWARD_APPLICATIONS', NVL(MAX(award_application_id), 0) FROM award_applications
+  UNION ALL SELECT 'SEQ_AWARD_REVIEW_RECORDS', NVL(MAX(review_id), 0) FROM award_review_records
+  UNION ALL SELECT 'SEQ_AWARD_ATTACHMENTS', NVL(MAX(attachment_id), 0) FROM award_attachments
+  UNION ALL SELECT 'SEQ_AWARD_PUBLICITY_BATCHES', NVL(MAX(publicity_batch_id), 0) FROM award_publicity_batches
+  UNION ALL SELECT 'SEQ_AWARD_PUBLICITY_ITEMS', NVL(MAX(publicity_item_id), 0) FROM award_publicity_items
+  UNION ALL SELECT 'SEQ_AWARD_RULE_DOCUMENTS', NVL(MAX(rule_document_id), 0) FROM award_rule_documents
+  UNION ALL SELECT 'SEQ_EVALUATIONS', NVL(MAX(evaluation_id), 0) FROM evaluations
+  UNION ALL SELECT 'SEQ_ACTIVITIES', NVL(MAX(activity_id), 0) FROM activities
+  UNION ALL SELECT 'SEQ_ACTIVITY_PARTICIPATIONS', NVL(MAX(participation_id), 0) FROM activity_participations
+  UNION ALL SELECT 'SEQ_BUDGET_ACCOUNTS', NVL(MAX(account_id), 0) FROM budget_accounts
+  UNION ALL SELECT 'SEQ_BUDGET_APPLICATIONS', NVL(MAX(application_id), 0) FROM budget_applications
+  UNION ALL SELECT 'SEQ_BUDGET_REVIEW_RECORDS', NVL(MAX(review_id), 0) FROM budget_review_records
+  UNION ALL SELECT 'SEQ_BUDGET_TRANSACTIONS', NVL(MAX(transaction_id), 0) FROM budget_transactions
+  UNION ALL SELECT 'SEQ_NOTICE_READS', NVL(MAX(read_id), 0) FROM notice_reads
+  UNION ALL SELECT 'SEQ_ROLES', NVL(MAX(role_id), 0) FROM roles
+  UNION ALL SELECT 'SEQ_RECRUITMENTS', NVL(MAX(recruit_id), 0) FROM recruitments
+  UNION ALL SELECT 'SEQ_RECRUITMENT_APPLICATIONS', NVL(MAX(application_id), 0) FROM recruitment_applications
+  UNION ALL SELECT 'SEQ_VENUES', NVL(MAX(venue_id), 0) FROM venues
+  UNION ALL SELECT 'SEQ_VENUE_RESERVATIONS', NVL(MAX(reservation_id), 0) FROM venue_reservations
+  UNION ALL SELECT 'SEQ_PROJECTS', NVL(MAX(project_id), 0) FROM projects
+  UNION ALL SELECT 'SEQ_PROJECT_MEMBERS', NVL(MAX(project_member_id), 0) FROM project_members
+  UNION ALL SELECT 'SEQ_PROJECT_TASKS', NVL(MAX(task_id), 0) FROM project_tasks
+  UNION ALL SELECT 'SEQ_PROJECT_TASK_ASSIGNEES', NVL(MAX(task_assignee_id), 0) FROM project_task_assignees
+  UNION ALL SELECT 'SEQ_PROJECT_TASK_PROGRESS_REPORTS', NVL(MAX(task_progress_report_id), 0) FROM project_task_progress_reports
+  UNION ALL SELECT 'SEQ_LEARNING_ITEMS', NVL(MAX(item_id), 0) FROM learning_items
+  UNION ALL SELECT 'SEQ_LEARNING_RECORDS', NVL(MAX(record_id), 0) FROM learning_records
+  UNION ALL SELECT 'SEQ_MATERIALS', NVL(MAX(material_id), 0) FROM materials
+  UNION ALL SELECT 'SEQ_MATERIAL_BORROWS', NVL(MAX(borrow_id), 0) FROM material_borrows
+  UNION ALL SELECT 'SEQ_NOTICES', NVL(MAX(notice_id), 0) FROM notices
+  UNION ALL SELECT 'SEQ_FORUM_POSTS', NVL(MAX(post_id), 0) FROM forum_posts
+  UNION ALL SELECT 'SEQ_OPERATION_LOGS', NVL(MAX(log_id), 0) FROM operation_logs
+  UNION ALL SELECT 'SEQ_IDEMPOTENCY_RECORDS', NVL(MAX(idempotency_id), 0) FROM idempotency_records
+)
+SELECT target.sequence_name, target.max_id, sequence_state.last_number
+FROM sequence_targets target
+LEFT JOIN user_sequences sequence_state
+  ON sequence_state.sequence_name = target.sequence_name
+WHERE sequence_state.sequence_name IS NULL
+   OR sequence_state.last_number <= target.max_id
+ORDER BY target.sequence_name;
+
+-- ClubHub 核心表应为 41 张；使用固定集合计数，避免测试 schema 中的临时表干扰结果。
 SELECT COUNT(*) AS clubhub_core_table_count
 FROM user_tables
 WHERE table_name IN (
   'USERS', 'ROLES', 'USER_ROLES',
   'CLUBS', 'CLUB_DEPARTMENTS', 'CLUB_GROUPS', 'CLUB_MEMBERS', 'RECRUITMENTS', 'RECRUITMENT_APPLICATIONS',
   'ACTIVITIES', 'ACTIVITY_PARTICIPATIONS', 'VENUES', 'VENUE_RESERVATIONS',
+  'BUDGET_ACCOUNTS', 'BUDGET_APPLICATIONS', 'BUDGET_REVIEW_RECORDS', 'BUDGET_TRANSACTIONS',
   'PROJECTS', 'PROJECT_MEMBERS', 'PROJECT_TASKS', 'PROJECT_TASK_ASSIGNEES', 'PROJECT_TASK_PROGRESS_REPORTS',
   'LEARNING_ITEMS', 'LEARNING_RECORDS',
   'MATERIALS', 'MATERIAL_BORROWS',
   'AWARD_SCHEMES', 'AWARD_LEVELS', 'AWARD_APPLICATIONS', 'AWARD_REVIEW_RECORDS',
   'AWARD_ATTACHMENTS', 'AWARD_PUBLICITY_BATCHES', 'AWARD_PUBLICITY_ITEMS', 'AWARD_RULE_DOCUMENTS',
   'EVALUATIONS', 'EVALUATION_AWARD_SOURCES',
-  'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS'
+  'NOTICES', 'NOTICE_READS', 'FORUM_POSTS', 'OPERATION_LOGS', 'IDEMPOTENCY_RECORDS'
 );
+
+-- 幂等台账必须具备用户/操作/请求 Key 唯一性、状态检查和用户外键。
+SELECT constraint_name, constraint_type, status
+FROM user_constraints
+WHERE table_name = 'IDEMPOTENCY_RECORDS'
+  AND constraint_name IN (
+    'UQ_IDEMPOTENCY_USER_SCOPE_KEY',
+    'CK_IDEMPOTENCY_STATUS',
+    'FK_IDEMPOTENCY_USER'
+  )
+ORDER BY constraint_name;
+
+SELECT index_name, uniqueness, status
+FROM user_indexes
+WHERE index_name = 'IX_IDEMPOTENCY_EXPIRES_AT';
 
 SELECT column_id, column_name, data_type, data_length, nullable, data_default
 FROM user_tab_columns
@@ -105,6 +221,68 @@ SELECT notice_id, user_id, COUNT(*) AS duplicate_count
 FROM notice_reads
 GROUP BY notice_id, user_id
 HAVING COUNT(*) > 1;
+
+SELECT club_id, fiscal_year, COUNT(*) AS duplicate_count
+FROM budget_accounts
+GROUP BY club_id, fiscal_year
+HAVING COUNT(*) > 1;
+
+SELECT application_id, transaction_type, COUNT(*) AS duplicate_count
+FROM budget_transactions
+WHERE application_id IS NOT NULL
+GROUP BY application_id, transaction_type
+HAVING COUNT(*) > 1;
+
+SELECT account_id, fiscal_year, initial_amount, account_status
+FROM budget_accounts
+WHERE initial_amount < 0
+   OR account_status NOT IN ('active', 'closed');
+
+SELECT application_id, application_type, amount, application_status
+FROM budget_applications
+WHERE application_type NOT IN ('activity_budget', 'purchase', 'reimbursement')
+   OR amount <= 0
+   OR application_status NOT IN ('pending', 'approved', 'rejected', 'cancelled');
+
+SELECT transaction_id, transaction_type, amount
+FROM budget_transactions
+WHERE transaction_type NOT IN ('commitment', 'expense', 'refund', 'adjustment')
+   OR amount = 0;
+
+SELECT account.account_id,
+       account.club_id,
+       account.fiscal_year,
+       account.initial_amount + NVL(SUM(txn.amount), 0) AS remaining_amount
+FROM budget_accounts account
+LEFT JOIN budget_transactions txn
+  ON txn.club_id = account.club_id
+ AND txn.account_id = account.account_id
+GROUP BY account.account_id, account.club_id, account.fiscal_year, account.initial_amount
+HAVING account.initial_amount + NVL(SUM(txn.amount), 0) < 0;
+
+SELECT txn.transaction_id,
+       txn.club_id AS transaction_club_id,
+       txn.account_id AS transaction_account_id,
+       app.club_id AS application_club_id,
+       app.account_id AS application_account_id
+FROM budget_transactions txn
+JOIN budget_applications app
+  ON app.application_id = txn.application_id
+WHERE txn.application_id IS NOT NULL
+  AND (txn.club_id <> app.club_id OR txn.account_id <> app.account_id);
+
+SELECT app.application_id, app.application_status
+FROM budget_applications app
+WHERE application_status = 'approved'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM budget_transactions txn
+    WHERE txn.club_id = app.club_id
+      AND txn.account_id = app.account_id
+      AND txn.application_id = app.application_id
+      AND txn.transaction_type = 'commitment'
+      AND txn.amount = -app.amount
+  );
 
 SELECT project_member_id, member_role, member_status
 FROM project_members

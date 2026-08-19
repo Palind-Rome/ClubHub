@@ -61,7 +61,12 @@ export function UpdateClubRequestFromJSONTyped(
   return {
     name: json["name"] == null ? undefined : json["name"],
     category: json["category"] == null ? undefined : json["category"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
   };
 }
 

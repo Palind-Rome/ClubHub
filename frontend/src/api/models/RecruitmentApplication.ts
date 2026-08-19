@@ -166,15 +166,45 @@ export function RecruitmentApplicationFromJSONTyped(
     clubName: json["clubName"],
     userId: json["userId"],
     applicantName: json["applicantName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
     applicationReason: json["applicationReason"],
-    interviewScore: json["interviewScore"] == null ? undefined : json["interviewScore"],
+    interviewScore:
+      json["interviewScore"] === undefined
+        ? undefined
+        : json["interviewScore"] === null
+          ? null
+          : json["interviewScore"],
     applicationStatus: json["applicationStatus"],
     applicationStatusText: json["applicationStatusText"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
-    submittedAt: json["submittedAt"] == null ? undefined : new Date(json["submittedAt"]),
-    reviewedAt: json["reviewedAt"] == null ? undefined : new Date(json["reviewedAt"]),
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerName:
+      json["reviewerName"] === undefined
+        ? undefined
+        : json["reviewerName"] === null
+          ? null
+          : json["reviewerName"],
+    submittedAt:
+      json["submittedAt"] === undefined
+        ? undefined
+        : json["submittedAt"] === null
+          ? null
+          : new Date(json["submittedAt"]),
+    reviewedAt:
+      json["reviewedAt"] === undefined
+        ? undefined
+        : json["reviewedAt"] === null
+          ? null
+          : new Date(json["reviewedAt"]),
   };
 }
 

@@ -160,14 +160,38 @@ export function AwardPublicityBatchRecordFromJSONTyped(
     clubId: json["clubId"],
     clubName: json["clubName"],
     title: json["title"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     publicityStartAt:
-      json["publicityStartAt"] == null ? undefined : new Date(json["publicityStartAt"]),
-    publicityEndAt: json["publicityEndAt"] == null ? undefined : new Date(json["publicityEndAt"]),
+      json["publicityStartAt"] === undefined
+        ? undefined
+        : json["publicityStartAt"] === null
+          ? null
+          : new Date(json["publicityStartAt"]),
+    publicityEndAt:
+      json["publicityEndAt"] === undefined
+        ? undefined
+        : json["publicityEndAt"] === null
+          ? null
+          : new Date(json["publicityEndAt"]),
     publicityStatus: json["publicityStatus"],
     publicityStatusText: json["publicityStatusText"],
-    publisherUserId: json["publisherUserId"] == null ? undefined : json["publisherUserId"],
-    publisherName: json["publisherName"] == null ? undefined : json["publisherName"],
+    publisherUserId:
+      json["publisherUserId"] === undefined
+        ? undefined
+        : json["publisherUserId"] === null
+          ? null
+          : json["publisherUserId"],
+    publisherName:
+      json["publisherName"] === undefined
+        ? undefined
+        : json["publisherName"] === null
+          ? null
+          : json["publisherName"],
     createdAt: new Date(json["createdAt"]),
     updatedAt: new Date(json["updatedAt"]),
     items: (json["items"] as Array<any>).map(AwardPublicityItemRecordFromJSON),

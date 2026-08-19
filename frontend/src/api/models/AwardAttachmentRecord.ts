@@ -99,9 +99,19 @@ export function AwardAttachmentRecordFromJSONTyped(
     awardApplicationId: json["awardApplicationId"],
     attachmentName: json["attachmentName"],
     attachmentUrl: json["attachmentUrl"],
-    attachmentType: json["attachmentType"] == null ? undefined : json["attachmentType"],
+    attachmentType:
+      json["attachmentType"] === undefined
+        ? undefined
+        : json["attachmentType"] === null
+          ? null
+          : json["attachmentType"],
     uploadedByUserId: json["uploadedByUserId"],
-    uploadedByName: json["uploadedByName"] == null ? undefined : json["uploadedByName"],
+    uploadedByName:
+      json["uploadedByName"] === undefined
+        ? undefined
+        : json["uploadedByName"] === null
+          ? null
+          : json["uploadedByName"],
     uploadedAt: new Date(json["uploadedAt"]),
   };
 }

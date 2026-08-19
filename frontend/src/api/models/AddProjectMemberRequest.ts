@@ -73,7 +73,8 @@ export function AddProjectMemberRequestFromJSONTyped(
   return {
     userId: json["userId"],
     memberRole: json["memberRole"],
-    remark: json["remark"] == null ? undefined : json["remark"],
+    remark:
+      json["remark"] === undefined ? undefined : json["remark"] === null ? null : json["remark"],
   };
 }
 

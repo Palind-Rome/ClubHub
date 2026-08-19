@@ -146,7 +146,6 @@ public class MaterialBorrowsController : ControllerBase
 
                 var material = new Material
                 {
-                    MaterialId = (await _db.Materials.MaxAsync(m => (int?)m.MaterialId) ?? 0) + 1,
                     ClubId = req.ClubId,
                     MaterialName = name,
                     Specification = NullIfBlank(req.Specification),
@@ -295,6 +294,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("borrowMaterial")]
     public async Task<IActionResult> BorrowMaterial([FromBody] ApiBorrowMaterialRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -354,7 +354,6 @@ public class MaterialBorrowsController : ControllerBase
 
                 var borrow = new MaterialBorrow
                 {
-                    BorrowId = (await _db.MaterialBorrows.MaxAsync(b => (int?)b.BorrowId) ?? 0) + 1,
                     MaterialId = req.MaterialId,
                     ClubId = req.ClubId,
                     BorrowerUserId = currentUserId.Value,
@@ -377,6 +376,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows/{borrowId:int}/return")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("returnMaterialBorrow")]
     public async Task<IActionResult> ReturnMaterial(int borrowId)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -416,6 +416,7 @@ public class MaterialBorrowsController : ControllerBase
     }
 
     [HttpPost("material-borrows/{borrowId:int}/damage")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("damageMaterialBorrow")]
     public async Task<IActionResult> RegisterDamage(int borrowId, [FromBody] ApiRegisterMaterialDamageRequest req)
     {
         var currentUserId = GetAuthenticatedUserId();
@@ -486,7 +487,7 @@ public class MaterialBorrowsController : ControllerBase
     {
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var result = await operation();

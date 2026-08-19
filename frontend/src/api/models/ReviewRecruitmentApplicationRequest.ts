@@ -77,7 +77,12 @@ export function ReviewRecruitmentApplicationRequestFromJSONTyped(
   return {
     currentUserId: json["currentUserId"],
     decision: json["decision"],
-    interviewScore: json["interviewScore"] == null ? undefined : json["interviewScore"],
+    interviewScore:
+      json["interviewScore"] === undefined
+        ? undefined
+        : json["interviewScore"] === null
+          ? null
+          : json["interviewScore"],
   };
 }
 

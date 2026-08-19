@@ -50,6 +50,7 @@ public class LearningController : ControllerBase
     private readonly LearningPreviewService _previewService;
     private readonly LearningPreviewSessionStore _previewSessionStore;
     private readonly AuthTokenService _authTokenService;
+    private readonly IDistributedRateLimiter _rateLimiter;
     private readonly ILogger<LearningController> _logger;
 
     public LearningController(
@@ -60,6 +61,7 @@ public class LearningController : ControllerBase
         LearningPreviewService previewService,
         LearningPreviewSessionStore previewSessionStore,
         AuthTokenService authTokenService,
+        IDistributedRateLimiter rateLimiter,
         ILogger<LearningController> logger)
     {
         _db = db;
@@ -69,6 +71,7 @@ public class LearningController : ControllerBase
         _previewService = previewService;
         _previewSessionStore = previewSessionStore;
         _authTokenService = authTokenService;
+        _rateLimiter = rateLimiter;
         _logger = logger;
     }
 
@@ -266,69 +269,51 @@ public class LearningController : ControllerBase
         if (itemStatus is null) return BadRequest("资源初始状态只能是草稿或已发布。");
 
         var isCourse = LearningWorkflow.IsSupportedCourseType(request.ItemType);
-
-        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        var item = new DbLearningItem
         {
-            await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-            var item = new DbLearningItem
-            {
-                ItemId = await GetNextLearningItemId(),
-                ClubId = request.ClubId,
-                UploaderUserId = currentUserId.Value,
-                TeacherUserId = isCourse ? request.InstructorUserId : null,
-                Title = request.Title.Trim(),
-                ItemType = Normalize(request.ItemType),
-                CategoryName = NormalizeOptionalText(request.CategoryName),
-                Description = NormalizeOptionalText(request.Description),
-                FileUrl = NormalizeOptionalText(request.FileUrl),
-                StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null,
-                EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null,
-                Capacity = isCourse ? request.Capacity : null,
-                Visibility = ToVisibilityValue(request.Visibility),
-                DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission),
-                ItemStatus = itemStatus,
-                CreatedAt = LearningWorkflow.BusinessNow()
-            };
+            ClubId = request.ClubId,
+            UploaderUserId = currentUserId.Value,
+            TeacherUserId = isCourse ? request.InstructorUserId : null,
+            Title = request.Title.Trim(),
+            ItemType = Normalize(request.ItemType),
+            CategoryName = NormalizeOptionalText(request.CategoryName),
+            Description = NormalizeOptionalText(request.Description),
+            FileUrl = NormalizeOptionalText(request.FileUrl),
+            StartAt = isCourse ? LearningWorkflow.AsUtc(request.StartAt) : null,
+            EndAt = isCourse ? LearningWorkflow.AsUtc(request.EndAt) : null,
+            Capacity = isCourse ? request.Capacity : null,
+            Visibility = ToVisibilityValue(request.Visibility),
+            DownloadPermission = ToDownloadPermissionValue(request.DownloadPermission),
+            ItemStatus = itemStatus,
+            CreatedAt = LearningWorkflow.BusinessNow()
+        };
 
-            _db.LearningItems.Add(item);
-            try
-            {
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
+        _db.LearningItems.Add(item);
+        await _db.SaveChangesAsync();
 
-                var now = LearningWorkflow.BusinessNow();
-                var decision = GetEnrollmentDecision(
-                    operatorUser,
-                    permissionRoles,
-                    item,
-                    null,
-                    0,
-                    canManage: true,
-                    now);
-                var itemDto = TryMapItemDto(
-                    item,
-                    0,
-                    null,
-                    true,
-                    HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
-                    decision,
-                    now);
-                if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
+        var now = LearningWorkflow.BusinessNow();
+        var decision = GetEnrollmentDecision(
+            operatorUser,
+            permissionRoles,
+            item,
+            null,
+            0,
+            canManage: true,
+            now);
+        var itemDto = TryMapItemDto(
+            item,
+            0,
+            null,
+            true,
+            HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId),
+            decision,
+            now);
+        if (itemDto is null) return CourseDataIntegrityProblem(item.ItemId);
 
-                return CreatedAtAction(
-                    nameof(GetItems),
-                    null,
-                    itemDto);
-            }
-            catch (DbUpdateException) when (attempt < MaxCreateRetries)
-            {
-                await transaction.RollbackAsync();
-                _db.ChangeTracker.Clear();
-            }
-        }
-
-        return Conflict("资源编号生成冲突，请重试。");
+        return CreatedAtAction(
+            nameof(GetItems),
+            null,
+            itemDto);
     }
 
     /// <summary>
@@ -396,17 +381,30 @@ public class LearningController : ControllerBase
                 "当前用户没有在该社团上传资源的权限。");
         }
 
-        await using var transaction =
-            await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        var itemId = await GetNextLearningItemId();
         string? storageReference = null;
+        var item = new DbLearningItem
+        {
+            ClubId = clubId,
+            UploaderUserId = currentUserId.Value,
+            Title = normalizedTitle,
+            ItemType = InferResourceType(file.ContentType, extension),
+            CategoryName = normalizedCategory,
+            Description = normalizedDescription,
+            Visibility = normalizedVisibility,
+            DownloadPermission = normalizedDownloadPermission,
+            ItemStatus = LearningWorkflow.ItemStatusPendingReview,
+            CreatedAt = LearningWorkflow.BusinessNow()
+        };
+
+        _db.LearningItems.Add(item);
+        await _db.SaveChangesAsync();
 
         try
         {
             await using var stream = file.OpenReadStream();
             storageReference = await _objectStorage.UploadAsync(
                 clubId,
-                itemId,
+                item.ItemId,
                 extension,
                 stream,
                 file.Length,
@@ -414,24 +412,8 @@ public class LearningController : ControllerBase
                 originalFileName,
                 HttpContext.RequestAborted);
 
-            var item = new DbLearningItem
-            {
-                ItemId = itemId,
-                ClubId = clubId,
-                UploaderUserId = currentUserId.Value,
-                Title = normalizedTitle,
-                ItemType = InferResourceType(file.ContentType, extension),
-                CategoryName = normalizedCategory,
-                Description = normalizedDescription,
-                FileUrl = storageReference,
-                Visibility = normalizedVisibility,
-                DownloadPermission = normalizedDownloadPermission,
-                ItemStatus = LearningWorkflow.ItemStatusPendingReview,
-                CreatedAt = LearningWorkflow.BusinessNow()
-            };
-            _db.LearningItems.Add(item);
+            item.FileUrl = storageReference;
             await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             var now = LearningWorkflow.BusinessNow();
             var itemDto = TryMapItemDto(
@@ -443,14 +425,13 @@ public class LearningController : ControllerBase
                 null,
                 now);
             return itemDto is null
-                ? CourseDataIntegrityProblem(itemId)
+                ? CourseDataIntegrityProblem(item.ItemId)
                 : CreatedAtAction(nameof(GetItems), null, itemDto);
         }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
-            await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, itemId);
-            _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", itemId);
+            await CompensateFailedResourceUploadAsync(item, storageReference);
+            _logger.LogError(exception, "资源 {ItemId} 上传到 OSS 失败。", item.ItemId);
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "资源存储暂不可用",
@@ -458,8 +439,7 @@ public class LearningController : ControllerBase
         }
         catch
         {
-            await transaction.RollbackAsync();
-            await TryRemoveObjectAsync(storageReference, itemId);
+            await CompensateFailedResourceUploadAsync(item, storageReference);
             throw;
         }
     }
@@ -475,25 +455,66 @@ public class LearningController : ControllerBase
 
         try
         {
+            var previewLimit = await _rateLimiter.AcquireAsync(
+                "learning-preview",
+                access.UserId.ToString(),
+                20,
+                TimeSpan.FromMinutes(5),
+                HttpContext.RequestAborted);
+            if (!previewLimit.Allowed)
+            {
+                Response.Headers.RetryAfter = previewLimit.RetryAfterSeconds.ToString();
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    new { message = "在线预览请求过于频繁，请稍后重试。" });
+            }
+
+            if (RequiresOfficeConversion(access.Item!.FileUrl))
+            {
+                var conversionLimit = await _rateLimiter.AcquireAsync(
+                    "office-conversion",
+                    access.UserId.ToString(),
+                    3,
+                    TimeSpan.FromMinutes(10),
+                    HttpContext.RequestAborted);
+                if (!conversionLimit.Allowed)
+                {
+                    Response.Headers.RetryAfter = conversionLimit.RetryAfterSeconds.ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new { message = "Office 文件转换请求过于频繁，请稍后重试。" });
+                }
+            }
+
             var preview = await _previewService.PrepareAsync(
-                access.Item!.ItemId,
+                access.Item.ItemId,
                 access.Item.ClubId,
                 access.Item.FileUrl,
                 HttpContext.RequestAborted);
             var previewToken = _authTokenService.CreatePreviewToken(access.UserId, itemId);
-            _previewSessionStore.Store(
+            var stored = await _previewSessionStore.StoreAsync(
                 previewToken,
                 access.UserId,
                 itemId,
                 preview,
-                _authTokenService.PreviewSessionLifetime);
+                _authTokenService.PreviewSessionLifetime,
+                HttpContext.RequestAborted);
+            if (!stored)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "资源预览会话容量已满",
+                    detail: "当前在线预览会话过多，请稍后重试。");
+            }
             Response.Cookies.Append(
                 AuthTokenService.PreviewCookieName,
                 previewToken,
                 new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = !_environment.IsDevelopment() || Request.IsHttps,
+                    // UseForwardedHeaders 已在认证前解析 X-Forwarded-Proto；仅在浏览器实际
+                    // 使用 HTTPS 时标记 Secure，避免当前 HTTP 部署静默丢弃预览 Cookie。
+                    Secure = Request.IsHttps,
                     SameSite = SameSiteMode.Strict,
                     Path = $"/api/learning/items/{itemId}/preview",
                     MaxAge = _authTokenService.PreviewSessionLifetime,
@@ -509,6 +530,22 @@ public class LearningController : ControllerBase
         {
             return PreviewFailure(exception);
         }
+        catch (LearningPreviewSessionUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法创建 Redis 预览会话。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览会话暂不可用",
+                detail: "无法确认在线预览会话，请稍后重试。");
+        }
+        catch (RateLimitUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法执行分布式限流。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览暂不可用",
+                detail: "暂时无法安全校验预览请求，请稍后重试。");
+        }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
             _logger.LogError(exception, "资源 {ItemId} 无法准备在线预览。", itemId);
@@ -519,6 +556,16 @@ public class LearningController : ControllerBase
         }
     }
 
+    private static bool RequiresOfficeConversion(string? fileUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return false;
+        var path = Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri)
+            ? uri.AbsolutePath
+            : fileUrl.Split('?', '#')[0];
+        return Path.GetExtension(path).ToLowerInvariant() is
+            ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
+    }
+
     /// <summary>
     /// 使用短时预览会话重新校验权限后，以 inline 和 Range 语义返回预览内容。
     /// </summary>
@@ -527,24 +574,26 @@ public class LearningController : ControllerBase
     {
         var access = await GetPreviewAccessAsync(itemId);
         if (access.Error is not null) return access.Error;
+        var item = access.Item!;
 
         PreparedLearningPreview? preview = null;
         try
         {
-            if (!Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var previewToken) ||
-                !_previewSessionStore.TryGet(
-                    previewToken,
-                    access.UserId,
-                    itemId,
-                    out preview) || preview is null)
+            if (!Request.Cookies.TryGetValue(AuthTokenService.PreviewCookieName, out var previewToken))
             {
                 return Unauthorized("在线预览会话已失效，请重新打开预览。");
             }
+            preview = await _previewSessionStore.GetAsync(
+                previewToken,
+                access.UserId,
+                itemId,
+                HttpContext.RequestAborted);
+            if (preview is null) return Unauthorized("在线预览会话已失效，请重新打开预览。");
             var preparedPreview = preview!;
             LearningPreviewHttpPolicy.Apply(
                 Response,
                 preparedPreview.ContentType,
-                BuildPreviewFileName(access.Item.Title, preparedPreview));
+                BuildPreviewFileName(item.Title, preparedPreview));
 
             var content = await _previewService.OpenAsync(
                 preparedPreview,
@@ -574,6 +623,14 @@ public class LearningController : ControllerBase
                 Response.Headers.ContentRange = $"bytes */{preview.Length}";
             }
             return PreviewFailure(exception);
+        }
+        catch (LearningPreviewSessionUnavailableException exception)
+        {
+            _logger.LogWarning(exception, "资源 {ItemId} 无法读取 Redis 预览会话。", itemId);
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "资源预览会话暂不可用",
+                detail: "无法确认在线预览会话，请稍后重试。");
         }
         catch (Exception exception) when (IsObjectStorageFailure(exception))
         {
@@ -707,7 +764,7 @@ public class LearningController : ControllerBase
             ? item.FileUrl
             : null;
         var clubId = item.ClubId;
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         var records = await _db.LearningRecords
             .Where(record => record.ItemId == itemId)
             .ToListAsync();
@@ -785,6 +842,7 @@ public class LearningController : ControllerBase
     /// 社团管理员或系统管理员审核待发布的课程、资源。
     /// </summary>
     [HttpPost("items/{itemId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewLearningItem")]
     public async Task<IActionResult> ReviewItem(
         int itemId,
         [FromBody] ReviewLearningItemRequest? request)
@@ -819,13 +877,12 @@ public class LearningController : ControllerBase
         var rejected = request.Result == ReviewLearningItemRequest.ResultEnum.RejectedEnum;
         if (!approved && !rejected) return BadRequest("审核结果只能是 approved 或 rejected。");
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync();
         item.ItemStatus = approved
             ? LearningWorkflow.ItemStatusPublished
             : LearningWorkflow.ItemStatusRejected;
         _db.OperationLogs.Add(new OperationLog
         {
-            LogId = await GetNextOperationLogIdAsync(),
             UserId = currentUserId.Value,
             ModuleName = "learning",
             OperationType = approved ? "review_approved" : "review_rejected",
@@ -962,6 +1019,7 @@ public class LearningController : ControllerBase
     /// 加入课程；退出后再次加入会恢复原学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/enrollments")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("enrollLearningItem")]
     public async Task<IActionResult> Enroll(int itemId)
     {
         if (itemId <= 0) return BadRequest("课程 ID 必须大于 0。");
@@ -971,7 +1029,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await _db.LearningItems
                 .Include(candidate => candidate.Club)
@@ -1009,7 +1067,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value
                 };
@@ -1108,7 +1165,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await LoadLearningItemForAccessAsync(itemId);
             if (item is null) return NotFound("学习资源不存在。");
@@ -1152,7 +1209,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value
                 };
@@ -1198,7 +1254,7 @@ public class LearningController : ControllerBase
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
             await using var transaction =
-                await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
 
             var item = await LoadLearningItemForAccessAsync(itemId);
             if (item is null) return NotFound("学习资源不存在。");
@@ -1235,7 +1291,6 @@ public class LearningController : ControllerBase
             {
                 record = new DbLearningRecord
                 {
-                    RecordId = await GetNextLearningRecordId(),
                     ItemId = itemId,
                     UserId = currentUserId.Value,
                     EnrollStatus = LearningWorkflow.RecordStatusLearning,
@@ -2004,32 +2059,6 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 在可串行化事务中计算下一个课程编号。
-    /// </summary>
-    private async Task<int> GetNextLearningItemId()
-    {
-        // 当前表尚未配置序列，使用可串行化事务和重试保护 max(id) + 1。
-        var maxId = await _db.LearningItems.MaxAsync(item => (int?)item.ItemId) ?? 0;
-        return maxId + 1;
-    }
-
-    /// <summary>
-    /// 在可串行化事务中计算下一个学习记录编号。
-    /// </summary>
-    private async Task<int> GetNextLearningRecordId()
-    {
-        // 与 LEARNING_ITEMS 保持一致，后续数据库统一引入序列时再替换。
-        var maxId = await _db.LearningRecords.MaxAsync(record => (int?)record.RecordId) ?? 0;
-        return maxId + 1;
-    }
-
-    private async Task<int> GetNextOperationLogIdAsync()
-    {
-        var maxId = await _db.OperationLogs.MaxAsync(log => (int?)log.LogId) ?? 0;
-        return maxId + 1;
-    }
-
-    /// <summary>
     /// 根据系统身份角色判断账号是否属于教师。
     /// </summary>
     private static bool IsTeacherAccount(User user)
@@ -2429,6 +2458,26 @@ public class LearningController : ControllerBase
 
     private static bool IsObjectStorageFailure(Exception exception) =>
         exception is LearningObjectStorageException;
+
+    private async Task CompensateFailedResourceUploadAsync(
+        DbLearningItem item,
+        string? storageReference)
+    {
+        try
+        {
+            _db.LearningItems.Remove(item);
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "资源 {ItemId} 上传失败后的数据库补偿删除失败，可能留下待清理记录。",
+                item.ItemId);
+        }
+
+        await TryRemoveObjectAsync(storageReference, item.ItemId);
+    }
 
     private async Task TryRemoveObjectAsync(string? storageReference, int itemId)
     {

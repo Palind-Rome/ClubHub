@@ -109,12 +109,42 @@ export function CreateClubDepartmentRequestFromJSONTyped(
   }
   return {
     departmentName: json["departmentName"],
-    departmentCode: json["departmentCode"] == null ? undefined : json["departmentCode"],
-    description: json["description"] == null ? undefined : json["description"],
-    responsibilities: json["responsibilities"] == null ? undefined : json["responsibilities"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
-    contactEmail: json["contactEmail"] == null ? undefined : json["contactEmail"],
-    officeLocation: json["officeLocation"] == null ? undefined : json["officeLocation"],
+    departmentCode:
+      json["departmentCode"] === undefined
+        ? undefined
+        : json["departmentCode"] === null
+          ? null
+          : json["departmentCode"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    responsibilities:
+      json["responsibilities"] === undefined
+        ? undefined
+        : json["responsibilities"] === null
+          ? null
+          : json["responsibilities"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
+    contactEmail:
+      json["contactEmail"] === undefined
+        ? undefined
+        : json["contactEmail"] === null
+          ? null
+          : json["contactEmail"],
+    officeLocation:
+      json["officeLocation"] === undefined
+        ? undefined
+        : json["officeLocation"] === null
+          ? null
+          : json["officeLocation"],
     displayOrder: json["displayOrder"] == null ? undefined : json["displayOrder"],
     departmentStatus: json["departmentStatus"] == null ? undefined : json["departmentStatus"],
   };

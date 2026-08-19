@@ -1,0 +1,11 @@
+export const BUDGET_VIEW_PERMISSION = "budget:view";
+export const BUDGET_ACCOUNT_MANAGE_PERMISSION = "budget:account:manage";
+export const BUDGET_APPLY_PERMISSION = "budget:apply";
+export const BUDGET_REVIEW_PERMISSION = "budget:review";
+
+export const BUDGET_ACCESS_PERMISSIONS = [
+  BUDGET_VIEW_PERMISSION,
+  BUDGET_ACCOUNT_MANAGE_PERMISSION,
+  BUDGET_APPLY_PERMISSION,
+  BUDGET_REVIEW_PERMISSION,
+];

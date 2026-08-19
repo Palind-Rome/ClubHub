@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ namespace ClubHub.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ClubHubDbContext _db;
+    private readonly IAuthSessionService _authSessions;
     private static readonly HashSet<string> PrincipalPositionNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "\u8d1f\u8d23\u4eba",
@@ -36,7 +38,13 @@ public class UsersController : ControllerBase
         "manager"
     };
 
-    public UsersController(ClubHubDbContext db) => _db = db;
+    public UsersController(
+        ClubHubDbContext db,
+        IAuthSessionService authSessions)
+    {
+        _db = db;
+        _authSessions = authSessions;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? clubId)
@@ -107,6 +115,128 @@ public class UsersController : ControllerBase
             .ToListAsync();
 
         return Ok(users.Select(ToUserSummary));
+    }
+
+    [HttpPatch("{userId:int}/status")]
+    public async Task<IActionResult> UpdateStatus(
+        int userId,
+        [FromBody] Org.OpenAPITools.Models.UpdateUserAccountStatusRequest request)
+    {
+        var operatorId = User.GetUserId();
+        if (operatorId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var operatorUser = await _db.Users
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .SingleOrDefaultAsync(user => user.UserId == operatorId.Value);
+        if (operatorUser is null) return NotFound(new { message = "当前登录用户不存在。" });
+        if (!IsSystemAdmin(operatorUser))
+        {
+            return StatusCode(403, new { message = "只有系统管理员可以维护账号状态。" });
+        }
+
+        var normalized = request.AccountStatus switch
+        {
+            Org.OpenAPITools.Models.UpdateUserAccountStatusRequest.AccountStatusEnum.NormalEnum =>
+                "normal",
+            Org.OpenAPITools.Models.UpdateUserAccountStatusRequest.AccountStatusEnum.DisabledEnum =>
+                "disabled",
+            _ => string.Empty
+        };
+        if (normalized is not ("normal" or "disabled"))
+        {
+            return BadRequest(new { message = "账号状态只能是 normal 或 disabled。" });
+        }
+
+        if (userId == operatorId.Value && normalized == "disabled")
+        {
+            return Conflict(new { message = "不能停用当前操作账号。" });
+        }
+
+        var target = await _db.Users
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Club)
+            .Include(user => user.ClubMemberships)
+                .ThenInclude(membership => membership.Club)
+            .SingleOrDefaultAsync(user => user.UserId == userId);
+        if (target is null) return NotFound(new { message = "目标用户不存在。" });
+
+        if (normalized == "disabled" && IsSystemAdmin(target))
+        {
+            var activeAdminCount = await _db.UserRoles
+                .Where(userRole => userRole.Role != null &&
+                                   userRole.Role.RoleCode == "SYSTEM_ADMIN" &&
+                                   userRole.User != null &&
+                                   (userRole.User.AccountStatus == null ||
+                                    userRole.User.AccountStatus == "" ||
+                                    userRole.User.AccountStatus.ToLower() == "active" ||
+                                    userRole.User.AccountStatus.ToLower() == "normal" ||
+                                    userRole.User.AccountStatus.ToLower() == "enabled" ||
+                                    userRole.User.AccountStatus == "在任" ||
+                                    userRole.User.AccountStatus == "正常"))
+                .Select(userRole => userRole.UserId)
+                .Distinct()
+                .CountAsync();
+            if (activeAdminCount <= 1)
+            {
+                return Conflict(new { message = "不能停用最后一名有效系统管理员。" });
+            }
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            target.AccountStatus = normalized;
+            target.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            if (normalized == "disabled")
+            {
+                await _authSessions.RevokeAllAsync(userId, HttpContext.RequestAborted);
+            }
+
+            await transaction.CommitAsync();
+            return Ok(ToUserSummary(target));
+        }
+        catch (Exception ex) when (ex is PermissionSnapshotUnavailableException or
+                                   StackExchange.Redis.RedisException or TimeoutException)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(503, new { message = "无法安全失效权限或撤销会话，请稍后重试。" });
+        }
+    }
+
+    [HttpPost("{userId:int}/sessions/revoke")]
+    public async Task<IActionResult> RevokeSessions(int userId)
+    {
+        var operatorId = User.GetUserId();
+        if (operatorId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var operatorUser = await _db.Users
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .SingleOrDefaultAsync(user => user.UserId == operatorId.Value);
+        if (operatorUser is null || !IsSystemAdmin(operatorUser))
+        {
+            return StatusCode(403, new { message = "只有系统管理员可以强制下线用户。" });
+        }
+        if (!await _db.Users.AnyAsync(user => user.UserId == userId))
+        {
+            return NotFound(new { message = "目标用户不存在。" });
+        }
+
+        try
+        {
+            await _authSessions.RevokeAllAsync(userId, HttpContext.RequestAborted);
+            return NoContent();
+        }
+        catch (Exception ex) when (_authSessions.Enabled &&
+                                   ex is StackExchange.Redis.RedisException or TimeoutException)
+        {
+            return StatusCode(503, new { message = "会话服务暂不可用，无法确认撤销结果。" });
+        }
     }
 
     internal static bool IsPlatformAdmin(User user) =>

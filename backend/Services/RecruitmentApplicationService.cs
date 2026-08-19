@@ -63,7 +63,7 @@ public class RecruitmentApplicationService
             return ServiceResult<RecruitmentApplicationDto>.Fail(403, "只有普通学生可以提交招募报名。");
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(recruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {
@@ -109,10 +109,8 @@ public class RecruitmentApplicationService
             return ServiceResult<RecruitmentApplicationDto>.Fail(409, "招募名额已满，暂时不能继续报名。");
         }
 
-        var nextId = (await _db.RecruitmentApplications.MaxAsync(a => (int?)a.ApplicationId) ?? 0) + 1;
         var application = new RecruitmentApplication
         {
-            ApplicationId = nextId,
             RecruitId = recruitment.RecruitId,
             UserId = applicant.UserId,
             ApplicationReason = req.ApplicationReason.Trim(),
@@ -177,7 +175,7 @@ public class RecruitmentApplicationService
         User reviewer,
         ReviewRecruitmentApplicationRequest req)
     {
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {
@@ -245,7 +243,7 @@ public class RecruitmentApplicationService
         User reviewer,
         ReviewRecruitmentApplicationRequest req)
     {
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var lockResult = await LockRecruitmentRowAsync(application.RecruitId);
         if (lockResult == RecruitmentRowLockResult.Missing)
         {
@@ -429,7 +427,7 @@ public class RecruitmentApplicationService
         _db.UserRoles.Add(new UserRole
         {
             UserId = userId,
-            RoleId = role.RoleId,
+            Role = role,
             ClubId = clubId,
             AssignedAt = now
         });
@@ -442,7 +440,6 @@ public class RecruitmentApplicationService
 
         role = new Role
         {
-            RoleId = await NextRoleIdAsync(),
             RoleCode = roleCode,
             RoleName = roleName,
             RoleScope = "club",
@@ -451,18 +448,6 @@ public class RecruitmentApplicationService
         };
         _db.Roles.Add(role);
         return role;
-    }
-
-    private async Task<int> NextRoleIdAsync()
-    {
-        var maxSaved = await _db.Roles.MaxAsync(r => (int?)r.RoleId) ?? 0;
-        var maxAdded = _db.ChangeTracker.Entries<Role>()
-            .Where(entry => entry.State == EntityState.Added)
-            .Select(entry => entry.Entity.RoleId)
-            .DefaultIfEmpty(0)
-            .Max();
-
-        return Math.Max(maxSaved, maxAdded) + 1;
     }
 
 }

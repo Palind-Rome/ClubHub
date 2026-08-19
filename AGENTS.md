@@ -28,27 +28,42 @@
 前后端分离，实现轻量：
 
 - `backend/`：ASP.NET Core Web API，负责 C# 业务逻辑、权限、Oracle 数据访问。
+- `backend.Tests/`：后端单元测试和 API 边界测试；统一使用内存测试数据库，禁止连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，必须使用隔离测试 Schema 或一次性数据库，禁止连接共享 Oracle。
 - `frontend/`：Vue 3 + Vite + Element Plus，负责页面和交互。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图和迁移脚本。
 - `docs/`：各类文档。
 - `docker-compose.yml`：生产环境 Docker 编排。
 - `docker-compose.dev.yml`：本地开发环境（源码挂载 + 热重载，只需 Docker）。
+- `docs/operations/redis-runbook.md`：Redis 备份、恢复、升级、密码轮换、容量告警和排障。
 
 ## 数据库基线
 
-当前数据库设计共有 25 张 Oracle 表：
+当前数据库设计共有 41 张 Oracle 表：
 
 - USERS、ROLES、USER_ROLES
-- CLUBS、CLUB_MEMBERS、RECRUITMENTS、RECRUITMENT_APPLICATIONS
+- CLUBS、CLUB_DEPARTMENTS、CLUB_GROUPS、CLUB_MEMBERS、RECRUITMENTS、RECRUITMENT_APPLICATIONS
 - ACTIVITIES、ACTIVITY_PARTICIPATIONS、VENUES、VENUE_RESERVATIONS
+- BUDGET_ACCOUNTS、BUDGET_APPLICATIONS、BUDGET_REVIEW_RECORDS、BUDGET_TRANSACTIONS
 - PROJECTS、PROJECT_MEMBERS、PROJECT_TASKS、PROJECT_TASK_ASSIGNEES、PROJECT_TASK_PROGRESS_REPORTS
 - LEARNING_ITEMS、LEARNING_RECORDS
-- MATERIALS、MATERIAL_BORROWS、EVALUATIONS
+- MATERIALS、MATERIAL_BORROWS
+- AWARD_SCHEMES、AWARD_LEVELS、AWARD_APPLICATIONS、AWARD_REVIEW_RECORDS、AWARD_ATTACHMENTS、AWARD_PUBLICITY_BATCHES、AWARD_PUBLICITY_ITEMS、AWARD_RULE_DOCUMENTS
+- EVALUATIONS、EVALUATION_AWARD_SOURCES
 - NOTICES、NOTICE_READS、FORUM_POSTS、OPERATION_LOGS
+- IDEMPOTENCY_RECORDS
 
 数据库脚本放在 `database/schema.sql`。不要修改表结构。如果确有必要，请先与用户讨论。
 
 CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。全量刷新只允许用于本地开发库或明确的测试库；生产/演示库的结构变更必须通过人工确认后的迁移脚本执行。
+
+Redis 生产实例只允许连接 `clubhub-net`，禁止映射公网 6379。认证密码通过
+`REDIS_PASSWORD` Secret 注入；不得提交 `.env`、真实密码或带密连接串。运维操作
+遵循 `docs/operations/redis-runbook.md`，恢复演练必须使用隔离卷。
+
+Redis 会话、权限快照、预览会话、限流与幂等分别使用独立开关，默认关闭。启用
+幂等前必须先人工执行 `20260726_add_idempotency_records.sql`；启用认证会话会使
+旧纯签名 Token 失效。限流、预览和幂等在 Redis 故障时禁止自动绕过。
 
 ## 开发规范
 
@@ -77,6 +92,7 @@ CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。�
 - **用户确认**：Agent **禁止**在未经用户确认的情况下创建 Issue、执行 `git commit`、`git push` 或进行其他对外操作。**绝对禁止对 dev 和 main 分支使用 `push -f`**，非必要情况下也不准使用。
 - **修改后同步文档**：倘若 Agent 修改 CI/CD 工作流、项目结构、分支策略、开发流程后，**必须同步更新对应的文档**（`CONTRIBUTING.md`、`AGENTS.md`、`README.md`），保持代码和文档一致。
 - **CodeRabbit review**：PR 标记 Ready 后，CodeRabbit 会自动 review。Agent 必须阅读 review 意见：合理的直接采纳并 push，不合理的在 PR 评论中回复说明原因。
+- 开发过程中**不需要阅读** `./docs/` 下面的文档，除非有特别说明，尤其是 `.doc` 结尾的文档，无论如何都没有必要进行阅读。
 
 ### API 开发
 
@@ -99,13 +115,10 @@ CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。�
   - 冲突解决后（或没有冲突时），本地执行 `git pull --rebase` 同步最新分支。
   - 不要在本地执行 `git merge dev` 或手动 `git rebase + force push`。如果发现当前分支已有合并提交（即未遵从本规范），应通过交互式 rebase（`git rebase -i origin/dev`，将合并提交标记为 drop 或 squash）移除多余的合并提交，再 `git push --force-with-lease` 推送。
 
-
-
-
-
 ## 提交前
 
 - 本次修改能对应到一个功能点、文档任务、数据库任务或基础设施任务。
 - 数据库若改动，已同步脚本、迁移说明和文档。
-- 新增业务逻辑有测试或手工验证说明。
+- 以后所有开发改动都必须同步补充或更新自动化测试；新增功能和业务逻辑应覆盖正常流程、关键边界与错误处理，缺陷修复必须增加可复现问题的回归测试。纯文档、配置说明等确实不适合自动化测试的改动，必须在 PR 中写明验证方式和未增加测试的原因。
+- `backend.Tests/` 不得读取或修改共享 Oracle；Oracle 专属集成测试必须放在独立测试项目或目录中，并使用隔离测试 Schema 或一次性数据库。
 - 工作已 Issue/PR/commit。

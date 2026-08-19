@@ -57,7 +57,8 @@ export function ReviewActivityBudgetRequestFromJSONTyped(
   }
   return {
     approved: json["approved"],
-    comment: json["comment"] == null ? undefined : json["comment"],
+    comment:
+      json["comment"] === undefined ? undefined : json["comment"] === null ? null : json["comment"],
   };
 }
 

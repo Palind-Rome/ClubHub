@@ -40,8 +40,14 @@ public class ClubHubDbContext : DbContext
     public DbSet<Evaluation> Evaluations => Set<Evaluation>();
     public DbSet<EvaluationAwardSource> EvaluationAwardSources => Set<EvaluationAwardSource>();
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<MaterialBorrow> MaterialBorrows => Set<MaterialBorrow>();
+    public DbSet<BudgetAccount> BudgetAccounts => Set<BudgetAccount>();
+    public DbSet<BudgetApplication> BudgetApplications => Set<BudgetApplication>();
+    public DbSet<BudgetReviewRecord> BudgetReviewRecords => Set<BudgetReviewRecord>();
+    public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
+    public DbSet<ForumPost> ForumPosts => Set<ForumPost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +80,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Role>(e =>
         {
             e.HasKey(r => r.RoleId);
+            e.Property(r => r.RoleId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_ROLES.NEXTVAL");
             e.HasMany(r => r.UserRoles)
              .WithOne(ur => ur.Role)
              .HasForeignKey(ur => ur.RoleId)
@@ -473,6 +482,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Recruitment>(e =>
         {
             e.HasKey(r => r.RecruitId);
+            e.Property(r => r.RecruitId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_RECRUITMENTS.NEXTVAL");
             e.HasMany(r => r.Applications)
              .WithOne(a => a.Recruitment)
              .HasForeignKey(a => a.RecruitId)
@@ -482,6 +494,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<RecruitmentApplication>(e =>
         {
             e.HasKey(a => a.ApplicationId);
+            e.Property(a => a.ApplicationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_RECRUITMENT_APPLICATIONS.NEXTVAL");
             e.HasOne(a => a.User)
              .WithMany()
              .HasForeignKey(a => a.UserId)
@@ -519,6 +534,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Project>(e =>
         {
             e.HasKey(p => p.ProjectId);
+            e.Property(p => p.ProjectId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECTS.NEXTVAL");
             e.HasOne(p => p.Club)
              .WithMany()
              .HasForeignKey(p => p.ClubId)
@@ -532,6 +550,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectMember>(e =>
         {
             e.HasKey(pm => pm.ProjectMemberId);
+            e.Property(pm => pm.ProjectMemberId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_MEMBERS.NEXTVAL");
             e.HasIndex(pm => new { pm.ProjectId, pm.UserId })
              .IsUnique()
              .HasDatabaseName("UQ_PROJECT_MEMBERS_USER");
@@ -556,6 +577,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTask>(e =>
         {
             e.HasKey(t => t.TaskId);
+            e.Property(t => t.TaskId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASKS.NEXTVAL");
             e.Property(t => t.Title).HasMaxLength(255);
             e.Property(t => t.Priority).HasMaxLength(255);
             e.Property(t => t.TaskStatus).HasMaxLength(255);
@@ -585,6 +609,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTaskAssignee>(e =>
         {
             e.HasKey(item => item.TaskAssigneeId);
+            e.Property(item => item.TaskAssigneeId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASK_ASSIGNEES.NEXTVAL");
             e.HasIndex(item => new { item.TaskId, item.UserId })
              .IsUnique()
              .HasDatabaseName("UQ_PROJECT_TASK_ASSIGNEES");
@@ -603,6 +630,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<ProjectTaskProgressReport>(e =>
         {
             e.HasKey(item => item.TaskProgressReportId);
+            e.Property(item => item.TaskProgressReportId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_PROJECT_TASK_PROGRESS_REPORTS.NEXTVAL");
             e.Property(item => item.TaskStatus).HasMaxLength(30);
             e.Property(item => item.ReportContent).HasMaxLength(1000);
             e.Property(item => item.DelayReason).HasMaxLength(255);
@@ -621,6 +651,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<LearningItem>(e =>
         {
             e.HasKey(item => item.ItemId);
+            e.Property(item => item.ItemId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_LEARNING_ITEMS.NEXTVAL");
             e.HasOne(item => item.Uploader)
              .WithMany()
              .HasForeignKey(item => item.UploaderUserId)
@@ -638,6 +671,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<LearningRecord>(e =>
         {
             e.HasKey(record => record.RecordId);
+            e.Property(record => record.RecordId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_LEARNING_RECORDS.NEXTVAL");
             e.HasOne(record => record.User)
              .WithMany()
              .HasForeignKey(record => record.UserId)
@@ -647,11 +683,48 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<OperationLog>(e =>
         {
             e.HasKey(log => log.LogId);
+            e.Property(log => log.LogId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_OPERATION_LOGS.NEXTVAL");
+        });
+
+        modelBuilder.Entity<IdempotencyRecord>(e =>
+        {
+            e.HasKey(record => record.IdempotencyId);
+            e.Property(record => record.IdempotencyId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_IDEMPOTENCY_RECORDS.NEXTVAL");
+            e.Property(record => record.OperationScope).HasMaxLength(100);
+            e.Property(record => record.RequestKeyHash).HasMaxLength(64);
+            e.Property(record => record.RequestHash).HasMaxLength(64);
+            e.Property(record => record.RecordStatus).HasMaxLength(20);
+            e.Property(record => record.ContentType).HasMaxLength(100);
+            e.Property(record => record.ResponseHeaders).HasColumnType("CLOB");
+            e.Property(record => record.ResponseBody).HasColumnType("CLOB");
+            e.Property(record => record.CreatedAt).HasDefaultValueSql("SYSTIMESTAMP");
+            e.Property(record => record.UpdatedAt).HasDefaultValueSql("SYSTIMESTAMP");
+            e.HasIndex(record => new
+            {
+                record.UserId,
+                record.OperationScope,
+                record.RequestKeyHash
+            })
+             .IsUnique()
+             .HasDatabaseName("UQ_IDEMPOTENCY_USER_SCOPE_KEY");
+            e.HasIndex(record => record.ExpiresAt)
+             .HasDatabaseName("IX_IDEMPOTENCY_EXPIRES_AT");
+            e.HasOne(record => record.User)
+             .WithMany()
+             .HasForeignKey(record => record.UserId)
+             .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Notice>(e =>
         {
             e.HasKey(n => n.NoticeId);
+            e.Property(n => n.NoticeId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_NOTICES.NEXTVAL");
             e.HasOne(n => n.Publisher)
              .WithMany()
              .HasForeignKey(n => n.PublisherUserId)
@@ -675,6 +748,15 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(r => r.UserId)
              .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ForumPost>(e =>
+        {
+            e.HasKey(p => p.PostId);
+            e.Property(p => p.PostId).ValueGeneratedOnAdd().HasDefaultValueSql("SEQ_FORUM_POSTS.NEXTVAL");
+            e.HasOne(p => p.Club).WithMany().HasForeignKey(p => p.ClubId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(p => p.ParentPost).WithMany(p => p.Replies).HasForeignKey(p => p.ParentPostId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Recruitment>(e =>
@@ -702,6 +784,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Venue>(e =>
         {
             e.HasKey(v => v.VenueId);
+            e.Property(v => v.VenueId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_VENUES.NEXTVAL");
             e.HasMany(v => v.Reservations)
              .WithOne(r => r.Venue)
              .HasForeignKey(r => r.VenueId)
@@ -711,6 +796,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<VenueReservation>(e =>
         {
             e.HasKey(r => r.ReservationId);
+            e.Property(r => r.ReservationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_VENUE_RESERVATIONS.NEXTVAL");
             e.HasOne(r => r.Club)
              .WithMany()
              .HasForeignKey(r => r.ClubId)
@@ -772,6 +860,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<Material>(e =>
         {
             e.HasKey(m => m.MaterialId);
+            e.Property(m => m.MaterialId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_MATERIALS.NEXTVAL");
             e.HasOne(m => m.Club)
              .WithMany()
              .HasForeignKey(m => m.ClubId)
@@ -785,6 +876,9 @@ public class ClubHubDbContext : DbContext
         modelBuilder.Entity<MaterialBorrow>(e =>
         {
             e.HasKey(b => b.BorrowId);
+            e.Property(b => b.BorrowId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_MATERIAL_BORROWS.NEXTVAL");
             e.HasOne(b => b.Club)
              .WithMany()
              .HasForeignKey(b => b.ClubId)
@@ -792,6 +886,146 @@ public class ClubHubDbContext : DbContext
             e.HasOne(b => b.BorrowerUser)
              .WithMany()
              .HasForeignKey(b => b.BorrowerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetAccount>(e =>
+        {
+            e.HasKey(account => account.AccountId);
+            e.Property(account => account.AccountId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_ACCOUNTS.NEXTVAL");
+            e.Property(account => account.FiscalYear).HasMaxLength(20);
+            e.Property(account => account.AccountName).HasMaxLength(255);
+            e.Property(account => account.InitialAmount).HasPrecision(12, 2).HasDefaultValue(0);
+            e.Property(account => account.AccountStatus).HasMaxLength(30).HasDefaultValue("active");
+            e.Property(account => account.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(account => account.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasAlternateKey(account => new { account.ClubId, account.AccountId })
+             .HasName("UQ_BUDGET_ACCOUNTS_SCOPE");
+            e.HasIndex(account => new { account.ClubId, account.FiscalYear })
+             .IsUnique()
+             .HasDatabaseName("UQ_BUDGET_ACCOUNTS_YEAR");
+            e.HasOne(account => account.Club)
+             .WithMany()
+             .HasForeignKey(account => account.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetApplication>(e =>
+        {
+            e.HasKey(application => application.ApplicationId);
+            e.Property(application => application.ApplicationId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_APPLICATIONS.NEXTVAL");
+            e.Property(application => application.ApplicationType).HasMaxLength(30);
+            e.Property(application => application.Title).HasMaxLength(255);
+            e.Property(application => application.Amount).HasPrecision(12, 2);
+            e.Property(application => application.Purpose).HasMaxLength(255);
+            e.Property(application => application.Detail).HasColumnType("CLOB");
+            e.Property(application => application.ApplicationStatus).HasMaxLength(30).HasDefaultValue("pending");
+            e.Property(application => application.SubmittedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.UpdatedAt).HasDefaultValueSql("SYSDATE");
+            e.Property(application => application.ReviewComment).HasMaxLength(255);
+            e.HasAlternateKey(application => new { application.ClubId, application.ApplicationId })
+             .HasName("UQ_BUDGET_APPLICATIONS_SCOPE");
+            e.HasAlternateKey(application => new
+            {
+                application.ClubId,
+                application.AccountId,
+                application.ApplicationId
+            })
+             .HasName("UQ_BUDGET_APPLICATIONS_ACCOUNT_SCOPE");
+            e.HasIndex(application => new
+            {
+                application.ClubId,
+                application.ApplicationStatus,
+                application.SubmittedAt
+            })
+             .HasDatabaseName("IX_BUDGET_APPLICATIONS_CLUB");
+            e.HasIndex(application => new { application.AccountId, application.ApplicationStatus })
+             .HasDatabaseName("IX_BUDGET_APPLICATIONS_ACCOUNT");
+            e.HasOne(application => application.Account)
+             .WithMany(account => account.Applications)
+             .HasForeignKey(application => new { application.ClubId, application.AccountId })
+             .HasPrincipalKey(account => new { account.ClubId, account.AccountId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.Club)
+             .WithMany()
+             .HasForeignKey(application => application.ClubId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.Activity)
+             .WithMany()
+             .HasForeignKey(application => application.ActivityId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.ApplicantUser)
+             .WithMany()
+             .HasForeignKey(application => application.ApplicantUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(application => application.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(application => application.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetReviewRecord>(e =>
+        {
+            e.HasKey(review => review.ReviewId);
+            e.Property(review => review.ReviewId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_REVIEW_RECORDS.NEXTVAL");
+            e.Property(review => review.CommentText).HasMaxLength(255);
+            e.Property(review => review.ReviewedAt).HasDefaultValueSql("SYSDATE");
+            e.HasOne(review => review.Application)
+             .WithMany(application => application.ReviewRecords)
+             .HasForeignKey(review => review.ApplicationId)
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(review => review.ReviewerUser)
+             .WithMany()
+             .HasForeignKey(review => review.ReviewerUserId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BudgetTransaction>(e =>
+        {
+            e.HasKey(transaction => transaction.TransactionId);
+            e.Property(transaction => transaction.TransactionId)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("SEQ_BUDGET_TRANSACTIONS.NEXTVAL");
+            e.Property(transaction => transaction.TransactionType).HasMaxLength(30);
+            e.Property(transaction => transaction.Amount).HasPrecision(12, 2);
+            e.Property(transaction => transaction.Description).HasMaxLength(255);
+            e.Property(transaction => transaction.OccurredAt).HasDefaultValueSql("SYSDATE");
+            e.Property(transaction => transaction.CreatedAt).HasDefaultValueSql("SYSDATE");
+            e.HasIndex(transaction => new { transaction.ApplicationId, transaction.TransactionType })
+             .IsUnique()
+             .HasDatabaseName("UQ_BUDGET_TXN_APPLICATION");
+            e.HasIndex(transaction => new { transaction.AccountId, transaction.OccurredAt })
+             .HasDatabaseName("IX_BUDGET_TRANSACTIONS_ACCOUNT");
+            e.HasOne(transaction => transaction.Account)
+             .WithMany(account => account.Transactions)
+             .HasForeignKey(transaction => new { transaction.ClubId, transaction.AccountId })
+             .HasPrincipalKey(account => new { account.ClubId, account.AccountId })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(transaction => transaction.Application)
+             .WithMany(application => application.Transactions)
+             .HasForeignKey(transaction => new
+             {
+                 transaction.ClubId,
+                 transaction.AccountId,
+                 transaction.ApplicationId
+             })
+             .HasPrincipalKey(application => new
+             {
+                 application.ClubId,
+                 application.AccountId,
+                 application.ApplicationId
+             })
+             .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(transaction => transaction.Club)
+             .WithMany()
+             .HasForeignKey(transaction => transaction.ClubId)
              .OnDelete(DeleteBehavior.NoAction);
         });
     }

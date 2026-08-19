@@ -86,7 +86,12 @@ export function CreateVenueReservationRequestFromJSONTyped(
   return {
     venueId: json["venueId"],
     clubId: json["clubId"],
-    activityId: json["activityId"] == null ? undefined : json["activityId"],
+    activityId:
+      json["activityId"] === undefined
+        ? undefined
+        : json["activityId"] === null
+          ? null
+          : json["activityId"],
     startTime: new Date(json["startTime"]),
     endTime: new Date(json["endTime"]),
     purpose: json["purpose"],

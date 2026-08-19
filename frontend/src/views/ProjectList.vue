@@ -8,6 +8,7 @@ import {
   type CancelProjectRequest,
   type Club,
   type Project,
+  type ProjectTask as ProjectTaskDto,
   type UserSummary,
 } from "../api";
 import { apiClient as api } from "../apiClient";
@@ -437,6 +438,7 @@ async function createProject() {
   saving.value = true;
   try {
     await api.createProject({
+      idempotencyKey: crypto.randomUUID(),
       createProjectRequest: {
         clubId: createForm.clubId,
         projectName: createForm.projectName.trim(),
@@ -511,6 +513,7 @@ async function reviewProject() {
   reviewSavingId.value = reviewForm.projectId;
   try {
     await api.reviewProject({
+      idempotencyKey: crypto.randomUUID(),
       projectId: reviewForm.projectId,
       reviewProjectRequest: {
         projectStatus: reviewForm.projectStatus,
@@ -574,18 +577,17 @@ async function submitTaskDeliverable() {
 
   taskSavingId.value = activeTask.value.id;
   try {
-    const task = await projectApiRequest<ProjectTaskApi>(
-      `/api/projects/${selectedProject.value.id}/tasks/${activeTask.value.id}/deliverable`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          deliverableTitle: deliverableForm.deliverableTitle.trim(),
-          deliverableDesc: normalizeOptionalText(deliverableForm.deliverableDesc),
-          deliverableUrl: normalizeOptionalText(deliverableForm.deliverableUrl),
-        }),
+    const task = await api.submitProjectTaskDeliverable({
+      idempotencyKey: crypto.randomUUID(),
+      projectId: selectedProject.value.id,
+      taskId: activeTask.value.id,
+      submitProjectTaskDeliverableRequest: {
+        deliverableTitle: deliverableForm.deliverableTitle.trim(),
+        deliverableDesc: normalizeOptionalText(deliverableForm.deliverableDesc),
+        deliverableUrl: normalizeOptionalText(deliverableForm.deliverableUrl),
       },
-    );
-    upsertProjectTask(mapProjectTask(task));
+    });
+    upsertProjectTask(mapProjectTaskDto(task));
     ElMessage.success("任务成果已提交，等待审核");
     deliverableDialogVisible.value = false;
   } catch (error) {
@@ -618,17 +620,16 @@ async function reviewTaskDeliverable() {
 
   taskSavingId.value = activeTask.value.id;
   try {
-    const task = await projectApiRequest<ProjectTaskApi>(
-      `/api/projects/${selectedProject.value.id}/tasks/${activeTask.value.id}/deliverable/review`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          approved: deliverableReviewForm.approved,
-          reviewComment: normalizeOptionalText(deliverableReviewForm.reviewComment),
-        }),
+    const task = await api.reviewProjectTaskDeliverable({
+      idempotencyKey: crypto.randomUUID(),
+      projectId: selectedProject.value.id,
+      taskId: activeTask.value.id,
+      reviewProjectTaskDeliverableRequest: {
+        approved: deliverableReviewForm.approved,
+        reviewComment: normalizeOptionalText(deliverableReviewForm.reviewComment),
       },
-    );
-    upsertProjectTask(mapProjectTask(task));
+    });
+    upsertProjectTask(mapProjectTaskDto(task));
     ElMessage.success("任务成果审核结果已保存");
     deliverableReviewDialogVisible.value = false;
     await loadProjects();
@@ -894,6 +895,15 @@ function mapProjectTask(task: ProjectTaskApi): ProjectTask {
   };
 }
 
+function mapProjectTaskDto(task: ProjectTaskDto): ProjectTask {
+  return {
+    ...task,
+    assignees: task.assignees ?? [],
+    taskStatus: normalizeTaskStatus(task.taskStatus),
+    deliverableStatus: normalizeDeliverableStatus(task.deliverableStatus),
+  };
+}
+
 function parseOptionalDate(value?: string | null) {
   return value ? new Date(value) : undefined;
 }
@@ -964,7 +974,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page project-page">
-    <div class="toolbar">
+    <div class="toolbar app-page-header">
       <div>
         <h2>项目管理</h2>
         <p class="subtitle">演示社团项目立项申请、负责人分配和立项审核流程。</p>

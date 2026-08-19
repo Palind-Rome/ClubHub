@@ -65,7 +65,12 @@ export function ApplyActivityBudgetRequestFromJSONTyped(
   return {
     budgetAmount: json["budgetAmount"],
     budgetPurpose: json["budgetPurpose"],
-    budgetDetail: json["budgetDetail"] == null ? undefined : json["budgetDetail"],
+    budgetDetail:
+      json["budgetDetail"] === undefined
+        ? undefined
+        : json["budgetDetail"] === null
+          ? null
+          : json["budgetDetail"],
   };
 }
 

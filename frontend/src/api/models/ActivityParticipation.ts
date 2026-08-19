@@ -115,13 +115,44 @@ export function ActivityParticipationFromJSONTyped(
     activityId: json["activityId"],
     userId: json["userId"],
     userName: json["userName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
-    registerStatus: json["registerStatus"] == null ? undefined : json["registerStatus"],
-    registeredAt: json["registeredAt"] == null ? undefined : new Date(json["registeredAt"]),
-    checkinAt: json["checkinAt"] == null ? undefined : new Date(json["checkinAt"]),
-    checkoutAt: json["checkoutAt"] == null ? undefined : new Date(json["checkoutAt"]),
-    signStatus: json["signStatus"] == null ? undefined : json["signStatus"],
-    remark: json["remark"] == null ? undefined : json["remark"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
+    registerStatus:
+      json["registerStatus"] === undefined
+        ? undefined
+        : json["registerStatus"] === null
+          ? null
+          : json["registerStatus"],
+    registeredAt:
+      json["registeredAt"] === undefined
+        ? undefined
+        : json["registeredAt"] === null
+          ? null
+          : new Date(json["registeredAt"]),
+    checkinAt:
+      json["checkinAt"] === undefined
+        ? undefined
+        : json["checkinAt"] === null
+          ? null
+          : new Date(json["checkinAt"]),
+    checkoutAt:
+      json["checkoutAt"] === undefined
+        ? undefined
+        : json["checkoutAt"] === null
+          ? null
+          : new Date(json["checkoutAt"]),
+    signStatus:
+      json["signStatus"] === undefined
+        ? undefined
+        : json["signStatus"] === null
+          ? null
+          : json["signStatus"],
+    remark:
+      json["remark"] === undefined ? undefined : json["remark"] === null ? null : json["remark"],
   };
 }
 

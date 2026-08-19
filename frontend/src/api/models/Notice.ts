@@ -117,17 +117,17 @@ export interface Notice {
    */
   readAt?: Date | null;
   /**
-   * 当前规则下可接收该通知的用户数。
+   * 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
    * @type {number}
    * @memberof Notice
    */
   audienceCount?: number | null;
   /**
-   * 已读人数。
+   * 已读人数；仅发布者或对应范围的通知管理者可见。
    * @type {number}
    * @memberof Notice
    */
-  readCount: number;
+  readCount?: number | null;
 }
 
 /**
@@ -165,7 +165,6 @@ export function instanceOfNotice(value: object): value is Notice {
   if (!("publishAt" in value) || value["publishAt"] === undefined) return false;
   if (!("noticeStatus" in value) || value["noticeStatus"] === undefined) return false;
   if (!("isRead" in value) || value["isRead"] === undefined) return false;
-  if (!("readCount" in value) || value["readCount"] === undefined) return false;
   return true;
 }
 
@@ -179,23 +178,64 @@ export function NoticeFromJSONTyped(json: any, ignoreDiscriminator: boolean): No
   }
   return {
     id: json["id"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
-    clubName: json["clubName"] == null ? undefined : json["clubName"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
+    clubName:
+      json["clubName"] === undefined
+        ? undefined
+        : json["clubName"] === null
+          ? null
+          : json["clubName"],
     publisherUserId: json["publisherUserId"],
-    publisherName: json["publisherName"] == null ? undefined : json["publisherName"],
+    publisherName:
+      json["publisherName"] === undefined
+        ? undefined
+        : json["publisherName"] === null
+          ? null
+          : json["publisherName"],
     noticeType: json["noticeType"],
     title: json["title"],
     content: json["content"],
     targetType: json["targetType"],
-    targetId: json["targetId"] == null ? undefined : json["targetId"],
-    targetName: json["targetName"] == null ? undefined : json["targetName"],
+    targetId:
+      json["targetId"] === undefined
+        ? undefined
+        : json["targetId"] === null
+          ? null
+          : json["targetId"],
+    targetName:
+      json["targetName"] === undefined
+        ? undefined
+        : json["targetName"] === null
+          ? null
+          : json["targetName"],
     publishAt: new Date(json["publishAt"]),
-    expireAt: json["expireAt"] == null ? undefined : new Date(json["expireAt"]),
+    expireAt:
+      json["expireAt"] === undefined
+        ? undefined
+        : json["expireAt"] === null
+          ? null
+          : new Date(json["expireAt"]),
     noticeStatus: json["noticeStatus"],
     isRead: json["isRead"],
-    readAt: json["readAt"] == null ? undefined : new Date(json["readAt"]),
-    audienceCount: json["audienceCount"] == null ? undefined : json["audienceCount"],
-    readCount: json["readCount"],
+    readAt:
+      json["readAt"] === undefined
+        ? undefined
+        : json["readAt"] === null
+          ? null
+          : new Date(json["readAt"]),
+    audienceCount:
+      json["audienceCount"] === undefined
+        ? undefined
+        : json["audienceCount"] === null
+          ? null
+          : json["audienceCount"],
+    readCount:
+      json["readCount"] === undefined
+        ? undefined
+        : json["readCount"] === null
+          ? null
+          : json["readCount"],
   };
 }
 

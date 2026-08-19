@@ -1,0 +1,77 @@
+name: 文档任务
+description: 编写或更新课程交付文档（需求分析、数据库设计、系统设计、答辩 PPT 等）
+title: "[文档] "
+labels: [documentation]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      description: 请选择此文档任务的优先级
+      options:
+        - 优先级:P0
+        - 优先级:P1
+        - 优先级:P2
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 领域
+      description: 请选择此文档任务所属的业务领域
+      options:
+        - area:auth
+        - area:club
+        - area:activity
+        - area:venue
+        - area:project
+        - area:learning
+        - area:material
+        - area:evaluation
+        - area:notice
+        - area:analytics
+        - area:forum
+        - area:frontend
+        - area:recruitment
+        - area:docs
+        - area:meta
+    validations:
+      required: true
+  - type: input
+    id: doc_name
+    attributes:
+      label: 文档名称
+      description: 请填写需要编写或更新的文档名称
+      placeholder: 例如：数据库设计文档、系统设计与实现文档……
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: 编写/更新原因
+      description: 请说明为什么需要编写或更新此文档
+      placeholder: |
+        例如：对应课程提纲第 X 条要求、功能变更需要同步文档……
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: 参考来源
+      description: 请列出参考来源（可选）
+      placeholder: |
+        - 课程提纲条目：
+        - 已有文档：
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 验收标准
+      description: 请列出明确的验收条件
+      placeholder: |
+        - [ ] 条件1
+        - [ ] 条件2
+    validations:
+      required: true

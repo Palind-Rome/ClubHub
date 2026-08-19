@@ -87,10 +87,7 @@ const canPublishSchool = computed(
 const canPublishClub = computed(
   () =>
     canPublishSchool.value ||
-    permissions.value.includes("notice:publish") ||
-    auth.value?.roles.some((role) =>
-      ["club_officer", "club_leader", "club_president"].includes(role.code.toLowerCase()),
-    ) === true,
+    auth.value?.roles.some((role) => role.permissions?.includes("notice:publish")) === true,
 );
 const canPublish = computed(() => canPublishSchool.value || canPublishClub.value);
 const managedClubIds = computed(() => {
@@ -98,11 +95,7 @@ const managedClubIds = computed(() => {
 
   const ids = new Set<number>();
   auth.value?.roles.forEach((role) => {
-    const roleCode = role.code.toLowerCase();
-    const canRolePublish =
-      role.permissions?.includes("notice:publish") ||
-      ["club_officer", "club_leader", "club_president"].includes(roleCode);
-    if (!canRolePublish) return;
+    if (!role.permissions?.includes("notice:publish")) return;
 
     if (role.clubId) ids.add(role.clubId);
     role.clubIds?.forEach((clubId) => ids.add(clubId));
@@ -143,6 +136,9 @@ const readSummary = computed(() => {
   const unread = notices.value.filter((notice) => !notice.isRead).length;
   return { total, unread, read: total - unread };
 });
+const canViewReadStatistics = computed(() =>
+  notices.value.some((notice) => notice.readCount != null || notice.audienceCount != null),
+);
 const publishDialogTitle = computed(() =>
   editingNoticeId.value === null ? "新建通知" : "编辑通知草稿",
 );
@@ -420,13 +416,13 @@ function buildTargetPayload():
 async function openNoticeDetail(row: Notice) {
   selectedNotice.value = row;
   detailDialogVisible.value = true;
-  if (row.noticeStatus !== "draft" && !row.isRead) await markRead(row);
+  if (row.noticeStatus === "published" && !row.isRead) await markRead(row);
 }
 
 async function markRead(row: Notice) {
   if (
     !currentUserId.value ||
-    row.noticeStatus === "draft" ||
+    row.noticeStatus !== "published" ||
     row.isRead ||
     markingId.value !== null
   )
@@ -451,7 +447,7 @@ async function markRead(row: Notice) {
     if (
       pendingNotice &&
       pendingNotice.id !== row.id &&
-      pendingNotice.noticeStatus !== "draft" &&
+      pendingNotice.noticeStatus === "published" &&
       !pendingNotice.isRead
     ) {
       void markRead(pendingNotice);
@@ -544,6 +540,10 @@ watch(filters, () => {
   void loadNotices();
 });
 
+watch(canPublish, (allowed) => {
+  if (!allowed && filters.noticeStatus !== "published") filters.noticeStatus = "published";
+});
+
 onMounted(() => {
   detailMediaQuery = window.matchMedia("(max-width: 900px)");
   syncDetailLayout();
@@ -562,7 +562,7 @@ onUnmounted(() => {
 
 <template>
   <div class="notice-page">
-    <section class="notice-head">
+    <section class="notice-head app-page-header">
       <div>
         <h2>公告通知</h2>
         <p>发布定向通知，查看当前账号可见公告，并维护已读记录。</p>
@@ -599,8 +599,8 @@ onUnmounted(() => {
     <section class="filter-band">
       <el-select v-model="filters.noticeStatus" class="filter-item" placeholder="通知状态">
         <el-option label="已发布" value="published" />
-        <el-option label="草稿" value="draft" />
-        <el-option label="已过期" value="expired" />
+        <el-option v-if="canPublish" label="草稿" value="draft" />
+        <el-option v-if="canPublish" label="已过期" value="expired" />
       </el-select>
       <el-select v-model="filters.targetType" class="filter-item" clearable placeholder="定向范围">
         <el-option label="全校" value="school" />
@@ -626,10 +626,24 @@ onUnmounted(() => {
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-tag
-            :type="row.noticeStatus === 'draft' ? 'warning' : row.isRead ? 'info' : 'danger'"
+            :type="
+              row.noticeStatus === 'draft'
+                ? 'warning'
+                : row.noticeStatus === 'expired' || row.isRead
+                  ? 'info'
+                  : 'danger'
+            "
             effect="plain"
           >
-            {{ row.noticeStatus === "draft" ? "草稿" : row.isRead ? "已读" : "未读" }}
+            {{
+              row.noticeStatus === "draft"
+                ? "草稿"
+                : row.noticeStatus === "expired"
+                  ? "已过期"
+                  : row.isRead
+                    ? "已读"
+                    : "未读"
+            }}
           </el-tag>
         </template>
       </el-table-column>
@@ -652,9 +666,13 @@ onUnmounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column v-if="filters.noticeStatus !== 'draft'" label="已读" width="110">
+      <el-table-column
+        v-if="filters.noticeStatus !== 'draft' && canViewReadStatistics"
+        label="已读"
+        width="110"
+      >
         <template #default="{ row }">
-          {{ row.readCount }} / {{ row.audienceCount ?? "-" }}
+          {{ row.readCount ?? "-" }} / {{ row.audienceCount ?? "-" }}
         </template>
       </el-table-column>
       <el-table-column label="内容 / 管理" min-width="250" fixed="right">
@@ -777,6 +795,9 @@ onUnmounted(() => {
       <template #footer>
         <div v-if="selectedNotice" class="notice-dialog__footer">
           <span v-if="selectedNotice.noticeStatus === 'draft'">草稿尚未发布，不产生已读记录</span>
+          <span v-else-if="selectedNotice.noticeStatus === 'expired'">
+            通知已过期，不能再标记已读
+          </span>
           <span v-else-if="markingId === selectedNotice.id">正在同步已读状态…</span>
           <span v-else-if="selectedNotice.isRead">
             已于 {{ formatDate(selectedNotice.readAt) }} 阅读
@@ -784,7 +805,7 @@ onUnmounted(() => {
           <span v-else>尚未标记已读</span>
           <div>
             <el-button
-              v-if="selectedNotice.noticeStatus !== 'draft' && !selectedNotice.isRead"
+              v-if="selectedNotice.noticeStatus === 'published' && !selectedNotice.isRead"
               type="primary"
               plain
               :loading="markingId === selectedNotice.id"
@@ -919,14 +940,14 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 18px;
   padding: 24px;
-  color: #20262e;
+  color: var(--el-text-color-primary);
 }
 
 .notice-head,
 .summary-band,
 .filter-band {
-  border: 1px solid #d9e1ea;
-  background: #fff;
+  border: 1px solid var(--el-border-color-light);
+  background: var(--club-surface-solid);
 }
 
 .notice-head {
@@ -944,7 +965,7 @@ onUnmounted(() => {
 
 .notice-head p {
   margin: 6px 0 0;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
 }
 
 .head-actions,
@@ -968,12 +989,12 @@ onUnmounted(() => {
 }
 
 .summary-band div + div {
-  border-left: 1px solid #d9e1ea;
+  border-left: 1px solid var(--el-border-color-light);
 }
 
 .summary-band span {
   display: block;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1006,7 +1027,7 @@ onUnmounted(() => {
 
 .notice-dialog__heading h3 {
   margin: 10px 0 0;
-  color: #20262e;
+  color: var(--el-text-color-primary);
   font-size: 22px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -1014,13 +1035,13 @@ onUnmounted(() => {
 
 .notice-dialog__content {
   padding: 18px 20px;
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--el-fill-color-light);
 }
 
 .notice-dialog__content span {
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1038,7 +1059,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  color: #66727f;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
@@ -1065,7 +1086,7 @@ onUnmounted(() => {
 
   .summary-band div + div {
     border-left: none;
-    border-top: 1px solid #d9e1ea;
+    border-top: 1px solid var(--el-border-color-light);
   }
 
   .filter-item {

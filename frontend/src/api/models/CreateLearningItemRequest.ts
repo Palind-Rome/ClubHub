@@ -161,14 +161,45 @@ export function CreateLearningItemRequestFromJSONTyped(
   return {
     clubId: json["clubId"],
     title: json["title"],
-    description: json["description"] == null ? undefined : json["description"],
-    instructorUserId: json["instructorUserId"] == null ? undefined : json["instructorUserId"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    instructorUserId:
+      json["instructorUserId"] === undefined
+        ? undefined
+        : json["instructorUserId"] === null
+          ? null
+          : json["instructorUserId"],
     itemType: json["itemType"],
-    categoryName: json["categoryName"] == null ? undefined : json["categoryName"],
-    fileUrl: json["fileUrl"] == null ? undefined : json["fileUrl"],
-    startAt: json["startAt"] == null ? undefined : new Date(json["startAt"]),
-    endAt: json["endAt"] == null ? undefined : new Date(json["endAt"]),
-    capacity: json["capacity"] == null ? undefined : json["capacity"],
+    categoryName:
+      json["categoryName"] === undefined
+        ? undefined
+        : json["categoryName"] === null
+          ? null
+          : json["categoryName"],
+    fileUrl:
+      json["fileUrl"] === undefined ? undefined : json["fileUrl"] === null ? null : json["fileUrl"],
+    startAt:
+      json["startAt"] === undefined
+        ? undefined
+        : json["startAt"] === null
+          ? null
+          : new Date(json["startAt"]),
+    endAt:
+      json["endAt"] === undefined
+        ? undefined
+        : json["endAt"] === null
+          ? null
+          : new Date(json["endAt"]),
+    capacity:
+      json["capacity"] === undefined
+        ? undefined
+        : json["capacity"] === null
+          ? null
+          : json["capacity"],
     visibility: json["visibility"],
     downloadPermission: json["downloadPermission"],
     itemStatus: json["itemStatus"],

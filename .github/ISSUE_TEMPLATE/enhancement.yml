@@ -1,0 +1,85 @@
+name: 功能改进
+description: 建议新功能、改进或优化（非课程强制要求）
+title: "[改进] "
+labels: [enhancement]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      description: 请选择此改进的优先级
+      options:
+        - 优先级:P0
+        - 优先级:P1
+        - 优先级:P2
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 领域
+      description: 请选择此改进所属的业务领域
+      options:
+        - area:auth
+        - area:club
+        - area:activity
+        - area:venue
+        - area:project
+        - area:learning
+        - area:material
+        - area:evaluation
+        - area:notice
+        - area:analytics
+        - area:forum
+        - area:frontend
+        - area:recruitment
+        - area:docs
+        - area:meta
+    validations:
+      required: true
+  - type: checkboxes
+    id: fullstack
+    attributes:
+      label: 全栈任务
+      description: 如果涉及前后端数据库联动，请勾选此项
+      options:
+        - label: 本任务涉及前后端与数据库联动
+          required: false
+  - type: textarea
+    id: improvement_goal
+    attributes:
+      label: 改进目标
+      description: 请描述本次改进的目标
+      placeholder: |
+        简要说明要改进什么、预期达成什么效果……
+    validations:
+      required: true
+  - type: textarea
+    id: current_situation
+    attributes:
+      label: 现状与痛点
+      description: 请描述当前存在的问题
+      placeholder: |
+        当前存在什么问题、为什么需要改进……
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 建议方案
+      description: 请描述建议的解决方案
+      placeholder: |
+        建议怎么做、涉及哪些模块、大致工作量估算……
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 验收标准
+      description: 请列出明确的验收条件
+      placeholder: |
+        - [ ] 条件1
+        - [ ] 条件2
+    validations:
+      required: true

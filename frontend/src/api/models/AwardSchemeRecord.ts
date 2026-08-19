@@ -245,26 +245,82 @@ export function AwardSchemeRecordFromJSONTyped(
     awardName: json["awardName"],
     awardCategory: json["awardCategory"],
     academicYear: json["academicYear"],
-    termName: json["termName"] == null ? undefined : json["termName"],
-    sponsorUnit: json["sponsorUnit"] == null ? undefined : json["sponsorUnit"],
-    rewardLevel: json["rewardLevel"] == null ? undefined : json["rewardLevel"],
-    fundingSource: json["fundingSource"] == null ? undefined : json["fundingSource"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
+    sponsorUnit:
+      json["sponsorUnit"] === undefined
+        ? undefined
+        : json["sponsorUnit"] === null
+          ? null
+          : json["sponsorUnit"],
+    rewardLevel:
+      json["rewardLevel"] === undefined
+        ? undefined
+        : json["rewardLevel"] === null
+          ? null
+          : json["rewardLevel"],
+    fundingSource:
+      json["fundingSource"] === undefined
+        ? undefined
+        : json["fundingSource"] === null
+          ? null
+          : json["fundingSource"],
     isRanked: json["isRanked"],
     isFixedAmount: json["isFixedAmount"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     materialDescription:
-      json["materialDescription"] == null ? undefined : json["materialDescription"],
+      json["materialDescription"] === undefined
+        ? undefined
+        : json["materialDescription"] === null
+          ? null
+          : json["materialDescription"],
     applicationStartAt:
-      json["applicationStartAt"] == null ? undefined : new Date(json["applicationStartAt"]),
+      json["applicationStartAt"] === undefined
+        ? undefined
+        : json["applicationStartAt"] === null
+          ? null
+          : new Date(json["applicationStartAt"]),
     applicationEndAt:
-      json["applicationEndAt"] == null ? undefined : new Date(json["applicationEndAt"]),
+      json["applicationEndAt"] === undefined
+        ? undefined
+        : json["applicationEndAt"] === null
+          ? null
+          : new Date(json["applicationEndAt"]),
     publicityStartAt:
-      json["publicityStartAt"] == null ? undefined : new Date(json["publicityStartAt"]),
-    publicityEndAt: json["publicityEndAt"] == null ? undefined : new Date(json["publicityEndAt"]),
+      json["publicityStartAt"] === undefined
+        ? undefined
+        : json["publicityStartAt"] === null
+          ? null
+          : new Date(json["publicityStartAt"]),
+    publicityEndAt:
+      json["publicityEndAt"] === undefined
+        ? undefined
+        : json["publicityEndAt"] === null
+          ? null
+          : new Date(json["publicityEndAt"]),
     schemeStatus: json["schemeStatus"],
     schemeStatusText: json["schemeStatusText"],
-    createdByUserId: json["createdByUserId"] == null ? undefined : json["createdByUserId"],
-    createdByName: json["createdByName"] == null ? undefined : json["createdByName"],
+    createdByUserId:
+      json["createdByUserId"] === undefined
+        ? undefined
+        : json["createdByUserId"] === null
+          ? null
+          : json["createdByUserId"],
+    createdByName:
+      json["createdByName"] === undefined
+        ? undefined
+        : json["createdByName"] === null
+          ? null
+          : json["createdByName"],
     createdAt: new Date(json["createdAt"]),
     updatedAt: new Date(json["updatedAt"]),
     levels: (json["levels"] as Array<any>).map(AwardLevelRecordFromJSON),

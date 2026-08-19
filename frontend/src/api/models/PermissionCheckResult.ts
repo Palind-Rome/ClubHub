@@ -92,7 +92,8 @@ export function PermissionCheckResultFromJSONTyped(
   return {
     userId: json["userId"],
     permission: json["permission"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
     allowed: json["allowed"],
     matchedRoles: (json["matchedRoles"] as Array<any>).map(AuthRoleFromJSON),
     message: json["message"],

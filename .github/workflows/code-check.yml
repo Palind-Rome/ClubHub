@@ -36,6 +36,8 @@ jobs:
               - '.github/workflows/code-check.yml'
             backend:
               - 'backend/**'
+              - 'backend.Tests/**'
+              - 'backend.OracleIntegrationTests/**'
               - 'ClubHub.sln'
               - '.editorconfig'
               - '.github/workflows/code-check.yml'
@@ -111,7 +113,10 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: dotnet format
-        run: dotnet format backend/ClubHub.Api.csproj --verify-no-changes --exclude "backend/Models/**"
+        run: |
+          dotnet format backend/ClubHub.Api.csproj --verify-no-changes --exclude "backend/Models/**"
+          dotnet format backend.Tests/ClubHub.Api.Tests.csproj --verify-no-changes
+          dotnet format backend.OracleIntegrationTests/ClubHub.Api.OracleIntegrationTests.csproj --verify-no-changes
 
   code-check:
     name: 代码质量门禁

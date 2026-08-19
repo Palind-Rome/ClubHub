@@ -1,0 +1,188 @@
+using System.Text.Json;
+using ClubHub.Api.Infrastructure.Redis;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
+
+namespace ClubHub.Api.Services;
+
+public interface IPermissionSnapshotCache
+{
+    Task<PermissionSnapshot> GetOrCreateAsync(
+        int userId,
+        Func<Task<PermissionSnapshot>> factory,
+        CancellationToken cancellationToken = default);
+
+    Task<AccountStatusSnapshot> GetAccountStatusAsync(
+        int userId,
+        Func<Task<AccountStatusSnapshot>> factory,
+        CancellationToken cancellationToken = default);
+
+    Task InvalidateAsync(
+        int userId,
+        bool requiredForSafety,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record PermissionSnapshot(
+    int UserId,
+    IReadOnlyList<AuthRole> Roles);
+
+public sealed record AccountStatusSnapshot(bool Exists, string? Status);
+
+public sealed class PermissionSnapshotCache : IPermissionSnapshotCache
+{
+    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
+    private readonly IRedisDatabase _redis;
+    private readonly IRedisKeyBuilder _keys;
+    private readonly RedisOptions _options;
+    private readonly ILogger<PermissionSnapshotCache> _logger;
+
+    public PermissionSnapshotCache(
+        IRedisDatabase redis,
+        IRedisKeyBuilder keys,
+        IOptions<RedisOptions> options,
+        ILogger<PermissionSnapshotCache> logger)
+    {
+        _redis = redis;
+        _keys = keys;
+        _options = options.Value;
+        _logger = logger;
+    }
+
+    public async Task<PermissionSnapshot> GetOrCreateAsync(
+        int userId,
+        Func<Task<PermissionSnapshot>> factory,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enabled) return await factory();
+
+        try
+        {
+            var cached = await _redis.StringGetAsync(Key(userId), cancellationToken);
+            if (cached.HasValue)
+            {
+                try
+                {
+                    var snapshot = JsonSerializer.Deserialize<PermissionSnapshot>((string)cached!);
+                    if (snapshot is not null && snapshot.UserId == userId) return snapshot;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Discarding damaged permission snapshot for user {UserId}.", userId);
+                    await _redis.KeyDeleteAsync(Key(userId), cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            _logger.LogWarning(ex, "Redis permission snapshot read failed; loading Oracle source.");
+        }
+
+        var loaded = await factory();
+        try
+        {
+            await _redis.StringSetAsync(
+                Key(userId),
+                JsonSerializer.Serialize(loaded),
+                Ttl,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            _logger.LogWarning(ex, "Redis permission snapshot write failed; Oracle result remains authoritative.");
+        }
+
+        return loaded;
+    }
+
+    public async Task<AccountStatusSnapshot> GetAccountStatusAsync(
+        int userId,
+        Func<Task<AccountStatusSnapshot>> factory,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enabled) return await factory();
+
+        try
+        {
+            var cached = await _redis.StringGetAsync(AccountKey(userId), cancellationToken);
+            if (cached.HasValue)
+            {
+                try
+                {
+                    var snapshot =
+                        JsonSerializer.Deserialize<AccountStatusSnapshot>((string)cached!);
+                    if (snapshot is not null) return snapshot;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Discarding damaged account-status snapshot for user {UserId}.",
+                        userId);
+                    await _redis.KeyDeleteAsync(AccountKey(userId), cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            _logger.LogWarning(ex, "Redis account-status snapshot read failed; loading Oracle source.");
+        }
+
+        var loaded = await factory();
+        try
+        {
+            await _redis.StringSetAsync(
+                AccountKey(userId),
+                JsonSerializer.Serialize(loaded),
+                Ttl,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            _logger.LogWarning(ex, "Redis account-status snapshot write failed; Oracle result remains authoritative.");
+        }
+        return loaded;
+    }
+
+    public async Task InvalidateAsync(
+        int userId,
+        bool requiredForSafety,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enabled) return;
+
+        try
+        {
+            await _redis.ScriptEvaluateAsync(
+                "return redis.call('del', KEYS[1], KEYS[2])",
+                [Key(userId), AccountKey(userId)],
+                [],
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            _logger.LogWarning(ex, "Redis permission snapshot invalidation failed for user {UserId}.", userId);
+            if (requiredForSafety)
+            {
+                throw new PermissionSnapshotUnavailableException(
+                    "Permission snapshot could not be safely invalidated.",
+                    ex);
+            }
+        }
+    }
+
+    private bool Enabled => _options.Enabled && _options.Features.PermissionCache;
+
+    private RedisKey Key(int userId) => _keys.Build("permission", "snapshot", userId.ToString());
+
+    private RedisKey AccountKey(int userId) =>
+        _keys.Build("permission", "account-status", userId.ToString());
+}
+
+public sealed class PermissionSnapshotUnavailableException : Exception
+{
+    public PermissionSnapshotUnavailableException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}

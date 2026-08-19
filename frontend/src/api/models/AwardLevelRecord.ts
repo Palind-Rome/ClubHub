@@ -109,8 +109,9 @@ export function AwardLevelRecordFromJSONTyped(
     awardSchemeId: json["awardSchemeId"],
     levelName: json["levelName"],
     awardScore: json["awardScore"],
-    amount: json["amount"] == null ? undefined : json["amount"],
-    quota: json["quota"] == null ? undefined : json["quota"],
+    amount:
+      json["amount"] === undefined ? undefined : json["amount"] === null ? null : json["amount"],
+    quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
     displayOrder: json["displayOrder"],
     levelStatus: json["levelStatus"],
   };

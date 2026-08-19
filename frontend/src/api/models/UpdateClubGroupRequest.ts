@@ -107,12 +107,42 @@ export function UpdateClubGroupRequestFromJSONTyped(
   }
   return {
     groupName: json["groupName"],
-    groupCode: json["groupCode"] == null ? undefined : json["groupCode"],
-    description: json["description"] == null ? undefined : json["description"],
-    responsibilities: json["responsibilities"] == null ? undefined : json["responsibilities"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
-    contactEmail: json["contactEmail"] == null ? undefined : json["contactEmail"],
-    activityLocation: json["activityLocation"] == null ? undefined : json["activityLocation"],
+    groupCode:
+      json["groupCode"] === undefined
+        ? undefined
+        : json["groupCode"] === null
+          ? null
+          : json["groupCode"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    responsibilities:
+      json["responsibilities"] === undefined
+        ? undefined
+        : json["responsibilities"] === null
+          ? null
+          : json["responsibilities"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
+    contactEmail:
+      json["contactEmail"] === undefined
+        ? undefined
+        : json["contactEmail"] === null
+          ? null
+          : json["contactEmail"],
+    activityLocation:
+      json["activityLocation"] === undefined
+        ? undefined
+        : json["activityLocation"] === null
+          ? null
+          : json["activityLocation"],
     displayOrder: json["displayOrder"] == null ? undefined : json["displayOrder"],
     groupStatus: json["groupStatus"] == null ? undefined : json["groupStatus"],
   };

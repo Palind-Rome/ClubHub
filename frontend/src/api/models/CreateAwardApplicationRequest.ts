@@ -105,7 +105,12 @@ export function CreateAwardApplicationRequestFromJSONTyped(
     applicantUserId: json["applicantUserId"],
     applicationType: json["applicationType"],
     applicationReason: json["applicationReason"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
     submitNow: json["submitNow"] == null ? undefined : json["submitNow"],
   };
 }

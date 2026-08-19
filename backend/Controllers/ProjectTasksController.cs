@@ -105,7 +105,7 @@ public class ProjectTasksController : ControllerBase
         var userId = User.GetUserId();
         if (userId is null) return AuthenticationRequired();
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
         var project = await _db.Projects.FirstOrDefaultAsync(item => item.ProjectId == projectId);
         if (project is null) return Error(404, "project_not_found", "项目不存在。");
         if (project.LeaderUserId != userId.Value)
@@ -167,7 +167,7 @@ public class ProjectTasksController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var project = await _db.Projects.FirstOrDefaultAsync(item => item.ProjectId == projectId);
@@ -202,7 +202,6 @@ public class ProjectTasksController : ControllerBase
 
                 var task = new DbProjectTask
                 {
-                    TaskId = (await _db.ProjectTasks.MaxAsync(item => (int?)item.TaskId) ?? 0) + 1,
                     ProjectId = projectId,
                     AssigneeUserId = assigneeUserIds[0],
                     Title = title,
@@ -216,12 +215,10 @@ public class ProjectTasksController : ControllerBase
                     DelayReason = null
                 };
                 _db.ProjectTasks.Add(task);
-                var nextTaskAssigneeId = (await _db.ProjectTaskAssignees.MaxAsync(item => (int?)item.TaskAssigneeId) ?? 0) + 1;
                 foreach (var assigneeUserId in assigneeUserIds)
                 {
                     task.Assignees.Add(new()
                     {
-                        TaskAssigneeId = nextTaskAssigneeId++,
                         UserId = assigneeUserId,
                         AssignedAt = now
                     });
@@ -258,7 +255,7 @@ public class ProjectTasksController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var task = await _db.ProjectTasks
@@ -295,7 +292,6 @@ public class ProjectTasksController : ControllerBase
                 task.DelayReason = status == CompletedStatus ? null : NormalizeOptionalText(request.DelayReason);
                 _db.ProjectTaskProgressReports.Add(new()
                 {
-                    TaskProgressReportId = (await _db.ProjectTaskProgressReports.MaxAsync(item => (int?)item.TaskProgressReportId) ?? 0) + 1,
                     TaskId = task.TaskId,
                     ReporterUserId = userId.Value,
                     Progress = request.Progress,
@@ -351,6 +347,7 @@ public class ProjectTasksController : ControllerBase
     }
 
     [HttpPost("{taskId:int}/deliverable")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("submitProjectTaskDeliverable")]
     public async Task<IActionResult> SubmitDeliverable(
         int projectId,
         int taskId,
@@ -381,7 +378,7 @@ public class ProjectTasksController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var task = await _db.ProjectTasks
@@ -460,6 +457,7 @@ public class ProjectTasksController : ControllerBase
     }
 
     [HttpPost("{taskId:int}/deliverable/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewProjectTaskDeliverable")]
     public async Task<IActionResult> ReviewDeliverable(
         int projectId,
         int taskId,
@@ -478,7 +476,7 @@ public class ProjectTasksController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxWriteRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var task = await _db.ProjectTasks

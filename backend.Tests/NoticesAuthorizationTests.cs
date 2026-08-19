@@ -1,27 +1,13 @@
 using System.Net;
 using System.Text;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
 
 namespace ClubHub.Api.Tests;
 
-public sealed class NoticesAuthorizationTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class NoticesAuthorizationTests : IClassFixture<ClubHubWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly ClubHubWebApplicationFactory _factory;
 
-    public NoticesAuthorizationTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Testing");
-            builder.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Authentication:TokenSigningKey"] = "ClubHub.NoticesAuthorizationTests.SigningKey"
-                }));
-        });
-    }
+    public NoticesAuthorizationTests(ClubHubWebApplicationFactory factory) => _factory = factory;
 
     [Theory]
     [InlineData("GET", "/api/notices", false)]

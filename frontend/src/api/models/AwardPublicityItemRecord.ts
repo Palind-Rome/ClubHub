@@ -143,8 +143,18 @@ export function AwardPublicityItemRecordFromJSONTyped(
     applicantName: json["applicantName"],
     awardName: json["awardName"],
     levelName: json["levelName"],
-    finalAwardScore: json["finalAwardScore"] == null ? undefined : json["finalAwardScore"],
-    finalAmount: json["finalAmount"] == null ? undefined : json["finalAmount"],
+    finalAwardScore:
+      json["finalAwardScore"] === undefined
+        ? undefined
+        : json["finalAwardScore"] === null
+          ? null
+          : json["finalAwardScore"],
+    finalAmount:
+      json["finalAmount"] === undefined
+        ? undefined
+        : json["finalAmount"] === null
+          ? null
+          : json["finalAmount"],
     displayOrder: json["displayOrder"],
     publicityResult: json["publicityResult"],
     createdAt: new Date(json["createdAt"]),

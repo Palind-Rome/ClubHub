@@ -124,6 +124,7 @@ public class ProjectsController : ControllerBase
     /// Creates a project initiation application in pending status.
     /// </summary>
     [HttpPost]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createProject")]
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateProjectRequest? req)
     {
@@ -145,13 +146,12 @@ public class ProjectsController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var now = DateTime.UtcNow;
                 var project = new DbProject
                 {
-                    ProjectId = await GetNextProjectId(),
                     ClubId = req.ClubId,
                     ProjectName = req.ProjectName.Trim(),
                     Description = NormalizeOptionalText(req.Description),
@@ -186,7 +186,7 @@ public class ProjectsController : ControllerBase
             }
         }
 
-        return Conflict("Project id generation conflicted. Please retry.");
+        return Conflict("Project creation conflicted. Please retry.");
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public class ProjectsController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 var project = await _db.Projects.FirstOrDefaultAsync(candidate => candidate.ProjectId == projectId);
@@ -266,6 +266,7 @@ public class ProjectsController : ControllerBase
     /// Reviews a project initiation application. Requirement 1.10 uses one advisor review round.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewProject")]
     [Authorize]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
     {
@@ -616,13 +617,6 @@ public class ProjectsController : ControllerBase
              u.AccountStatus.ToLower() == EnabledStatus ||
              u.AccountStatus == "在任" ||
              u.AccountStatus == "正常"));
-    }
-
-    private async Task<int> GetNextProjectId()
-    {
-        // The course schema has no PROJECTS sequence yet, so creation uses SERIALIZABLE + retry to avoid max(id)+1 races.
-        var maxId = await _db.Projects.MaxAsync(p => (int?)p.ProjectId) ?? 0;
-        return maxId + 1;
     }
 
     /// <summary>

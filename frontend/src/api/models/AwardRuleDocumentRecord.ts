@@ -211,27 +211,83 @@ export function AwardRuleDocumentRecordFromJSONTyped(
   }
   return {
     ruleDocumentId: json["ruleDocumentId"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
-    clubName: json["clubName"] == null ? undefined : json["clubName"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
+    clubName:
+      json["clubName"] === undefined
+        ? undefined
+        : json["clubName"] === null
+          ? null
+          : json["clubName"],
     ruleTitle: json["ruleTitle"],
     ruleScope: json["ruleScope"],
     ruleScopeText: json["ruleScopeText"],
     academicYear: json["academicYear"],
-    termName: json["termName"] == null ? undefined : json["termName"],
-    issuerName: json["issuerName"] == null ? undefined : json["issuerName"],
-    summary: json["summary"] == null ? undefined : json["summary"],
-    contentText: json["contentText"] == null ? undefined : json["contentText"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
-    materialName: json["materialName"] == null ? undefined : json["materialName"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
+    issuerName:
+      json["issuerName"] === undefined
+        ? undefined
+        : json["issuerName"] === null
+          ? null
+          : json["issuerName"],
+    summary:
+      json["summary"] === undefined ? undefined : json["summary"] === null ? null : json["summary"],
+    contentText:
+      json["contentText"] === undefined
+        ? undefined
+        : json["contentText"] === null
+          ? null
+          : json["contentText"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
+    materialName:
+      json["materialName"] === undefined
+        ? undefined
+        : json["materialName"] === null
+          ? null
+          : json["materialName"],
     versionNo: json["versionNo"],
     ruleStatus: json["ruleStatus"],
     ruleStatusText: json["ruleStatusText"],
     effectiveStartAt:
-      json["effectiveStartAt"] == null ? undefined : new Date(json["effectiveStartAt"]),
-    effectiveEndAt: json["effectiveEndAt"] == null ? undefined : new Date(json["effectiveEndAt"]),
-    publishedByUserId: json["publishedByUserId"] == null ? undefined : json["publishedByUserId"],
-    publishedByName: json["publishedByName"] == null ? undefined : json["publishedByName"],
-    publishedAt: json["publishedAt"] == null ? undefined : new Date(json["publishedAt"]),
+      json["effectiveStartAt"] === undefined
+        ? undefined
+        : json["effectiveStartAt"] === null
+          ? null
+          : new Date(json["effectiveStartAt"]),
+    effectiveEndAt:
+      json["effectiveEndAt"] === undefined
+        ? undefined
+        : json["effectiveEndAt"] === null
+          ? null
+          : new Date(json["effectiveEndAt"]),
+    publishedByUserId:
+      json["publishedByUserId"] === undefined
+        ? undefined
+        : json["publishedByUserId"] === null
+          ? null
+          : json["publishedByUserId"],
+    publishedByName:
+      json["publishedByName"] === undefined
+        ? undefined
+        : json["publishedByName"] === null
+          ? null
+          : json["publishedByName"],
+    publishedAt:
+      json["publishedAt"] === undefined
+        ? undefined
+        : json["publishedAt"] === null
+          ? null
+          : new Date(json["publishedAt"]),
     createdAt: new Date(json["createdAt"]),
     updatedAt: new Date(json["updatedAt"]),
   };

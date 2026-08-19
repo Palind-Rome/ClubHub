@@ -188,25 +188,90 @@ export function ClubApplicationFromJSONTyped(
   return {
     id: json["id"],
     name: json["name"],
-    category: json["category"] == null ? undefined : json["category"],
-    description: json["description"] == null ? undefined : json["description"],
-    applicantUserId: json["applicantUserId"] == null ? undefined : json["applicantUserId"],
-    applicantName: json["applicantName"] == null ? undefined : json["applicantName"],
-    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
-    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
+    category:
+      json["category"] === undefined
+        ? undefined
+        : json["category"] === null
+          ? null
+          : json["category"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    applicantUserId:
+      json["applicantUserId"] === undefined
+        ? undefined
+        : json["applicantUserId"] === null
+          ? null
+          : json["applicantUserId"],
+    applicantName:
+      json["applicantName"] === undefined
+        ? undefined
+        : json["applicantName"] === null
+          ? null
+          : json["applicantName"],
+    advisorUserId:
+      json["advisorUserId"] === undefined
+        ? undefined
+        : json["advisorUserId"] === null
+          ? null
+          : json["advisorUserId"],
+    advisorName:
+      json["advisorName"] === undefined
+        ? undefined
+        : json["advisorName"] === null
+          ? null
+          : json["advisorName"],
     applyReason: json["applyReason"],
     materialUrl: json["materialUrl"],
     auditStatus: json["auditStatus"],
     auditStatusText: json["auditStatusText"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
-    clubStatus: json["clubStatus"] == null ? undefined : json["clubStatus"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerName:
+      json["reviewerName"] === undefined
+        ? undefined
+        : json["reviewerName"] === null
+          ? null
+          : json["reviewerName"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
+    clubStatus:
+      json["clubStatus"] === undefined
+        ? undefined
+        : json["clubStatus"] === null
+          ? null
+          : json["clubStatus"],
     clubStatusText: json["clubStatusText"],
-    foundedAt: json["foundedAt"] == null ? undefined : new Date(json["foundedAt"]),
+    foundedAt:
+      json["foundedAt"] === undefined
+        ? undefined
+        : json["foundedAt"] === null
+          ? null
+          : new Date(json["foundedAt"]),
     createdAt: new Date(json["createdAt"]),
-    updatedAt: json["updatedAt"] == null ? undefined : new Date(json["updatedAt"]),
+    updatedAt:
+      json["updatedAt"] === undefined
+        ? undefined
+        : json["updatedAt"] === null
+          ? null
+          : new Date(json["updatedAt"]),
   };
 }
 

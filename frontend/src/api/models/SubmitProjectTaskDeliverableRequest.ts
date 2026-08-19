@@ -65,8 +65,18 @@ export function SubmitProjectTaskDeliverableRequestFromJSONTyped(
   }
   return {
     deliverableTitle: json["deliverableTitle"],
-    deliverableDesc: json["deliverableDesc"] == null ? undefined : json["deliverableDesc"],
-    deliverableUrl: json["deliverableUrl"] == null ? undefined : json["deliverableUrl"],
+    deliverableDesc:
+      json["deliverableDesc"] === undefined
+        ? undefined
+        : json["deliverableDesc"] === null
+          ? null
+          : json["deliverableDesc"],
+    deliverableUrl:
+      json["deliverableUrl"] === undefined
+        ? undefined
+        : json["deliverableUrl"] === null
+          ? null
+          : json["deliverableUrl"],
   };
 }
 

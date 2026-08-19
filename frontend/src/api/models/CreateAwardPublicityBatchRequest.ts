@@ -80,7 +80,12 @@ export function CreateAwardPublicityBatchRequestFromJSONTyped(
   }
   return {
     title: json["title"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
     publicityStartAt: json["publicityStartAt"] == null ? null : new Date(json["publicityStartAt"]),
     publicityEndAt: json["publicityEndAt"] == null ? null : new Date(json["publicityEndAt"]),
     awardApplicationIds: json["awardApplicationIds"],

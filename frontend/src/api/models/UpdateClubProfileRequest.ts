@@ -104,12 +104,38 @@ export function UpdateClubProfileRequestFromJSONTyped(
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     name: json["name"],
     category: json["category"],
-    description: json["description"] == null ? undefined : json["description"],
-    logoUrl: json["logoUrl"] == null ? undefined : json["logoUrl"],
-    presidentUserId: json["presidentUserId"] == null ? undefined : json["presidentUserId"],
-    advisorUserId: json["advisorUserId"] == null ? undefined : json["advisorUserId"],
-    advisorName: json["advisorName"] == null ? undefined : json["advisorName"],
-    contactPhone: json["contactPhone"] == null ? undefined : json["contactPhone"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
+    logoUrl:
+      json["logoUrl"] === undefined ? undefined : json["logoUrl"] === null ? null : json["logoUrl"],
+    presidentUserId:
+      json["presidentUserId"] === undefined
+        ? undefined
+        : json["presidentUserId"] === null
+          ? null
+          : json["presidentUserId"],
+    advisorUserId:
+      json["advisorUserId"] === undefined
+        ? undefined
+        : json["advisorUserId"] === null
+          ? null
+          : json["advisorUserId"],
+    advisorName:
+      json["advisorName"] === undefined
+        ? undefined
+        : json["advisorName"] === null
+          ? null
+          : json["advisorName"],
+    contactPhone:
+      json["contactPhone"] === undefined
+        ? undefined
+        : json["contactPhone"] === null
+          ? null
+          : json["contactPhone"],
   };
 }
 

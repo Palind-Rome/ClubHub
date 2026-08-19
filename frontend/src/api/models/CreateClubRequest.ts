@@ -71,7 +71,12 @@ export function CreateClubRequestFromJSONTyped(
     currentUserId: json["currentUserId"] == null ? undefined : json["currentUserId"],
     name: json["name"],
     category: json["category"],
-    description: json["description"] == null ? undefined : json["description"],
+    description:
+      json["description"] === undefined
+        ? undefined
+        : json["description"] === null
+          ? null
+          : json["description"],
   };
 }
 

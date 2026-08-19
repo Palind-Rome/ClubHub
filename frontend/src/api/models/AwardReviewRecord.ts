@@ -147,11 +147,36 @@ export function AwardReviewRecordFromJSONTyped(
     reviewRound: json["reviewRound"],
     reviewStep: json["reviewStep"],
     reviewResult: json["reviewResult"],
-    reviewerUserId: json["reviewerUserId"] == null ? undefined : json["reviewerUserId"],
-    reviewerName: json["reviewerName"] == null ? undefined : json["reviewerName"],
-    reviewComment: json["reviewComment"] == null ? undefined : json["reviewComment"],
-    fromStatus: json["fromStatus"] == null ? undefined : json["fromStatus"],
-    toStatus: json["toStatus"] == null ? undefined : json["toStatus"],
+    reviewerUserId:
+      json["reviewerUserId"] === undefined
+        ? undefined
+        : json["reviewerUserId"] === null
+          ? null
+          : json["reviewerUserId"],
+    reviewerName:
+      json["reviewerName"] === undefined
+        ? undefined
+        : json["reviewerName"] === null
+          ? null
+          : json["reviewerName"],
+    reviewComment:
+      json["reviewComment"] === undefined
+        ? undefined
+        : json["reviewComment"] === null
+          ? null
+          : json["reviewComment"],
+    fromStatus:
+      json["fromStatus"] === undefined
+        ? undefined
+        : json["fromStatus"] === null
+          ? null
+          : json["fromStatus"],
+    toStatus:
+      json["toStatus"] === undefined
+        ? undefined
+        : json["toStatus"] === null
+          ? null
+          : json["toStatus"],
     reviewedAt: new Date(json["reviewedAt"]),
   };
 }

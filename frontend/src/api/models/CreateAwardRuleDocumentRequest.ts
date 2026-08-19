@@ -147,17 +147,52 @@ export function CreateAwardRuleDocumentRequestFromJSONTyped(
     ruleTitle: json["ruleTitle"],
     ruleScope: json["ruleScope"] == null ? undefined : json["ruleScope"],
     academicYear: json["academicYear"],
-    termName: json["termName"] == null ? undefined : json["termName"],
-    issuerName: json["issuerName"] == null ? undefined : json["issuerName"],
-    summary: json["summary"] == null ? undefined : json["summary"],
-    contentText: json["contentText"] == null ? undefined : json["contentText"],
-    materialUrl: json["materialUrl"] == null ? undefined : json["materialUrl"],
-    materialName: json["materialName"] == null ? undefined : json["materialName"],
+    termName:
+      json["termName"] === undefined
+        ? undefined
+        : json["termName"] === null
+          ? null
+          : json["termName"],
+    issuerName:
+      json["issuerName"] === undefined
+        ? undefined
+        : json["issuerName"] === null
+          ? null
+          : json["issuerName"],
+    summary:
+      json["summary"] === undefined ? undefined : json["summary"] === null ? null : json["summary"],
+    contentText:
+      json["contentText"] === undefined
+        ? undefined
+        : json["contentText"] === null
+          ? null
+          : json["contentText"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
+    materialName:
+      json["materialName"] === undefined
+        ? undefined
+        : json["materialName"] === null
+          ? null
+          : json["materialName"],
     versionNo: json["versionNo"] == null ? undefined : json["versionNo"],
     ruleStatus: json["ruleStatus"] == null ? undefined : json["ruleStatus"],
     effectiveStartAt:
-      json["effectiveStartAt"] == null ? undefined : new Date(json["effectiveStartAt"]),
-    effectiveEndAt: json["effectiveEndAt"] == null ? undefined : new Date(json["effectiveEndAt"]),
+      json["effectiveStartAt"] === undefined
+        ? undefined
+        : json["effectiveStartAt"] === null
+          ? null
+          : new Date(json["effectiveStartAt"]),
+    effectiveEndAt:
+      json["effectiveEndAt"] === undefined
+        ? undefined
+        : json["effectiveEndAt"] === null
+          ? null
+          : new Date(json["effectiveEndAt"]),
   };
 }
 

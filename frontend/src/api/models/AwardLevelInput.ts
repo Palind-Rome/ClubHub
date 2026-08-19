@@ -95,11 +95,17 @@ export function AwardLevelInputFromJSONTyped(
     return json;
   }
   return {
-    awardLevelId: json["awardLevelId"] == null ? undefined : json["awardLevelId"],
+    awardLevelId:
+      json["awardLevelId"] === undefined
+        ? undefined
+        : json["awardLevelId"] === null
+          ? null
+          : json["awardLevelId"],
     levelName: json["levelName"],
     awardScore: json["awardScore"],
-    amount: json["amount"] == null ? undefined : json["amount"],
-    quota: json["quota"] == null ? undefined : json["quota"],
+    amount:
+      json["amount"] === undefined ? undefined : json["amount"] === null ? null : json["amount"],
+    quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
     displayOrder: json["displayOrder"] == null ? undefined : json["displayOrder"],
     levelStatus: json["levelStatus"] == null ? undefined : json["levelStatus"],
   };

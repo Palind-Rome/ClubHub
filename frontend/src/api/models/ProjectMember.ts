@@ -143,13 +143,29 @@ export function ProjectMemberFromJSONTyped(json: any, ignoreDiscriminator: boole
     projectMemberId: json["projectMemberId"],
     projectId: json["projectId"],
     userId: json["userId"],
-    realName: json["realName"] == null ? undefined : json["realName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
+    realName:
+      json["realName"] === undefined
+        ? undefined
+        : json["realName"] === null
+          ? null
+          : json["realName"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
     memberRole: json["memberRole"],
     memberStatus: json["memberStatus"],
     joinedAt: new Date(json["joinedAt"]),
-    leftAt: json["leftAt"] == null ? undefined : new Date(json["leftAt"]),
-    remark: json["remark"] == null ? undefined : json["remark"],
+    leftAt:
+      json["leftAt"] === undefined
+        ? undefined
+        : json["leftAt"] === null
+          ? null
+          : new Date(json["leftAt"]),
+    remark:
+      json["remark"] === undefined ? undefined : json["remark"] === null ? null : json["remark"],
     createdAt: new Date(json["createdAt"]),
     updatedAt: new Date(json["updatedAt"]),
   };

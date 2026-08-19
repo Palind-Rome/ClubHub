@@ -220,7 +220,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO ROLES target
 USING (
   SELECT 4 AS role_id, 'CLUB_OFFICER' AS role_code, '社团干部' AS role_name,
-         'club' AS role_scope, '指定社团内角色，可管理招募、活动、通知、资源、项目任务，并处理本社团物资借还记录。' AS permission_desc
+         'club' AS role_scope, '指定社团内角色，可管理招募、活动、通知、资源、项目任务，查看本社团经费，并处理本社团物资借还记录。' AS permission_desc
   FROM dual
 ) source
 ON (target.role_id = source.role_id)
@@ -236,7 +236,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO ROLES target
 USING (
   SELECT 5 AS role_id, 'CLUB_LEADER' AS role_code, '社团负责人' AS role_name,
-         'club' AS role_scope, '指定社团内最高业务角色，可维护社团信息、成员、社团内部角色、运营统计和本社团物资库存。' AS permission_desc
+         'club' AS role_scope, '指定社团内最高业务角色，可维护社团信息、成员、社团内部角色、运营统计、本社团物资库存和经费申请。' AS permission_desc
   FROM dual
 ) source
 ON (target.role_id = source.role_id)
@@ -268,7 +268,7 @@ WHEN NOT MATCHED THEN
 MERGE INTO ROLES target
 USING (
   SELECT 7 AS role_id, 'CLUB_ADMIN' AS role_code, '社团管理员' AS role_name,
-         'system' AS role_scope, '校级社团管理角色，可审核社团注册申请、管理社团状态并维护全校社团物资库存，不参与社团内部档案、成员任期和干部换届维护。' AS permission_desc
+         'system' AS role_scope, '校级社团管理角色，可审核社团注册申请、管理社团状态并维护全校社团物资库存和年度经费账户，不参与社团内部档案、成员任期和干部换届维护。' AS permission_desc
   FROM dual
 ) source
 ON (target.role_id = source.role_id)

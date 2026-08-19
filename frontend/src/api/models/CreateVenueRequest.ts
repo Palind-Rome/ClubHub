@@ -99,11 +99,22 @@ export function CreateVenueRequestFromJSONTyped(
   return {
     operatorUserId: json["operatorUserId"],
     name: json["name"],
-    building: json["building"] == null ? undefined : json["building"],
-    roomNo: json["roomNo"] == null ? undefined : json["roomNo"],
+    building:
+      json["building"] === undefined
+        ? undefined
+        : json["building"] === null
+          ? null
+          : json["building"],
+    roomNo:
+      json["roomNo"] === undefined ? undefined : json["roomNo"] === null ? null : json["roomNo"],
     capacity: json["capacity"],
     status: json["status"] == null ? undefined : json["status"],
-    managerUserId: json["managerUserId"] == null ? undefined : json["managerUserId"],
+    managerUserId:
+      json["managerUserId"] === undefined
+        ? undefined
+        : json["managerUserId"] === null
+          ? null
+          : json["managerUserId"],
   };
 }
 

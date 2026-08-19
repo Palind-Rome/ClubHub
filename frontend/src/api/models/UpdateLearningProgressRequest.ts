@@ -57,7 +57,12 @@ export function UpdateLearningProgressRequestFromJSONTyped(
   }
   return {
     progress: json["progress"],
-    durationSeconds: json["durationSeconds"] == null ? undefined : json["durationSeconds"],
+    durationSeconds:
+      json["durationSeconds"] === undefined
+        ? undefined
+        : json["durationSeconds"] === null
+          ? null
+          : json["durationSeconds"],
   };
 }
 

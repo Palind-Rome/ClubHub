@@ -30,11 +30,16 @@ public class VenuesController : ControllerBase
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
+    private readonly PublicQueryCacheService _publicQueryCache;
 
-    public VenuesController(ClubHubDbContext db, AuthService authService)
+    public VenuesController(
+        ClubHubDbContext db,
+        AuthService authService,
+        PublicQueryCacheService publicQueryCache)
     {
         _db = db;
         _authService = authService;
+        _publicQueryCache = publicQueryCache;
     }
 
     [HttpGet]
@@ -77,10 +82,8 @@ public class VenuesController : ControllerBase
         var managerValidation = await ValidateManagerAsync(req.ManagerUserId);
         if (managerValidation is not null) return managerValidation;
 
-        var nextId = (await _db.Venues.MaxAsync(v => (int?)v.VenueId) ?? 0) + 1;
         var venue = new Venue
         {
-            VenueId = nextId,
             VenueName = normalizedName,
             Building = NullIfBlank(req.Building),
             RoomNo = NullIfBlank(req.RoomNo),
@@ -92,6 +95,9 @@ public class VenuesController : ControllerBase
 
         _db.Venues.Add(venue);
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateVenueAsync(
+            venue.VenueId,
+            CancellationToken.None);
 
         return CreatedAtAction(nameof(GetById), new { venueId = venue.VenueId }, ToDto(venue));
     }
@@ -99,10 +105,9 @@ public class VenuesController : ControllerBase
     [HttpGet("{venueId:int}")]
     public async Task<IActionResult> GetById(int venueId)
     {
-        var venue = await _db.Venues
-            .AsNoTracking()
-            .Where(v => v.VenueId == venueId)
-            .FirstOrDefaultAsync();
+        var venue = await _publicQueryCache.GetVenueAsync(
+            venueId,
+            HttpContext.RequestAborted);
 
         return venue is null
             ? NotFound(Error("venue_not_found", "场地不存在。"))
@@ -133,6 +138,9 @@ public class VenuesController : ControllerBase
         venue.ManagerUserId = req.ManagerUserId;
 
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateVenueAsync(
+            venueId,
+            CancellationToken.None);
         return Ok(ToDto(venue));
     }
 
@@ -169,6 +177,9 @@ public class VenuesController : ControllerBase
         venue.VenueStatus = normalizedStatus;
         UpdateMaintenanceUntil(venueId, normalizedStatus, req.MaintenanceUntil);
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateVenueAsync(
+            venueId,
+            CancellationToken.None);
 
         return Ok(ToDto(venue));
     }
@@ -189,6 +200,9 @@ public class VenuesController : ControllerBase
         _db.Venues.Remove(venue);
         MaintenanceUntilByVenueId.TryRemove(venueId, out _);
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateVenueAsync(
+            venueId,
+            CancellationToken.None);
 
         return NoContent();
     }
@@ -338,6 +352,23 @@ public class VenuesController : ControllerBase
             venue.ManagerUserId,
             venue.CreatedAt ?? DateTime.MinValue,
             status == "maintenance" && MaintenanceUntilByVenueId.TryGetValue(venue.VenueId, out var maintenanceUntil)
+                ? maintenanceUntil
+                : null);
+    }
+
+    private static VenueDto ToDto(VenuePublicCacheEntry venue)
+    {
+        var status = NormalizeVenueStatus(venue.Status);
+        return new VenueDto(
+            venue.Id,
+            venue.Name,
+            venue.Building,
+            venue.RoomNo,
+            venue.Capacity,
+            status,
+            venue.ManagerUserId,
+            venue.CreatedAt,
+            status == "maintenance" && MaintenanceUntilByVenueId.TryGetValue(venue.Id, out var maintenanceUntil)
                 ? maintenanceUntil
                 : null);
     }

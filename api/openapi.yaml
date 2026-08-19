@@ -16,6 +16,8 @@ paths:
   /api/health:
     get:
       summary: 健康检查
+      description: 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
+      deprecated: true
       operationId: healthCheck
       responses:
         "200":
@@ -24,6 +26,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /health/live:
+    get:
+      summary: API 存活检查
+      description: 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+      operationId: healthCheckLive
+      responses:
+        "200":
+          description: API 进程正常运行
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
+
+  /health/ready:
+    get:
+      summary: API 就绪检查
+      description: 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+      operationId: healthCheckReady
+      responses:
+        "200":
+          description: API 已就绪
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
+        "503":
+          description: 至少一个已启用的依赖不可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyHealthReport"
 
   /api/auth/register:
     post:
@@ -94,7 +128,7 @@ paths:
   /api/auth/session:
     get:
       summary: 刷新当前用户会话
-      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+      description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
       operationId: refreshAuthSession
       security:
         - bearerAuth: []
@@ -119,6 +153,29 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/auth/logout:
+    post:
+      summary: 注销当前登录会话
+      description: 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+      operationId: logoutCurrentSession
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 当前登录会话已注销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法安全注销
           content:
             application/json:
               schema:
@@ -154,14 +211,11 @@ paths:
 
   /api/auth/permissions/check:
     get:
-      summary: 检查用户是否拥有指定权限
+      summary: 检查当前用户是否拥有指定权限
       operationId: checkPermission
+      security:
+        - bearerAuth: []
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
         - name: permission
           in: query
           required: true
@@ -187,6 +241,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
         "404":
           description: 用户不存在
           content:
@@ -198,6 +258,8 @@ paths:
     post:
       summary: 分配用户角色
       operationId: assignUserRole
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -233,7 +295,12 @@ paths:
   /api/notices:
     get:
       summary: 查询公告通知
-      description: 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+      description: |
+        从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果：
+        普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知；
+        具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计；
+        具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。
+        普通接收者只返回本人已读状态，不返回受众人数和已读人数。
       operationId: getNotices
       security:
         - bearerAuth: []
@@ -294,7 +361,10 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     post:
       summary: 新建公告通知
-      description: 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+      description: |
+        从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师
+        可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布
+        全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
       operationId: createNotice
       security:
         - bearerAuth: []
@@ -347,7 +417,7 @@ paths:
   /api/notices/{noticeId}:
     patch:
       summary: 编辑或发布通知草稿
-      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+      description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
       operationId: updateNoticeDraft
       security:
         - bearerAuth: []
@@ -420,7 +490,7 @@ paths:
                 $ref: "#/components/schemas/ApiError"
     delete:
       summary: 删除通知草稿
-      description: 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+      description: 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
       operationId: deleteNoticeDraft
       security:
         - bearerAuth: []
@@ -477,7 +547,7 @@ paths:
   /api/notices/{noticeId}/reads:
     post:
       summary: 标记通知已读
-      description: 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+      description: 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
       operationId: markNoticeRead
       security:
         - bearerAuth: []
@@ -516,7 +586,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: 通知仍是草稿，不能标记已读
+          description: 通知不是已发布状态，不能标记已读
           content:
             application/json:
               schema:
@@ -633,6 +703,11 @@ paths:
       summary: 提交社团注册申请
       description: 仅学生角色可以提交社团注册申请；平台管理员、指导老师等非学生角色不能通过该入口发起申请。
       operationId: createClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -660,7 +735,11 @@ paths:
       summary: 修改退回的社团注册申请并重新提交
       description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
       operationId: resubmitClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -692,7 +771,11 @@ paths:
     patch:
       summary: 平台管理员审核社团注册申请
       operationId: reviewClubApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1247,6 +1330,159 @@ paths:
         "409":
           description: 社团状态不允许移出或成员身份已结束
 
+  /api/clubs/{clubId}/forum-posts:
+    get:
+      summary: 查询社团讨论区话题
+      operationId: getClubForumPosts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: includeHidden
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 当前用户可见的话题及其回复
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumPost"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      summary: 发布社团讨论区话题或回复
+      operationId: createClubForumPost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateForumPostRequest"
+      responses:
+        "201":
+          description: 话题或回复发布成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          description: 内容、父级帖子或层级不符合规则
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团或父级话题不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/clubs/{clubId}/forum-posts/{postId}/moderation:
+    patch:
+      summary: 置顶或隐藏社团讨论区内容
+      operationId: moderateClubForumPost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerateForumPostRequest"
+      responses:
+        "200":
+          description: 管理状态已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          description: 回复不能置顶，或状态不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有讨论区管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团或帖子不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/clubs/{clubId}/award-rule-documents:
     get:
       summary: 查询评奖评优评定细则
@@ -1645,7 +1881,11 @@ paths:
       summary: 创建评奖评优申请或负责人推荐
       description: 成员可为本人创建草稿或提交申请；社团负责人、指导老师、管理员可为本社团成员发起推荐。申请必须引用当前社团处于开放申请或审核中、且仍在申请时间窗内的奖项项目和启用等级，提交后进入负责人初审。
       operationId: createClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1833,7 +2073,11 @@ paths:
       summary: 提交或重新提交评奖评优申请
       description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
       operationId: submitClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -1865,7 +2109,11 @@ paths:
       summary: 审核评奖评优申请
       description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
       operationId: reviewClubAwardApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: clubId
           in: path
           required: true
@@ -2332,7 +2580,11 @@ paths:
       summary: 审核社团招募
       description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
       operationId: reviewRecruitment
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
           in: path
           required: true
@@ -2395,7 +2647,11 @@ paths:
       summary: 提交招募报名
       description: 学生在招募开放时间内提交报名理由；同一学生对同一招募只能提交一次。
       operationId: createRecruitmentApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: recruitId
           in: path
           required: true
@@ -2428,7 +2684,11 @@ paths:
       summary: 筛选招募报名
       description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
       operationId: reviewRecruitmentApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: applicationId
           in: path
           required: true
@@ -2531,9 +2791,11 @@ paths:
       summary: 报名活动
       description: 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
       operationId: registerActivity
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: activityId
           in: path
           required: true
@@ -2572,9 +2834,11 @@ paths:
       summary: 审核活动并发布或驳回
       description: 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
       operationId: reviewActivity
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: activityId
           in: path
           required: true
@@ -2604,8 +2868,9 @@ paths:
 
   /api/activities/{activityId}/budget:
     put:
-      summary: 提交或更新活动经费预算申请
-      description: 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
+      summary: 旧活动经费预算入口（已停用）
+      description: 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+      deprecated: true
       operationId: applyActivityBudget
       parameters:
         - name: activityId
@@ -2634,11 +2899,14 @@ paths:
           description: 当前用户没有该社团的经费申请权限
         "404":
           description: 活动不存在
+        "409":
+          description: 旧活动经费预算入口已停用，请改用经费管理闭环接口
 
   /api/activities/{activityId}/budget/review:
     post:
-      summary: 审批活动经费预算
-      description: 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
+      summary: 旧活动经费审批入口（已停用）
+      description: 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+      deprecated: true
       operationId: reviewActivityBudget
       parameters:
         - name: activityId
@@ -2667,6 +2935,284 @@ paths:
           description: 当前用户没有该社团的经费审批权限
         "404":
           description: 活动不存在
+        "409":
+          description: 旧活动经费审批入口已停用，请改用经费管理闭环接口
+
+  /api/budget/accounts:
+    get:
+      summary: 获取经费账户列表
+      description: 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+      operationId: getBudgetAccounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: fiscalYear
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 经费账户列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetAccount"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
+    post:
+      summary: 创建社团年度经费账户
+      description: 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+      operationId: createBudgetAccount
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBudgetAccountRequest"
+      responses:
+        "201":
+          description: 经费账户已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetAccount"
+        "400":
+          description: 请求参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有维护经费账户权限
+        "409":
+          description: 同一社团同一年度已存在经费账户
+
+  /api/budget/accounts/{accountId}:
+    put:
+      summary: 更新社团年度经费账户
+      description: 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+      operationId: updateBudgetAccount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBudgetAccountRequest"
+      responses:
+        "200":
+          description: 经费账户已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetAccount"
+        "400":
+          description: 请求参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有维护经费账户权限
+        "404":
+          description: 经费账户不存在
+
+  /api/budget/applications:
+    get:
+      summary: 获取经费申请列表
+      description: 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+      operationId: getBudgetApplications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, cancelled]
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [activity_budget, purchase, reimbursement]
+      responses:
+        "200":
+          description: 经费申请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetApplication"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
+    post:
+      summary: 提交经费申请
+      description: 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+      operationId: createBudgetApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBudgetApplicationRequest"
+      responses:
+        "201":
+          description: 经费申请已提交，等待审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 请求参数或业务规则不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的经费申请权限
+        "404":
+          description: 经费账户或活动不存在
+        "409":
+          description: 经费账户余额不足或账户状态不允许申请
+
+  /api/budget/applications/{applicationId}/review:
+    post:
+      summary: 审核经费申请
+      description: 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+      operationId: reviewBudgetApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewBudgetApplicationRequest"
+      responses:
+        "200":
+          description: 经费审核结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 当前申请状态不允许审核或参数不合法
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的经费审核权限
+        "404":
+          description: 经费申请不存在
+        "409":
+          description: 账户余额不足或并发审核冲突
+
+  /api/budget/applications/{applicationId}/cancel:
+    post:
+      summary: 撤销经费申请
+      description: 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+      operationId: cancelBudgetApplication
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelBudgetApplicationRequest"
+      responses:
+        "200":
+          description: 经费申请已撤销
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 当前申请状态不允许撤销
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有撤销该申请的权限
+        "404":
+          description: 经费申请不存在
+
+  /api/budget/transactions:
+    get:
+      summary: 获取经费流水列表
+      description: 返回当前用户授权范围内的经费流水，用于审计账户余额。
+      operationId: getBudgetTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 经费流水列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetTransaction"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有经费查看权限
 
   /api/activities/{activityId}/checkin-settings:
     put:
@@ -2841,6 +3387,111 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/users/{userId}/status:
+    patch:
+      summary: 更新用户账号状态
+      description: 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+      operationId: updateUserAccountStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserAccountStatusRequest"
+      responses:
+        "200":
+          description: 更新后的用户摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          description: 状态值不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有账号状态管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 不允许停用当前操作人或最后一名有效系统管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 无法安全失效权限或撤销会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/users/{userId}/sessions/revoke:
+    post:
+      summary: 强制撤销用户的全部登录会话
+      operationId: revokeUserSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 目标用户的全部登录会话已撤销
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有强制下线权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 目标用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Redis 暂不可用，无法确认撤销结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/projects:
     get:
       summary: 获取项目列表
@@ -2882,8 +3533,11 @@ paths:
     post:
       summary: 社团负责人或指导老师提交项目立项申请
       operationId: createProject
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -3003,9 +3657,11 @@ paths:
       summary: 指导老师审核项目立项申请
       description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
       operationId: reviewProject
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -3517,9 +4173,11 @@ paths:
       summary: 提交项目任务成果
       description: 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
       operationId: submitProjectTaskDeliverable
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -3611,9 +4269,11 @@ paths:
       summary: 审核项目任务成果
       description: 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
       operationId: reviewProjectTaskDeliverable
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: projectId
           in: path
           required: true
@@ -4007,8 +4667,11 @@ paths:
     post:
       summary: 提交场地预约申请
       operationId: createVenueReservation
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -4169,9 +4832,11 @@ paths:
     post:
       summary: 审批场地预约
       operationId: reviewVenueReservation
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: reservationId
           in: path
           required: true
@@ -4620,9 +5285,11 @@ paths:
       summary: 审核课程或学习资源
       description: 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
       operationId: reviewLearningItem
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: itemId
           in: path
           required: true
@@ -4656,9 +5323,11 @@ paths:
       summary: 加入培训课程
       description: 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
       operationId: enrollLearningItem
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: itemId
           in: path
           required: true
@@ -5062,8 +5731,11 @@ paths:
     post:
       summary: Register a material borrow
       operationId: borrowMaterial
+      x-idempotency-required: true
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -5112,9 +5784,11 @@ paths:
     post:
       summary: Register material return
       operationId: returnMaterialBorrow
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: borrowId
           in: path
           required: true
@@ -5162,9 +5836,11 @@ paths:
     post:
       summary: Register material damage
       operationId: damageMaterialBorrow
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: borrowId
           in: path
           required: true
@@ -5215,6 +5891,18 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: "标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。"
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._~:+/\-=]+$'
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -5256,6 +5944,51 @@ components:
       required:
         - status
         - timestamp
+
+    DependencyHealthReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+          example: healthy
+        durationMs:
+          type: number
+          format: double
+          minimum: 0
+          example: 12.5
+        checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DependencyHealthCheck"
+          example:
+            redis:
+              status: healthy
+              description: Redis is available.
+      required:
+        - status
+        - durationMs
+        - checks
+
+    DependencyHealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+          example: healthy
+        description:
+          type: string
+          nullable: true
+          example: Redis is available.
+      required:
+        - status
 
     RegisterRequest:
       type: object
@@ -5353,12 +6086,8 @@ components:
 
     AssignRoleRequest:
       type: object
-      description: 为目标用户分配系统级或社团级角色。
+      description: 为目标用户分配系统级或社团级角色；操作人从 Bearer 登录令牌读取。
       properties:
-        operatorUserId:
-          type: integer
-          description: 发起分配操作的用户 ID。
-          example: 1
         targetUserId:
           type: integer
           description: 被分配角色的用户 ID。
@@ -5374,7 +6103,6 @@ components:
           nullable: true
           example: 1
       required:
-        - operatorUserId
         - targetUserId
         - roleCode
 
@@ -5657,12 +6385,13 @@ components:
           nullable: true
         audienceCount:
           type: integer
-          description: 当前规则下可接收该通知的用户数。
+          description: 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
           nullable: true
           example: 28
         readCount:
           type: integer
-          description: 已读人数。
+          description: 已读人数；仅发布者或对应范围的通知管理者可见。
+          nullable: true
           example: 12
       required:
         - id
@@ -5674,7 +6403,6 @@ components:
         - publishAt
         - noticeStatus
         - isRead
-        - readCount
 
     CreateNoticeRequest:
       type: object
@@ -5729,6 +6457,104 @@ components:
         - title
         - content
         - targetType
+
+    ForumPost:
+      type: object
+      description: 社团讨论区话题或回复
+      properties:
+        id:
+          type: integer
+          description: 帖子 ID。
+          example: 101
+        clubId:
+          type: integer
+          description: 所属社团 ID。
+          example: 1
+        userId:
+          type: integer
+          description: 发布用户 ID。
+          example: 42
+        userName:
+          type: string
+          description: 发布用户显示名称。
+          nullable: true
+          example: 张三
+        parentPostId:
+          type: integer
+          description: 父级话题 ID；为空表示话题，非空表示对该话题的回复。
+          nullable: true
+          example: 100
+        title:
+          type: string
+          description: 话题标题；回复时为空。
+          nullable: true
+          example: 下周活动分工讨论
+        content:
+          type: string
+          description: 帖子正文内容。
+          example: 请大家在今晚前确认可参与的工作内容。
+        isTop:
+          type: boolean
+          description: 是否置顶；仅话题可以置顶，回复不可置顶。
+          example: false
+        postStatus:
+          type: string
+          description: 帖子状态；hidden 表示隐藏内容，仅讨论区管理员可查看。
+          enum: [published, hidden]
+          example: published
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间。
+          example: 2026-08-18T09:30:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最后更新时间。
+          nullable: true
+          example: 2026-08-18T10:00:00Z
+        replies:
+          type: array
+          description: 该话题的回复列表；回复对象的该字段为空数组。
+          items:
+            $ref: "#/components/schemas/ForumPost"
+      required: [id, clubId, userId, content, isTop, postStatus, createdAt, replies]
+
+    CreateForumPostRequest:
+      type: object
+      properties:
+        parentPostId:
+          type: integer
+          description: 要回复的话题 ID；为空时创建话题，不能指向回复。
+          nullable: true
+          example: 100
+        title:
+          type: string
+          description: 话题标题；创建回复时必须为空。
+          nullable: true
+          maxLength: 120
+          example: 下周活动分工讨论
+        content:
+          type: string
+          description: 帖子正文，去除首尾空白后不能为空。
+          minLength: 1
+          maxLength: 4000
+          example: 请大家在今晚前确认可参与的工作内容。
+      required: [content]
+
+    ModerateForumPostRequest:
+      type: object
+      properties:
+        isTop:
+          type: boolean
+          description: 是否置顶；仅一级话题可以置顶，回复必须为 false。
+          example: true
+        postStatus:
+          type: string
+          description: 管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。
+          enum: [published, hidden]
+          example: published
+      required: [isTop, postStatus]
 
     NoticeReadResult:
       type: object
@@ -8492,6 +9318,17 @@ components:
         - currentUserId
         - decision
 
+    UpdateUserAccountStatusRequest:
+      type: object
+      properties:
+        accountStatus:
+          type: string
+          enum: [normal, disabled]
+          example: disabled
+          description: normal 表示启用，disabled 表示停用。
+      required:
+        - accountStatus
+
     UserSummary:
       type: object
       properties:
@@ -8576,6 +9413,416 @@ components:
       required:
         - clubId
         - clubName
+
+    BudgetAccount:
+      type: object
+      description: 社团年度经费账户。已占用和余额由经费流水汇总得到，不由客户端手填。
+      properties:
+        id:
+          type: integer
+          description: 经费账户 ID。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 账户所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 账户所属社团名称。
+          example: 计算机协会
+        fiscalYear:
+          type: string
+          description: 经费年度，通常使用自然年或学年标识。
+          example: "2026"
+        accountName:
+          type: string
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          description: 年度批准额度。
+          example: 50000
+        committedAmount:
+          type: number
+          format: double
+          description: 已由审批通过申请占用的金额。
+          example: 12000
+        remainingAmount:
+          type: number
+          format: double
+          description: 当前剩余额度，由年度额度和流水汇总计算。
+          example: 38000
+        status:
+          type: string
+          enum: [active, closed]
+          description: 账户状态；active 启用，closed 关闭。
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: 账户创建时间。
+          example: "2026-07-20T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 账户最近更新时间。
+          example: "2026-07-20T10:30:00Z"
+      required:
+        - id
+        - clubId
+        - clubName
+        - fiscalYear
+        - accountName
+        - initialAmount
+        - committedAmount
+        - remainingAmount
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateBudgetAccountRequest:
+      type: object
+      description: 创建社团年度经费账户的请求。
+      properties:
+        clubId:
+          type: integer
+          description: 账户所属社团 ID。
+          example: 1
+        fiscalYear:
+          type: string
+          minLength: 4
+          maxLength: 20
+          description: 经费年度，同一社团同一年度只能有一个经费账户。
+          example: "2026"
+        accountName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: 年度批准额度。
+          example: 50000
+      required:
+        - clubId
+        - fiscalYear
+        - accountName
+        - initialAmount
+
+    UpdateBudgetAccountRequest:
+      type: object
+      description: 维护社团年度经费账户的请求。
+      properties:
+        accountName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费账户名称。
+          example: 2026 年社团活动经费
+        initialAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: 年度批准额度，不能低于已审批占用金额。
+          example: 60000
+        status:
+          type: string
+          enum: [active, closed]
+          description: 账户状态；active 启用，closed 关闭。
+          example: active
+      required:
+        - accountName
+        - initialAmount
+        - status
+
+    BudgetApplication:
+      type: object
+      description: 经费申请记录，覆盖活动预算、采购和报销等基础类型。
+      properties:
+        id:
+          type: integer
+          description: 经费申请 ID。
+          example: 1000000
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 申请所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 申请所属社团名称。
+          example: 计算机协会
+        activityId:
+          type: integer
+          nullable: true
+          description: 关联活动 ID；采购、报销等非活动场景可为空。
+          example: 12
+        activityTitle:
+          type: string
+          nullable: true
+          description: 关联活动标题。
+          example: 迎新技术分享会
+        applicantUserId:
+          type: integer
+          description: 申请人用户 ID，由服务端根据登录态写入。
+          example: 3
+        applicantName:
+          type: string
+          description: 申请人展示名称。
+          example: 王明
+        type:
+          type: string
+          enum: [activity_budget, purchase, reimbursement]
+          description: 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
+          example: activity_budget
+        title:
+          type: string
+          description: 经费申请标题。
+          example: 迎新活动物料采购
+        amount:
+          type: number
+          format: double
+          description: 申请金额。
+          example: 1200
+        purpose:
+          type: string
+          description: 经费用途。
+          example: 活动布置、设备耗材、报名物料
+        detail:
+          type: string
+          nullable: true
+          description: 经费明细说明，可包含预算条目、数量、单价或报销说明。
+          example: 横幅 2 条，单价 120 元；矿泉水 10 箱，单价 45 元。
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+          description: 申请状态；pending 待审核，approved 已通过，rejected 已驳回，cancelled 已撤销。
+          example: pending
+        submittedAt:
+          type: string
+          format: date-time
+          description: 申请提交时间。
+          example: "2026-07-20T10:00:00Z"
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 审核完成时间；待审核或已撤销时可为空。
+          example: "2026-07-20T12:00:00Z"
+        reviewerUserId:
+          type: integer
+          nullable: true
+          description: 审核人用户 ID；待审核或已撤销时可为空。
+          example: 5
+        reviewerName:
+          type: string
+          nullable: true
+          description: 审核人展示名称。
+          example: 张老师
+        reviewComment:
+          type: string
+          nullable: true
+          description: 审核意见或撤销说明。
+          example: 预算合理，同意执行。
+      required:
+        - id
+        - accountId
+        - clubId
+        - clubName
+        - applicantUserId
+        - applicantName
+        - type
+        - title
+        - amount
+        - purpose
+        - status
+        - submittedAt
+
+    CreateBudgetApplicationRequest:
+      type: object
+      description: 提交经费申请。申请人由服务端从登录态写入，客户端无需提交 applicantUserId。
+      properties:
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        activityId:
+          type: integer
+          nullable: true
+          description: 关联活动，可不填。
+          example: 12
+        type:
+          type: string
+          enum: [activity_budget, purchase, reimbursement]
+          description: 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
+          example: activity_budget
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费申请标题。
+          example: 迎新活动物料采购
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: 申请金额，必须大于 0。
+          example: 1200
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费用途。
+          example: 活动布置、设备耗材、报名物料
+        detail:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: 经费明细说明，可包含预算条目、数量、单价或报销说明。
+          example: 横幅 2 条，单价 120 元；矿泉水 10 箱，单价 45 元。
+      required:
+        - accountId
+        - type
+        - title
+        - amount
+        - purpose
+
+    ReviewBudgetApplicationRequest:
+      type: object
+      description: 审核经费申请的请求。
+      properties:
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 审核意见。
+          example: 预算合理，同意执行。
+      required:
+        - approved
+
+    CancelBudgetApplicationRequest:
+      type: object
+      description: 撤销待审核经费申请的请求。
+      properties:
+        comment:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: 撤销说明。
+          example: 活动方案调整，暂不申请经费。
+
+    BudgetReviewRecord:
+      type: object
+      description: 经费审核记录，用于保留审核动作历史。
+      properties:
+        id:
+          type: integer
+          description: 经费审核记录 ID。
+          example: 1000000
+        applicationId:
+          type: integer
+          description: 被审核的经费申请 ID。
+          example: 1000000
+        reviewerUserId:
+          type: integer
+          description: 审核人用户 ID。
+          example: 5
+        reviewerName:
+          type: string
+          description: 审核人展示名称。
+          example: 张老师
+        approved:
+          type: boolean
+          description: 是否审核通过。
+          example: true
+        comment:
+          type: string
+          nullable: true
+          description: 审核意见。
+          example: 预算合理，同意执行。
+        reviewedAt:
+          type: string
+          format: date-time
+          description: 审核时间。
+          example: "2026-07-20T12:00:00Z"
+      required:
+        - id
+        - applicationId
+        - reviewerUserId
+        - reviewerName
+        - approved
+        - reviewedAt
+
+    BudgetTransaction:
+      type: object
+      description: 经费流水记录，余额由经费账户初始额度和流水金额汇总得到。
+      properties:
+        id:
+          type: integer
+          description: 经费流水 ID。
+          example: 1000000
+        accountId:
+          type: integer
+          description: 关联经费账户 ID。
+          example: 1000000
+        applicationId:
+          type: integer
+          nullable: true
+          description: 关联经费申请 ID；手工调整类流水可为空。
+          example: 1000000
+        clubId:
+          type: integer
+          description: 流水所属社团 ID。
+          example: 1
+        clubName:
+          type: string
+          description: 流水所属社团名称。
+          example: 计算机协会
+        type:
+          type: string
+          enum: [commitment, expense, refund, adjustment]
+          description: 流水类型；commitment 审批占用，expense 实际支出，refund 退款，adjustment 调整。
+          example: commitment
+        amount:
+          type: number
+          format: double
+          description: 流水金额，支出或占用为负数，退款或调增为正数。
+          example: -1200
+        description:
+          type: string
+          nullable: true
+          description: 流水说明。
+          example: 经费申请通过：迎新活动物料采购
+        occurredAt:
+          type: string
+          format: date-time
+          description: 流水发生时间。
+          example: "2026-07-20T12:00:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          description: 流水创建时间。
+          example: "2026-07-20T12:00:00Z"
+      required:
+        - id
+        - accountId
+        - clubId
+        - clubName
+        - type
+        - amount
+        - occurredAt
+        - createdAt
 
     Activity:
       type: object

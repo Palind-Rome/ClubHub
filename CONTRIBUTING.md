@@ -15,6 +15,8 @@
 - `.github/`：Issue 模板、PR 模板、CI 和部署 workflow。
 - `api/`：OpenAPI 规范文件，用于生成 API 客户端代码（待补充）。
 - `backend/`：后端 ASP.NET Core Web API。
+- `backend.Tests/`：xUnit 后端测试；API 测试使用内存数据库隔离，不连接共享 Oracle。
+- `backend.OracleIntegrationTests/`：Oracle 专属集成测试；默认跳过，只允许连接隔离测试 Schema 或一次性数据库。
 - `frontend/`：前端 Vue 3 / Vite。
 - `database/`：Oracle 建表脚本、验证脚本、种子数据、视图、迁移说明。
 - `docs/`：课程最终交付文档，包括需求分析、数据库设计、系统设计与实现、答辩 PPT。
@@ -335,8 +337,8 @@ CI 内部三个 Job：
 | Job 名称 | 说明 |
 |----------|------|
 | `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
-| `build-backend` | 如果存在 `.sln`，自动 `dotnet restore` + `dotnet build`。 |
-| `build-frontend` | 如果存在 `frontend/package.json`，用 `pnpm install --frozen-lockfile` + `pnpm build` 构建（强制要求 lockfile，不运行 lint）。 |
+| `build-backend` | 后端或后端测试变更时，自动 `dotnet restore` + `dotnet build` + `dotnet test`。 |
+| `build-frontend` | 前端变更时，用 `pnpm install --frozen-lockfile` + `pnpm test` + `pnpm build` 验证（强制要求 lockfile）。 |
 
 `code-check.yml` 内部主要 Job：
 
@@ -354,9 +356,16 @@ draft PR 策略：
 - `gen-api-code.yml`：与 draft 状态无关，只按非 `main`/`dev` 分支上的 `api/**` push 或手动触发运行。
 - `deploy.yml`：只在 `main` push 或手动触发时运行，与 draft PR 无关。
 
+后端与前端测试已接入 CI。后端 API 测试必须通过统一的
+`ClubHubWebApplicationFactory` 将 Oracle `DbContext` 替换为内存测试数据库；前端测试使用
+jsdom 和 Mock HTTP。两类测试都不得依赖共享远程 Oracle。Oracle sequence、迁移脚本和
+Oracle 特有查询需要单独的集成测试时，只能使用隔离测试 Schema 或一次性数据库。
+Oracle 集成测试位于 `backend.OracleIntegrationTests/`，仅在同时设置
+`CLUBHUB_ORACLE_INTEGRATION_CONNECTION` 和
+`CLUBHUB_ORACLE_INTEGRATION_ISOLATED=true` 后运行；普通 CI 不提供这些变量。
+
 后续补充：
 
-- **测试步骤**：`dotnet test`、`pnpm test`，待后端/前端项目建立后启用。
 - **Oracle 远程语法验证**：通过 `sqlplus` 连接远端 Oracle 实例，对 `schema.sql` 做 Oracle 语法校验（不是全量刷新），待远程 Oracle 实例和 GitHub Secrets 就绪后启用。
 
 ### 部署 Secrets
@@ -372,8 +381,18 @@ draft PR 策略：
 | `SERVER_USER` | 部署用户 `deploy`，不用 root。 |
 | `SERVER_SSH_KEY` | GitHub Actions 专用 SSH 私钥。 |
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
+| `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
-服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle 容器和应用容器应连接到同一个网络。不把 Oracle 1521 端口直接暴露到公网。
+目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`、
+`REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
+`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 和
+`REDIS_IDEMPOTENCY_ENABLED`。未设置时部署默认均为 `false`。幂等开关只能在人工执行
+`20260726_add_idempotency_records.sql` 后启用；认证会话开关最后启用，启用或回滚均会
+要求所有用户重新登录。
+部署 workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
+确保部署和回滚不依赖可变的 `latest` 标签。
+
+服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle、Redis 和应用容器连接到同一个网络。Oracle 1521 和 Redis 6379 均不得直接暴露到公网。Redis 的备份、恢复、升级和排障见 `docs/operations/redis-runbook.md`。
 
 ### PR 门禁（feature → dev）
 
@@ -382,8 +401,8 @@ draft PR 策略：
 
 ┌─ ci.yml ──────────────────────────────────────────┐
 │  validate        检查文件完整性 + schema ≥12 张表    │
-│  build-backend   如果有 .sln 则 dotnet build        │
-│  build-frontend  如果有 package.json 则 pnpm build  │
+│  build-backend   dotnet restore + build + test      │
+│  build-frontend  pnpm install + test + build        │
 └────────────────────────────────────────────────────┘
 ┌─ code-check.yml ───────────────────────────────────┐
 │  pre-commit-check 通用 pre-commit 检查              │
@@ -466,7 +485,9 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
  5. 前端开发：在 src/ 中写 Vue 组件，调用生成的前端 API 函数
           │
           ▼
- 6. 本地验证：dotnet build / pnpm lint && pnpm build
+ 6. 本地验证：
+    ├── dotnet restore && dotnet build --configuration Release && dotnet test --configuration Release
+    └── pnpm install --frozen-lockfile && pnpm test && pnpm run lint && pnpm run build
           │
           ▼
  7. 发起 PR → CI + code-check 门禁通过 → 合并
@@ -476,7 +497,7 @@ ClubHub 采用 API-first 开发模式：**先定义 API 契约，再自动生成
 > 如果改了它们，下次 `gen-api-code.yml` 运行会覆盖你的改动。
 > 需要修改 API 行为时，请改 `api/openapi.yaml`，然后让流水线重新生成。
 > 如果只是同步了生成 workflow 的修复、但 `api/openapi.yaml` 没有新变化，可以在 GitHub Actions 中手动运行 `生成 API 代码`，选择自己的 feature 分支重新生成。
-> 维护生成 workflow 时，需要以当前 OpenAPI Generator 版本的实际验证结果为准：后端 `aspnetcore` generator 当前使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`，并且当前版本不要加入 `classModifier=public`，否则会直接报错。每次升级生成器版本时，都要重新确认这些参数、`Org.OpenAPITools.Converters` 清理逻辑、`Newtonsoft.Json` 依赖前提，以及 `gen-api-code.yml` 缺少依赖时失败退出的条件是否仍然成立。生成后会删除无用引用并运行格式化，避免生成代码破坏 CI。
+> 维护生成 workflow 时，需要以当前 OpenAPI Generator 版本的实际验证结果为准：后端 `aspnetcore` generator 当前使用 `aspnetCoreVersion=8.0,pocoModels=true,useNewtonsoft=false,nullableReferenceTypes=true`，并且当前版本不要加入 `classModifier=public`，否则会直接报错。每次升级生成器版本时，都要重新确认这些参数、`Org.OpenAPITools.Converters` 清理逻辑、`Newtonsoft.Json` 依赖前提，以及 `gen-api-code.yml` 缺少依赖时失败退出的条件是否仍然成立。生成后会删除无用引用并运行格式化；前端生成文件的 `@ts-nocheck` 标记也会先清理再统一添加，保证重复运行结果幂等，避免生成代码破坏 CI。
 > `code-check.yml` 中排除自动生成后端模型时必须写仓库相对路径 `backend/Models/**`，不能写 `Models/**`；后者不会命中生成目录。
 
 ## 本地运行
@@ -487,6 +508,7 @@ dotnet run --project backend          # 后端 → localhost:5000
 cd frontend && pnpm run dev           # 前端 → localhost:5173
 
 # 方式二：Docker（只需 Docker，不需要装 SDK/Node）
+cp .env.example .env                       # 设置本机专用 REDIS_PASSWORD
 docker compose -f docker-compose.dev.yml up   # 一键启动，源码热重载
 ```
 
@@ -501,6 +523,7 @@ dotnet test --configuration Release
 # 前端
 corepack enable
 pnpm install --frozen-lockfile
+pnpm test
 pnpm run lint
 pnpm run build
 

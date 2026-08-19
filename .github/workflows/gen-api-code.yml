@@ -80,6 +80,8 @@ jobs:
             --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models
 
           # 生成代码由 OpenAPI Generator 维护，不按业务源码规则做逐行类型检查。
+          # 先清理旧标记，避免未被生成器覆写的兼容文件在每次运行后重复累积。
+          find frontend/src/api -type f -name "*.ts" -exec sed -i '/^\/\/ @ts-nocheck$/d' {} +
           find frontend/src/api -type f -name "*.ts" -exec sed -i '1i// @ts-nocheck' {} +
 
           npx --yes prettier@3.9.4 --no-ignore --write "frontend/src/api"

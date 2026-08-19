@@ -5,6 +5,36 @@
 # 注意：数据库不在容器内，连接信息在 appsettings.Development.json 中配置远程 Oracle。
 
 services:
+  redis:
+    image: redis:8.2.8-alpine
+    command:
+      - sh
+      - -ec
+      - |
+        exec redis-server \
+          --appendonly yes \
+          --appendfsync everysec \
+          --save 300 10 \
+          --maxmemory 192mb \
+          --maxmemory-policy noeviction \
+          --dir /data \
+          --requirepass "$$REDIS_PASSWORD"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Copy .env.example to .env and set REDIS_PASSWORD}
+    volumes:
+      - redis-dev-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
   backend:
     image: mcr.microsoft.com/dotnet/sdk:10.0
     working_dir: /src
@@ -17,10 +47,27 @@ services:
              dotnet watch run --project backend/ClubHub.Api.csproj --urls http://0.0.0.0:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__Enabled=true
+      - Redis__ConnectionString=redis:6379
+      - Redis__Username=default
+      - Redis__Password=${REDIS_PASSWORD:?Copy .env.example to .env and set REDIS_PASSWORD}
+      - Redis__EnvironmentPrefix=dev
+      - Redis__Features__Cache=${REDIS_CACHE_ENABLED:-false}
+      - Redis__Features__AuthSessions=${REDIS_AUTH_SESSIONS_ENABLED:-false}
+      - Redis__Features__PermissionCache=${REDIS_PERMISSION_CACHE_ENABLED:-false}
+      - Redis__Features__PreviewSessions=${REDIS_PREVIEW_SESSIONS_ENABLED:-false}
+      - Redis__Features__RateLimiting=${REDIS_RATE_LIMITING_ENABLED:-false}
+      - Redis__Features__Idempotency=${REDIS_IDEMPOTENCY_ENABLED:-false}
+      - Authentication__Sessions__SlidingLifetimeMinutes=${AUTH_SESSION_SLIDING_MINUTES:-30}
+      - Authentication__Sessions__AbsoluteLifetimeHours=${AUTH_SESSION_ABSOLUTE_HOURS:-12}
+      - Authentication__Sessions__MaxSessionsPerUser=${AUTH_SESSION_MAX_PER_USER:-10}
       - Oss__Region=${OSS_REGION:-cn-shanghai}
       - Oss__Endpoint=${OSS_ENDPOINT:-oss-cn-shanghai-internal.aliyuncs.com}
       - Oss__Bucket=${OSS_BUCKET:-}
       - Oss__RoleName=${OSS_ROLE_NAME:-}
+    depends_on:
+      redis:
+        condition: service_healthy
 
   frontend:
     image: node:22-alpine
@@ -38,3 +85,6 @@ services:
       - API_PROXY_TARGET=http://backend:5000
     depends_on:
       - backend
+
+volumes:
+  redis-dev-data:

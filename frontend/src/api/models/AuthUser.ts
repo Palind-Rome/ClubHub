@@ -111,13 +111,20 @@ export function AuthUserFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     id: json["id"],
     username: json["username"],
     realName: json["realName"],
-    studentNo: json["studentNo"] == null ? undefined : json["studentNo"],
-    gender: json["gender"] == null ? undefined : json["gender"],
-    phone: json["phone"] == null ? undefined : json["phone"],
-    email: json["email"] == null ? undefined : json["email"],
-    college: json["college"] == null ? undefined : json["college"],
-    major: json["major"] == null ? undefined : json["major"],
-    grade: json["grade"] == null ? undefined : json["grade"],
+    studentNo:
+      json["studentNo"] === undefined
+        ? undefined
+        : json["studentNo"] === null
+          ? null
+          : json["studentNo"],
+    gender:
+      json["gender"] === undefined ? undefined : json["gender"] === null ? null : json["gender"],
+    phone: json["phone"] === undefined ? undefined : json["phone"] === null ? null : json["phone"],
+    email: json["email"] === undefined ? undefined : json["email"] === null ? null : json["email"],
+    college:
+      json["college"] === undefined ? undefined : json["college"] === null ? null : json["college"],
+    major: json["major"] === undefined ? undefined : json["major"] === null ? null : json["major"],
+    grade: json["grade"] === undefined ? undefined : json["grade"] === null ? null : json["grade"],
     accountStatus: json["accountStatus"],
   };
 }

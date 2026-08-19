@@ -747,7 +747,7 @@ onUnmounted(() => {
 
 <template>
   <section class="evaluation-page">
-    <div class="page-head">
+    <div class="page-head app-page-header">
       <div>
         <h2>成员考核</h2>
         <div class="subtitle">四项分数由系统生成，负责人和指导老师确认后公示。</div>
@@ -1205,7 +1205,7 @@ onUnmounted(() => {
 .process-strip div {
   padding: 14px 16px;
   border-right: 1px solid var(--el-border-color-light);
-  background: #fff;
+  background: var(--club-surface-solid);
 }
 
 .process-strip div:last-child {

@@ -1,5 +1,5 @@
 <!--
-==================================================================
+=================================================================
 PR 标题格式：<type>(可选 scope): <简短中文摘要>
   例如：feat(activity): 新增活动报名人数限制
        fix(venue): 修复场地预约冲突
@@ -7,14 +7,15 @@ PR 标题格式：<type>(可选 scope): <简短中文摘要>
   允许的 type 见 CONTRIBUTING.md → Commit 信息
 
 标签指引（创建 PR 后立即添加，均为必选）：
-  类型（必选一）  ：课程功能点 / documentation / enhancement
+  类型（必选一）  ：课程功能点 / documentation / enhancement / bug
   优先级（必选一） ：优先级:P0 / 优先级:P1 / 优先级:P2
   领域（必选一）  ：area:auth / area:club / area:activity / area:venue /
                     area:project / area:learning / area:material /
                     area:evaluation / area:notice / area:analytics /
-                    area:forum / area:frontend / area:recruitment
+                    area:forum / area:frontend / area:recruitment /
+                    area:docs / area:meta
   全栈任务       ：如果涉及前后端数据库联动，加上（必选）
-==================================================================
+=================================================================
 -->
 
 ## 改动内容

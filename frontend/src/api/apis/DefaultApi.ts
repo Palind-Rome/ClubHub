@@ -82,6 +82,26 @@ import {
   BorrowMaterialRequestToJSON,
 } from "../models/BorrowMaterialRequest";
 import {
+  type BudgetAccount,
+  BudgetAccountFromJSON,
+  BudgetAccountToJSON,
+} from "../models/BudgetAccount";
+import {
+  type BudgetApplication,
+  BudgetApplicationFromJSON,
+  BudgetApplicationToJSON,
+} from "../models/BudgetApplication";
+import {
+  type BudgetTransaction,
+  BudgetTransactionFromJSON,
+  BudgetTransactionToJSON,
+} from "../models/BudgetTransaction";
+import {
+  type CancelBudgetApplicationRequest,
+  CancelBudgetApplicationRequestFromJSON,
+  CancelBudgetApplicationRequestToJSON,
+} from "../models/CancelBudgetApplicationRequest";
+import {
   type CancelProjectRequest,
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
@@ -143,6 +163,16 @@ import {
   CreateAwardSchemeRequestToJSON,
 } from "../models/CreateAwardSchemeRequest";
 import {
+  type CreateBudgetAccountRequest,
+  CreateBudgetAccountRequestFromJSON,
+  CreateBudgetAccountRequestToJSON,
+} from "../models/CreateBudgetAccountRequest";
+import {
+  type CreateBudgetApplicationRequest,
+  CreateBudgetApplicationRequestFromJSON,
+  CreateBudgetApplicationRequestToJSON,
+} from "../models/CreateBudgetApplicationRequest";
+import {
   type CreateClubApplicationRequest,
   CreateClubApplicationRequestFromJSON,
   CreateClubApplicationRequestToJSON,
@@ -172,6 +202,11 @@ import {
   CreateClubRequestFromJSON,
   CreateClubRequestToJSON,
 } from "../models/CreateClubRequest";
+import {
+  type CreateForumPostRequest,
+  CreateForumPostRequestFromJSON,
+  CreateForumPostRequestToJSON,
+} from "../models/CreateForumPostRequest";
 import {
   type CreateLearningItemRequest,
   CreateLearningItemRequestFromJSON,
@@ -223,6 +258,11 @@ import {
   DeleteVenueRequestToJSON,
 } from "../models/DeleteVenueRequest";
 import {
+  type DependencyHealthReport,
+  DependencyHealthReportFromJSON,
+  DependencyHealthReportToJSON,
+} from "../models/DependencyHealthReport";
+import {
   type DissolveClubRequest,
   DissolveClubRequestFromJSON,
   DissolveClubRequestToJSON,
@@ -232,6 +272,7 @@ import {
   ExitClubMemberRequestFromJSON,
   ExitClubMemberRequestToJSON,
 } from "../models/ExitClubMemberRequest";
+import { type ForumPost, ForumPostFromJSON, ForumPostToJSON } from "../models/ForumPost";
 import {
   type GenerateClubEvaluationsRequest,
   GenerateClubEvaluationsRequestFromJSON,
@@ -283,6 +324,11 @@ import {
   MaterialBorrowFromJSON,
   MaterialBorrowToJSON,
 } from "../models/MaterialBorrow";
+import {
+  type ModerateForumPostRequest,
+  ModerateForumPostRequestFromJSON,
+  ModerateForumPostRequestToJSON,
+} from "../models/ModerateForumPostRequest";
 import { type Notice, NoticeFromJSON, NoticeToJSON } from "../models/Notice";
 import {
   type NoticeReadResult,
@@ -347,6 +393,11 @@ import {
   ReviewAwardApplicationRequestFromJSON,
   ReviewAwardApplicationRequestToJSON,
 } from "../models/ReviewAwardApplicationRequest";
+import {
+  type ReviewBudgetApplicationRequest,
+  ReviewBudgetApplicationRequestFromJSON,
+  ReviewBudgetApplicationRequestToJSON,
+} from "../models/ReviewBudgetApplicationRequest";
 import {
   type ReviewClubApplicationRequest,
   ReviewClubApplicationRequestFromJSON,
@@ -413,6 +464,11 @@ import {
   UpdateAwardSchemeRequestToJSON,
 } from "../models/UpdateAwardSchemeRequest";
 import {
+  type UpdateBudgetAccountRequest,
+  UpdateBudgetAccountRequestFromJSON,
+  UpdateBudgetAccountRequestToJSON,
+} from "../models/UpdateBudgetAccountRequest";
+import {
   type UpdateCheckinSettingsRequest,
   UpdateCheckinSettingsRequestFromJSON,
   UpdateCheckinSettingsRequestToJSON,
@@ -478,6 +534,11 @@ import {
   UpdateRecruitmentRequestToJSON,
 } from "../models/UpdateRecruitmentRequest";
 import {
+  type UpdateUserAccountStatusRequest,
+  UpdateUserAccountStatusRequestFromJSON,
+  UpdateUserAccountStatusRequestToJSON,
+} from "../models/UpdateUserAccountStatusRequest";
+import {
   type UpdateVenueRequest,
   UpdateVenueRequestFromJSON,
   UpdateVenueRequestToJSON,
@@ -525,7 +586,13 @@ export interface AssignUserRoleRequest {
 }
 
 export interface BorrowMaterialOperationRequest {
+  idempotencyKey: string;
   borrowMaterialRequest: BorrowMaterialRequest;
+}
+
+export interface CancelBudgetApplicationOperationRequest {
+  applicationId: number;
+  cancelBudgetApplicationRequest?: CancelBudgetApplicationRequest;
 }
 
 export interface CancelLearningEnrollmentRequest {
@@ -538,7 +605,6 @@ export interface CancelProjectOperationRequest {
 }
 
 export interface CheckPermissionRequest {
-  userId: number;
   permission: string;
   clubId?: number;
 }
@@ -557,15 +623,26 @@ export interface CreateActivityOperationRequest {
   createActivityRequest: CreateActivityRequest;
 }
 
+export interface CreateBudgetAccountOperationRequest {
+  createBudgetAccountRequest: CreateBudgetAccountRequest;
+}
+
+export interface CreateBudgetApplicationOperationRequest {
+  idempotencyKey: string;
+  createBudgetApplicationRequest: CreateBudgetApplicationRequest;
+}
+
 export interface CreateClubOperationRequest {
   createClubRequest: CreateClubRequest;
 }
 
 export interface CreateClubApplicationOperationRequest {
+  idempotencyKey: string;
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
 export interface CreateClubAwardApplicationRequest {
+  idempotencyKey: string;
   clubId: number;
   createAwardApplicationRequest: CreateAwardApplicationRequest;
 }
@@ -593,6 +670,11 @@ export interface CreateClubDepartmentOperationRequest {
 export interface CreateClubEvaluationOperationRequest {
   clubId: number;
   createClubEvaluationRequest: CreateClubEvaluationRequest;
+}
+
+export interface CreateClubForumPostRequest {
+  clubId: number;
+  createForumPostRequest: CreateForumPostRequest;
 }
 
 export interface CreateClubGroupOperationRequest {
@@ -623,6 +705,7 @@ export interface CreateNoticeOperationRequest {
 }
 
 export interface CreateProjectOperationRequest {
+  idempotencyKey: string;
   createProjectRequest: CreateProjectRequest;
 }
 
@@ -636,6 +719,7 @@ export interface CreateRecruitmentOperationRequest {
 }
 
 export interface CreateRecruitmentApplicationOperationRequest {
+  idempotencyKey: string;
   recruitId: number;
   createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
 }
@@ -645,10 +729,12 @@ export interface CreateVenueOperationRequest {
 }
 
 export interface CreateVenueReservationOperationRequest {
+  idempotencyKey: string;
   createVenueReservationRequest: CreateVenueReservationRequest;
 }
 
 export interface DamageMaterialBorrowRequest {
+  idempotencyKey: string;
   borrowId: number;
   registerMaterialDamageRequest: RegisterMaterialDamageRequest;
 }
@@ -691,6 +777,7 @@ export interface DownloadLearningItemRequest {
 }
 
 export interface EnrollLearningItemRequest {
+  idempotencyKey: string;
   itemId: number;
 }
 
@@ -715,6 +802,23 @@ export interface GetActivityByIdRequest {
 
 export interface GetActivityParticipationsRequest {
   activityId: number;
+}
+
+export interface GetBudgetAccountsRequest {
+  clubId?: number;
+  fiscalYear?: string;
+}
+
+export interface GetBudgetApplicationsRequest {
+  clubId?: number;
+  accountId?: number;
+  status?: GetBudgetApplicationsStatusEnum;
+  type?: GetBudgetApplicationsTypeEnum;
+}
+
+export interface GetBudgetTransactionsRequest {
+  clubId?: number;
+  accountId?: number;
 }
 
 export interface GetClubApplicationsRequest {
@@ -778,6 +882,11 @@ export interface GetClubEvaluationsRequest {
   clubId: number;
   termName?: string;
   evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
+}
+
+export interface GetClubForumPostsRequest {
+  clubId: number;
+  includeHidden?: boolean;
 }
 
 export interface GetClubMembersRequest {
@@ -911,6 +1020,12 @@ export interface MarkNoticeReadRequest {
   noticeId: number;
 }
 
+export interface ModerateClubForumPostRequest {
+  clubId: number;
+  postId: number;
+  moderateForumPostRequest: ModerateForumPostRequest;
+}
+
 export interface PreviewClubEvaluationScoresRequest {
   clubId: number;
   userId: number;
@@ -928,6 +1043,7 @@ export interface PublishClubAwardRuleDocumentRequest {
 }
 
 export interface RegisterActivityRequest {
+  idempotencyKey: string;
   activityId: number;
 }
 
@@ -947,15 +1063,18 @@ export interface RemoveProjectMemberRequest {
 }
 
 export interface ResubmitClubApplicationRequest {
+  idempotencyKey: string;
   clubId: number;
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
 export interface ReturnMaterialBorrowRequest {
+  idempotencyKey: string;
   borrowId: number;
 }
 
 export interface ReviewActivityOperationRequest {
+  idempotencyKey: string;
   activityId: number;
   reviewActivityRequest: ReviewActivityRequest;
 }
@@ -965,46 +1084,64 @@ export interface ReviewActivityBudgetOperationRequest {
   reviewActivityBudgetRequest: ReviewActivityBudgetRequest;
 }
 
+export interface ReviewBudgetApplicationOperationRequest {
+  idempotencyKey: string;
+  applicationId: number;
+  reviewBudgetApplicationRequest: ReviewBudgetApplicationRequest;
+}
+
 export interface ReviewClubApplicationOperationRequest {
+  idempotencyKey: string;
   clubId: number;
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
 }
 
 export interface ReviewClubAwardApplicationRequest {
+  idempotencyKey: string;
   clubId: number;
   awardApplicationId: number;
   reviewAwardApplicationRequest: ReviewAwardApplicationRequest;
 }
 
 export interface ReviewLearningItemOperationRequest {
+  idempotencyKey: string;
   itemId: number;
   reviewLearningItemRequest: ReviewLearningItemRequest;
 }
 
 export interface ReviewProjectOperationRequest {
+  idempotencyKey: string;
   projectId: number;
   reviewProjectRequest: ReviewProjectRequest;
 }
 
 export interface ReviewProjectTaskDeliverableOperationRequest {
+  idempotencyKey: string;
   projectId: number;
   taskId: number;
   reviewProjectTaskDeliverableRequest: ReviewProjectTaskDeliverableRequest;
 }
 
 export interface ReviewRecruitmentOperationRequest {
+  idempotencyKey: string;
   recruitId: number;
   reviewRecruitmentRequest: ReviewRecruitmentRequest;
 }
 
 export interface ReviewRecruitmentApplicationOperationRequest {
+  idempotencyKey: string;
   applicationId: number;
   reviewRecruitmentApplicationRequest: ReviewRecruitmentApplicationRequest;
 }
 
 export interface ReviewVenueReservationOperationRequest {
+  idempotencyKey: string;
   reservationId: number;
   reviewVenueReservationRequest: ReviewVenueReservationRequest;
+}
+
+export interface RevokeUserSessionsRequest {
+  userId: number;
 }
 
 export interface StartLearningItemRequest {
@@ -1012,11 +1149,13 @@ export interface StartLearningItemRequest {
 }
 
 export interface SubmitClubAwardApplicationRequest {
+  idempotencyKey: string;
   clubId: number;
   awardApplicationId: number;
 }
 
 export interface SubmitProjectTaskDeliverableOperationRequest {
+  idempotencyKey: string;
   projectId: number;
   taskId: number;
   submitProjectTaskDeliverableRequest: SubmitProjectTaskDeliverableRequest;
@@ -1025,6 +1164,11 @@ export interface SubmitProjectTaskDeliverableOperationRequest {
 export interface UpdateActivityCheckinSettingsRequest {
   activityId: number;
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
+}
+
+export interface UpdateBudgetAccountOperationRequest {
+  accountId: number;
+  updateBudgetAccountRequest: UpdateBudgetAccountRequest;
 }
 
 export interface UpdateClubOperationRequest {
@@ -1115,6 +1259,11 @@ export interface UpdateProjectTaskProgressOperationRequest {
 export interface UpdateRecruitmentOperationRequest {
   recruitId: number;
   updateRecruitmentRequest: UpdateRecruitmentRequest;
+}
+
+export interface UpdateUserAccountStatusOperationRequest {
+  userId: number;
+  updateUserAccountStatusRequest: UpdateUserAccountStatusRequest;
 }
 
 export interface UpdateVenueOperationRequest {
@@ -1232,6 +1381,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for applyActivityBudget without sending the request
+   * @deprecated
    */
   async applyActivityBudgetRequestOpts(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1272,8 +1422,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
-   * 提交或更新活动经费预算申请
+   * 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费预算入口（已停用）
+   * @deprecated
    */
   async applyActivityBudgetRaw(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1286,8 +1437,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 社团负责人提交活动经费预算金额、用途和明细；使用现有 ACTIVITIES 表经费字段，不新增表结构。待审批或已驳回状态允许重新提交并覆盖旧申请，审批通过后不可再修改。
-   * 提交或更新活动经费预算申请
+   * 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费预算入口（已停用）
+   * @deprecated
    */
   async applyActivityBudget(
     requestParameters: ApplyActivityBudgetOperationRequest,
@@ -1457,6 +1609,15 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
     let urlPath = `/api/auth/roles/assign`;
 
     return {
@@ -1500,6 +1661,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async borrowMaterialRequestOpts(
     requestParameters: BorrowMaterialOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling borrowMaterial().',
+      );
+    }
+
     if (requestParameters["borrowMaterialRequest"] == null) {
       throw new runtime.RequiredError(
         "borrowMaterialRequest",
@@ -1512,6 +1680,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -1554,6 +1726,79 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<MaterialBorrow> {
     const response = await this.borrowMaterialRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for cancelBudgetApplication without sending the request
+   */
+  async cancelBudgetApplicationRequestOpts(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling cancelBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications/{applicationId}/cancel`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CancelBudgetApplicationRequestToJSON(
+        requestParameters["cancelBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+   * 撤销经费申请
+   */
+  async cancelBudgetApplicationRaw(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.cancelBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
+   * 撤销经费申请
+   */
+  async cancelBudgetApplication(
+    requestParameters: CancelBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.cancelBudgetApplicationRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -1702,13 +1947,6 @@ export class DefaultApi extends runtime.BaseAPI {
   async checkPermissionRequestOpts(
     requestParameters: CheckPermissionRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["userId"] == null) {
-      throw new runtime.RequiredError(
-        "userId",
-        'Required parameter "userId" was null or undefined when calling checkPermission().',
-      );
-    }
-
     if (requestParameters["permission"] == null) {
       throw new runtime.RequiredError(
         "permission",
@@ -1717,10 +1955,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const queryParameters: any = {};
-
-    if (requestParameters["userId"] != null) {
-      queryParameters["userId"] = requestParameters["userId"];
-    }
 
     if (requestParameters["permission"] != null) {
       queryParameters["permission"] = requestParameters["permission"];
@@ -1731,6 +1965,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/auth/permissions/check`;
 
@@ -1743,7 +1986,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
+   * 检查当前用户是否拥有指定权限
    */
   async checkPermissionRaw(
     requestParameters: CheckPermissionRequest,
@@ -1758,7 +2001,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查用户是否拥有指定权限
+   * 检查当前用户是否拥有指定权限
    */
   async checkPermission(
     requestParameters: CheckPermissionRequest,
@@ -1990,6 +2233,151 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createBudgetAccount without sending the request
+   */
+  async createBudgetAccountRequestOpts(
+    requestParameters: CreateBudgetAccountOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["createBudgetAccountRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createBudgetAccountRequest",
+        'Required parameter "createBudgetAccountRequest" was null or undefined when calling createBudgetAccount().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateBudgetAccountRequestToJSON(requestParameters["createBudgetAccountRequest"]),
+    };
+  }
+
+  /**
+   * 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+   * 创建社团年度经费账户
+   */
+  async createBudgetAccountRaw(
+    requestParameters: CreateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetAccount>> {
+    const requestOptions = await this.createBudgetAccountRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => BudgetAccountFromJSON(jsonValue));
+  }
+
+  /**
+   * 校级社团管理员或系统管理员创建社团年度经费账户，余额后续由账户额度和流水汇总计算。
+   * 创建社团年度经费账户
+   */
+  async createBudgetAccount(
+    requestParameters: CreateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetAccount> {
+    const response = await this.createBudgetAccountRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createBudgetApplication without sending the request
+   */
+  async createBudgetApplicationRequestOpts(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["createBudgetApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createBudgetApplicationRequest",
+        'Required parameter "createBudgetApplicationRequest" was null or undefined when calling createBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateBudgetApplicationRequestToJSON(
+        requestParameters["createBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+   * 提交经费申请
+   */
+  async createBudgetApplicationRaw(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.createBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 社团负责人提交活动预算、采购或报销申请；申请人由服务端从 Bearer 令牌解析。
+   * 提交经费申请
+   */
+  async createBudgetApplication(
+    requestParameters: CreateBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.createBudgetApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClub without sending the request
    */
   async createClubRequestOpts(
@@ -2049,6 +2437,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async createClubApplicationRequestOpts(
     requestParameters: CreateClubApplicationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createClubApplication().',
+      );
+    }
+
     if (requestParameters["createClubApplicationRequest"] == null) {
       throw new runtime.RequiredError(
         "createClubApplicationRequest",
@@ -2061,6 +2456,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/applications`;
 
@@ -2105,6 +2513,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async createClubAwardApplicationRequestOpts(
     requestParameters: CreateClubAwardApplicationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createClubAwardApplication().',
+      );
+    }
+
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -2124,6 +2539,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/{clubId}/award-applications`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
@@ -2500,6 +2928,77 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createClubForumPost without sending the request
+   */
+  async createClubForumPostRequestOpts(
+    requestParameters: CreateClubForumPostRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling createClubForumPost().',
+      );
+    }
+
+    if (requestParameters["createForumPostRequest"] == null) {
+      throw new runtime.RequiredError(
+        "createForumPostRequest",
+        'Required parameter "createForumPostRequest" was null or undefined when calling createClubForumPost().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: CreateForumPostRequestToJSON(requestParameters["createForumPostRequest"]),
+    };
+  }
+
+  /**
+   * 发布社团讨论区话题或回复
+   */
+  async createClubForumPostRaw(
+    requestParameters: CreateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumPost>> {
+    const requestOptions = await this.createClubForumPostRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ForumPostFromJSON(jsonValue));
+  }
+
+  /**
+   * 发布社团讨论区话题或回复
+   */
+  async createClubForumPost(
+    requestParameters: CreateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumPost> {
+    const response = await this.createClubForumPostRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClubGroup without sending the request
    */
   async createClubGroupRequestOpts(
@@ -2870,7 +3369,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师 可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布 全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
    * 新建公告通知
    */
   async createNoticeRaw(
@@ -2884,7 +3383,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别操作人，保存草稿或发布面向全校、指定社团、指定部门或指定成员的通知，并校验权限和目标对象。
+   * 从 Bearer Token 识别操作人。具备目标社团 notice:publish 权限的社团干部、负责人和指导老师 可以保存或发布本社团、部门或成员通知；具备 notice:publish:school 权限的社团管理员可发布 全校或跨社团通知，系统管理员拥有全部范围。服务端校验权限、社团作用域和目标对象。
    * 新建公告通知
    */
   async createNotice(
@@ -2901,6 +3400,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async createProjectRequestOpts(
     requestParameters: CreateProjectOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createProject().',
+      );
+    }
+
     if (requestParameters["createProjectRequest"] == null) {
       throw new runtime.RequiredError(
         "createProjectRequest",
@@ -2913,6 +3419,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -3096,6 +3606,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async createRecruitmentApplicationRequestOpts(
     requestParameters: CreateRecruitmentApplicationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createRecruitmentApplication().',
+      );
+    }
+
     if (requestParameters["recruitId"] == null) {
       throw new runtime.RequiredError(
         "recruitId",
@@ -3115,6 +3632,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/recruitments/{recruitId}/applications`;
     urlPath = urlPath.replace(
@@ -3221,6 +3751,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async createVenueReservationRequestOpts(
     requestParameters: CreateVenueReservationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createVenueReservation().',
+      );
+    }
+
     if (requestParameters["createVenueReservationRequest"] == null) {
       throw new runtime.RequiredError(
         "createVenueReservationRequest",
@@ -3233,6 +3770,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -3286,6 +3827,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async damageMaterialBorrowRequestOpts(
     requestParameters: DamageMaterialBorrowRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling damageMaterialBorrow().',
+      );
+    }
+
     if (requestParameters["borrowId"] == null) {
       throw new runtime.RequiredError(
         "borrowId",
@@ -3305,6 +3853,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -3468,7 +4020,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 删除通知草稿
    */
   async deleteNoticeDraftRaw(
@@ -3482,7 +4034,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许删除；操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许删除；操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 删除通知草稿
    */
   async deleteNoticeDraft(
@@ -3893,6 +4445,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async enrollLearningItemRequestOpts(
     requestParameters: EnrollLearningItemRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling enrollLearningItem().',
+      );
+    }
+
     if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
         "itemId",
@@ -3903,6 +4462,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -4253,6 +4816,209 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<ActivityParticipation>> {
     const response = await this.getActivityParticipationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetAccounts without sending the request
+   */
+  async getBudgetAccountsRequestOpts(
+    requestParameters: GetBudgetAccountsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["fiscalYear"] != null) {
+      queryParameters["fiscalYear"] = requestParameters["fiscalYear"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+   * 获取经费账户列表
+   */
+  async getBudgetAccountsRaw(
+    requestParameters: GetBudgetAccountsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetAccount>>> {
+    const requestOptions = await this.getBudgetAccountsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetAccountFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
+   * 获取经费账户列表
+   */
+  async getBudgetAccounts(
+    requestParameters: GetBudgetAccountsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetAccount>> {
+    const response = await this.getBudgetAccountsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetApplications without sending the request
+   */
+  async getBudgetApplicationsRequestOpts(
+    requestParameters: GetBudgetApplicationsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["accountId"] != null) {
+      queryParameters["accountId"] = requestParameters["accountId"];
+    }
+
+    if (requestParameters["status"] != null) {
+      queryParameters["status"] = requestParameters["status"];
+    }
+
+    if (requestParameters["type"] != null) {
+      queryParameters["type"] = requestParameters["type"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+   * 获取经费申请列表
+   */
+  async getBudgetApplicationsRaw(
+    requestParameters: GetBudgetApplicationsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetApplication>>> {
+    const requestOptions = await this.getBudgetApplicationsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetApplicationFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
+   * 获取经费申请列表
+   */
+  async getBudgetApplications(
+    requestParameters: GetBudgetApplicationsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetApplication>> {
+    const response = await this.getBudgetApplicationsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for getBudgetTransactions without sending the request
+   */
+  async getBudgetTransactionsRequestOpts(
+    requestParameters: GetBudgetTransactionsRequest,
+  ): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    if (requestParameters["accountId"] != null) {
+      queryParameters["accountId"] = requestParameters["accountId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/transactions`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费流水，用于审计账户余额。
+   * 获取经费流水列表
+   */
+  async getBudgetTransactionsRaw(
+    requestParameters: GetBudgetTransactionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetTransaction>>> {
+    const requestOptions = await this.getBudgetTransactionsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetTransactionFromJSON),
+    );
+  }
+
+  /**
+   * 返回当前用户授权范围内的经费流水，用于审计账户余额。
+   * 获取经费流水列表
+   */
+  async getBudgetTransactions(
+    requestParameters: GetBudgetTransactionsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetTransaction>> {
+    const response = await this.getBudgetTransactionsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -5015,6 +5781,71 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getClubForumPosts without sending the request
+   */
+  async getClubForumPostsRequestOpts(
+    requestParameters: GetClubForumPostsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling getClubForumPosts().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["includeHidden"] != null) {
+      queryParameters["includeHidden"] = requestParameters["includeHidden"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 查询社团讨论区话题
+   */
+  async getClubForumPostsRaw(
+    requestParameters: GetClubForumPostsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<ForumPost>>> {
+    const requestOptions = await this.getClubForumPostsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ForumPostFromJSON));
+  }
+
+  /**
+   * 查询社团讨论区话题
+   */
+  async getClubForumPosts(
+    requestParameters: GetClubForumPostsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<ForumPost>> {
+    const response = await this.getClubForumPostsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getClubMembers without sending the request
    */
   async getClubMembersRequestOpts(
@@ -5699,7 +6530,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果： 普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知； 具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计； 具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。 普通接收者只返回本人已读状态，不返回受众人数和已读人数。
    * 查询公告通知
    */
   async getNoticesRaw(
@@ -5713,7 +6544,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 从 Bearer Token 识别当前用户，按其权限返回面向全校、社团、部门或成员的有效通知，并附带已读状态。
+   * 从 Bearer Token 识别当前用户，并按权限码、社团作用域、目标范围和通知状态过滤结果： 普通用户仅能查看面向全校、本人或本人有效社团/部门的已发布通知； 具备目标社团 notice:publish 权限的干部、负责人和指导老师可查看该社团草稿、过期通知及阅读统计； 具备 notice:publish:school 权限的社团管理员可管理校级通知，系统管理员拥有全部范围。 普通接收者只返回本人已读状态，不返回受众人数和已读人数。
    * 查询公告通知
    */
   async getNotices(
@@ -6700,6 +7531,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for healthCheck without sending the request
+   * @deprecated
    */
   async healthCheckRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
@@ -6717,7 +7549,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
    * 健康检查
+   * @deprecated
    */
   async healthCheckRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -6729,12 +7563,102 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
    * 健康检查
+   * @deprecated
    */
   async healthCheck(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<HealthStatus> {
     const response = await this.healthCheckRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for healthCheckLive without sending the request
+   */
+  async healthCheckLiveRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/health/live`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+   * API 存活检查
+   */
+  async healthCheckLiveRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<DependencyHealthReport>> {
+    const requestOptions = await this.healthCheckLiveRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      DependencyHealthReportFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 仅检查 API 进程是否能够响应，不依赖 Oracle 或 Redis。
+   * API 存活检查
+   */
+  async healthCheckLive(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<DependencyHealthReport> {
+    const response = await this.healthCheckLiveRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for healthCheckReady without sending the request
+   */
+  async healthCheckReadyRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/health/ready`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+   * API 就绪检查
+   */
+  async healthCheckReadyRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<DependencyHealthReport>> {
+    const requestOptions = await this.healthCheckReadyRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      DependencyHealthReportFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 检查 API 依赖是否可用；启用 Redis 后会包含 Redis 连通性检查。
+   * API 就绪检查
+   */
+  async healthCheckReady(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<DependencyHealthReport> {
+    const response = await this.healthCheckReadyRaw(initOverrides);
     return await response.value();
   }
 
@@ -6791,6 +7715,56 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for logoutCurrentSession without sending the request
+   */
+  async logoutCurrentSessionRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/auth/logout`;
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+   * 注销当前登录会话
+   */
+  async logoutCurrentSessionRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.logoutCurrentSessionRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
+   * 注销当前登录会话
+   */
+  async logoutCurrentSession(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.logoutCurrentSessionRaw(initOverrides);
+  }
+
+  /**
    * Creates request options for markNoticeRead without sending the request
    */
   async markNoticeReadRequestOpts(
@@ -6831,7 +7805,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
    * 标记通知已读
    */
   async markNoticeReadRaw(
@@ -6847,7 +7821,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 当前用户阅读可见通知后写入已读记录；重复标记会返回已有记录。
+   * 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
    * 标记通知已读
    */
   async markNoticeRead(
@@ -6855,6 +7829,85 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<NoticeReadResult> {
     const response = await this.markNoticeReadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for moderateClubForumPost without sending the request
+   */
+  async moderateClubForumPostRequestOpts(
+    requestParameters: ModerateClubForumPostRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    if (requestParameters["postId"] == null) {
+      throw new runtime.RequiredError(
+        "postId",
+        'Required parameter "postId" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    if (requestParameters["moderateForumPostRequest"] == null) {
+      throw new runtime.RequiredError(
+        "moderateForumPostRequest",
+        'Required parameter "moderateForumPostRequest" was null or undefined when calling moderateClubForumPost().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/clubs/{clubId}/forum-posts/{postId}/moderation`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+    urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ModerateForumPostRequestToJSON(requestParameters["moderateForumPostRequest"]),
+    };
+  }
+
+  /**
+   * 置顶或隐藏社团讨论区内容
+   */
+  async moderateClubForumPostRaw(
+    requestParameters: ModerateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumPost>> {
+    const requestOptions = await this.moderateClubForumPostRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => ForumPostFromJSON(jsonValue));
+  }
+
+  /**
+   * 置顶或隐藏社团讨论区内容
+   */
+  async moderateClubForumPost(
+    requestParameters: ModerateClubForumPostRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumPost> {
+    const response = await this.moderateClubForumPostRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -7098,7 +8151,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSessionRaw(
@@ -7111,7 +8164,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，用于成员身份变化后的前端会话同步。
+   * 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
    * 刷新当前用户会话
    */
   async refreshAuthSession(
@@ -7127,6 +8180,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async registerActivityRequestOpts(
     requestParameters: RegisterActivityRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling registerActivity().',
+      );
+    }
+
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -7137,6 +8197,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -7399,6 +8463,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async resubmitClubApplicationRequestOpts(
     requestParameters: ResubmitClubApplicationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling resubmitClubApplication().',
+      );
+    }
+
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -7418,6 +8489,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/applications/{clubId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
@@ -7463,6 +8547,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async returnMaterialBorrowRequestOpts(
     requestParameters: ReturnMaterialBorrowRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling returnMaterialBorrow().',
+      );
+    }
+
     if (requestParameters["borrowId"] == null) {
       throw new runtime.RequiredError(
         "borrowId",
@@ -7473,6 +8564,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -7527,6 +8622,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewActivityRequestOpts(
     requestParameters: ReviewActivityOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewActivity().',
+      );
+    }
+
     if (requestParameters["activityId"] == null) {
       throw new runtime.RequiredError(
         "activityId",
@@ -7546,6 +8648,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -7599,6 +8705,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
   /**
    * Creates request options for reviewActivityBudget without sending the request
+   * @deprecated
    */
   async reviewActivityBudgetRequestOpts(
     requestParameters: ReviewActivityBudgetOperationRequest,
@@ -7639,8 +8746,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
-   * 审批活动经费预算
+   * 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费审批入口（已停用）
+   * @deprecated
    */
   async reviewActivityBudgetRaw(
     requestParameters: ReviewActivityBudgetOperationRequest,
@@ -7653,8 +8761,9 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 指导老师、社团管理员或系统管理员审批待审批的活动经费预算，并记录审批意见。
-   * 审批活动经费预算
+   * 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
+   * 旧活动经费审批入口（已停用）
+   * @deprecated
    */
   async reviewActivityBudget(
     requestParameters: ReviewActivityBudgetOperationRequest,
@@ -7665,11 +8774,109 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for reviewBudgetApplication without sending the request
+   */
+  async reviewBudgetApplicationRequestOpts(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling reviewBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["reviewBudgetApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "reviewBudgetApplicationRequest",
+        'Required parameter "reviewBudgetApplicationRequest" was null or undefined when calling reviewBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/applications/{applicationId}/review`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ReviewBudgetApplicationRequestToJSON(
+        requestParameters["reviewBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+   * 审核经费申请
+   */
+  async reviewBudgetApplicationRaw(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.reviewBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
+   * 审核经费申请
+   */
+  async reviewBudgetApplication(
+    requestParameters: ReviewBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.reviewBudgetApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for reviewClubApplication without sending the request
    */
   async reviewClubApplicationRequestOpts(
     requestParameters: ReviewClubApplicationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewClubApplication().',
+      );
+    }
+
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -7689,6 +8896,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/applications/{clubId}/review`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
@@ -7732,6 +8952,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewClubAwardApplicationRequestOpts(
     requestParameters: ReviewClubAwardApplicationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewClubAwardApplication().',
+      );
+    }
+
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -7758,6 +8985,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/review`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
@@ -7809,6 +9049,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewLearningItemRequestOpts(
     requestParameters: ReviewLearningItemOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewLearningItem().',
+      );
+    }
+
     if (requestParameters["itemId"] == null) {
       throw new runtime.RequiredError(
         "itemId",
@@ -7828,6 +9075,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -7882,6 +9133,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewProjectRequestOpts(
     requestParameters: ReviewProjectOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewProject().',
+      );
+    }
+
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -7901,6 +9159,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -7958,6 +9220,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewProjectTaskDeliverableRequestOpts(
     requestParameters: ReviewProjectTaskDeliverableOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewProjectTaskDeliverable().',
+      );
+    }
+
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -7984,6 +9253,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -8044,6 +9317,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewRecruitmentRequestOpts(
     requestParameters: ReviewRecruitmentOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewRecruitment().',
+      );
+    }
+
     if (requestParameters["recruitId"] == null) {
       throw new runtime.RequiredError(
         "recruitId",
@@ -8063,6 +9343,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/recruitments/{recruitId}/review`;
     urlPath = urlPath.replace(
@@ -8111,6 +9404,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewRecruitmentApplicationRequestOpts(
     requestParameters: ReviewRecruitmentApplicationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewRecruitmentApplication().',
+      );
+    }
+
     if (requestParameters["applicationId"] == null) {
       throw new runtime.RequiredError(
         "applicationId",
@@ -8130,6 +9430,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/recruitments/applications/{applicationId}/review`;
     urlPath = urlPath.replace(
@@ -8182,6 +9495,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async reviewVenueReservationRequestOpts(
     requestParameters: ReviewVenueReservationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling reviewVenueReservation().',
+      );
+    }
+
     if (requestParameters["reservationId"] == null) {
       throw new runtime.RequiredError(
         "reservationId",
@@ -8201,6 +9521,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -8250,6 +9574,66 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<VenueReservation> {
     const response = await this.reviewVenueReservationRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for revokeUserSessions without sending the request
+   */
+  async revokeUserSessionsRequestOpts(
+    requestParameters: RevokeUserSessionsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling revokeUserSessions().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/users/{userId}/sessions/revoke`;
+    urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 强制撤销用户的全部登录会话
+   */
+  async revokeUserSessionsRaw(
+    requestParameters: RevokeUserSessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.revokeUserSessionsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 强制撤销用户的全部登录会话
+   */
+  async revokeUserSessions(
+    requestParameters: RevokeUserSessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.revokeUserSessionsRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -8321,6 +9705,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async submitClubAwardApplicationRequestOpts(
     requestParameters: SubmitClubAwardApplicationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling submitClubAwardApplication().',
+      );
+    }
+
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
@@ -8338,6 +9729,19 @@ export class DefaultApi extends runtime.BaseAPI {
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
 
     let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/submit`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
@@ -8388,6 +9792,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async submitProjectTaskDeliverableRequestOpts(
     requestParameters: SubmitProjectTaskDeliverableOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling submitProjectTaskDeliverable().',
+      );
+    }
+
     if (requestParameters["projectId"] == null) {
       throw new runtime.RequiredError(
         "projectId",
@@ -8414,6 +9825,10 @@ export class DefaultApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -8541,6 +9956,82 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Activity> {
     const response = await this.updateActivityCheckinSettingsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateBudgetAccount without sending the request
+   */
+  async updateBudgetAccountRequestOpts(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["accountId"] == null) {
+      throw new runtime.RequiredError(
+        "accountId",
+        'Required parameter "accountId" was null or undefined when calling updateBudgetAccount().',
+      );
+    }
+
+    if (requestParameters["updateBudgetAccountRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateBudgetAccountRequest",
+        'Required parameter "updateBudgetAccountRequest" was null or undefined when calling updateBudgetAccount().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/budget/accounts/{accountId}`;
+    urlPath = urlPath.replace(
+      "{accountId}",
+      encodeURIComponent(String(requestParameters["accountId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateBudgetAccountRequestToJSON(requestParameters["updateBudgetAccountRequest"]),
+    };
+  }
+
+  /**
+   * 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+   * 更新社团年度经费账户
+   */
+  async updateBudgetAccountRaw(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetAccount>> {
+    const requestOptions = await this.updateBudgetAccountRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => BudgetAccountFromJSON(jsonValue));
+  }
+
+  /**
+   * 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
+   * 更新社团年度经费账户
+   */
+  async updateBudgetAccount(
+    requestParameters: UpdateBudgetAccountOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetAccount> {
+    const response = await this.updateBudgetAccountRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -9573,7 +11064,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 编辑或发布通知草稿
    */
   async updateNoticeDraftRaw(
@@ -9587,7 +11078,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人或具备对应通知管理权限。
+   * 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
    * 编辑或发布通知草稿
    */
   async updateNoticeDraft(
@@ -9748,6 +11239,81 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Recruitment> {
     const response = await this.updateRecruitmentRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for updateUserAccountStatus without sending the request
+   */
+  async updateUserAccountStatusRequestOpts(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling updateUserAccountStatus().',
+      );
+    }
+
+    if (requestParameters["updateUserAccountStatusRequest"] == null) {
+      throw new runtime.RequiredError(
+        "updateUserAccountStatusRequest",
+        'Required parameter "updateUserAccountStatusRequest" was null or undefined when calling updateUserAccountStatus().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/users/{userId}/status`;
+    urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
+
+    return {
+      path: urlPath,
+      method: "PATCH",
+      headers: headerParameters,
+      query: queryParameters,
+      body: UpdateUserAccountStatusRequestToJSON(
+        requestParameters["updateUserAccountStatusRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+   * 更新用户账号状态
+   */
+  async updateUserAccountStatusRaw(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<UserSummary>> {
+    const requestOptions = await this.updateUserAccountStatusRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) => UserSummaryFromJSON(jsonValue));
+  }
+
+  /**
+   * 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
+   * 更新用户账号状态
+   */
+  async updateUserAccountStatus(
+    requestParameters: UpdateUserAccountStatusOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<UserSummary> {
+    const response = await this.updateUserAccountStatusRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -10204,6 +11770,27 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 }
 
+/**
+ * @export
+ */
+export const GetBudgetApplicationsStatusEnum = {
+  Pending: "pending",
+  Approved: "approved",
+  Rejected: "rejected",
+  Cancelled: "cancelled",
+} as const;
+export type GetBudgetApplicationsStatusEnum =
+  (typeof GetBudgetApplicationsStatusEnum)[keyof typeof GetBudgetApplicationsStatusEnum];
+/**
+ * @export
+ */
+export const GetBudgetApplicationsTypeEnum = {
+  ActivityBudget: "activity_budget",
+  Purchase: "purchase",
+  Reimbursement: "reimbursement",
+} as const;
+export type GetBudgetApplicationsTypeEnum =
+  (typeof GetBudgetApplicationsTypeEnum)[keyof typeof GetBudgetApplicationsTypeEnum];
 /**
  * @export
  */

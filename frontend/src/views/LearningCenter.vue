@@ -709,6 +709,7 @@ async function reviewItem(item: LearningItem, approved: boolean) {
 
   try {
     await api.reviewLearningItem({
+      idempotencyKey: crypto.randomUUID(),
       itemId: item.id,
       reviewLearningItemRequest: { result: approved ? "approved" : "rejected" },
     });
@@ -1037,6 +1038,7 @@ async function enroll(item: LearningItem) {
   enrollingId.value = item.id;
   try {
     await api.enrollLearningItem({
+      idempotencyKey: crypto.randomUUID(),
       itemId: item.id,
     });
     ElMessage.success("已加入课程");
@@ -1270,7 +1272,7 @@ onUnmounted(() => {
 
 <template>
   <section class="learning-page">
-    <div class="page-header">
+    <div class="page-header app-page-header">
       <div>
         <h1>学习中心</h1>
         <p>课程用于报名与排期，资源用于在线学习与下载，两类内容独立管理。</p>

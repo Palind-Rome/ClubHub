@@ -113,10 +113,16 @@ export function AuthRoleFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     name: json["name"],
     displayName: json["displayName"],
     scope: json["scope"],
-    clubId: json["clubId"] == null ? undefined : json["clubId"],
+    clubId:
+      json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],
     clubIds: json["clubIds"],
     permissions: json["permissions"],
-    permissionDesc: json["permissionDesc"] == null ? undefined : json["permissionDesc"],
+    permissionDesc:
+      json["permissionDesc"] === undefined
+        ? undefined
+        : json["permissionDesc"] === null
+          ? null
+          : json["permissionDesc"],
   };
 }
 

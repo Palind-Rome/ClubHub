@@ -19,6 +19,7 @@ public class ProjectMembershipService
 
     private const int MaxWriteRetries = 3;
     private const string ManageProjectTasksPermission = "project:task:manage";
+    private static readonly string[] ActiveStatuses = [string.Empty, "active", "normal", "enabled", "在任", "正常"];
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
@@ -39,26 +40,14 @@ public class ProjectMembershipService
             pm.UserId == userId &&
             pm.MemberStatus == ActiveStatus &&
             pm.User != null &&
-            (pm.User.AccountStatus == null ||
-             pm.User.AccountStatus == string.Empty ||
-             pm.User.AccountStatus.ToLower() == "active" ||
-             pm.User.AccountStatus.ToLower() == "normal" ||
-             pm.User.AccountStatus.ToLower() == "enabled" ||
-             pm.User.AccountStatus == "在任" ||
-             pm.User.AccountStatus == "正常"));
+            ActiveStatuses.Contains(pm.User.AccountStatus == null ? string.Empty : pm.User.AccountStatus.Trim().ToLower()));
     }
 
     public Task<bool> IsActiveUserAsync(int userId)
     {
         return _db.Users.AnyAsync(user =>
             user.UserId == userId &&
-            (user.AccountStatus == null ||
-             user.AccountStatus == string.Empty ||
-             user.AccountStatus.ToLower() == "active" ||
-             user.AccountStatus.ToLower() == "normal" ||
-             user.AccountStatus.ToLower() == "enabled" ||
-             user.AccountStatus == "在任" ||
-             user.AccountStatus == "正常"));
+            ActiveStatuses.Contains(user.AccountStatus == null ? string.Empty : user.AccountStatus.Trim().ToLower()));
     }
 
     public Task<bool> IsActiveClubMemberAsync(int clubId, int userId)
@@ -67,13 +56,7 @@ public class ProjectMembershipService
         return _db.ClubMembers.AnyAsync(member =>
             member.ClubId == clubId &&
             member.UserId == userId &&
-            (member.MemberStatus == null ||
-             member.MemberStatus == string.Empty ||
-             member.MemberStatus.ToLower() == "active" ||
-             member.MemberStatus.ToLower() == "normal" ||
-             member.MemberStatus.ToLower() == "enabled" ||
-             member.MemberStatus == "在任" ||
-             member.MemberStatus == "正常") &&
+            ActiveStatuses.Contains(member.MemberStatus == null ? string.Empty : member.MemberStatus.Trim().ToLower()) &&
             (member.TermStart == null || member.TermStart <= businessDate) &&
             (member.TermEnd == null || member.TermEnd >= businessDate));
     }
@@ -175,22 +158,10 @@ public class ProjectMembershipService
         return _db.Users
             .AsNoTracking()
             .Where(user =>
-                user.AccountStatus == null ||
-                user.AccountStatus == string.Empty ||
-                user.AccountStatus.ToLower() == "active" ||
-                user.AccountStatus.ToLower() == "normal" ||
-                user.AccountStatus.ToLower() == "enabled" ||
-                user.AccountStatus == "在任" ||
-                user.AccountStatus == "正常")
+                ActiveStatuses.Contains(user.AccountStatus == null ? string.Empty : user.AccountStatus.Trim().ToLower()))
             .Where(user => user.ClubMemberships.Any(member =>
                 member.ClubId == project.ClubId &&
-                (member.MemberStatus == null ||
-                 member.MemberStatus == string.Empty ||
-                 member.MemberStatus.ToLower() == "active" ||
-                 member.MemberStatus.ToLower() == "normal" ||
-                 member.MemberStatus.ToLower() == "enabled" ||
-                 member.MemberStatus == "在任" ||
-                 member.MemberStatus == "正常") &&
+                ActiveStatuses.Contains(member.MemberStatus == null ? string.Empty : member.MemberStatus.Trim().ToLower()) &&
                 (member.TermStart == null || member.TermStart <= businessDate) &&
                 (member.TermEnd == null || member.TermEnd >= businessDate)))
             .Where(user => !_db.ProjectMembers.Any(member =>
@@ -244,7 +215,6 @@ public class ProjectMembershipService
                 {
                     member = new ProjectMember
                     {
-                        ProjectMemberId = await GetNextProjectMemberIdAsync(),
                         ProjectId = currentProject.ProjectId,
                         UserId = userId,
                         MemberRole = memberRole,
@@ -313,7 +283,6 @@ public class ProjectMembershipService
         var memberships = await _db.ProjectMembers
             .Where(member => member.ProjectId == project.ProjectId)
             .ToListAsync();
-        var nextMemberId = (await _db.ProjectMembers.MaxAsync(member => (int?)member.ProjectMemberId) ?? 0) + 1;
 
         foreach (var currentLeader in memberships.Where(member =>
                      member.UserId != newLeaderUserId &&
@@ -329,7 +298,6 @@ public class ProjectMembershipService
             if (previousLeader is null)
             {
                 previousLeader = CreateMembership(
-                    nextMemberId++,
                     project,
                     previousLeaderUserId.Value,
                     MemberRole,
@@ -348,7 +316,6 @@ public class ProjectMembershipService
         if (newLeader is null)
         {
             newLeader = CreateMembership(
-                nextMemberId,
                 project,
                 newLeaderUserId,
                 LeaderRole,
@@ -378,14 +345,7 @@ public class ProjectMembershipService
         return false;
     }
 
-    private async Task<int> GetNextProjectMemberIdAsync()
-    {
-        var maxId = await _db.ProjectMembers.MaxAsync(member => (int?)member.ProjectMemberId) ?? 0;
-        return maxId + 1;
-    }
-
     private static ProjectMember CreateMembership(
-        int projectMemberId,
         Project project,
         int userId,
         string role,
@@ -394,8 +354,8 @@ public class ProjectMembershipService
     {
         return new ProjectMember
         {
-            ProjectMemberId = projectMemberId,
             ProjectId = project.ProjectId,
+            Project = project,
             UserId = userId,
             MemberRole = role,
             MemberStatus = ActiveStatus,

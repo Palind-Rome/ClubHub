@@ -26,23 +26,25 @@ public class ActivitiesController : ControllerBase
     private const string RegisterStatusPending = "pending";
     private const string RegisterStatusAccepted = "accepted";
     private const string RegisterStatusOnsite = "onsite";
-    private const string BudgetStatusPending = "pending";
-    private const string BudgetStatusApproved = "approved";
-    private const string BudgetStatusRejected = "rejected";
-    private const int BudgetPurposeMaxLength = 255;
-    private const int BudgetCommentMaxLength = 255;
-    private const int BudgetDetailMaxLength = 4000;
     private const string ActivityCreatePermission = "activity:create";
     private const string ActivityReviewPermission = "activity:review";
     private const string ActivityCheckinManagePermission = "activity:checkin:manage";
     private const string ActivityCheckinPermission = "activity:checkin";
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
+    private readonly PublicQueryCacheService _publicQueryCache;
+    private readonly IDistributedRateLimiter _rateLimiter;
 
-    public ActivitiesController(ClubHubDbContext db, AuthService authService)
+    public ActivitiesController(
+        ClubHubDbContext db,
+        AuthService authService,
+        PublicQueryCacheService publicQueryCache,
+        IDistributedRateLimiter rateLimiter)
     {
         _db = db;
         _authService = authService;
+        _publicQueryCache = publicQueryCache;
+        _rateLimiter = rateLimiter;
     }
 
     [HttpGet]
@@ -159,6 +161,9 @@ public class ActivitiesController : ControllerBase
 
         _db.Activities.Add(activity);
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activity.ActivityId,
+            CancellationToken.None);
 
         return CreatedAtAction(nameof(GetById), new { activityId = activity.ActivityId }, ToDto(activity, 0));
     }
@@ -169,54 +174,35 @@ public class ActivitiesController : ControllerBase
         var shouldCheckRegistration = currentUserId is > 0;
         var viewerUserId = currentUserId.GetValueOrDefault();
 
-        var activity = await _db.Activities
-            .Where(a => a.ActivityId == activityId)
-            .Select(a => new ActivityDto(
-                a.ActivityId,
-                a.Title,
-                a.ActivityType,
-                a.Description,
-                a.Club != null ? a.Club.ClubName : "",
-                a.ClubId,
-                a.CreatorUserId,
-                a.StartAt,
-                a.EndAt,
-                a.Location,
-                a.ActivityStatus,
-                a.Capacity,
-                a.RegistrationDeadline,
-                a.ReviewerUserId,
-                a.ReviewComment,
-                a.BudgetAmount,
-                a.BudgetPurpose,
-                a.BudgetDetail,
-                a.BudgetStatus,
-                a.BudgetReviewerId,
-                a.BudgetComment,
-                a.PublishedAt,
-                a.CheckinStartAt,
-                a.CheckinEndAt,
-                a.CheckoutStartAt,
-                a.CheckoutEndAt,
-                _db.ActivityParticipations.Count(p =>
-                    p.ActivityId == a.ActivityId &&
-                    (p.RegisterStatus == RegisterStatusPending ||
-                     p.RegisterStatus == RegisterStatusAccepted ||
-                     p.RegisterStatus == RegisterStatusOnsite)),
-                shouldCheckRegistration &&
-                _db.ActivityParticipations.Any(p =>
-                    p.ActivityId == a.ActivityId &&
-                    p.UserId == viewerUserId &&
-                    (p.RegisterStatus == RegisterStatusPending ||
-                     p.RegisterStatus == RegisterStatusAccepted ||
-                     p.RegisterStatus == RegisterStatusOnsite))
-            ))
+        var activity = await _publicQueryCache.GetActivityAsync(
+            activityId,
+            HttpContext.RequestAborted);
+        if (activity is null) return NotFound();
+
+        var registrationStats = await _db.ActivityParticipations
+            .Where(participation =>
+                participation.ActivityId == activityId &&
+                (participation.RegisterStatus == RegisterStatusPending ||
+                 participation.RegisterStatus == RegisterStatusAccepted ||
+                 participation.RegisterStatus == RegisterStatusOnsite))
+            .GroupBy(_ => 1)
+            .Select(participations => new
+            {
+                CurrentParticipants = participations.Count(),
+                IsRegistered = shouldCheckRegistration &&
+                    participations.Any(participation =>
+                        participation.UserId == viewerUserId)
+            })
             .FirstOrDefaultAsync();
 
-        return activity is null ? NotFound() : Ok(activity);
+        return Ok(ToDto(
+            activity,
+            registrationStats?.CurrentParticipants ?? 0,
+            registrationStats?.IsRegistered ?? false));
     }
 
     [HttpPost("{activityId:int}/registrations")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("registerActivity")]
     [Authorize]
     public async Task<IActionResult> Register(int activityId)
     {
@@ -228,7 +214,7 @@ public class ActivitiesController : ControllerBase
 
         for (var attempt = 1; attempt <= MaxRegisterRetries; attempt++)
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.ReadCommitted);
 
             var activity = await LockActivityForRegistration(activityId);
             if (activity is null)
@@ -322,6 +308,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewActivity")]
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
     {
@@ -362,119 +349,39 @@ public class ActivitiesController : ControllerBase
         activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
 
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activityId,
+            CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
 
     [HttpPut("{activityId:int}/budget")]
     [Authorize]
-    public async Task<IActionResult> ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
+    public IActionResult ApplyBudget(int activityId, [FromBody] ApplyActivityBudgetRequest req)
     {
-        var currentUserId = User.GetUserId();
-        if (currentUserId is null)
-        {
-            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
-        }
-
-        var budgetPurpose = req.BudgetPurpose?.Trim();
-        var budgetDetail = string.IsNullOrWhiteSpace(req.BudgetDetail) ? null : req.BudgetDetail.Trim();
-        if (req.BudgetAmount < 0.01)
-        {
-            return BadRequest(new { message = "预算金额必须大于 0。" });
-        }
-
-        if (string.IsNullOrWhiteSpace(budgetPurpose))
-        {
-            return BadRequest(new { message = "预算用途不能为空。" });
-        }
-
-        if (budgetPurpose.Length > BudgetPurposeMaxLength)
-        {
-            return BadRequest(new { message = $"预算用途不能超过 {BudgetPurposeMaxLength} 个字符。" });
-        }
-
-        if (budgetDetail?.Length > BudgetDetailMaxLength)
-        {
-            return BadRequest(new { message = $"经费明细不能超过 {BudgetDetailMaxLength} 个字符。" });
-        }
-
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
-
-        var activity = await LockActivityForRegistration(activityId);
-
-        if (activity is null) return NotFound();
-
-        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:apply", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费申请权限。" });
-        }
-
-        if (activity.ActivityStatus is "finished" or "cancelled")
-        {
-            return BadRequest(new { message = "已结束或已取消的活动不能提交经费申请。" });
-        }
-
-        if (string.Equals(activity.BudgetStatus, BudgetStatusApproved, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { message = "经费预算已审批通过，不能重复修改申请。" });
-        }
-
-        activity.BudgetAmount = Convert.ToDecimal(req.BudgetAmount);
-        activity.BudgetPurpose = budgetPurpose;
-        activity.BudgetDetail = budgetDetail;
-        activity.BudgetStatus = BudgetStatusPending;
-        activity.BudgetReviewerId = null;
-        activity.BudgetComment = null;
-
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        _ = activityId;
+        _ = req;
+        return StatusCode(
+            StatusCodes.Status409Conflict,
+            new
+            {
+                message = "活动页旧经费预算入口已停用，请前往“经费管理”创建经费申请，确保账户、审核、流水和余额闭环一致。"
+            });
     }
 
     [HttpPost("{activityId:int}/budget/review")]
     [Authorize]
-    public async Task<IActionResult> ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
+    public IActionResult ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
-        var currentUserId = User.GetUserId();
-        if (currentUserId is null)
-        {
-            return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
-        }
-
-        var budgetComment = string.IsNullOrWhiteSpace(req.Comment) ? null : req.Comment.Trim();
-        if (budgetComment?.Length > BudgetCommentMaxLength)
-        {
-            return BadRequest(new { message = $"审批意见不能超过 {BudgetCommentMaxLength} 个字符。" });
-        }
-
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
-
-        var activity = await LockActivityForRegistration(activityId);
-
-        if (activity is null) return NotFound();
-        var permission = await _authService.CheckPermissionAsync(currentUserId.Value, "budget:review", activity.ClubId);
-        if (permission.Value?.Allowed != true)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "当前用户没有该社团的经费审批权限。" });
-        }
-
-        if (!string.Equals(activity.BudgetStatus, BudgetStatusPending, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest(new { message = "只有待审批的经费申请才能审批。" });
-        }
-
-        activity.BudgetReviewerId = currentUserId.Value;
-        activity.BudgetComment = budgetComment;
-        activity.BudgetStatus = req.Approved ? BudgetStatusApproved : BudgetStatusRejected;
-
-        await _db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        _ = activityId;
+        _ = req;
+        return StatusCode(
+            StatusCodes.Status409Conflict,
+            new
+            {
+                message = "活动页旧经费审批入口已停用，请前往“经费管理”审核经费申请，确保账户、审核、流水和余额闭环一致。"
+            });
     }
 
     [HttpPut("{activityId:int}/checkin-settings")]
@@ -551,6 +458,9 @@ public class ActivitiesController : ControllerBase
         activity.CheckoutEndAt = req.CheckoutEndAt;
 
         await _db.SaveChangesAsync();
+        await _publicQueryCache.InvalidateActivityAsync(
+            activityId,
+            CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
         return Ok(ToDto(activity, currentParticipants));
     }
@@ -681,6 +591,30 @@ public class ActivitiesController : ControllerBase
 
         if (!string.Equals(expectedCode, req.Code.Trim(), StringComparison.Ordinal))
         {
+            try
+            {
+                var direction = isCheckin ? "checkin" : "checkout";
+                var decision = await _rateLimiter.AcquireAsync(
+                    "activity-sign-code",
+                    $"{currentUserId.Value}:{activityId}:{direction}",
+                    5,
+                    TimeSpan.FromMinutes(10),
+                    HttpContext.RequestAborted);
+                if (!decision.Allowed)
+                {
+                    Response.Headers.RetryAfter = decision.RetryAfterSeconds.ToString();
+                    return StatusCode(
+                        StatusCodes.Status429TooManyRequests,
+                        new { message = "签到码或签退码错误次数过多，请稍后重试。" });
+                }
+            }
+            catch (RateLimitUnavailableException)
+            {
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    new { message = "暂时无法安全校验签到或签退请求，请稍后重试。" });
+            }
+
             return BadRequest(new { message = isCheckin ? "签到码不正确。" : "签退码不正确。" });
         }
 
@@ -837,6 +771,42 @@ public class ActivitiesController : ControllerBase
             currentParticipants,
             isRegistered
         );
+    }
+
+    private static ActivityDto ToDto(
+        ActivityPublicCacheEntry activity,
+        int currentParticipants,
+        bool isRegistered)
+    {
+        return new ActivityDto(
+            activity.Id,
+            activity.Title,
+            activity.ActivityType,
+            activity.Description,
+            activity.ClubName,
+            activity.ClubId,
+            activity.CreatorUserId,
+            activity.StartTime,
+            activity.EndTime,
+            activity.Location,
+            activity.Status,
+            activity.MaxParticipants,
+            activity.RegistrationDeadline,
+            activity.ReviewerUserId,
+            activity.ReviewComment,
+            activity.BudgetAmount,
+            activity.BudgetPurpose,
+            activity.BudgetDetail,
+            activity.BudgetStatus,
+            activity.BudgetReviewerId,
+            activity.BudgetComment,
+            activity.PublishedAt,
+            activity.CheckinStartAt,
+            activity.CheckinEndAt,
+            activity.CheckoutStartAt,
+            activity.CheckoutEndAt,
+            currentParticipants,
+            isRegistered);
     }
 
     private static ObjectResult Error(int statusCode, string code, string message)
