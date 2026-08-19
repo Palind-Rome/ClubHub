@@ -1616,6 +1616,75 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/v1/clubs/{clubId}/forum-posts/upload-image:
+    post:
+      summary: 上传论坛图片到 OSS
+      operationId: uploadForumImage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: 图片文件，支持 jpg、png、gif、webp，文件大小 ≤ 5MB
+              required: [image]
+      responses:
+        "200":
+          description: 图片上传成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumImageUploadResponse"
+        "400":
+          description: 图片文件不合法（类型或大小超限）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "413":
+          description: 文件过大，超出大小限制
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: OSS 上传失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/v1/clubs/{clubId}/award-rule-documents:
     get:
       summary: 查询评奖评优评定细则
@@ -7148,6 +7217,25 @@ components:
           enum: [published, hidden]
           example: published
       required: [isTop, postStatus]
+
+    ForumImageUploadResponse:
+      type: object
+      description: 论坛图片上传响应
+      properties:
+        imageUrl:
+          type: string
+          description: 上传后的图片 OSS URL，可直接在 Markdown 中使用。
+          example: https://clubhub-oss.aliyuncs.com/forum/2026/08/19/abc123.png
+        fileName:
+          type: string
+          description: 图片文件名。
+          example: abc123.png
+        uploadedAt:
+          type: string
+          format: date-time
+          description: 上传时间。
+          example: 2026-08-19T10:30:00Z
+      required: [imageUrl, fileName, uploadedAt]
 
     NoticeReadResult:
       type: object
