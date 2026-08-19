@@ -7,6 +7,8 @@ import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
+import MarkdownEditor from "../components/MarkdownEditor.vue";
+import MarkdownRenderer from "../components/MarkdownRenderer.vue";
 
 const clubs = ref<Club[]>([]);
 const topics = ref<ForumPost[]>([]);
@@ -240,14 +242,14 @@ onUnmounted(() => stopSessionListener?.());
         <el-form-item label="标题" prop="title"
           ><el-input v-model="topicForm.title" maxlength="120" show-word-limit
         /></el-form-item>
-        <el-form-item label="内容" prop="content"
-          ><el-input
+        <el-form-item label="内容" prop="content">
+          <MarkdownEditor
             v-model="topicForm.content"
-            type="textarea"
-            :rows="4"
-            maxlength="4000"
-            show-word-limit
-        /></el-form-item>
+            :club-id="selectedClubId"
+            :maxlength="4000"
+            placeholder="支持 Markdown 格式..."
+          />
+        </el-form-item>
         <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
       </el-form>
     </el-card>
@@ -278,7 +280,7 @@ onUnmounted(() => stopSessionListener?.());
           >发布人：{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small
         >
       </header>
-      <p>{{ topic.content }}</p>
+      <MarkdownRenderer :content="topic.content" />
       <div class="actions">
         <el-button
           v-if="canPostToSelectedClub"
@@ -327,7 +329,7 @@ onUnmounted(() => stopSessionListener?.());
         <small
           >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
         >
-        <p>{{ reply.content }}</p>
+        <MarkdownRenderer :content="reply.content" />
         <div class="reply-actions">
           <el-button
             v-if="canModerate"
@@ -361,13 +363,14 @@ onUnmounted(() => stopSessionListener?.());
       @close="replyingTo = null"
     >
       <el-form ref="replyFormRef" :model="replyForm" :rules="replyRules" label-position="top"
-        ><el-form-item label="回复内容" prop="content"
-          ><el-input
+        ><el-form-item label="回复内容" prop="content">
+          <MarkdownEditor
             v-model="replyForm.content"
-            type="textarea"
+            :club-id="selectedClubId"
+            :maxlength="4000"
             :rows="5"
-            maxlength="4000"
-            show-word-limit /></el-form-item
+            placeholder="支持 Markdown 格式..."
+          /> </el-form-item
       ></el-form>
       <template #footer
         ><el-button @click="replyingTo = null">取消</el-button
