@@ -33,6 +33,7 @@ const activeMenu = computed(() => {
   if (route.path.startsWith("/learning")) return "/learning";
   if (route.path.startsWith("/projects")) return "/projects";
   if (route.path.startsWith("/budgets")) return "/budgets";
+  if (route.path.startsWith("/forum")) return "/forum";
   return route.path;
 });
 const canAccessClubRegistration = computed(() => {
@@ -135,6 +136,7 @@ onUnmounted(() => {
         <el-menu-item index="/awards">评奖评优</el-menu-item>
         <el-menu-item index="/activities">活动</el-menu-item>
         <el-menu-item index="/notices">通知</el-menu-item>
+        <el-menu-item index="/forum">讨论区</el-menu-item>
         <el-menu-item index="/projects">项目</el-menu-item>
         <el-menu-item v-if="canAccessBudgets" index="/budgets">经费管理</el-menu-item>
         <el-menu-item v-if="canManageVenues" index="/venues">场地管理</el-menu-item>

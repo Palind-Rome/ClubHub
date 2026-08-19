@@ -13,6 +13,7 @@ import VenueReservationApply from "../views/VenueReservationApply.vue";
 import LearningCenter from "../views/LearningCenter.vue";
 import MaterialBorrow from "../views/MaterialBorrow.vue";
 import BudgetManagement from "../views/BudgetManagement.vue";
+import ForumCenter from "../views/ForumCenter.vue";
 import { hasCompletedSession, readAuth } from "../authSession";
 import { BUDGET_ACCESS_PERMISSIONS } from "../budgetPermissions";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
@@ -39,6 +40,7 @@ const router = createRouter({
     { path: "/learning", component: LearningCenter },
     { path: "/materials", component: MaterialBorrow },
     { path: "/budgets", component: BudgetManagement },
+    { path: "/forum", component: ForumCenter },
   ],
 });
 

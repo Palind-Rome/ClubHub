@@ -47,6 +47,7 @@ public class ClubHubDbContext : DbContext
     public DbSet<BudgetApplication> BudgetApplications => Set<BudgetApplication>();
     public DbSet<BudgetReviewRecord> BudgetReviewRecords => Set<BudgetReviewRecord>();
     public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
+    public DbSet<ForumPost> ForumPosts => Set<ForumPost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -747,6 +748,15 @@ public class ClubHubDbContext : DbContext
              .WithMany()
              .HasForeignKey(r => r.UserId)
              .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ForumPost>(e =>
+        {
+            e.HasKey(p => p.PostId);
+            e.Property(p => p.PostId).ValueGeneratedOnAdd().HasDefaultValueSql("SEQ_FORUM_POSTS.NEXTVAL");
+            e.HasOne(p => p.Club).WithMany().HasForeignKey(p => p.ClubId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(p => p.ParentPost).WithMany(p => p.Replies).HasForeignKey(p => p.ParentPostId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Recruitment>(e =>
