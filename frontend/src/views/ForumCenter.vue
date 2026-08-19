@@ -30,6 +30,8 @@ const topicFormRef = ref<FormInstance>();
 const replyFormRef = ref<FormInstance>();
 const topicForm = reactive({ title: "", content: "" });
 const replyForm = reactive({ content: "" });
+const moderatingPostIds = ref(new Set<number>());
+let postsRequestVersion = 0;
 let stopSessionListener: (() => void) | null = null;
 
 const canPost = computed(() =>
@@ -57,15 +59,19 @@ async function loadClubs() {
 
 async function loadPosts() {
   if (!selectedClubId.value) return;
+  const requestVersion = ++postsRequestVersion;
+  const clubId = selectedClubId.value;
+  const includeHidden = showHidden.value;
   loading.value = true;
   try {
-    const query = showHidden.value ? "?includeHidden=true" : "";
-    topics.value = await requestJson<Post[]>(
-      `/api/clubs/${selectedClubId.value}/forum-posts${query}`,
-    );
+    const query = includeHidden ? "?includeHidden=true" : "";
+    const posts = await requestJson<Post[]>(`/api/clubs/${clubId}/forum-posts${query}`);
+    if (requestVersion === postsRequestVersion) topics.value = posts;
   } catch (error) {
-    topics.value = [];
-    ElMessage.error(error instanceof Error ? error.message : "讨论区加载失败");
+    if (requestVersion === postsRequestVersion) {
+      topics.value = [];
+      ElMessage.error(error instanceof Error ? error.message : "讨论区加载失败");
+    }
   } finally {
     loading.value = false;
   }
@@ -97,6 +103,8 @@ async function createPost(parentPostId?: number) {
 
 async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postStatus">>) {
   if (!selectedClubId.value) return;
+  if (moderatingPostIds.value.has(post.id)) return;
+  moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
   try {
     await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
       method: "PATCH",
@@ -110,6 +118,10 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
     await loadPosts();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "管理操作失败");
+  } finally {
+    const next = new Set(moderatingPostIds.value);
+    next.delete(post.id);
+    moderatingPostIds.value = next;
   }
 }
 
@@ -119,6 +131,10 @@ watch(showHidden, () => void loadPosts());
 onMounted(() => {
   stopSessionListener = onSessionChange(() => {
     auth.value = readAuth();
+    postsRequestVersion++;
+    topics.value = [];
+    if (!canModerate.value) showHidden.value = false;
+    void loadPosts();
   });
   void loadClubs();
 });
@@ -191,12 +207,18 @@ onUnmounted(() => stopSessionListener?.());
           >回复</el-button
         >
         <template v-if="canModerate"
-          ><el-button link :icon="Star" @click="moderate(topic, { isTop: !topic.isTop })">{{
+          ><el-button
+            link
+            :icon="Star"
+            :disabled="moderatingPostIds.has(topic.id)"
+            @click="moderate(topic, { isTop: !topic.isTop })"
+          >{{
             topic.isTop ? "取消置顶" : "置顶"
           }}</el-button
           ><el-button
             link
             :icon="topic.postStatus === 'hidden' ? View : Hide"
+            :disabled="moderatingPostIds.has(topic.id)"
             @click="
               moderate(topic, {
                 postStatus: topic.postStatus === 'hidden' ? 'published' : 'hidden',

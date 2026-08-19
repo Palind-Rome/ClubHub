@@ -40,14 +40,14 @@ public class ProjectMembershipService
             pm.UserId == userId &&
             pm.MemberStatus == ActiveStatus &&
             pm.User != null &&
-            ActiveStatuses.Contains(pm.User.AccountStatus ?? string.Empty));
+            ActiveStatuses.Contains(pm.User.AccountStatus == null ? string.Empty : pm.User.AccountStatus.Trim().ToLower()));
     }
 
     public Task<bool> IsActiveUserAsync(int userId)
     {
         return _db.Users.AnyAsync(user =>
             user.UserId == userId &&
-            ActiveStatuses.Contains(user.AccountStatus ?? string.Empty));
+            ActiveStatuses.Contains(user.AccountStatus == null ? string.Empty : user.AccountStatus.Trim().ToLower()));
     }
 
     public Task<bool> IsActiveClubMemberAsync(int clubId, int userId)
@@ -56,7 +56,7 @@ public class ProjectMembershipService
         return _db.ClubMembers.AnyAsync(member =>
             member.ClubId == clubId &&
             member.UserId == userId &&
-            ActiveStatuses.Contains(member.MemberStatus ?? string.Empty) &&
+            ActiveStatuses.Contains(member.MemberStatus == null ? string.Empty : member.MemberStatus.Trim().ToLower()) &&
             (member.TermStart == null || member.TermStart <= businessDate) &&
             (member.TermEnd == null || member.TermEnd >= businessDate));
     }
@@ -158,10 +158,10 @@ public class ProjectMembershipService
         return _db.Users
             .AsNoTracking()
             .Where(user =>
-                ActiveStatuses.Contains(user.AccountStatus ?? string.Empty))
+                ActiveStatuses.Contains(user.AccountStatus == null ? string.Empty : user.AccountStatus.Trim().ToLower()))
             .Where(user => user.ClubMemberships.Any(member =>
                 member.ClubId == project.ClubId &&
-                ActiveStatuses.Contains(member.MemberStatus ?? string.Empty) &&
+                ActiveStatuses.Contains(member.MemberStatus == null ? string.Empty : member.MemberStatus.Trim().ToLower()) &&
                 (member.TermStart == null || member.TermStart <= businessDate) &&
                 (member.TermEnd == null || member.TermEnd >= businessDate)))
             .Where(user => !_db.ProjectMembers.Any(member =>
