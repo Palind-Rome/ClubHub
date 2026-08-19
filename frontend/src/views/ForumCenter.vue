@@ -212,9 +212,7 @@ onUnmounted(() => stopSessionListener?.());
             :icon="Star"
             :disabled="moderatingPostIds.has(topic.id)"
             @click="moderate(topic, { isTop: !topic.isTop })"
-          >{{
-            topic.isTop ? "取消置顶" : "置顶"
-          }}</el-button
+            >{{ topic.isTop ? "取消置顶" : "置顶" }}</el-button
           ><el-button
             link
             :icon="topic.postStatus === 'hidden' ? View : Hide"
