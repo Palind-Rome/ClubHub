@@ -3,10 +3,19 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
+import { ArrowRight, Check, Key, Lock, User, UserFilled } from "@element-plus/icons-vue";
 import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/models";
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";
+import {
+  STAFF_NO_LENGTH,
+  STUDENT_NO_LENGTH,
+  STUDENT_NO_MAX_LENGTH,
+  resolveIdentityLabel,
+  resolvePostAuthPath,
+} from "../authExperience";
+import { AppPageHeader, AppPanel } from "../components/ui";
 
 const router = useRouter();
 const route = useRoute();
@@ -19,9 +28,6 @@ const usersLoading = ref(false);
 const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
 
-const STUDENT_NO_LENGTH = 7;
-const STAFF_NO_LENGTH = 5;
-const STUDENT_NO_MAX_LENGTH = Math.max(STUDENT_NO_LENGTH, STAFF_NO_LENGTH);
 const studentNoRuleMessage = `学工号必须为学生 ${STUDENT_NO_LENGTH} 位或教师 ${STAFF_NO_LENGTH} 位`;
 const studentNoPlaceholder = `学生 ${STUDENT_NO_LENGTH} 位，教师 ${STAFF_NO_LENGTH} 位`;
 const studentNoHelpMessage = `请输入学生 ${STUDENT_NO_LENGTH} 位或教师 ${STAFF_NO_LENGTH} 位学工号`;
@@ -189,8 +195,7 @@ function optionalText(value: string) {
 }
 
 function authRedirectPath() {
-  const redirect = route.query.redirect;
-  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/clubs";
+  return resolvePostAuthPath(route.query.redirect);
 }
 
 function applyAuth(nextAuth: AuthResponse) {
@@ -279,14 +284,7 @@ function permissionLabel(code: string) {
 }
 
 function identityLabel(studentNo?: string | null) {
-  const normalized = (studentNo ?? "").trim();
-  if (hasDigitLength(normalized, STUDENT_NO_LENGTH)) return "学生";
-  if (hasDigitLength(normalized, STAFF_NO_LENGTH)) return "教师";
-  return "";
-}
-
-function hasDigitLength(value: string, length: number) {
-  return value.length === length && /^\d+$/.test(value);
+  return resolveIdentityLabel(studentNo);
 }
 
 async function loadPermissionCatalog() {
@@ -302,20 +300,38 @@ loadPermissionCatalog();
 
 <template>
   <div class="auth-page">
-    <section v-if="currentStep === 'login'" class="auth-shell">
-      <div class="intro">
-        <h1>ClubHub</h1>
-        <p>高校社团运营与协同管理平台</p>
+    <section v-if="currentStep === 'login'" class="auth-shell login-shell">
+      <div class="intro auth-intro">
+        <div class="brand-lockup">
+          <img src="/favicon.svg" alt="" aria-hidden="true" />
+          <div><strong>ClubHub</strong><span>社团协作中心</span></div>
+        </div>
+        <span class="intro-eyebrow">Connected campus</span>
+        <h1>让每一次社团协作<br />清晰而有序</h1>
+        <p>统一管理身份、活动、项目与通知，随时掌握与你相关的校园动态。</p>
+        <ul class="feature-list">
+          <li>
+            <el-icon><Check /></el-icon>按角色呈现专属工作入口
+          </li>
+          <li>
+            <el-icon><Check /></el-icon>浅色、深色与系统主题自由切换
+          </li>
+          <li>
+            <el-icon><Check /></el-icon>重要通知和近期任务集中查看
+          </li>
+        </ul>
       </div>
 
       <el-form
         ref="loginFormRef"
         :model="loginForm"
         :rules="loginRules"
-        class="auth-panel"
+        class="auth-panel login-panel"
         label-position="top"
       >
-        <h2>用户登录</h2>
+        <span class="panel-eyebrow">Welcome back</span>
+        <h2>登录 ClubHub</h2>
+        <p class="panel-description">使用用户名、学号或工号继续访问你的社团空间。</p>
         <el-form-item label="用户名" prop="username">
           <el-input
             v-model="loginForm.username"
@@ -337,16 +353,27 @@ loadPermissionCatalog();
         <el-button type="primary" :loading="loading" class="full-button" @click="login"
           >登录</el-button
         >
+        <div class="auth-divider"><span>首次使用 ClubHub</span></div>
         <el-button link type="primary" class="switch-link" @click="mode = 'register'">
           没有账号？立即注册
+          <el-icon class="el-icon--right"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
     </section>
 
     <section v-else-if="currentStep === 'register'" class="auth-shell register-shell">
-      <div class="intro">
-        <h1>创建账号</h1>
+      <div class="intro auth-intro register-intro">
+        <div class="brand-lockup">
+          <img src="/favicon.svg" alt="" aria-hidden="true" />
+          <div><strong>ClubHub</strong><span>社团协作中心</span></div>
+        </div>
+        <span class="intro-eyebrow">Create your space</span>
+        <h1>创建你的<br />校园协作身份</h1>
         <p>{{ studentNoIntroText }}</p>
+        <div class="identity-hint">
+          <el-icon><UserFilled /></el-icon>
+          <div><strong>身份自动识别</strong><span>系统将根据学工号识别学生或教师身份。</span></div>
+        </div>
       </div>
 
       <el-form
@@ -356,6 +383,10 @@ loadPermissionCatalog();
         class="auth-panel register-panel"
         label-position="top"
       >
+        <span class="panel-eyebrow">Join ClubHub</span>
+        <h2>注册新账号</h2>
+        <p class="panel-description">先填写必要身份信息，其他资料可按需补充。</p>
+        <div class="form-section-title"><span>1</span>登录与身份</div>
         <div class="form-grid">
           <el-form-item label="用户名" prop="username">
             <el-input v-model="registerForm.username" maxlength="50" />
@@ -382,6 +413,9 @@ loadPermissionCatalog();
               {{ registerIdentity ? `当前判断为：${registerIdentity}` : studentNoHelpMessage }}
             </div>
           </el-form-item>
+        </div>
+        <div class="form-section-title"><span>2</span>个人资料（选填）</div>
+        <div class="form-grid">
           <el-form-item label="性别">
             <el-select v-model="registerForm.gender" clearable>
               <el-option label="男" value="男" />
@@ -414,19 +448,48 @@ loadPermissionCatalog();
     </section>
 
     <section v-else-if="auth" class="account-page">
-      <div class="page-title app-page-header">
-        <div>
-          <h2>当前账号</h2>
-          <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）</p>
-        </div>
-        <div class="actions">
+      <AppPageHeader
+        class="app-page-header"
+        eyebrow="Account & permissions"
+        title="账号与权限"
+        description="查看当前身份、角色范围和可用权限，管理账号会话状态。"
+      >
+        <template #meta>
+          <el-tag effect="plain">{{ identityLabel(auth.user.studentNo) || "校园用户" }}</el-tag>
+          <el-tag type="success" effect="plain">{{
+            auth.user.accountStatus === "disabled" ? "已停用" : "状态正常"
+          }}</el-tag>
+        </template>
+        <template #actions>
+          <el-button type="primary" plain @click="router.push('/dashboard')">返回工作台</el-button>
           <el-button type="danger" plain @click="logout">退出登录</el-button>
+        </template>
+      </AppPageHeader>
+
+      <section class="account-identity" aria-label="当前账号摘要">
+        <div class="account-avatar" aria-hidden="true">{{ auth.user.realName.slice(0, 1) }}</div>
+        <div class="account-identity-copy">
+          <span>当前登录账号</span>
+          <strong>{{ auth.user.realName }}</strong>
+          <p>
+            {{ auth.user.studentNo || auth.user.username }} ·
+            {{ auth.user.college || "学院信息未填写" }}
+          </p>
         </div>
-      </div>
+        <div class="account-stats">
+          <div>
+            <el-icon><User /></el-icon><strong>{{ auth.roles.length }}</strong
+            ><span>角色</span>
+          </div>
+          <div>
+            <el-icon><Key /></el-icon><strong>{{ auth.permissions.length }}</strong
+            ><span>权限</span>
+          </div>
+        </div>
+      </section>
 
       <div class="account-grid">
-        <div class="info-panel">
-          <h3>账号信息</h3>
+        <AppPanel title="账号档案" description="用于校内身份识别的基础资料。">
           <el-descriptions :column="1" size="small" border>
             <el-descriptions-item label="姓名">{{ auth.user.realName }}</el-descriptions-item>
             <el-descriptions-item label="学工号">{{
@@ -445,10 +508,9 @@ loadPermissionCatalog();
               auth.user.accountStatus
             }}</el-descriptions-item>
           </el-descriptions>
-        </div>
+        </AppPanel>
 
-        <div class="info-panel">
-          <h3>当前角色</h3>
+        <AppPanel title="角色与权限" description="权限为当前全部角色授权能力的并集。">
           <el-empty
             v-if="auth.roles.length === 0"
             description="当前账号暂无可用角色，请联系管理员分配角色"
@@ -482,14 +544,18 @@ loadPermissionCatalog();
             >
               {{ permissionLabel(permission) }}
             </el-tag>
+            <span v-if="auth.permissions.length === 0" class="muted">暂无可用权限</span>
           </div>
-        </div>
+        </AppPanel>
       </div>
 
       <div v-if="isSystemAdmin" class="info-panel user-admin-panel">
         <div class="panel-heading">
           <div>
-            <h3>账号状态与会话</h3>
+            <div class="admin-title">
+              <el-icon><Lock /></el-icon>
+              <h3>账号状态与会话</h3>
+            </div>
             <p>停用账号会立即撤销该用户的全部登录会话。</p>
           </div>
           <el-button :loading="usersLoading" @click="loadManagedUsers">刷新</el-button>
@@ -526,63 +592,252 @@ loadPermissionCatalog();
 
 <style scoped>
 .auth-page {
-  max-width: 1080px;
-  margin: 0 auto;
+  min-width: 0;
 }
 
 .auth-shell {
-  min-height: 520px;
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(320px, 420px);
-  gap: 28px;
+  width: min(1180px, calc(100% - 40px));
+  min-height: 100vh;
   align-items: center;
+  grid-template-columns: minmax(320px, 1fr) minmax(340px, 440px);
+  gap: clamp(40px, 7vw, 96px);
+  margin: 0 auto;
+  padding: 40px 0;
 }
 
 .register-shell {
-  grid-template-columns: minmax(240px, 0.8fr) minmax(520px, 1.2fr);
+  grid-template-columns: minmax(280px, 0.72fr) minmax(560px, 1.28fr);
+  gap: clamp(32px, 5vw, 72px);
 }
 
-.intro h1 {
-  margin: 0 0 10px;
-  font-size: 36px;
+.auth-intro {
+  position: relative;
 }
 
-.intro p,
-.page-title p,
-.muted {
+.auth-intro::before {
+  position: absolute;
+  z-index: -1;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--club-primary) 11%, transparent);
+  content: "";
+  filter: blur(8px);
+  inset: 50% auto auto -120px;
+  transform: translateY(-50%);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: clamp(44px, 8vh, 84px);
+}
+
+.brand-lockup img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.brand-lockup div {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-lockup strong {
+  color: var(--club-text);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.brand-lockup span {
+  margin-top: 3px;
+  color: var(--club-text-muted);
+  font-size: 12px;
+}
+
+.intro-eyebrow,
+.panel-eyebrow {
+  display: block;
+  color: var(--club-primary-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.auth-intro h1 {
+  margin: 12px 0 18px;
+  color: var(--club-text);
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+
+.auth-intro > p {
+  max-width: 560px;
   margin: 0;
-  color: var(--el-text-color-secondary);
+  color: var(--club-text-secondary);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.feature-list {
+  display: grid;
+  gap: 13px;
+  margin: 32px 0 0;
+  padding: 0;
+  color: var(--club-text-secondary);
+  font-size: 14px;
+  list-style: none;
+}
+
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-list .el-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--club-success);
+  background: color-mix(in srgb, var(--club-success) 12%, transparent);
+}
+
+.identity-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+  margin-top: 32px;
+  padding: 16px;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-md);
+  background: var(--club-surface);
+}
+
+.identity-hint > .el-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: var(--club-primary);
+  background: var(--club-primary-soft);
+  font-size: 20px;
+}
+
+.identity-hint div {
+  display: flex;
+  flex-direction: column;
+}
+
+.identity-hint strong {
+  color: var(--club-text);
+  font-size: 13px;
+}
+
+.identity-hint span {
+  margin-top: 3px;
+  color: var(--club-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .auth-panel,
 .info-panel {
   border: 1px solid var(--club-border);
-  border-radius: var(--club-radius-md);
-  padding: 20px;
+  border-radius: var(--club-radius-xl);
+  padding: clamp(24px, 3.5vw, 40px);
   background: var(--club-bg-elevated);
-  box-shadow: var(--club-shadow-sm);
+  box-shadow: var(--club-shadow-md);
   backdrop-filter: var(--club-glass-blur);
 }
 
-.auth-panel h2,
-.info-panel h3,
-.page-title h2 {
-  margin: 0 0 16px;
+.auth-panel h2 {
+  margin: 8px 0 0;
+  color: var(--club-text);
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+
+.panel-description {
+  margin: 8px 0 28px;
+  color: var(--club-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auth-panel :deep(.el-form-item__label) {
+  color: var(--club-text-secondary);
+  font-weight: 650;
+}
+
+.auth-panel :deep(.el-input__wrapper),
+.auth-panel :deep(.el-select__wrapper) {
+  min-height: 42px;
+  background: color-mix(in srgb, var(--club-surface-solid) 74%, transparent);
 }
 
 .full-button {
   width: 100%;
+  min-height: 42px;
+  margin-top: 4px;
+  font-weight: 700;
 }
 
 .switch-link {
   width: 100%;
-  margin: 12px 0 0;
+  margin: 2px 0 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 6px;
+  color: var(--club-text-muted);
+  font-size: 11px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--club-border);
+  content: "";
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 0 16px;
+  grid-template-columns: repeat(2, minmax(210px, 1fr));
+  gap: 0 18px;
+}
+
+.form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 0 16px;
+  color: var(--club-text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.form-section-title span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--club-primary-strong);
+  background: var(--club-primary-soft);
+  font-size: 11px;
 }
 
 .field-help {
@@ -593,12 +848,104 @@ loadPermissionCatalog();
   line-height: 1.4;
 }
 
-.page-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 16px;
+.account-page {
+  display: grid;
+  gap: var(--club-space-6);
+}
+
+.account-page :deep(.page-header) {
+  margin-bottom: 0;
+}
+
+.account-identity {
+  display: grid;
+  align-items: center;
+  gap: var(--club-space-5);
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-xl);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  background: linear-gradient(
+    120deg,
+    var(--club-primary-soft),
+    var(--club-surface) 55%,
+    var(--club-accent-soft)
+  );
+  box-shadow: var(--club-shadow-sm);
+}
+
+.account-avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 22px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--club-primary), var(--club-accent));
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.account-identity-copy {
+  min-width: 0;
+}
+
+.account-identity-copy > span {
+  color: var(--club-primary-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.account-identity-copy strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--club-text);
+  font-size: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-identity-copy p,
+.muted {
+  margin: 4px 0 0;
+  color: var(--club-text-secondary);
+  font-size: 13px;
+}
+
+.account-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(92px, 1fr));
+  gap: var(--club-space-3);
+}
+
+.account-stats > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 13px 15px;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-md);
+  background: color-mix(in srgb, var(--club-surface-solid) 72%, transparent);
+}
+
+.account-stats .el-icon {
+  grid-row: 1 / 3;
+  color: var(--club-primary);
+  font-size: 19px;
+}
+
+.account-stats strong {
+  color: var(--club-text);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.account-stats span {
+  color: var(--club-text-muted);
+  font-size: 11px;
 }
 
 .role-list {
@@ -608,9 +955,10 @@ loadPermissionCatalog();
 }
 
 .role-item {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-  padding: 12px;
+  padding: 14px;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-md);
+  background: color-mix(in srgb, var(--club-surface-solid) 48%, transparent);
 }
 
 .role-heading {
@@ -621,7 +969,7 @@ loadPermissionCatalog();
 }
 
 .role-scope {
-  color: var(--el-text-color-secondary);
+  color: var(--club-text-secondary);
   font-size: 13px;
 }
 
@@ -631,11 +979,10 @@ loadPermissionCatalog();
 
 .account-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 16px;
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--club-space-5);
 }
 
-.actions,
 .permission-tags {
   display: flex;
   flex-wrap: wrap;
@@ -646,15 +993,116 @@ loadPermissionCatalog();
   margin-top: 14px;
 }
 
-@media (max-width: 780px) {
+.info-panel h3 {
+  margin: 0;
+  color: var(--club-text);
+}
+
+.user-admin-panel {
+  padding: var(--club-space-6);
+  border-radius: var(--club-radius-lg);
+  box-shadow: var(--club-shadow-sm);
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--club-space-4);
+  margin-bottom: var(--club-space-5);
+}
+
+.panel-heading p {
+  margin: 5px 0 0;
+  color: var(--club-text-secondary);
+  font-size: 13px;
+}
+
+.admin-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.admin-title .el-icon {
+  color: var(--club-primary);
+}
+
+@media (max-width: 920px) {
   .auth-shell,
-  .register-shell,
-  .form-grid,
+  .register-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-shell {
+    max-width: 680px;
+    gap: 36px;
+  }
+
+  .brand-lockup {
+    margin-bottom: 36px;
+  }
+
+  .auth-intro h1 br {
+    display: none;
+  }
+
+  .feature-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feature-list li {
+    align-items: flex-start;
+  }
+
+  .register-intro {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .account-identity,
   .account-grid {
     grid-template-columns: 1fr;
   }
 
-  .page-title {
+  .account-identity {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .account-stats {
+    grid-column: 1 / -1;
+  }
+
+  .feature-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-shell {
+    width: min(100% - 24px, 680px);
+    padding: 24px 0;
+  }
+
+  .auth-intro h1 {
+    font-size: 34px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .account-stats {
+    grid-column: auto;
+  }
+
+  .panel-heading {
+    align-items: stretch;
     flex-direction: column;
   }
 }

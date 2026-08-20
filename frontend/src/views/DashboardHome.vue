@@ -12,6 +12,7 @@ import {
 } from "@element-plus/icons-vue";
 import { GetNoticesNoticeStatusEnum, type Activity, type Notice, type Project } from "../api";
 import { apiClient } from "../apiClient";
+import { resolveIdentityLabel } from "../authExperience";
 import { onSessionChange, readAuth, type AuthResponse } from "../authSession";
 import {
   AppEmptyState,
@@ -50,12 +51,7 @@ const roleLabels = computed(() =>
 );
 const permissions = computed(() => auth.value?.permissions ?? []);
 const quickLinks = computed(() => buildDashboardQuickLinks(permissions.value));
-const identityLabel = computed(() => {
-  const studentNo = user.value?.studentNo?.trim() ?? "";
-  if (/^\d{7}$/.test(studentNo)) return "学生";
-  if (/^\d{5}$/.test(studentNo)) return "教师";
-  return "校园用户";
-});
+const identityLabel = computed(() => resolveIdentityLabel(user.value?.studentNo) || "校园用户");
 const greeting = computed(() => {
   const hour = new Date().getHours();
   if (hour < 6) return "夜深了";
