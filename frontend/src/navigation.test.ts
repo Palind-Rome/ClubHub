@@ -11,6 +11,7 @@ describe("navigation", () => {
   it("普通用户只看到无权限门槛的入口", () => {
     const paths = visiblePaths([]);
 
+    expect(paths).toContain("/dashboard");
     expect(paths).toContain("/clubs");
     expect(paths).toContain("/learning");
     expect(paths).not.toContain("/club-registration");
@@ -49,6 +50,7 @@ describe("navigation", () => {
   });
 
   it("详情页保持所属主导航高亮", () => {
+    expect(resolveActiveNavigation("/dashboard")).toBe("/dashboard");
     expect(resolveActiveNavigation("/projects/42/workspace")).toBe("/projects");
     expect(resolveActiveNavigation("/recruitments/3/applications")).toBe("/recruitments");
     expect(resolveActiveNavigation("/activities")).toBe("/activities");

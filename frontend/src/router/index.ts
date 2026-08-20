@@ -5,6 +5,7 @@ import RecruitmentList from "../views/RecruitmentList.vue";
 import EvaluationList from "../views/EvaluationList.vue";
 import AwardList from "../views/AwardList.vue";
 import AuthFlow from "../views/AuthFlow.vue";
+import DashboardHome from "../views/DashboardHome.vue";
 import NoticeCenter from "../views/NoticeCenter.vue";
 import ProjectList from "../views/ProjectList.vue";
 import ProjectWorkspace from "../views/ProjectWorkspace.vue";
@@ -21,8 +22,9 @@ import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", redirect: "/auth" },
+    { path: "/", redirect: () => (hasCompletedSession() ? "/dashboard" : "/auth") },
     { path: "/auth", component: AuthFlow, meta: { title: "账号与权限" } },
+    { path: "/dashboard", component: DashboardHome, meta: { title: "我的工作台" } },
     { path: "/clubs", component: ClubList, meta: { title: "我的社团" } },
     {
       path: "/club-organization",

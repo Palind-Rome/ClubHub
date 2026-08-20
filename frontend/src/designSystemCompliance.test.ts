@@ -23,6 +23,7 @@ const standardizedHeaderViews = [
   "AwardList.vue",
   "BudgetManagement.vue",
   "ClubList.vue",
+  "DashboardHome.vue",
   "EvaluationList.vue",
   "ForumCenter.vue",
   "LearningCenter.vue",
