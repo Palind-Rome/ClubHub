@@ -328,7 +328,7 @@ CI 不自动全量刷新数据库，不自动重建生产索引。索引是否�
 | `ci.yml` | PR / push 到 `main` `dev` | 项目结构校验、后端构建、前端构建，不负责格式检查 |
 | `code-check.yml` | PR 到 `main` `dev` / 手动触发 | 代码质量门禁（pre-commit、前端 Prettier、后端 dotnet format） |
 | `gen-api-code.yml` | push 到非 `main` `dev` 分支且 `api/` 有变更 | 从 OpenAPI 契约自动生成前后端代码并提交回分支 |
-| `deploy.yml` | push `main` 自动部署 / 手动触发可选环境 | 构建 Docker 镜像 → 推送 ghcr.io → 服务器 docker compose up |
+| `deploy.yml` | push `main` 自动部署 / 手动触发可选环境 | 构建 Docker 镜像 → 推送 ghcr.io → 服务器 `docker compose up -d --remove-orphans` |
 
 `backend/Models/*` 和 `frontend/src/api/*` 属于自动生成代码，格式化由 `gen-api-code.yml` 处理；`code-check.yml` 只检查手写代码和通用仓库规范。
 
@@ -336,7 +336,7 @@ CI 内部三个 Job：
 
 | Job 名称 | 说明 |
 |----------|------|
-| `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表。 |
+| `validate` | 检查仓库必要文件和目录、数据库脚本至少 12 张表，并校验 production Redis 暂停配置：production compose 不得出现 redis service、backend 必须保持 `Redis__Enabled=false`，Deploy 不得引用 Redis Secret 或通过 SSH 传递 Redis 变量。 |
 | `build-backend` | 后端或后端测试变更时，自动 `dotnet restore` + `dotnet build` + `dotnet test`。 |
 | `build-frontend` | 前端变更时，用 `pnpm install --frozen-lockfile` + `pnpm test` + `pnpm build` 验证（强制要求 lockfile）。 |
 
@@ -381,18 +381,21 @@ Oracle 集成测试位于 `backend.OracleIntegrationTests/`，仅在同时设置
 | `SERVER_USER` | 部署用户 `deploy`，不用 root。 |
 | `SERVER_SSH_KEY` | GitHub Actions 专用 SSH 私钥。 |
 | `DEPLOY_PATH` | 服务器部署目录，例如 `/opt/clubhub`。 |
-| `REDIS_PASSWORD` | Redis 生产认证密码；不得写入仓库、镜像或部署日志。 |
 
-目标 GitHub Environment 可设置非敏感变量 `REDIS_CACHE_ENABLED`、
+production Redis 当前暂停部署。当前 Deploy workflow **不再要求或传递**
+`REDIS_PASSWORD`，也不会向服务器传递 `REDIS_CACHE_ENABLED`、
 `REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
-`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 和
-`REDIS_IDEMPOTENCY_ENABLED`。未设置时部署默认均为 `false`。幂等开关只能在人工执行
-`20260726_add_idempotency_records.sql` 后启用；认证会话开关最后启用，启用或回滚均会
-要求所有用户重新登录。
-部署 workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
-确保部署和回滚不依赖可变的 `latest` 标签。
+`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED`、
+`REDIS_IDEMPOTENCY_ENABLED` 等 Redis feature vars。已有 GitHub Environment Secret / vars
+可以保留，未来恢复 Redis 时复用；当前部署会清理服务器 `.env` 中遗留的 `REDIS_*`
+配置键。
 
-服务器已创建 `deploy` 用户，将其加入 `docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用 `clubhub-net` 外部网络；Oracle、Redis 和应用容器连接到同一个网络。Oracle 1521 和 Redis 6379 均不得直接暴露到公网。Redis 的备份、恢复、升级和排障见 `docs/operations/redis-runbook.md`。
+Deploy workflow 会把本次提交 SHA 对应的后端、前端镜像引用写入服务器 `.env`，
+确保部署和回滚不依赖可变的 `latest` 标签。服务器已创建 `deploy` 用户，将其加入
+`docker` 组，并保证该用户可以写入 `DEPLOY_PATH`。生产 `docker-compose.yml` 使用
+`clubhub-net` 外部网络；当前不创建 Redis 容器。Oracle 1521 不得直接暴露到公网；
+未来恢复 production Redis 后，Redis 6379 同样不得暴露公网。恢复 Redis 的镜像来源、
+Secret、readiness、备份和排障要求见 `docs/operations/redis-runbook.md`。
 
 ### PR 门禁（feature → dev）
 
@@ -433,7 +436,7 @@ dev 积累到里程碑节点（课程答辩/演示版本）：
     ├── SCP docker-compose.yml → 服务器
     └── SSH 服务器执行：
           docker compose pull
-          docker compose up -d
+          docker compose up -d --remove-orphans
           健康检查 ✅
        │
        ▼
