@@ -1,54 +1,10 @@
 # 生产环境 Docker Compose
 # 部署流程：CI 构建镜像 → 推送到 ghcr.io → 服务器 docker compose pull && up -d
+# Redis 当前在 production 暂停部署；后端 Redis 实现保留，后续启用功能时再恢复基础设施。
 #
 # 服务器上运行：docker compose up -d
 
 services:
-  redis:
-    image: redis:8.2.8-alpine
-    command:
-      - sh
-      - -ec
-      - |
-        exec redis-server \
-          --appendonly yes \
-          --appendfsync everysec \
-          --save 300 10 \
-          --maxmemory "$$REDIS_MAXMEMORY" \
-          --maxmemory-policy noeviction \
-          --dir /data \
-          --requirepass "$$REDIS_PASSWORD"
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the deployment environment}
-      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-384mb}
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -q PONG',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-    networks:
-      - clubhub-net
-    restart: unless-stopped
-    stop_grace_period: 30s
-    mem_limit: ${REDIS_CONTAINER_MEMORY_LIMIT:-512m}
-    cpus: ${REDIS_CPUS:-0.50}
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-
   backend:
     image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to an immutable tag or digest}
     environment:
@@ -56,17 +12,7 @@ services:
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__Default: ${DB_CONNECTION_STRING}
       Authentication__TokenSigningKey: ${AUTH_TOKEN_SIGNING_KEY}
-      Redis__Enabled: "true"
-      Redis__ConnectionString: redis:6379
-      Redis__Username: default
-      Redis__Password: ${REDIS_PASSWORD}
-      Redis__EnvironmentPrefix: prod
-      Redis__Features__Cache: ${REDIS_CACHE_ENABLED:-false}
-      Redis__Features__AuthSessions: ${REDIS_AUTH_SESSIONS_ENABLED:-false}
-      Redis__Features__PermissionCache: ${REDIS_PERMISSION_CACHE_ENABLED:-false}
-      Redis__Features__PreviewSessions: ${REDIS_PREVIEW_SESSIONS_ENABLED:-false}
-      Redis__Features__RateLimiting: ${REDIS_RATE_LIMITING_ENABLED:-false}
-      Redis__Features__Idempotency: ${REDIS_IDEMPOTENCY_ENABLED:-false}
+      Redis__Enabled: "false"
       Authentication__Sessions__SlidingLifetimeMinutes: ${AUTH_SESSION_SLIDING_MINUTES:-30}
       Authentication__Sessions__AbsoluteLifetimeHours: ${AUTH_SESSION_ABSOLUTE_HOURS:-12}
       Authentication__Sessions__MaxSessionsPerUser: ${AUTH_SESSION_MAX_PER_USER:-10}
@@ -80,9 +26,6 @@ services:
     networks:
       - clubhub-net
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
 
   frontend:
     image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE to an immutable tag or digest}
@@ -97,6 +40,3 @@ services:
 networks:
   clubhub-net:
     external: true
-
-volumes:
-  redis-data:
