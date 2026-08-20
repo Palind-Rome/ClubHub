@@ -57,9 +57,11 @@
 
 CI 不负责自动刷新生产/远程数据库，不负责自动重建索引。全量刷新只允许用于本地开发库或明确的测试库；生产/演示库的结构变更必须通过人工确认后的迁移脚本执行。
 
-Redis 生产实例只允许连接 `clubhub-net`，禁止映射公网 6379。认证密码通过
-`REDIS_PASSWORD` Secret 注入；不得提交 `.env`、真实密码或带密连接串。运维操作
-遵循 `docs/operations/redis-runbook.md`，恢复演练必须使用隔离卷。
+production 当前暂时不部署 Redis。`docker-compose.yml` 中 backend 显式使用
+`Redis__Enabled=false`；Deploy workflow 不再要求或传递 `REDIS_PASSWORD` / Redis
+feature vars，并会清理服务器 `.env` 中遗留的 Redis 配置。开发与 CI Redis 保持启用
+能力不变。未来恢复 production Redis 前，必须先确定稳定镜像来源，再恢复 Redis service、
+Secret、readiness 依赖和对应部署配置；运维操作遵循 `docs/operations/redis-runbook.md`。
 
 Redis 会话、权限快照、预览会话、限流与幂等分别使用独立开关，默认关闭。启用
 幂等前必须先人工执行 `20260726_add_idempotency_records.sql`；启用认证会话会使
