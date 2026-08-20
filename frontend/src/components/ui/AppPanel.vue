@@ -37,6 +37,7 @@ withDefaults(
   background: var(--club-surface);
   box-shadow: var(--club-shadow-sm);
   backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
 }
 
 .panel-padding-default {

@@ -103,7 +103,11 @@ const iconComponents: Record<NavigationIcon, Component> = {
 
 .navigation-menu :deep(.el-menu-item.is-active) {
   color: var(--club-primary-strong);
-  background: linear-gradient(100deg, var(--club-primary-soft), var(--club-accent-soft));
+  background: linear-gradient(
+    100deg,
+    var(--club-primary-soft),
+    color-mix(in srgb, var(--club-primary) 7%, transparent)
+  );
   box-shadow: inset 3px 0 0 var(--club-primary);
 }
 

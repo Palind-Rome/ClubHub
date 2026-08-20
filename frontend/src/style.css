@@ -22,10 +22,10 @@
   --club-warning: #d97706;
   --club-danger: #dc4564;
   --club-info: #64748b;
-  --club-bg: #f3f7fc;
-  --club-bg-elevated: rgba(255, 255, 255, 0.88);
+  --club-bg: #f4f5f7;
+  --club-bg-elevated: rgba(255, 255, 255, 0.68);
   --club-bg-muted: #eaf0f7;
-  --club-surface: rgba(255, 255, 255, 0.78);
+  --club-surface: rgba(255, 255, 255, 0.58);
   --club-surface-solid: #ffffff;
   --club-surface-hover: rgba(25, 118, 210, 0.08);
   --club-text: #172033;
@@ -44,9 +44,9 @@
   --club-space-5: 20px;
   --club-space-6: 24px;
   --club-space-8: 32px;
-  --club-shadow-sm: 0 8px 24px rgba(35, 65, 105, 0.08);
-  --club-shadow-md: 0 18px 45px rgba(35, 65, 105, 0.12);
-  --club-glass-blur: blur(18px) saturate(135%);
+  --club-shadow-sm: 0 6px 16px rgba(35, 65, 105, 0.09);
+  --club-shadow-md: 0 12px 28px rgba(35, 65, 105, 0.12);
+  --club-glass-blur: blur(24px) saturate(120%);
   --club-content-width: 1480px;
   --club-sidebar-width: 264px;
   --club-header-height: 72px;
@@ -80,19 +80,19 @@
   --club-warning: #f5a524;
   --club-danger: #ff6b85;
   --club-info: #94a3b8;
-  --club-bg: #0c1321;
-  --club-bg-elevated: rgba(18, 28, 45, 0.9);
-  --club-bg-muted: #172235;
-  --club-surface: rgba(23, 34, 53, 0.78);
-  --club-surface-solid: #172235;
+  --club-bg: #0f1115;
+  --club-bg-elevated: rgba(24, 27, 34, 0.68);
+  --club-bg-muted: #20242c;
+  --club-surface: rgba(25, 29, 36, 0.58);
+  --club-surface-solid: #1a1e25;
   --club-surface-hover: rgba(92, 168, 255, 0.12);
   --club-text: #eef4ff;
   --club-text-secondary: #b4c0d4;
   --club-text-muted: #8290a7;
   --club-border: rgba(151, 170, 199, 0.16);
   --club-border-strong: rgba(151, 170, 199, 0.28);
-  --club-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
-  --club-shadow-md: 0 18px 45px rgba(0, 0, 0, 0.3);
+  --club-shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.26);
+  --club-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.32);
 }
 
 html {
@@ -112,9 +112,7 @@ body {
   min-height: 100vh;
   margin: 0;
   color: var(--club-text);
-  background:
-    radial-gradient(circle at 8% 0%, rgba(25, 118, 210, 0.1), transparent 32rem),
-    radial-gradient(circle at 94% 8%, rgba(236, 72, 153, 0.08), transparent 28rem), var(--club-bg);
+  background: var(--club-bg);
   transition:
     color 180ms ease,
     background-color 180ms ease;
@@ -143,6 +141,7 @@ a {
   background: var(--club-bg-elevated);
   box-shadow: var(--club-shadow-sm);
   backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
 }
 
 .el-card,

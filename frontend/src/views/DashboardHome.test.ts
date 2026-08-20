@@ -59,6 +59,7 @@ async function mountDashboard() {
     history: createMemoryHistory(),
     routes: [
       { path: "/dashboard", component: DashboardHome },
+      { path: "/auth", component: RouteStub },
       { path: "/notices", component: RouteStub },
       { path: "/activities", component: RouteStub },
       { path: "/projects", component: RouteStub },
@@ -82,7 +83,7 @@ async function mountDashboard() {
   mountedApp.use(ElementPlus);
   mountedApp.use(router);
   mountedApp.mount(host);
-  return host;
+  return { host, router };
 }
 
 function activity() {
@@ -131,7 +132,7 @@ describe("个性化工作台", () => {
     apiMocks.getActivities.mockResolvedValue([activity()]);
     apiMocks.getProjects.mockResolvedValue([project()]);
 
-    const host = await mountDashboard();
+    const { host } = await mountDashboard();
 
     await vi.waitFor(() => {
       expect(host.textContent).toContain("通知服务暂不可用");
@@ -147,7 +148,7 @@ describe("个性化工作台", () => {
     apiMocks.getActivities.mockResolvedValue([]);
     apiMocks.getProjects.mockResolvedValue([]);
 
-    const host = await mountDashboard();
+    const { host } = await mountDashboard();
 
     await vi.waitFor(() => expect(host.textContent).toContain("通知加载超时"));
     const retryButton = host.querySelector('[data-section="notices"] button');
@@ -158,5 +159,20 @@ describe("个性化工作台", () => {
     expect(apiMocks.getNotices).toHaveBeenCalledTimes(2);
     expect(apiMocks.getActivities).toHaveBeenCalledOnce();
     expect(apiMocks.getProjects).toHaveBeenCalledOnce();
+  });
+
+  it("身份摘要可跳转到账号与权限页面", async () => {
+    apiMocks.getNotices.mockResolvedValue([]);
+    apiMocks.getActivities.mockResolvedValue([]);
+    apiMocks.getProjects.mockResolvedValue([]);
+
+    const { host, router } = await mountDashboard();
+    const roleLink = host.querySelector('[aria-label="查看当前角色"]');
+    const permissionLink = host.querySelector('[aria-label="查看可用权限"]');
+    expect(roleLink?.getAttribute("href")).toBe("/auth");
+    expect(permissionLink?.getAttribute("href")).toBe("/auth");
+
+    (roleLink as HTMLAnchorElement).click();
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe("/auth"));
   });
 });

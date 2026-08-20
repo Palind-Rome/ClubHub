@@ -188,16 +188,16 @@ onUnmounted(() => {
         >
       </div>
       <div class="identity-metrics">
-        <div>
+        <RouterLink to="/auth" aria-label="查看当前角色">
           <el-icon><UserFilled /></el-icon>
           <strong>{{ roleLabels.length }}</strong>
           <span>当前角色</span>
-        </div>
-        <div>
+        </RouterLink>
+        <RouterLink to="/auth" aria-label="查看可用权限">
           <el-icon><Key /></el-icon>
           <strong>{{ permissions.length }}</strong>
           <span>可用权限</span>
-        </div>
+        </RouterLink>
       </div>
     </section>
 
@@ -361,9 +361,9 @@ onUnmounted(() => {
   border-radius: var(--club-radius-xl);
   background: linear-gradient(
     120deg,
-    var(--club-primary-soft),
-    var(--club-surface) 52%,
-    var(--club-accent-soft)
+    color-mix(in srgb, var(--club-primary) 13%, transparent),
+    var(--club-surface) 54%,
+    color-mix(in srgb, var(--club-primary) 6%, transparent)
   );
   box-shadow: var(--club-shadow-sm);
 }
@@ -374,7 +374,7 @@ onUnmounted(() => {
   place-items: center;
   border-radius: 24px;
   color: #fff;
-  background: linear-gradient(135deg, var(--club-primary), var(--club-accent));
+  background: linear-gradient(135deg, var(--club-primary), var(--club-primary-strong));
   box-shadow: 0 14px 28px color-mix(in srgb, var(--club-primary) 24%, transparent);
   font-size: 28px;
   font-weight: 800;
@@ -409,7 +409,7 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(96px, 1fr));
   gap: var(--club-space-3);
 }
-.identity-metrics > div {
+.identity-metrics > a {
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -417,7 +417,17 @@ onUnmounted(() => {
   padding: 14px 16px;
   border: 1px solid var(--club-border);
   border-radius: var(--club-radius-md);
+  color: inherit;
   background: color-mix(in srgb, var(--club-surface-solid) 72%, transparent);
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.identity-metrics > a:hover {
+  border-color: color-mix(in srgb, var(--club-primary) 48%, var(--club-border));
+  transform: translateY(-2px);
 }
 .identity-metrics .el-icon {
   grid-row: 1 / 3;

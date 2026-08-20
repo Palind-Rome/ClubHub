@@ -1,5 +1,13 @@
+/// <reference types="node" />
+
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import appNavigationSource from "./components/shell/AppNavigation.vue?raw";
 import appShellSource from "./components/shell/AppShell.vue?raw";
+import appPanelSource from "./components/ui/AppPanel.vue?raw";
+
+const globalStyleSource = readFileSync(resolve(process.cwd(), "src/style.css"), "utf8");
 
 const viewSources = import.meta.glob("./views/*.vue", {
   eager: true,
@@ -70,5 +78,35 @@ describe("设计系统样式约束", () => {
     expect(appShellSource.match(/src="\/favicon\.svg"/g)).toHaveLength(2);
     expect(appShellSource).toContain("background: transparent");
     expect(appShellSource).toContain("object-fit: contain");
+  });
+
+  it("账号入口提供三态主题切换并精简介绍文案", () => {
+    const authSource = viewSources["./views/AuthFlow.vue"];
+
+    expect(authSource).toContain('class="public-theme-switch"');
+    expect(authSource).toContain('command="system"');
+    expect(authSource).toContain('command="light"');
+    expect(authSource).toContain('command="dark"');
+    expect(authSource).not.toContain("按角色呈现专属工作入口");
+    expect(authSource).not.toContain("浅色、深色与系统主题自由切换");
+    expect(authSource).not.toContain("重要通知和近期任务集中查看");
+  });
+
+  it("结构性选中态与身份条只使用蓝色系", () => {
+    const dashboardSource = viewSources["./views/DashboardHome.vue"];
+
+    expect(appNavigationSource).not.toContain("var(--club-accent-soft)");
+    expect(dashboardSource).toContain("color-mix(in srgb, var(--club-primary) 6%, transparent)");
+    expect(dashboardSource).toContain(
+      "linear-gradient(135deg, var(--club-primary), var(--club-primary-strong))",
+    );
+  });
+
+  it("全局使用纯色背景和更清晰的毛玻璃层次", () => {
+    expect(globalStyleSource).toContain("--club-bg: #f4f5f7");
+    expect(globalStyleSource).toContain("--club-glass-blur: blur(24px) saturate(120%)");
+    expect(globalStyleSource).not.toContain("radial-gradient");
+    expect(appShellSource).toContain("-webkit-backdrop-filter: var(--club-glass-blur)");
+    expect(appPanelSource).toContain("-webkit-backdrop-filter: var(--club-glass-blur)");
   });
 });

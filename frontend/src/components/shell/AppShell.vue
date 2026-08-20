@@ -172,8 +172,9 @@ function changeTheme(command: string | number | object) {
   width: var(--club-sidebar-width);
   border-right: 1px solid var(--club-border);
   background: var(--club-surface);
-  box-shadow: 12px 0 40px rgba(35, 65, 105, 0.05);
+  box-shadow: 8px 0 20px rgba(35, 65, 105, 0.07);
   backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
 }
 
 .brand-lockup {
@@ -254,8 +255,10 @@ function changeTheme(command: string | number | object) {
   gap: var(--club-space-4);
   padding: var(--club-space-3) var(--club-space-6);
   border-bottom: 1px solid var(--club-border);
-  background: var(--club-bg-elevated);
+  background: var(--club-surface);
+  box-shadow: 0 6px 18px rgba(35, 65, 105, 0.06);
   backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
 }
 
 .topbar-context,
@@ -329,7 +332,11 @@ function changeTheme(command: string | number | object) {
   place-items: center;
   border-radius: 11px;
   color: var(--club-primary-strong);
-  background: linear-gradient(135deg, var(--club-primary-soft), var(--club-accent-soft));
+  background: linear-gradient(
+    135deg,
+    var(--club-primary-soft),
+    color-mix(in srgb, var(--club-primary) 10%, transparent)
+  );
   font-weight: 800;
 }
 
@@ -386,6 +393,7 @@ function changeTheme(command: string | number | object) {
   background: var(--club-surface) !important;
   box-shadow: var(--club-shadow-sm);
   backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
 }
 
 :global(.app-page-header h1),

@@ -3,7 +3,16 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import { ArrowRight, Check, Key, Lock, User, UserFilled } from "@element-plus/icons-vue";
+import {
+  ArrowRight,
+  Key,
+  Lock,
+  Monitor,
+  Moon,
+  Sunny,
+  User,
+  UserFilled,
+} from "@element-plus/icons-vue";
 import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/models";
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
@@ -16,6 +25,7 @@ import {
   resolvePostAuthPath,
 } from "../authExperience";
 import { AppPageHeader, AppPanel } from "../components/ui";
+import { type ThemePreference, useTheme } from "../composables/useTheme";
 
 const router = useRouter();
 const route = useRoute();
@@ -27,6 +37,7 @@ const managedUsers = ref<UserSummary[]>([]);
 const usersLoading = ref(false);
 const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
+const { theme, setTheme } = useTheme();
 
 const studentNoRuleMessage = `学工号必须为学生 ${STUDENT_NO_LENGTH} 位或教师 ${STAFF_NO_LENGTH} 位`;
 const studentNoPlaceholder = `学生 ${STUDENT_NO_LENGTH} 位，教师 ${STAFF_NO_LENGTH} 位`;
@@ -102,6 +113,15 @@ const isSystemAdmin = computed(
     auth.value?.permissions.includes("*") ||
     auth.value?.roles.some((role) => role.code === "SYSTEM_ADMIN"),
 );
+const themeLabel = computed(() => {
+  if (theme.value === "light") return "浅色";
+  if (theme.value === "dark") return "深色";
+  return "跟随系统";
+});
+
+function changeTheme(command: string | number | object) {
+  setTheme(command as ThemePreference);
+}
 
 async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -300,6 +320,30 @@ loadPermissionCatalog();
 
 <template>
   <div class="auth-page">
+    <el-dropdown v-if="!auth" class="public-theme-switch" trigger="click" @command="changeTheme">
+      <el-button class="public-theme-button" :aria-label="`当前主题：${themeLabel}`">
+        <el-icon>
+          <Sunny v-if="theme === 'light'" />
+          <Moon v-else-if="theme === 'dark'" />
+          <Monitor v-else />
+        </el-icon>
+        {{ themeLabel }}
+      </el-button>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item command="system" :disabled="theme === 'system'">
+            <el-icon><Monitor /></el-icon>跟随系统
+          </el-dropdown-item>
+          <el-dropdown-item command="light" :disabled="theme === 'light'">
+            <el-icon><Sunny /></el-icon>浅色模式
+          </el-dropdown-item>
+          <el-dropdown-item command="dark" :disabled="theme === 'dark'">
+            <el-icon><Moon /></el-icon>深色模式
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
+
     <section v-if="currentStep === 'login'" class="auth-shell login-shell">
       <div class="intro auth-intro">
         <div class="brand-lockup">
@@ -309,17 +353,6 @@ loadPermissionCatalog();
         <span class="intro-eyebrow">Connected campus</span>
         <h1>让每一次社团协作<br />清晰而有序</h1>
         <p>统一管理身份、活动、项目与通知，随时掌握与你相关的校园动态。</p>
-        <ul class="feature-list">
-          <li>
-            <el-icon><Check /></el-icon>按角色呈现专属工作入口
-          </li>
-          <li>
-            <el-icon><Check /></el-icon>浅色、深色与系统主题自由切换
-          </li>
-          <li>
-            <el-icon><Check /></el-icon>重要通知和近期任务集中查看
-          </li>
-        </ul>
       </div>
 
       <el-form
@@ -595,6 +628,22 @@ loadPermissionCatalog();
   min-width: 0;
 }
 
+.public-theme-switch {
+  position: fixed;
+  z-index: 30;
+  top: 20px;
+  right: 20px;
+}
+
+.public-theme-button {
+  border-color: var(--club-border);
+  color: var(--club-text-secondary);
+  background: var(--club-surface);
+  box-shadow: var(--club-shadow-sm);
+  backdrop-filter: var(--club-glass-blur);
+  -webkit-backdrop-filter: var(--club-glass-blur);
+}
+
 .auth-shell {
   display: grid;
   width: min(1180px, calc(100% - 40px));
@@ -613,19 +662,6 @@ loadPermissionCatalog();
 
 .auth-intro {
   position: relative;
-}
-
-.auth-intro::before {
-  position: absolute;
-  z-index: -1;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--club-primary) 11%, transparent);
-  content: "";
-  filter: blur(8px);
-  inset: 50% auto auto -120px;
-  transform: translateY(-50%);
 }
 
 .brand-lockup {
@@ -682,32 +718,6 @@ loadPermissionCatalog();
   color: var(--club-text-secondary);
   font-size: 16px;
   line-height: 1.8;
-}
-
-.feature-list {
-  display: grid;
-  gap: 13px;
-  margin: 32px 0 0;
-  padding: 0;
-  color: var(--club-text-secondary);
-  font-size: 14px;
-  list-style: none;
-}
-
-.feature-list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.feature-list .el-icon {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--club-success);
-  background: color-mix(in srgb, var(--club-success) 12%, transparent);
 }
 
 .identity-hint {
@@ -867,9 +877,9 @@ loadPermissionCatalog();
   grid-template-columns: auto minmax(0, 1fr) auto;
   background: linear-gradient(
     120deg,
-    var(--club-primary-soft),
+    color-mix(in srgb, var(--club-primary) 13%, transparent),
     var(--club-surface) 55%,
-    var(--club-accent-soft)
+    color-mix(in srgb, var(--club-primary) 6%, transparent)
   );
   box-shadow: var(--club-shadow-sm);
 }
@@ -881,7 +891,7 @@ loadPermissionCatalog();
   place-items: center;
   border-radius: 22px;
   color: #fff;
-  background: linear-gradient(135deg, var(--club-primary), var(--club-accent));
+  background: linear-gradient(135deg, var(--club-primary), var(--club-primary-strong));
   font-size: 26px;
   font-weight: 800;
 }
@@ -1047,14 +1057,6 @@ loadPermissionCatalog();
     display: none;
   }
 
-  .feature-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .feature-list li {
-    align-items: flex-start;
-  }
-
   .register-intro {
     display: none;
   }
@@ -1073,16 +1075,17 @@ loadPermissionCatalog();
   .account-stats {
     grid-column: 1 / -1;
   }
-
-  .feature-list {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 560px) {
   .auth-shell {
     width: min(100% - 24px, 680px);
     padding: 24px 0;
+  }
+
+  .public-theme-switch {
+    top: 12px;
+    right: 12px;
   }
 
   .auth-intro h1 {
