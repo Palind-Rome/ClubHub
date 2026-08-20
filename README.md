@@ -46,6 +46,12 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 `REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 与
 `REDIS_IDEMPOTENCY_ENABLED` 控制，默认全部关闭。
 
+截至 2026-08-20，production 暂时不部署 Redis：生产 `docker-compose.yml` 不创建
+Redis service，backend 显式使用 `Redis__Enabled=false`，Deploy workflow 不再要求或
+传递 `REDIS_PASSWORD` / Redis feature vars，并会清理服务器 `.env` 中遗留的 Redis
+配置。开发与 CI 的 Redis 支持保持不变；未来恢复 production Redis 前需先确定稳定的
+镜像来源并按运维手册恢复 service、Secret 与 readiness 依赖。
+
 统一连接、Key、序列化和 Cache Aside 实现在 `backend/Infrastructure/Redis/`。
 `GET /health/live` 只检查 API 进程；`GET /health/ready` 还会检查已启用的 Redis。
 启用 `REDIS_CACHE_ENABLED` 后，活动详情和场地详情使用统一缓存；活动报名人数和
