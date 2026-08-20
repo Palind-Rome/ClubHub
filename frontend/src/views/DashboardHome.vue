@@ -361,9 +361,9 @@ onUnmounted(() => {
   border-radius: var(--club-radius-xl);
   background: linear-gradient(
     120deg,
-    color-mix(in srgb, var(--club-primary) 13%, transparent),
-    var(--club-surface) 54%,
-    color-mix(in srgb, var(--club-primary) 6%, transparent)
+    color-mix(in srgb, var(--club-primary) 8%, transparent),
+    var(--club-surface) 56%,
+    color-mix(in srgb, var(--club-primary) 3%, transparent)
   );
   box-shadow: var(--club-shadow-sm);
 }

@@ -96,7 +96,7 @@ describe("设计系统样式约束", () => {
     const dashboardSource = viewSources["./views/DashboardHome.vue"];
 
     expect(appNavigationSource).not.toContain("var(--club-accent-soft)");
-    expect(dashboardSource).toContain("color-mix(in srgb, var(--club-primary) 6%, transparent)");
+    expect(dashboardSource).toContain("color-mix(in srgb, var(--club-primary) 3%, transparent)");
     expect(dashboardSource).toContain(
       "linear-gradient(135deg, var(--club-primary), var(--club-primary-strong))",
     );

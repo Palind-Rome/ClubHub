@@ -664,6 +664,10 @@ loadPermissionCatalog();
   position: relative;
 }
 
+.login-shell .auth-intro {
+  transform: translateY(-24px);
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -707,9 +711,9 @@ loadPermissionCatalog();
 .auth-intro h1 {
   margin: 12px 0 18px;
   color: var(--club-text);
-  font-size: clamp(38px, 5vw, 58px);
-  line-height: 1.12;
-  letter-spacing: -0.045em;
+  font-size: clamp(36px, 4.5vw, 52px);
+  line-height: 1.25;
+  letter-spacing: 0.02em;
 }
 
 .auth-intro > p {
@@ -1039,6 +1043,10 @@ loadPermissionCatalog();
 }
 
 @media (max-width: 920px) {
+  .login-shell .auth-intro {
+    transform: none;
+  }
+
   .auth-shell,
   .register-shell {
     grid-template-columns: 1fr;
@@ -1089,7 +1097,7 @@ loadPermissionCatalog();
   }
 
   .auth-intro h1 {
-    font-size: 34px;
+    font-size: 32px;
   }
 
   .form-grid {
