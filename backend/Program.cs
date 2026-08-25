@@ -17,6 +17,7 @@ builder.Services.AddControllers(options =>
     {
         options.Conventions.Insert(0, new ApiVersionRouteConvention());
         options.Filters.Add<ApiErrorResultFilter>();
+        options.Filters.Add<ApiPaginationResultFilter>();
     })
     .AddJsonOptions(options =>
     {
@@ -91,13 +92,16 @@ app.UseForwardedHeaders();
 
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/api", out var remainingPath) &&
-        !remainingPath.StartsWithSegments("/v1"))
+    if (ApiRouteDeprecation.TryGetSuccessor(context.Request.Path, out var successorPath))
     {
         context.Response.Headers["Deprecation"] = "true";
         context.Response.Headers["Sunset"] = "Thu, 31 Dec 2026 16:00:00 GMT";
+        var querySeparator = successorPath.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        var successorQuery = context.Request.QueryString.HasValue
+            ? $"{querySeparator}{context.Request.QueryString.Value![1..]}"
+            : string.Empty;
         context.Response.Headers.Link =
-            $"</api/v1{remainingPath}{context.Request.QueryString}>; rel=\"successor-version\"";
+            $"<{successorPath}{successorQuery}>; rel=\"successor-version\"";
     }
 
     await next();

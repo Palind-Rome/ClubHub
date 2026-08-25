@@ -1,6 +1,8 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CreateRecruitmentApplicationRequest = Org.OpenAPITools.Models.CreateRecruitmentApplicationRequest;
@@ -13,6 +15,7 @@ using static ClubHub.Api.Services.RecruitmentWorkflow;
 namespace ClubHub.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class RecruitmentsController : ControllerBase
 {
@@ -27,13 +30,13 @@ public class RecruitmentsController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int viewerUserId,
         [FromQuery] int? clubId,
         [FromQuery] string? status)
     {
-        if (viewerUserId <= 0) return BadRequest(new { message = "请选择当前用户。" });
+        var viewerUserId = User.GetUserId();
+        if (viewerUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var viewer = await LoadUserAsync(viewerUserId);
+        var viewer = await LoadUserAsync(viewerUserId.Value);
         if (viewer is null) return NotFound(new { message = "当前用户不存在。" });
 
         var normalizedStatus = NormalizeRecruitmentStatusFilter(status);
@@ -63,10 +66,13 @@ public class RecruitmentsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateRecruitmentRequest req)
     {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
         var validationError = ValidateCreateRecruitmentRequest(req);
         if (validationError is not null) return BadRequest(new { message = validationError });
 
-        var operatorUser = await LoadUserAsync(req.CurrentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound(new { message = "当前用户不存在。" });
 
         var club = await _db.Clubs.FirstOrDefaultAsync(c => c.ClubId == req.ClubId);
@@ -108,15 +114,16 @@ public class RecruitmentsController : ControllerBase
         await _db.SaveChangesAsync();
 
         var created = await RecruitmentQuery().FirstAsync(r => r.RecruitId == recruitment.RecruitId);
-        return CreatedAtAction(nameof(GetAll), new { viewerUserId = req.CurrentUserId }, ToRecruitmentDto(created, operatorUser, BusinessNow()));
+        return CreatedAtAction(nameof(GetAll), ToRecruitmentDto(created, operatorUser, BusinessNow()));
     }
 
     [HttpPatch("{recruitId:int}")]
     public async Task<IActionResult> Update(int recruitId, [FromBody] UpdateRecruitmentRequest req)
     {
-        if (req.CurrentUserId <= 0) return BadRequest(new { message = "请选择当前操作用户。" });
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var operatorUser = await LoadUserAsync(req.CurrentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound(new { message = "当前用户不存在。" });
 
         var recruitment = await RecruitmentQuery().FirstOrDefaultAsync(r => r.RecruitId == recruitId);
@@ -171,11 +178,12 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpDelete("{recruitId:int}")]
-    public async Task<IActionResult> Delete(int recruitId, [FromQuery] int currentUserId)
+    public async Task<IActionResult> Delete(int recruitId)
     {
-        if (currentUserId <= 0) return BadRequest(new { message = "请选择当前操作用户。" });
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var operatorUser = await LoadUserAsync(currentUserId);
+        var operatorUser = await LoadUserAsync(currentUserId.Value);
         if (operatorUser is null) return NotFound(new { message = "当前用户不存在。" });
 
         var recruitment = await RecruitmentQuery().FirstOrDefaultAsync(r => r.RecruitId == recruitId);
@@ -202,10 +210,12 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpPatch("{recruitId:int}/review")]
+    [HttpPost("{recruitId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewRecruitment")]
     public async Task<IActionResult> ReviewRecruitment(int recruitId, [FromBody] ReviewRecruitmentRequest req)
     {
-        if (req.CurrentUserId <= 0) return BadRequest(new { message = "请选择当前审核用户。" });
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
         var decision = NormalizeRecruitmentReviewDecision(req.Decision);
         if (decision is not ReviewApproved and not ReviewRejected)
@@ -213,7 +223,7 @@ public class RecruitmentsController : ControllerBase
             return BadRequest(new { message = "审核结果只能是 approved 或 rejected。" });
         }
 
-        var reviewer = await LoadUserAsync(req.CurrentUserId);
+        var reviewer = await LoadUserAsync(currentUserId.Value);
         if (reviewer is null) return NotFound(new { message = "当前用户不存在。" });
 
         var recruitment = await RecruitmentQuery().FirstOrDefaultAsync(r => r.RecruitId == recruitId);
@@ -260,9 +270,12 @@ public class RecruitmentsController : ControllerBase
     }
 
     [HttpGet("{recruitId:int}/applications")]
-    public async Task<IActionResult> GetApplications(int recruitId, [FromQuery] int viewerUserId)
+    public async Task<IActionResult> GetApplications(int recruitId)
     {
-        var result = await _applicationService.GetApplicationsAsync(recruitId, viewerUserId);
+        var viewerUserId = User.GetUserId();
+        if (viewerUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var result = await _applicationService.GetApplicationsAsync(recruitId, viewerUserId.Value);
         return ToActionResult(result);
     }
 
@@ -270,20 +283,27 @@ public class RecruitmentsController : ControllerBase
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("createRecruitmentApplication")]
     public async Task<IActionResult> CreateApplication(int recruitId, [FromBody] CreateRecruitmentApplicationRequest req)
     {
-        var result = await _applicationService.CreateApplicationAsync(recruitId, req);
+        var applicantUserId = User.GetUserId();
+        if (applicantUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var result = await _applicationService.CreateApplicationAsync(recruitId, applicantUserId.Value, req);
         if (!result.Succeeded) return ToActionResult(result);
 
         return CreatedAtAction(
             nameof(GetApplications),
-            new { recruitId, viewerUserId = req.CurrentUserId },
+            new { recruitId },
             result.Value);
     }
 
     [HttpPatch("applications/{applicationId:int}/review")]
+    [HttpPost("~/api/v1/applications/{applicationId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewRecruitmentApplication")]
     public async Task<IActionResult> ReviewApplication(int applicationId, [FromBody] ReviewRecruitmentApplicationRequest req)
     {
-        var result = await _applicationService.ReviewApplicationAsync(applicationId, req);
+        var reviewerUserId = User.GetUserId();
+        if (reviewerUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
+
+        var result = await _applicationService.ReviewApplicationAsync(applicationId, reviewerUserId.Value, req);
         return ToActionResult(result);
     }
 

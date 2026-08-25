@@ -308,6 +308,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [HttpPost("{activityId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewActivity")]
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
@@ -371,6 +372,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/budget/review")]
+    [HttpPost("{activityId:int}/budget-reviews")]
     [Authorize]
     public IActionResult ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
@@ -519,6 +521,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/checkin")]
+    [HttpPost("{activityId:int}/checkins")]
     [Authorize]
     public async Task<IActionResult> Checkin(int activityId, [FromBody] ActivitySignRequest req)
     {
@@ -526,6 +529,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/checkout")]
+    [HttpPost("{activityId:int}/checkouts")]
     [Authorize]
     public async Task<IActionResult> Checkout(int activityId, [FromBody] ActivitySignRequest req)
     {

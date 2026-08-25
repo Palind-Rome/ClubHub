@@ -266,6 +266,7 @@ public class ProjectsController : ControllerBase
     /// Reviews a project initiation application. Requirement 1.10 uses one advisor review round.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
+    [HttpPost("{projectId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewProject")]
     [Authorize]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
@@ -311,6 +312,7 @@ public class ProjectsController : ControllerBase
     /// Allows system admins, club leaders, or platform club admins to cancel eligible projects.
     /// </summary>
     [HttpPost("{projectId:int}/cancel")]
+    [HttpPatch("{projectId:int}")]
     [Authorize]
     public async Task<IActionResult> Cancel(int projectId, [FromBody] CancelProjectRequest? req)
     {

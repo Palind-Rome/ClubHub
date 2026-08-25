@@ -79,6 +79,7 @@ public class LearningController : ControllerBase
     /// 按学工号查询课程表单可使用的授课人，教师和学生均可选择，内部用户编号仅随选项提交。
     /// </summary>
     [HttpGet("instructor-lookup")]
+    [HttpGet("instructors")]
     public async Task<IActionResult> GetInstructorByUserNumber(
         [FromQuery] int clubId,
         [FromQuery] string? userNumber)
@@ -320,6 +321,7 @@ public class LearningController : ControllerBase
     /// 接收拖拽或文件选择器提交的单个文件，并直接创建对应的社团学习资源。
     /// </summary>
     [HttpPost("resources/upload")]
+    [HttpPost("resources")]
     [RequestSizeLimit(MaxUploadBytes + 1024 * 1024)]
     public async Task<IActionResult> UploadResource(
         [FromForm] int clubId,
@@ -842,6 +844,7 @@ public class LearningController : ControllerBase
     /// 社团管理员或系统管理员审核待发布的课程、资源。
     /// </summary>
     [HttpPost("items/{itemId:int}/review")]
+    [HttpPost("items/{itemId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewLearningItem")]
     public async Task<IActionResult> ReviewItem(
         int itemId,
@@ -1156,6 +1159,7 @@ public class LearningController : ControllerBase
     /// 为视频、文档或资料创建或恢复当前用户的学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/learning")]
+    [HttpPost("items/{itemId:int}/learning-records")]
     public async Task<IActionResult> StartLearning(int itemId)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");

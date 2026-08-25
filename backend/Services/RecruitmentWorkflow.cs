@@ -105,7 +105,6 @@ public static class RecruitmentWorkflow
 
     public static string? ValidateCreateRecruitmentRequest(CreateRecruitmentRequest req)
     {
-        if (req.CurrentUserId <= 0) return "请选择当前操作用户。";
         if (req.ClubId <= 0) return "请选择发布招募的社团。";
         return ValidateRecruitmentState(req.Title, req.StartAt, req.EndAt, req.Quota, req.Requirements);
     }

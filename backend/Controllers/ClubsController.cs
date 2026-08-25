@@ -12,7 +12,6 @@ using Org.OpenAPITools.Converters;
 using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
 using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
 using CreateClubMemberTermRequest = Org.OpenAPITools.Models.CreateClubMemberTermRequest;
-using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
 using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using UpdateClubDepartmentRequest = Org.OpenAPITools.Models.UpdateClubDepartmentRequest;
 using UpdateClubGroupRequest = Org.OpenAPITools.Models.UpdateClubGroupRequest;
@@ -444,6 +443,7 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("applications/{clubId:int}/review")]
+    [HttpPost("applications/{clubId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewClubApplication")]
     public async Task<IActionResult> ReviewApplication(int clubId, [FromBody] ReviewClubApplicationRequest req)
     {
@@ -1362,7 +1362,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/members/self/exit")]
-    public async Task<IActionResult> ExitCurrentMember(int clubId, [FromBody] ExitClubMemberRequest req)
+    [HttpDelete("{clubId:int}/members/self")]
+    public async Task<IActionResult> ExitCurrentMember(int clubId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -1378,7 +1379,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/members/{memberId:int}/exit")]
-    public async Task<IActionResult> RemoveMember(int clubId, int memberId, [FromBody] ExitClubMemberRequest req)
+    [HttpDelete("{clubId:int}/members/{memberId:int}")]
+    public async Task<IActionResult> RemoveMember(int clubId, int memberId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -1848,7 +1850,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/dissolve")]
-    public async Task<IActionResult> Dissolve(int clubId, [FromBody] DissolveClubRequest req)
+    [HttpDelete("{clubId:int}")]
+    public async Task<IActionResult> Dissolve(int clubId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)

@@ -268,6 +268,7 @@ public class VenueReservationsController : ControllerBase
     }
 
     [HttpPost("{reservationId:int}/review")]
+    [HttpPost("{reservationId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewVenueReservation")]
     public async Task<IActionResult> Review(int reservationId, [FromBody] ReviewVenueReservationRequest req)
     {
