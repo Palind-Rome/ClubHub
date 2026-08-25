@@ -405,6 +405,12 @@ public class AuthService
         AssignRoleRequest request,
         int operatorUserId)
     {
+        if (request.TargetUserId is not > 0)
+        {
+            return AuthServiceResult<RoleAssignmentResult>.Fail(400, "必须指定有效的目标用户。");
+        }
+
+        var targetUserId = request.TargetUserId.Value;
         var roleCode = NormalizeText(request.RoleCode).ToUpperInvariant();
         var roleDef = BaseRoles.FirstOrDefault(r => r.Code == roleCode);
         if (roleDef is null)
@@ -417,7 +423,7 @@ public class AuthService
             return AuthServiceResult<RoleAssignmentResult>.Fail(400, "社团范围角色必须指定社团。");
         }
 
-        var targetUser = await _db.Users.FindAsync(request.TargetUserId);
+        var targetUser = await _db.Users.FindAsync(targetUserId);
         if (targetUser is null)
         {
             return AuthServiceResult<RoleAssignmentResult>.Fail(404, "被分配角色的用户不存在。");
@@ -434,7 +440,7 @@ public class AuthService
 
         var existing = await _db.UserRoles
             .FirstOrDefaultAsync(ur =>
-                ur.UserId == request.TargetUserId &&
+                ur.UserId == targetUserId &&
                 ur.RoleId == role.RoleId &&
                 ur.ClubId == clubId);
 
@@ -442,7 +448,7 @@ public class AuthService
         if (existing is not null)
         {
             return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
-                request.TargetUserId,
+                targetUserId,
                 authRole,
                 true,
                 "用户已经拥有该角色。"));
@@ -450,7 +456,7 @@ public class AuthService
 
         var assignment = new UserRole
         {
-            UserId = request.TargetUserId,
+            UserId = targetUserId,
             RoleId = role.RoleId,
             ClubId = clubId,
             AssignedAt = DateTime.UtcNow
@@ -466,7 +472,7 @@ public class AuthService
             var concurrentAssignmentExists = await _db.UserRoles
                 .AsNoTracking()
                 .AnyAsync(ur =>
-                    ur.UserId == request.TargetUserId &&
+                    ur.UserId == targetUserId &&
                     ur.RoleId == role.RoleId &&
                     ur.ClubId == clubId);
             if (!concurrentAssignmentExists)
@@ -475,14 +481,14 @@ public class AuthService
             }
 
             return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
-                request.TargetUserId,
+                targetUserId,
                 authRole,
                 true,
                 "用户已经拥有该角色。"));
         }
 
         return AuthServiceResult<RoleAssignmentResult>.Ok(new RoleAssignmentResult(
-            request.TargetUserId,
+            targetUserId,
             authRole,
             false,
             "角色分配成功。"));
