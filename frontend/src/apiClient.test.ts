@@ -16,11 +16,11 @@ describe("idempotency request middleware", () => {
 
   it("reuses the same key for the same in-flight request fingerprint", () => {
     const first = attachIdempotencyKey(
-      "/api/projects/1/tasks/2/deliverable",
+      "/api/v1/projects/1/tasks/2/deliverable",
       requestInit('{"title":"first"}'),
     );
     const second = attachIdempotencyKey(
-      "/api/projects/1/tasks/2/deliverable",
+      "/api/v1/projects/1/tasks/2/deliverable",
       requestInit('{"title":"first"}'),
     );
 
@@ -30,12 +30,12 @@ describe("idempotency request middleware", () => {
 
   it.each([409, 500, 503])("retains the key after retryable status %s", (status) => {
     const first = attachIdempotencyKey(
-      "/api/material-borrows/3/return",
+      "/api/v1/material-borrows/3/return",
       requestInit('{"condition":"good"}'),
     );
     finishIdempotencyAttempt(first, new Response(null, { status }));
     const retry = attachIdempotencyKey(
-      "/api/material-borrows/3/return",
+      "/api/v1/material-borrows/3/return",
       requestInit('{"condition":"good"}'),
     );
 
@@ -44,12 +44,12 @@ describe("idempotency request middleware", () => {
 
   it("clears the key after a completed non-retryable response", () => {
     const first = attachIdempotencyKey(
-      "/api/activities/4/registrations",
+      "/api/v1/activities/4/registrations",
       requestInit('{"remark":"join"}'),
     );
     finishIdempotencyAttempt(first, new Response(null, { status: 201 }));
     const nextSubmission = attachIdempotencyKey(
-      "/api/activities/4/registrations",
+      "/api/v1/activities/4/registrations",
       requestInit('{"remark":"join"}'),
     );
 

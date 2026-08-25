@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -90,6 +91,7 @@ public class ProjectsController : ControllerBase
 
         var query = _db.Projects.AsNoTracking();
         if (clubId is not null) query = query.Where(p => p.ClubId == clubId);
+        var totalCount = await query.CountAsync();
 
         var projects = await query
             .OrderByDescending(p => p.CreatedAt)
@@ -98,6 +100,7 @@ public class ProjectsController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
         var access = await BuildProjectTaskAccessContextAsync(projects);
+        ApiPaginationResultFilter.ApplyResponseHeaders(Request, Response, page, pageSize, totalCount);
 
         return Ok(projects
             .Select(project => ToProjectDto(project, CanViewProjectTasks(project, access.User, access.ActiveMemberProjectIds)))

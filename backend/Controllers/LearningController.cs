@@ -648,11 +648,18 @@ public class LearningController : ControllerBase
     /// 校验资源访问权限后返回历史本地文件，或从私有 OSS 读取对象并流式传输。
     /// </summary>
     [HttpGet("items/{itemId:int}/file")]
-    public async Task<IActionResult> GetResourceFile(int itemId)
+    public async Task<IActionResult> GetResourceFile(int itemId, [FromQuery] bool download = false)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
+        if (download)
+        {
+            var auditResult = await RecordDownloadAsync(itemId);
+            if (auditResult is not OkObjectResult) return auditResult;
+        }
+
         var item = await LoadLearningItemForAccessAsync(itemId);
         if (item is null)
         {
@@ -1249,7 +1256,9 @@ public class LearningController : ControllerBase
     /// 校验资源可见范围和下载设置，记录下载用户、时间及来源 IP。
     /// </summary>
     [HttpPost("items/{itemId:int}/download")]
-    public async Task<IActionResult> DownloadItem(int itemId)
+    public Task<IActionResult> DownloadItem(int itemId) => RecordDownloadAsync(itemId);
+
+    private async Task<IActionResult> RecordDownloadAsync(int itemId)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
         var currentUserId = User.GetUserId();

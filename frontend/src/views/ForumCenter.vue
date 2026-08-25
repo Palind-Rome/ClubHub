@@ -50,7 +50,7 @@ const replyRules: FormRules = {
 
 async function loadClubs() {
   try {
-    clubs.value = await requestJson<Club[]>("/api/clubs");
+    clubs.value = await requestJson<Club[]>("/api/v1/clubs");
     selectedClubId.value ??= clubs.value[0]?.id;
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
@@ -65,7 +65,7 @@ async function loadPosts() {
   loading.value = true;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const posts = await requestJson<Post[]>(`/api/clubs/${clubId}/forum-posts${query}`);
+    const posts = await requestJson<Post[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     if (requestVersion === postsRequestVersion) topics.value = posts;
   } catch (error) {
     if (requestVersion === postsRequestVersion) {
@@ -83,7 +83,7 @@ async function createPost(parentPostId?: number) {
   if (!selectedClubId.value || !valid) return;
   saving.value = true;
   try {
-    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parentPostId ? { parentPostId, content: replyForm.content } : topicForm),
@@ -106,7 +106,7 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
   if (moderatingPostIds.value.has(post.id)) return;
   moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
   try {
-    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

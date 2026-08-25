@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using ClubHub.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiError = Org.OpenAPITools.Models.ApiError;
@@ -185,9 +186,21 @@ public class VenuesController : ControllerBase
     }
 
     [HttpDelete("{venueId:int}")]
-    public async Task<IActionResult> Delete(int venueId, [FromBody] DeleteVenueRequest req)
+    public async Task<IActionResult> Delete(int venueId, [FromBody] DeleteVenueRequest? legacyRequest = null)
     {
-        var permission = await RequirePermissionAsync(req.OperatorUserId, VenueDisablePermission, "当前用户没有删除场地权限。");
+        var operatorUserId = User.GetUserId();
+        if (operatorUserId is null && Request.Path.StartsWithSegments("/api/v1"))
+        {
+            return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+        }
+
+        operatorUserId ??= legacyRequest?.OperatorUserId;
+        if (operatorUserId is null or <= 0)
+        {
+            return BadRequest(Error("operator_required", "旧版接口需要提供有效的操作用户。"));
+        }
+
+        var permission = await RequirePermissionAsync(operatorUserId.Value, VenueDisablePermission, "当前用户没有删除场地权限。");
         if (permission is not null) return permission;
 
         var venue = await _db.Venues.FindAsync(venueId);

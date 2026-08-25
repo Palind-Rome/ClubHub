@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -116,7 +116,7 @@ async function login() {
 
   loading.value = true;
   try {
-    const result = await requestJson<AuthResponse>("/api/auth/login", {
+    const result = await requestJson<AuthResponse>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({
         username: loginForm.value.username.trim(),
@@ -140,7 +140,7 @@ async function register() {
 
   loading.value = true;
   try {
-    const result = await requestJson<AuthResponse>("/api/auth/register", {
+    const result = await requestJson<AuthResponse>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify(buildRegisterPayload()),
     });
@@ -291,7 +291,7 @@ function hasDigitLength(value: string, length: number) {
 
 async function loadPermissionCatalog() {
   try {
-    permissionCatalog.value = await requestJson<PermissionDefinition[]>("/api/auth/permissions");
+    permissionCatalog.value = await requestJson<PermissionDefinition[]>("/api/v1/auth/permissions");
   } catch {
     permissionCatalog.value = [];
   }

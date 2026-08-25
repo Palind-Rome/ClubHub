@@ -51,7 +51,7 @@ function refreshSession() {
 async function checkHealth() {
   healthChecking.value = true;
   try {
-    const response = await fetch("/api/health");
+    const response = await fetch("/api/v1/health");
     healthOk.value = response.ok;
   } catch {
     healthOk.value = false;

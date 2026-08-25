@@ -376,7 +376,7 @@ async function loadLeaderCandidates(clubId?: number | null, options: { silent?: 
   leaderCandidateLoading.value = true;
   try {
     leaderCandidates.value = await projectApiRequest<UserSummary[]>(
-      `/api/users?clubId=${encodeURIComponent(String(clubId))}`,
+      `/api/v1/users?clubId=${encodeURIComponent(String(clubId))}`,
     );
     leaderCandidatesByClub.value = {
       ...leaderCandidatesByClub.value,
@@ -543,7 +543,7 @@ async function loadProjectTasks() {
   taskLoading.value = true;
   try {
     const tasks = await projectApiRequest<ProjectTaskApi[]>(
-      `/api/projects/${selectedProject.value.id}/tasks`,
+      `/api/v1/projects/${selectedProject.value.id}/tasks`,
     );
     projectTasks.value = tasks.map(mapProjectTask);
   } catch (error) {

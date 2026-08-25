@@ -872,7 +872,7 @@ const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
 async function refreshAuthSession() {
   if (!currentUserId.value) return;
 
-  const session = await requestJson<AuthResponse>("/api/auth/session");
+  const session = await requestJson<AuthResponse>("/api/v1/auth/session");
   saveAuth(session);
   auth.value = session;
 }
@@ -906,7 +906,7 @@ async function loadUsers() {
 
   usersLoading.value = true;
   try {
-    const data = await requestJson<UserSummary[]>(`/api/users`);
+    const data = await requestJson<UserSummary[]>(`/api/v1/users`);
     if (requestId === usersRequestId) users.value = data;
   } catch (e) {
     if (requestId === usersRequestId) {
@@ -929,7 +929,7 @@ async function loadDialogUsers(clubId?: number) {
   dialogUsersLoading.value = true;
   try {
     const query = clubId ? `?clubId=${clubId}` : "";
-    const data = await requestJson<UserSummary[]>(`/api/users${query}`);
+    const data = await requestJson<UserSummary[]>(`/api/v1/users${query}`);
     if (requestId === dialogUsersRequestId) dialogUsers.value = data;
   } catch (e) {
     if (requestId === dialogUsersRequestId) {
@@ -950,7 +950,7 @@ async function loadApplicationAdvisorCandidates() {
   applicationAdvisorLoading.value = true;
   try {
     applicationAdvisorCandidates.value = await requestJson<LearningTeacherCandidate[]>(
-      "/api/clubs/advisor-candidates",
+      "/api/v1/clubs/advisor-candidates",
     );
   } catch (e) {
     applicationAdvisorCandidates.value = [];
@@ -990,9 +990,9 @@ async function loadData() {
 
     const [applicationData, clubData] = await Promise.all([
       shouldLoadApplications
-        ? requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`)
+        ? requestJson<ClubApplication[]>(`/api/v1/clubs/applications?${query.toString()}`)
         : Promise.resolve([]),
-      shouldLoadClubs ? requestJson<Club[]>(`/api/clubs`) : Promise.resolve([]),
+      shouldLoadClubs ? requestJson<Club[]>(`/api/v1/clubs`) : Promise.resolve([]),
     ]);
     if (requestId !== dataRequestId) return;
     applications.value = applicationData;
@@ -1044,7 +1044,7 @@ async function loadMembers() {
       query.set("groupId", String(memberFilters.groupId));
     }
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === membersRequestId) clubMembers.value = data;
   } catch (e) {
@@ -1069,7 +1069,7 @@ async function loadDepartments() {
   organizationLoading.value = true;
   try {
     const data = await requestJson<ClubDepartmentRecord[]>(
-      `/api/clubs/${clubId}/departments?includeInactive=true`,
+      `/api/v1/clubs/${clubId}/departments?includeInactive=true`,
     );
     if (requestId === organizationRequestId) clubDepartments.value = data;
   } catch (e) {
@@ -1312,7 +1312,7 @@ async function submitApplication() {
   saving.value = true;
   try {
     await requestJson<ClubApplication>(
-      `/api/clubs/applications${isResubmit ? `/${targetId}` : ""}`,
+      `/api/v1/clubs/applications${isResubmit ? `/${targetId}` : ""}`,
       {
         method: isResubmit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -1368,13 +1368,16 @@ async function submitReview() {
 
   reviewing.value = true;
   try {
-    await requestJson<ClubApplication>(`/api/clubs/applications/${reviewTarget.value.id}/review`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...reviewForm,
-      }),
-    });
+    await requestJson<ClubApplication>(
+      `/api/v1/clubs/applications/${reviewTarget.value.id}/reviews`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...reviewForm,
+        }),
+      },
+    );
     ElMessage.success(`申请已${actionText}`);
     reviewDialogVisible.value = false;
     await Promise.all([loadUsers(), loadData()]);
@@ -1411,7 +1414,7 @@ async function submitProfile() {
 
   profileSaving.value = true;
   try {
-    await requestJson<Club>(`/api/clubs/${profileTarget.value.id}/profile`, {
+    await requestJson<Club>(`/api/v1/clubs/${profileTarget.value.id}/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1456,10 +1459,8 @@ async function dissolveClub(row: Club) {
 
   dissolvingClubId.value = row.id;
   try {
-    await requestJson<void>(`/api/clubs/${row.id}/dissolve`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.id}`, {
+      method: "DELETE",
     });
     ElMessage.success("社团已解散");
     await Promise.all([loadUsers(), loadData()]);
@@ -1492,10 +1493,8 @@ async function exitCurrentClub(row: IdentityRow) {
 
   exitingClubId.value = row.clubId;
   try {
-    await requestJson<void>(`/api/clubs/${row.clubId}/members/self/exit`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.clubId}/members/self`, {
+      method: "DELETE",
     });
     ElMessage.success("已退出社团");
     await refreshAuthSessionQuietly();
@@ -1529,10 +1528,8 @@ async function removeClubMember(row: ClubMemberRecord) {
 
   exitingMemberId.value = row.memberId;
   try {
-    await requestJson<void>(`/api/clubs/${row.clubId}/members/${row.memberId}/exit`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.clubId}/members/${row.memberId}`, {
+      method: "DELETE",
     });
     ElMessage.success("成员已移出");
     await Promise.all([loadUsers(), loadData()]);
@@ -1804,7 +1801,7 @@ async function submitMemberGrouping() {
   groupingSaving.value = true;
   try {
     await requestJson<ClubMemberRecord>(
-      `/api/clubs/${selectedClubId.value}/members/${memberGroupingTarget.value.memberId}/grouping`,
+      `/api/v1/clubs/${selectedClubId.value}/members/${memberGroupingTarget.value.memberId}/grouping`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1848,7 +1845,7 @@ async function submitMemberBatchGrouping() {
     const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
-          `/api/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
+          `/api/v1/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -1905,7 +1902,7 @@ async function submitMemberBatchPosition() {
     const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
-          `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
+          `/api/v1/clubs/${selectedClubId.value}/members/${row.memberId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -1962,14 +1959,14 @@ async function submitMemberTerm() {
     };
 
     if (memberTermMode.value === "create") {
-      await requestJson<ClubMemberRecord>(`/api/clubs/${selectedClubId.value}/members/terms`, {
+      await requestJson<ClubMemberRecord>(`/api/v1/clubs/${selectedClubId.value}/members/terms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else if (memberTermTarget.value) {
       await requestJson<ClubMemberRecord>(
-        `/api/clubs/${selectedClubId.value}/members/${memberTermTarget.value.memberId}`,
+        `/api/v1/clubs/${selectedClubId.value}/members/${memberTermTarget.value.memberId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -2199,7 +2196,7 @@ async function persistDepartmentOrder(reordered: ClubDepartmentRecord[]) {
     await Promise.all(
       reordered.map((department, index) =>
         requestJson<ClubDepartmentRecord>(
-          `/api/clubs/${selectedClubId.value}/departments/${department.departmentId}`,
+          `/api/v1/clubs/${selectedClubId.value}/departments/${department.departmentId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -2289,11 +2286,14 @@ async function persistGroupOrder(reordered: ClubGroupRecord[]) {
   try {
     await Promise.all(
       reordered.map((group, index) =>
-        requestJson<ClubGroupRecord>(`/api/clubs/${selectedClubId.value}/groups/${group.groupId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(groupPayloadFromRecord(group, (index + 1) * 10)),
-        }),
+        requestJson<ClubGroupRecord>(
+          `/api/v1/clubs/${selectedClubId.value}/groups/${group.groupId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(groupPayloadFromRecord(group, (index + 1) * 10)),
+          },
+        ),
       ),
     );
     ElMessage.success("排序已更新");
@@ -2353,8 +2353,8 @@ async function submitDepartmentForm() {
     const target = departmentEditTarget.value;
     await requestJson<ClubDepartmentRecord>(
       target
-        ? `/api/clubs/${selectedClubId.value}/departments/${target.departmentId}`
-        : `/api/clubs/${selectedClubId.value}/departments`,
+        ? `/api/v1/clubs/${selectedClubId.value}/departments/${target.departmentId}`
+        : `/api/v1/clubs/${selectedClubId.value}/departments`,
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -2424,8 +2424,8 @@ async function submitGroupForm() {
     const target = groupEditTarget.value;
     await requestJson<ClubGroupRecord>(
       target
-        ? `/api/clubs/${selectedClubId.value}/groups/${target.groupId}`
-        : `/api/clubs/${selectedClubId.value}/departments/${departmentId}/groups`,
+        ? `/api/v1/clubs/${selectedClubId.value}/groups/${target.groupId}`
+        : `/api/v1/clubs/${selectedClubId.value}/departments/${departmentId}/groups`,
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },

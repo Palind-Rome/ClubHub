@@ -369,7 +369,7 @@ async function submitDeliverable() {
   saving.value = true;
   try {
     await projectTaskRequest<ProjectTaskWithDeliverable>(
-      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable`,
+      `/api/v1/projects/${props.projectId}/tasks/${task.id}/deliverable`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -409,7 +409,7 @@ async function reviewDeliverable() {
   saving.value = true;
   try {
     await projectTaskRequest<ProjectTaskWithDeliverable>(
-      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable/review`,
+      `/api/v1/projects/${props.projectId}/tasks/${task.id}/deliverable/review`,
       {
         method: "POST",
         body: JSON.stringify({

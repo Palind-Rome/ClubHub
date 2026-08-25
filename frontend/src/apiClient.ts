@@ -4,16 +4,17 @@ import { clearSession, readAuth } from "./authSession";
 const idempotencyKeys = new Map<string, string>();
 const idempotencyFingerprintsByKey = new Map<string, string>();
 const idempotentPaths = [
-  /^\/api\/clubs\/applications(?:\/\d+(?:\/review)?)?$/,
-  /^\/api\/clubs\/\d+\/award-applications(?:\/\d+\/(?:submit|review))?$/,
-  /^\/api\/recruitments\/(?:\d+\/(?:review|applications)|applications\/\d+\/review)$/,
-  /^\/api\/activities\/\d+\/(?:registrations|review)$/,
-  /^\/api\/budget\/applications(?:\/\d+\/review)?$/,
-  /^\/api\/venue-reservations(?:\/\d+\/review)?$/,
-  /^\/api\/learning\/items\/\d+\/(?:review|enrollments)$/,
-  /^\/api\/projects(?:\/\d+\/review)?$/,
-  /^\/api\/projects\/\d+\/tasks\/\d+\/deliverable(?:\/review)?$/,
-  /^\/api\/material-borrows(?:\/\d+\/(?:return|damage))?$/,
+  /^\/api\/v1\/clubs\/applications(?:\/\d+\/reviews)?$/,
+  /^\/api\/v1\/clubs\/\d+\/award-applications(?:\/\d+\/(?:submit|review))?$/,
+  /^\/api\/v1\/recruitments\/\d+\/(?:reviews|applications)$/,
+  /^\/api\/v1\/applications\/\d+\/reviews$/,
+  /^\/api\/v1\/activities\/\d+\/(?:registrations|reviews)$/,
+  /^\/api\/v1\/budget\/applications(?:\/\d+\/review)?$/,
+  /^\/api\/v1\/venue-reservations(?:\/\d+\/reviews)?$/,
+  /^\/api\/v1\/learning\/items\/\d+\/(?:reviews|enrollments)$/,
+  /^\/api\/v1\/projects(?:\/\d+\/reviews)?$/,
+  /^\/api\/v1\/projects\/\d+\/tasks\/\d+\/deliverable(?:\/review)?$/,
+  /^\/api\/v1\/material-borrows(?:\/\d+\/(?:return|damage))?$/,
 ];
 
 function attachCurrentAuthorization(init: RequestInit) {

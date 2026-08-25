@@ -48,13 +48,27 @@ public sealed class ApiPaginationResultFilter : IAsyncResultFilter
             ? Array.Empty<object?>()
             : allItems.Skip((int)skip).Take(pageSize).ToArray();
 
-        var response = context.HttpContext.Response;
-        response.Headers["X-Page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        response.Headers["X-Page-Size"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        response.Headers["X-Total-Count"] = allItems.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        AddNavigationLinks(context.HttpContext.Request, response, page, pageSize, allItems.Count);
+        ApplyResponseHeaders(
+            context.HttpContext.Request,
+            context.HttpContext.Response,
+            page,
+            pageSize,
+            allItems.Count);
 
         await next();
+    }
+
+    public static void ApplyResponseHeaders(
+        HttpRequest request,
+        HttpResponse response,
+        int page,
+        int pageSize,
+        int totalCount)
+    {
+        response.Headers["X-Page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        response.Headers["X-Page-Size"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        response.Headers["X-Total-Count"] = totalCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        AddNavigationLinks(request, response, page, pageSize, totalCount);
     }
 
     private static bool ActionHandlesPagination(ResultExecutingContext context)
