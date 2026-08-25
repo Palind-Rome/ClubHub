@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options =>
     {
         options.Conventions.Insert(0, new ApiVersionRouteConvention());
+        options.Filters.Add<ApiErrorResultFilter>();
     })
     .AddJsonOptions(options =>
     {
@@ -109,6 +110,16 @@ app.UseCors(policy =>
 
 app.UseRouting();
 
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var response = statusCodeContext.HttpContext.Response;
+    var request = statusCodeContext.HttpContext.Request;
+    if (request.Path.StartsWithSegments("/api") && response.StatusCode >= 400)
+    {
+        await response.WriteAsJsonAsync(ApiErrorFactory.Create(response.StatusCode));
+    }
+});
+
 app.Use(async (context, next) =>
 {
     try
@@ -118,10 +129,9 @@ app.Use(async (context, next) =>
     catch (PermissionSnapshotUnavailableException) when (!context.Response.HasStarted)
     {
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-        await context.Response.WriteAsJsonAsync(new
-        {
-            message = "无法安全失效权限缓存，本次写入已回滚，请稍后重试。"
-        });
+        await context.Response.WriteAsJsonAsync(ApiErrorFactory.Create(
+            StatusCodes.Status503ServiceUnavailable,
+            "无法安全失效权限缓存，本次写入已回滚，请稍后重试。"));
     }
 });
 
