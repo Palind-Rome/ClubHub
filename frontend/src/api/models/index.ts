@@ -67,7 +67,6 @@ export * from "./ExitClubMemberRequest";
 export * from "./ForumPost";
 export * from "./GenerateClubEvaluationsRequest";
 export * from "./GenerateClubEvaluationsResult";
-export * from "./GetPermissionCatalog200Response";
 export * from "./HealthStatus";
 export * from "./LearningDownloadResult";
 export * from "./LearningItem";

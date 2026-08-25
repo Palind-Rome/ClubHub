@@ -269,15 +269,15 @@ import {
   GenerateClubEvaluationsResultToJSON,
 } from "../models/GenerateClubEvaluationsResult";
 import {
-  type GetPermissionCatalog200Response,
-  GetPermissionCatalog200ResponseFromJSON,
-  GetPermissionCatalog200ResponseToJSON,
-} from "../models/GetPermissionCatalog200Response";
-import {
   type HealthStatus,
   HealthStatusFromJSON,
   HealthStatusToJSON,
 } from "../models/HealthStatus";
+import {
+  type LearningDownloadResult,
+  LearningDownloadResultFromJSON,
+  LearningDownloadResultToJSON,
+} from "../models/LearningDownloadResult";
 import {
   type LearningItem,
   LearningItemFromJSON,
@@ -320,6 +320,16 @@ import {
   NoticeReadResultFromJSON,
   NoticeReadResultToJSON,
 } from "../models/NoticeReadResult";
+import {
+  type PermissionCheckResult,
+  PermissionCheckResultFromJSON,
+  PermissionCheckResultToJSON,
+} from "../models/PermissionCheckResult";
+import {
+  type PermissionDefinition,
+  PermissionDefinitionFromJSON,
+  PermissionDefinitionToJSON,
+} from "../models/PermissionDefinition";
 import { type Project, ProjectFromJSON, ProjectToJSON } from "../models/Project";
 import {
   type ProjectMember,
@@ -631,6 +641,17 @@ export interface CancelProjectOperationRequest {
   cancelProjectRequest: CancelProjectRequest;
 }
 
+export interface CheckCurrentUserPermissionRequest {
+  /**
+   *
+   */
+  permission: string;
+  /**
+   * 可选的社团作用域。
+   */
+  clubId?: number;
+}
+
 export interface CheckinActivityRequest {
   /**
    *
@@ -801,6 +822,13 @@ export interface CreateClubMemberTermOperationRequest {
    *
    */
   createClubMemberTermRequest: CreateClubMemberTermRequest;
+}
+
+export interface CreateLearningDownloadRequest {
+  /**
+   *
+   */
+  itemId: number;
 }
 
 export interface CreateLearningItemOperationRequest {
@@ -996,11 +1024,11 @@ export interface GenerateClubEvaluationsOperationRequest {
 
 export interface GetActivitiesRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1026,22 +1054,22 @@ export interface GetActivityParticipationsRequest {
    */
   activityId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
 }
 
 export interface GetBudgetAccountsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1056,11 +1084,11 @@ export interface GetBudgetAccountsRequest {
 
 export interface GetBudgetApplicationsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1083,11 +1111,11 @@ export interface GetBudgetApplicationsRequest {
 
 export interface GetBudgetTransactionsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1100,24 +1128,13 @@ export interface GetBudgetTransactionsRequest {
   accountId?: number;
 }
 
-export interface GetClubAdvisorCandidatesRequest {
-  /**
-   * 页码，从 1 开始。
-   */
-  page?: number;
-  /**
-   * 每页记录数，最大 100。
-   */
-  pageSize?: number;
-}
-
 export interface GetClubApplicationsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1170,11 +1187,11 @@ export interface GetClubAwardApplicationsRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1201,11 +1218,11 @@ export interface GetClubAwardPublicityBatchesRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1231,11 +1248,11 @@ export interface GetClubAwardRuleDocumentsRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1254,11 +1271,11 @@ export interface GetClubAwardSchemesRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1284,11 +1301,11 @@ export interface GetClubDepartmentsRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1303,11 +1320,11 @@ export interface GetClubEvaluationsRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1326,11 +1343,11 @@ export interface GetClubForumPostsRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1345,11 +1362,11 @@ export interface GetClubMembersRequest {
    */
   clubId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1380,11 +1397,11 @@ export interface GetClubMembersRequest {
 
 export interface GetClubsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
 }
@@ -1409,11 +1426,11 @@ export interface GetLearningItemStatisticsRequest {
 
 export interface GetLearningItemsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1435,11 +1452,11 @@ export interface GetLearningPreviewRequest {
 
 export interface GetLearningRecordsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1461,11 +1478,11 @@ export interface GetLearningResourceFileRequest {
 
 export interface GetMaterialBorrowsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1488,11 +1505,11 @@ export interface GetMaterialBorrowsRequest {
 
 export interface GetMaterialsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1507,11 +1524,11 @@ export interface GetMaterialsRequest {
 
 export interface GetNoticesRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1532,17 +1549,6 @@ export interface GetNoticesRequest {
   unreadOnly?: boolean;
 }
 
-export interface GetPermissionCatalogRequest {
-  /**
-   *
-   */
-  permission?: string;
-  /**
-   * 可选的社团作用域。
-   */
-  clubId?: number;
-}
-
 export interface GetProjectByIdRequest {
   /**
    *
@@ -1556,11 +1562,11 @@ export interface GetProjectMemberCandidatesRequest {
    */
   projectId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
 }
@@ -1570,14 +1576,6 @@ export interface GetProjectMembersRequest {
    *
    */
   projectId: number;
-  /**
-   * 页码，从 1 开始。
-   */
-  page?: number;
-  /**
-   * 每页记录数，最大 100。
-   */
-  pageSize?: number;
   /**
    * 是否包含已移除或已退出成员，仅项目负责人或本社团负责人、干部可设为 true。
    */
@@ -1594,11 +1592,11 @@ export interface GetProjectTaskProgressReportsRequest {
    */
   taskId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
 }
@@ -1609,11 +1607,11 @@ export interface GetProjectTasksRequest {
    */
   projectId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1643,22 +1641,22 @@ export interface GetRecruitmentApplicationsRequest {
    */
   recruitId: number;
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
 }
 
 export interface GetRecruitmentsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1671,24 +1669,13 @@ export interface GetRecruitmentsRequest {
   status?: GetRecruitmentsStatusEnum;
 }
 
-export interface GetRoleDefinitionsRequest {
-  /**
-   * 页码，从 1 开始。
-   */
-  page?: number;
-  /**
-   * 每页记录数，最大 100。
-   */
-  pageSize?: number;
-}
-
 export interface GetUsersRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1706,11 +1693,11 @@ export interface GetVenueByIdRequest {
 
 export interface GetVenueOccupiedSlotsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1728,11 +1715,11 @@ export interface GetVenueReservationByIdRequest {
 
 export interface GetVenueReservationsRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -1759,11 +1746,11 @@ export interface GetVenueReservationsRequest {
 
 export interface GetVenuesRequest {
   /**
-   * 页码，从 1 开始。
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
    */
   page?: number;
   /**
-   * 每页记录数，最大 100。
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
    */
   pageSize?: number;
   /**
@@ -3108,6 +3095,78 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for checkCurrentUserPermission without sending the request
+   */
+  async checkCurrentUserPermissionRequestOpts(
+    requestParameters: CheckCurrentUserPermissionRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["permission"] == null) {
+      throw new runtime.RequiredError(
+        "permission",
+        'Required parameter "permission" was null or undefined when calling checkCurrentUserPermission().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["permission"] != null) {
+      queryParameters["permission"] = requestParameters["permission"];
+    }
+
+    if (requestParameters["clubId"] != null) {
+      queryParameters["clubId"] = requestParameters["clubId"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/users/me/permissions`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+   * 检查当前用户权限
+   */
+  async checkCurrentUserPermissionRaw(
+    requestParameters: CheckCurrentUserPermissionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
+    const requestOptions = await this.checkCurrentUserPermissionRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PermissionCheckResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+   * 检查当前用户权限
+   */
+  async checkCurrentUserPermission(
+    requestParameters: CheckCurrentUserPermissionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PermissionCheckResult> {
+    const response = await this.checkCurrentUserPermissionRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for checkinActivity without sending the request
    */
   async checkinActivityRequestOpts(
@@ -4232,6 +4291,71 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ClubMemberRecord> {
     const response = await this.createClubMemberTermRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createLearningDownload without sending the request
+   */
+  async createLearningDownloadRequestOpts(
+    requestParameters: CreateLearningDownloadRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling createLearningDownload().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/learning/items/{itemId}/downloads`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 校验当前用户的资源可见范围和下载权限后，追加独立操作日志；不创建、恢复或修改学习记录。客户端成功创建审计后再请求受保护文件。
+   * 记录学习资源下载审计
+   */
+  async createLearningDownloadRaw(
+    requestParameters: CreateLearningDownloadRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningDownloadResult>> {
+    const requestOptions = await this.createLearningDownloadRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningDownloadResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 校验当前用户的资源可见范围和下载权限后，追加独立操作日志；不创建、恢复或修改学习记录。客户端成功创建审计后再请求受保护文件。
+   * 记录学习资源下载审计
+   */
+  async createLearningDownload(
+    requestParameters: CreateLearningDownloadRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningDownloadResult> {
+    const response = await this.createLearningDownloadRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -6100,18 +6224,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getClubAdvisorCandidates without sending the request
    */
-  async getClubAdvisorCandidatesRequestOpts(
-    requestParameters: GetClubAdvisorCandidatesRequest,
-  ): Promise<runtime.RequestOpts> {
+  async getClubAdvisorCandidatesRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
-
-    if (requestParameters["page"] != null) {
-      queryParameters["page"] = requestParameters["page"];
-    }
-
-    if (requestParameters["pageSize"] != null) {
-      queryParameters["pageSize"] = requestParameters["pageSize"];
-    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -6130,10 +6244,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 查询社团注册可选指导老师
    */
   async getClubAdvisorCandidatesRaw(
-    requestParameters: GetClubAdvisorCandidatesRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<LearningTeacherCandidate>>> {
-    const requestOptions = await this.getClubAdvisorCandidatesRequestOpts(requestParameters);
+    const requestOptions = await this.getClubAdvisorCandidatesRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
@@ -6146,10 +6259,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 查询社团注册可选指导老师
    */
   async getClubAdvisorCandidates(
-    requestParameters: GetClubAdvisorCandidatesRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<LearningTeacherCandidate>> {
-    const response = await this.getClubAdvisorCandidatesRaw(requestParameters, initOverrides);
+    const response = await this.getClubAdvisorCandidatesRaw(initOverrides);
     return await response.value();
   }
 
@@ -7769,18 +7881,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getPermissionCatalog without sending the request
    */
-  async getPermissionCatalogRequestOpts(
-    requestParameters: GetPermissionCatalogRequest,
-  ): Promise<runtime.RequestOpts> {
+  async getPermissionCatalogRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
-
-    if (requestParameters["permission"] != null) {
-      queryParameters["permission"] = requestParameters["permission"];
-    }
-
-    if (requestParameters["clubId"] != null) {
-      queryParameters["clubId"] = requestParameters["clubId"];
-    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -7795,30 +7897,28 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 未传 permission 时返回完整权限目录；传入 permission 时从 Bearer Token 识别当前用户并返回权限检查结果。
-   * 获取权限目录或检查当前用户权限
+   * 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
+   * 获取完整权限目录
    */
   async getPermissionCatalogRaw(
-    requestParameters: GetPermissionCatalogRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<GetPermissionCatalog200Response>> {
-    const requestOptions = await this.getPermissionCatalogRequestOpts(requestParameters);
+  ): Promise<runtime.ApiResponse<Array<PermissionDefinition>>> {
+    const requestOptions = await this.getPermissionCatalogRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      GetPermissionCatalog200ResponseFromJSON(jsonValue),
+      jsonValue.map(PermissionDefinitionFromJSON),
     );
   }
 
   /**
-   * 未传 permission 时返回完整权限目录；传入 permission 时从 Bearer Token 识别当前用户并返回权限检查结果。
-   * 获取权限目录或检查当前用户权限
+   * 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
+   * 获取完整权限目录
    */
   async getPermissionCatalog(
-    requestParameters: GetPermissionCatalogRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<GetPermissionCatalog200Response> {
-    const response = await this.getPermissionCatalogRaw(requestParameters, initOverrides);
+  ): Promise<Array<PermissionDefinition>> {
+    const response = await this.getPermissionCatalogRaw(initOverrides);
     return await response.value();
   }
 
@@ -7967,14 +8067,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     const queryParameters: any = {};
-
-    if (requestParameters["page"] != null) {
-      queryParameters["page"] = requestParameters["page"];
-    }
-
-    if (requestParameters["pageSize"] != null) {
-      queryParameters["pageSize"] = requestParameters["pageSize"];
-    }
 
     if (requestParameters["includeInactive"] != null) {
       queryParameters["includeInactive"] = requestParameters["includeInactive"];
@@ -8401,18 +8493,8 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getRoleDefinitions without sending the request
    */
-  async getRoleDefinitionsRequestOpts(
-    requestParameters: GetRoleDefinitionsRequest,
-  ): Promise<runtime.RequestOpts> {
+  async getRoleDefinitionsRequestOpts(): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
-
-    if (requestParameters["page"] != null) {
-      queryParameters["page"] = requestParameters["page"];
-    }
-
-    if (requestParameters["pageSize"] != null) {
-      queryParameters["pageSize"] = requestParameters["pageSize"];
-    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
@@ -8430,10 +8512,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取基础角色定义
    */
   async getRoleDefinitionsRaw(
-    requestParameters: GetRoleDefinitionsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<RoleDefinition>>> {
-    const requestOptions = await this.getRoleDefinitionsRequestOpts(requestParameters);
+    const requestOptions = await this.getRoleDefinitionsRequestOpts();
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
@@ -8445,10 +8526,9 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取基础角色定义
    */
   async getRoleDefinitions(
-    requestParameters: GetRoleDefinitionsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<RoleDefinition>> {
-    const response = await this.getRoleDefinitionsRaw(requestParameters, initOverrides);
+    const response = await this.getRoleDefinitionsRaw(initOverrides);
     return await response.value();
   }
 

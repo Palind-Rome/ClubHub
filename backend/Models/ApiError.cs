@@ -26,11 +26,14 @@ namespace Org.OpenAPITools.Models
     public partial class ApiError 
     {
         /// <summary>
-        /// Gets or Sets Code
+        /// 固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、 PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。
         /// </summary>
-        /* <example>venue_reservation_conflict</example> */
-        [DataMember(Name="code", EmitDefaultValue=true)]
-        public string? Code { get; set; }
+        /// <value>固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、 PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。</value>
+        /* <example>VALIDATION_ERROR</example> */
+        [Required]
+        [RegularExpression("^(VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|CONFLICT|PAYLOAD_TOO_LARGE|RATE_LIMITED|SERVICE_UNAVAILABLE|INTERNAL_ERROR|REQUEST_FAILED)$")]
+        [DataMember(Name="code", EmitDefaultValue=false)]
+        public string Code { get; set; }
 
         /// <summary>
         /// Gets or Sets Message
