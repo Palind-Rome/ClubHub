@@ -97,12 +97,12 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         db.Venues.AddRange(Enumerable.Range(1, count)
             .Where(index => !existingIds.Contains(14_300 + index))
             .Select(index => new Venue
-        {
-            VenueId = 14_300 + index,
-            VenueName = $"分页场地 {index}",
-            VenueStatus = "available",
-            CreatedAt = DateTime.UtcNow
-        }));
+            {
+                VenueId = 14_300 + index,
+                VenueName = $"分页场地 {index}",
+                VenueStatus = "available",
+                CreatedAt = DateTime.UtcNow
+            }));
         await db.SaveChangesAsync();
     }
 }
