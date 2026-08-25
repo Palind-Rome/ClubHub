@@ -92,16 +92,19 @@ app.UseForwardedHeaders();
 
 app.Use(async (context, next) =>
 {
-    if (ApiRouteDeprecation.TryGetSuccessor(context.Request.Path, out var successorPath))
+    if (ApiRouteDeprecation.IsDeprecated(context.Request.Path))
     {
         context.Response.Headers["Deprecation"] = "true";
         context.Response.Headers["Sunset"] = "Thu, 31 Dec 2026 16:00:00 GMT";
-        var querySeparator = successorPath.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        var successorQuery = context.Request.QueryString.HasValue
-            ? $"{querySeparator}{context.Request.QueryString.Value![1..]}"
-            : string.Empty;
-        context.Response.Headers.Link =
-            $"<{successorPath}{successorQuery}>; rel=\"successor-version\"";
+        if (ApiRouteDeprecation.TryGetSuccessor(context.Request.Path, out var successorPath))
+        {
+            var querySeparator = successorPath.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+            var successorQuery = context.Request.QueryString.HasValue
+                ? $"{querySeparator}{context.Request.QueryString.Value![1..]}"
+                : string.Empty;
+            context.Response.Headers.Link =
+                $"<{successorPath}{successorQuery}>; rel=\"successor-version\"";
+        }
     }
 
     await next();

@@ -654,12 +654,6 @@ public class LearningController : ControllerBase
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
-        if (download)
-        {
-            var auditResult = await RecordDownloadAsync(itemId);
-            if (auditResult is not OkObjectResult) return auditResult;
-        }
-
         var item = await LoadLearningItemForAccessAsync(itemId);
         if (item is null)
         {
@@ -700,7 +694,8 @@ public class LearningController : ControllerBase
                 {
                     Response.ContentLength = metadata.ContentLength;
                 }
-                if (!string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
+                if (!download &&
+                    !string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
                     metadata.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
                 {
                     Response.Headers.ContentDisposition = metadata.ContentDisposition;
@@ -1253,96 +1248,62 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 校验资源可见范围和下载设置，记录下载用户、时间及来源 IP。
+    /// 校验资源可见范围和下载设置，并追加独立下载审计日志。
     /// </summary>
     [HttpPost("items/{itemId:int}/download")]
-    public Task<IActionResult> DownloadItem(int itemId) => RecordDownloadAsync(itemId);
-
-    private async Task<IActionResult> RecordDownloadAsync(int itemId)
+    [HttpPost("items/{itemId:int}/downloads")]
+    public async Task<IActionResult> RecordDownload(int itemId)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
-        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        var item = await LoadLearningItemForAccessAsync(itemId);
+        if (item is null) return NotFound("学习资源不存在。");
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null) return NotFound("当前用户不存在。");
+        if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
         {
-            await using var transaction =
-                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
-
-            var item = await LoadLearningItemForAccessAsync(itemId);
-            if (item is null) return NotFound("学习资源不存在。");
-
-            var user = await LoadUserAsync(currentUserId.Value);
-            if (user is null) return NotFound("当前用户不存在。");
-            if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
-            var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
-            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有下载学习资源的权限。");
-            }
-
-            var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
-            var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
-            if (accessDecision is not null)
-            {
-                return StatusCode(accessDecision.StatusCode, accessDecision.Message);
-            }
-
-            var downloadDecision = GetDownloadDecision(item);
-            if (downloadDecision is not null)
-            {
-                return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
-            }
-
-            var downloadUrl = _objectStorage.IsStorageReference(item.FileUrl)
-                ? $"{LocalFileUrlPrefix}{itemId}/file"
-                : item.FileUrl!.Trim();
-
-            var now = LearningWorkflow.BusinessNow();
-            if (record is null)
-            {
-                record = new DbLearningRecord
-                {
-                    ItemId = itemId,
-                    UserId = currentUserId.Value,
-                    EnrollStatus = LearningWorkflow.RecordStatusLearning,
-                    EnrolledAt = now,
-                    Progress = 0,
-                    DurationSeconds = 0
-                };
-                _db.LearningRecords.Add(record);
-            }
-            else if (LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
-                     LearningWorkflow.RecordStatusCancelled)
-            {
-                record.EnrollStatus = LearningWorkflow.RecordStatusLearning;
-                record.EnrolledAt = now;
-            }
-
-            record.DownloadedAt = now;
-            record.DownloadIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            try
-            {
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return Ok(new ApiLearningDownloadResult
-                {
-                    ItemId = item.ItemId,
-                    Title = item.Title,
-                    FileUrl = downloadUrl,
-                    DownloadedAt = LearningWorkflow.AsUtc(now)
-                });
-            }
-            catch (DbUpdateException) when (attempt < MaxCreateRetries)
-            {
-                await transaction.RollbackAsync();
-                _db.ChangeTracker.Clear();
-            }
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有下载学习资源的权限。");
         }
 
-        return Conflict("记录下载行为时发生并发冲突，请重试。");
+        var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+        var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
+        var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
+        if (accessDecision is not null)
+        {
+            return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+        }
+
+        var downloadDecision = GetDownloadDecision(item);
+        if (downloadDecision is not null)
+        {
+            return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
+        }
+
+        var now = LearningWorkflow.BusinessNow();
+        _db.OperationLogs.Add(new OperationLog
+        {
+            UserId = currentUserId.Value,
+            ModuleName = "learning",
+            OperationType = "download",
+            TargetTable = "LEARNING_ITEMS",
+            TargetId = item.ItemId,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+
+        return Ok(new ApiLearningDownloadResult
+        {
+            ItemId = item.ItemId,
+            Title = item.Title,
+            FileUrl = $"/api/v1/learning/items/{itemId}/file?download=true",
+            DownloadedAt = LearningWorkflow.AsUtc(now)
+        });
     }
 
     /// <summary>
@@ -1380,6 +1341,21 @@ public class LearningController : ControllerBase
             .ToList();
         var learnerCount = activeRecords.Count;
         var totalDuration = activeRecords.Sum(record => (long)(record.DurationSeconds ?? 0));
+        var auditedDownloadUserIds = await _db.OperationLogs
+            .AsNoTracking()
+            .Where(log =>
+                log.ModuleName == "learning" &&
+                log.OperationType == "download" &&
+                log.TargetTable == "LEARNING_ITEMS" &&
+                log.TargetId == itemId &&
+                log.UserId != null)
+            .Select(log => log.UserId!.Value)
+            .Distinct()
+            .ToListAsync();
+        var downloadCount = auditedDownloadUserIds
+            .Concat(records.Where(record => record.DownloadedAt.HasValue).Select(record => record.UserId))
+            .Distinct()
+            .Count();
 
         return Ok(new ApiLearningItemStatistics
         {
@@ -1390,7 +1366,7 @@ public class LearningController : ControllerBase
                 LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
                     LearningWorkflow.RecordStatusCompleted ||
                 record.Progress >= 100),
-            DownloadCount = records.Count(record => record.DownloadedAt.HasValue),
+            DownloadCount = downloadCount,
             AverageProgress = learnerCount == 0
                 ? 0
                 : Math.Round(activeRecords.Average(record => (double)(record.Progress ?? 0)), 2),

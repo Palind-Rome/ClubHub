@@ -130,26 +130,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("permissions")]
-    public async Task<IActionResult> GetPermissions(
-        [FromQuery] string? permission,
-        [FromQuery] int? clubId)
-    {
-        if (string.IsNullOrWhiteSpace(permission))
-        {
-            return Ok(_authService.GetPermissionCatalog());
-        }
-
-        if (!TryGetCurrentUserId(out var userId))
-        {
-            return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
-        }
-
-        var result = await _authService.CheckPermissionAsync(userId, permission, clubId);
-        return ToActionResult(result);
-    }
+    public IActionResult GetPermissions() => Ok(_authService.GetPermissionCatalog());
 
     [Authorize]
     [HttpGet("permissions/check")]
+    [HttpGet("~/api/v1/users/me/permissions")]
     public async Task<IActionResult> CheckPermission(
         [FromQuery] string permission,
         [FromQuery] int? clubId)

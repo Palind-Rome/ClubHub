@@ -29,6 +29,13 @@ public sealed class ApiPaginationResultFilter : IAsyncResultFilter
             return;
         }
 
+        if (!context.HttpContext.Request.Query.ContainsKey("page") &&
+            !context.HttpContext.Request.Query.ContainsKey("pageSize"))
+        {
+            await next();
+            return;
+        }
+
         if (!TryReadPositiveInt(context, "page", DefaultPage, int.MaxValue, out var page) ||
             !TryReadPositiveInt(context, "pageSize", DefaultPageSize, MaximumPageSize, out var pageSize))
         {

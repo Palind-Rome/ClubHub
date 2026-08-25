@@ -15,12 +15,14 @@ import {
   UpdateLearningItemRequestItemStatusEnum,
   type Club,
   type LearningItem,
+  type LearningDownloadResult,
   type LearningItemStatistics,
   type LearningRecord,
   type LearningTeacherCandidate,
 } from "../api";
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
+import { requestJson } from "../composables/useApiRequest";
 
 const api = apiClient;
 
@@ -1111,7 +1113,11 @@ async function downloadItem(item: LearningItem) {
 
   downloadingId.value = item.id;
   try {
-    const response = await fetch(`/api/v1/learning/items/${item.id}/file?download=true`, {
+    const audit = await requestJson<LearningDownloadResult>(
+      `/api/v1/learning/items/${item.id}/downloads`,
+      { method: "POST" },
+    );
+    const response = await fetch(audit.fileUrl, {
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
     });
     if (!response.ok) throw new Error("文件内容获取失败");

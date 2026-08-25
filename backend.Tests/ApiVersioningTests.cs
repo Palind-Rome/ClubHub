@@ -8,6 +8,7 @@ public sealed class ApiVersioningTests : IClassFixture<ClubHubWebApplicationFact
     private static readonly string[] CanonicalResourceRoutes =
     [
         "/api/v1/auth/permissions",
+        "/api/v1/users/me/permissions",
         "/api/v1/users/{userId}/roles",
         "/api/v1/clubs/{clubId}",
         "/api/v1/clubs/applications/{clubId}/reviews",
@@ -26,6 +27,7 @@ public sealed class ApiVersioningTests : IClassFixture<ClubHubWebApplicationFact
         "/api/v1/learning/items/{itemId}/reviews",
         "/api/v1/learning/items/{itemId}/learning-records",
         "/api/v1/learning/items/{itemId}/file",
+        "/api/v1/learning/items/{itemId}/downloads",
         "/api/v1/learning/resources"
     ];
 
@@ -62,12 +64,27 @@ public sealed class ApiVersioningTests : IClassFixture<ClubHubWebApplicationFact
 
     [Theory]
     [InlineData("/api/v1/activities/12/review", "/api/v1/activities/12/reviews")]
+    [InlineData("/api/auth/permissions/check", "/api/v1/users/me/permissions")]
     [InlineData("/api/clubs/7/members/9/exit", "/api/v1/clubs/7/members/9")]
-    [InlineData("/api/v1/learning/items/5/download", "/api/v1/learning/items/5/file?download=true")]
+    [InlineData("/api/v1/learning/items/5/download", "/api/v1/learning/items/5/downloads")]
     public void DeprecatedRpcRoutePointsToCanonicalResource(string legacyPath, string canonicalPath)
     {
         Assert.True(ClubHub.Api.Infrastructure.Rest.ApiRouteDeprecation.TryGetSuccessor(legacyPath, out var successor));
         Assert.Equal(canonicalPath, successor);
+        Assert.DoesNotContain('{', successor);
+        Assert.DoesNotContain('}', successor);
+    }
+
+    [Fact]
+    public async Task LegacyRoleAssignmentDoesNotAdvertiseUnexpandedSuccessor()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/auth/roles/assign",
+            new { targetUserId = 7, roleCode = "STUDENT" });
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("true", response.Headers.GetValues("Deprecation").Single());
+        Assert.False(response.Headers.Contains("Link"));
     }
 
     [Fact]

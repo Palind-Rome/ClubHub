@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using ClubHub.Api.Infrastructure.Rest;
 
 namespace ClubHub.Api.Tests;
 
@@ -18,6 +19,6 @@ public sealed class VenuesAuthorizationTests : IClassFixture<ClubHubWebApplicati
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("auth_required", body.RootElement.GetProperty("code").GetString());
+        Assert.Equal(ApiErrorCodes.Unauthorized, body.RootElement.GetProperty("code").GetString());
     }
 }

@@ -36,9 +36,7 @@ public static class ApiErrorFactory
 
         return new ApiError
         {
-            Code = string.IsNullOrWhiteSpace(extracted.Code)
-                ? DefaultCode(statusCode)
-                : extracted.Code,
+            Code = DefaultCode(statusCode),
             Message = message,
             Detail = detail
         };

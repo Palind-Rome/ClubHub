@@ -3,6 +3,7 @@ using System.Text.Json;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Infrastructure.Rest;
+using ClubHub.Api.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClubHub.Api.Tests;
@@ -44,16 +45,58 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         Assert.Equal(ApiErrorCodes.ValidationError, body.RootElement.GetProperty("code").GetString());
     }
 
-    private async Task SeedVenuesAsync()
+    [Fact]
+    public async Task PermissionCatalogIsNotSilentlyTruncated()
+    {
+        using var client = _factory.CreateClient();
+        using var scope = _factory.Services.CreateScope();
+        var expectedCount = scope.ServiceProvider
+            .GetRequiredService<AuthService>()
+            .GetPermissionCatalog()
+            .Count;
+
+        using var response = await client.GetAsync("/api/v1/auth/permissions");
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+
+        response.EnsureSuccessStatusCode();
+        Assert.True(expectedCount > ApiPaginationResultFilter.DefaultPageSize);
+        Assert.Equal(expectedCount, body.RootElement.GetArrayLength());
+        Assert.False(response.Headers.Contains("X-Page"));
+    }
+
+    [Fact]
+    public async Task CollectionWithoutPaginationQueryReturnsRecordsBeyondDefaultPageSize()
+    {
+        const int recordCount = ApiPaginationResultFilter.DefaultPageSize + 10;
+        await SeedVenuesAsync(recordCount);
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/v1/venues");
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var seededVenueIds = body.RootElement
+            .EnumerateArray()
+            .Select(item => item.GetProperty("id").GetInt32())
+            .Where(id => id is > 14_300 and <= 14_300 + recordCount)
+            .ToArray();
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(recordCount, seededVenueIds.Length);
+        Assert.False(response.Headers.Contains("X-Page"));
+    }
+
+    private Task SeedVenuesAsync() => SeedVenuesAsync(3);
+
+    private async Task SeedVenuesAsync(int count)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
-        if (db.Venues.Any(venue => venue.VenueName!.StartsWith("分页场地 ")))
-        {
-            return;
-        }
-
-        db.Venues.AddRange(Enumerable.Range(1, 3).Select(index => new Venue
+        var existingIds = db.Venues
+            .Where(venue => venue.VenueId > 14_300 && venue.VenueId <= 14_300 + count)
+            .Select(venue => venue.VenueId)
+            .ToHashSet();
+        db.Venues.AddRange(Enumerable.Range(1, count)
+            .Where(index => !existingIds.Contains(14_300 + index))
+            .Select(index => new Venue
         {
             VenueId = 14_300 + index,
             VenueName = $"分页场地 {index}",

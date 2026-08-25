@@ -34,4 +34,15 @@ public sealed class ApiErrorResponseTests : IClassFixture<ClubHubWebApplicationF
         Assert.Equal("请求的资源不存在。", body.RootElement.GetProperty("message").GetString());
         Assert.Equal("Project does not exist.", body.RootElement.GetProperty("detail").GetString());
     }
+
+    [Fact]
+    public async Task DomainErrorCodeIsNormalizedToStandardHttpCategory()
+    {
+        using var response = await _client.GetAsync("/api/v1/venues/999999");
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(ApiErrorCodes.NotFound, body.RootElement.GetProperty("code").GetString());
+        Assert.Equal("场地不存在。", body.RootElement.GetProperty("message").GetString());
+    }
 }

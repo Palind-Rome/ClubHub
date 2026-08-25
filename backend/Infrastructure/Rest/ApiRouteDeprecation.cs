@@ -4,10 +4,12 @@ namespace ClubHub.Api.Infrastructure.Rest;
 
 public static partial class ApiRouteDeprecation
 {
+    private static readonly Regex RoleAssignmentRoute =
+        Route(@"/auth/roles/assign$");
+
     private static readonly (Regex Pattern, string Replacement)[] RpcRouteReplacements =
     [
-        (Route(@"/auth/permissions/check$"), "/api/v1/auth/permissions"),
-        (Route(@"/auth/roles/assign$"), "/api/v1/users/{userId}/roles"),
+        (Route(@"/auth/permissions/check$"), "/api/v1/users/me/permissions"),
         (Route(@"/clubs/applications/(?<id>\d+)/review$"), "/api/v1/clubs/applications/${id}/reviews"),
         (Route(@"/clubs/(?<id>\d+)/dissolve$"), "/api/v1/clubs/${id}"),
         (Route(@"/clubs/(?<clubId>\d+)/members/self/exit$"), "/api/v1/clubs/${clubId}/members/self"),
@@ -25,12 +27,22 @@ public static partial class ApiRouteDeprecation
         (Route(@"/learning/resources/upload$"), "/api/v1/learning/resources"),
         (Route(@"/learning/items/(?<id>\d+)/review$"), "/api/v1/learning/items/${id}/reviews"),
         (Route(@"/learning/items/(?<id>\d+)/learning$"), "/api/v1/learning/items/${id}/learning-records"),
-        (Route(@"/learning/items/(?<id>\d+)/download$"), "/api/v1/learning/items/${id}/file?download=true")
+        (Route(@"/learning/items/(?<id>\d+)/download$"), "/api/v1/learning/items/${id}/downloads")
     ];
+
+    public static bool IsDeprecated(PathString requestPath) =>
+        RoleAssignmentRoute.IsMatch(requestPath.Value ?? string.Empty) ||
+        TryGetSuccessor(requestPath, out _);
 
     public static bool TryGetSuccessor(PathString requestPath, out string successorPath)
     {
         var path = requestPath.Value ?? string.Empty;
+        if (RoleAssignmentRoute.IsMatch(path))
+        {
+            successorPath = string.Empty;
+            return false;
+        }
+
         foreach (var (pattern, replacement) in RpcRouteReplacements)
         {
             if (!pattern.IsMatch(path))

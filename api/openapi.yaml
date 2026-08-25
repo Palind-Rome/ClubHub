@@ -185,20 +185,8 @@ paths:
     get:
       summary: 获取基础角色定义
       operationId: getRoleDefinitions
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
-          headers:
-            X-Page:
-              $ref: "#/components/headers/X-Page"
-            X-Page-Size:
-              $ref: "#/components/headers/X-Page-Size"
-            X-Total-Count:
-              $ref: "#/components/headers/X-Total-Count"
-            Link:
-              $ref: "#/components/headers/Link"
           description: 基础角色列表
           content:
             application/json:
@@ -209,13 +197,30 @@ paths:
 
   /api/v1/auth/permissions:
     get:
-      summary: 获取权限目录或检查当前用户权限
-      description: 未传 permission 时返回完整权限目录；传入 permission 时从 Bearer Token 识别当前用户并返回权限检查结果。
+      summary: 获取完整权限目录
+      description: 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
       operationId: getPermissionCatalog
+      responses:
+        "200":
+          description: 完整权限目录
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PermissionDefinition"
+
+  /api/v1/users/me/permissions:
+    get:
+      summary: 检查当前用户权限
+      description: 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+      operationId: checkCurrentUserPermission
+      security:
+        - bearerAuth: []
       parameters:
         - name: permission
           in: query
-          required: false
+          required: true
           schema:
             type: string
         - name: clubId
@@ -227,15 +232,11 @@ paths:
             minimum: 1
       responses:
         "200":
-          description: 权限目录或权限判断结果
+          description: 权限判断结果
           content:
             application/json:
               schema:
-                oneOf:
-                  - type: array
-                    items:
-                      $ref: "#/components/schemas/PermissionDefinition"
-                  - $ref: "#/components/schemas/PermissionCheckResult"
+                $ref: "#/components/schemas/PermissionCheckResult"
         "400":
           description: 请求参数不合法
           content:
@@ -667,20 +668,8 @@ paths:
       summary: 查询社团注册可选指导老师
       description: 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
       operationId: getClubAdvisorCandidates
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
-          headers:
-            X-Page:
-              $ref: "#/components/headers/X-Page"
-            X-Page-Size:
-              $ref: "#/components/headers/X-Page-Size"
-            X-Total-Count:
-              $ref: "#/components/headers/X-Total-Count"
-            Link:
-              $ref: "#/components/headers/Link"
           description: 可选指导老师列表
           content:
             application/json:
@@ -3976,8 +3965,6 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
         - name: projectId
           in: path
           required: true
@@ -4102,15 +4089,6 @@ paths:
             minimum: 1
       responses:
         "200":
-          headers:
-            X-Page:
-              $ref: "#/components/headers/X-Page"
-            X-Page-Size:
-              $ref: "#/components/headers/X-Page-Size"
-            X-Total-Count:
-              $ref: "#/components/headers/X-Total-Count"
-            Link:
-              $ref: "#/components/headers/Link"
           description: 可添加的项目成员候选人
           content:
             application/json:
@@ -5376,6 +5354,52 @@ paths:
         "503":
           description: OSS、ECS RAM 角色临时凭据或对象读取暂不可用。
 
+  /api/v1/learning/items/{itemId}/downloads:
+    post:
+      summary: 记录学习资源下载审计
+      description: 校验当前用户的资源可见范围和下载权限后，追加独立操作日志；不创建、恢复或修改学习记录。客户端成功创建审计后再请求受保护文件。
+      operationId: createLearningDownload
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 下载审计已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningDownloadResult"
+        "400":
+          description: 资源状态或下载设置无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不可见该资源或资源不允许下载
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户或学习资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/v1/learning/items/{itemId}/preview-session:
     post:
       summary: 准备学习资源在线预览会话
@@ -6204,21 +6228,19 @@ components:
       name: page
       in: query
       required: false
-      description: 页码，从 1 开始。
+      description: 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
       schema:
         type: integer
         minimum: 1
-        default: 1
     PageSize:
       name: pageSize
       in: query
       required: false
-      description: 每页记录数，最大 100。
+      description: 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
       schema:
         type: integer
         minimum: 1
         maximum: 100
-        default: 50
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -6270,8 +6292,11 @@ components:
       properties:
         code:
           type: string
-          nullable: true
-          example: venue_reservation_conflict
+          pattern: '^(VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|CONFLICT|PAYLOAD_TOO_LARGE|RATE_LIMITED|SERVICE_UNAVAILABLE|INTERNAL_ERROR|REQUEST_FAILED)$'
+          description: >-
+            固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、
+            PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。
+          example: VALIDATION_ERROR
         message:
           type: string
           example: 该场地在所选时间段已有已通过预约。
@@ -6279,6 +6304,7 @@ components:
           type: string
           nullable: true
       required:
+        - code
         - message
 
     HealthStatus:

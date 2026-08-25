@@ -76,6 +76,49 @@ public class OpenApiRestContractTests
         Assert.Contains("    Link:\n", NormalizeNewLines(document), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PermissionCatalogAndCurrentUserCheckDeclareAccurateSecurity()
+    {
+        var document = ReadDocument();
+        var catalogOperation = Slice(
+            document,
+            "  /api/v1/auth/permissions:",
+            "  /api/v1/users/me/permissions:");
+        var currentUserOperation = Slice(
+            document,
+            "  /api/v1/users/me/permissions:",
+            "  /api/v1/users/{userId}/roles:");
+
+        Assert.DoesNotContain("bearerAuth", catalogOperation, StringComparison.Ordinal);
+        Assert.Contains("bearerAuth", currentUserOperation, StringComparison.Ordinal);
+        Assert.Contains("required: true", currentUserOperation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApiErrorCodeUsesStandardRequiredValues()
+    {
+        var document = ReadDocument();
+        var apiErrorSchema = Slice(document, "    ApiError:", "    HealthStatus:");
+
+        Assert.All(
+            new[]
+            {
+                "VALIDATION_ERROR",
+                "UNAUTHORIZED",
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "CONFLICT",
+                "PAYLOAD_TOO_LARGE",
+                "RATE_LIMITED",
+                "SERVICE_UNAVAILABLE",
+                "INTERNAL_ERROR",
+                "REQUEST_FAILED"
+            },
+            code => Assert.Contains(code, apiErrorSchema, StringComparison.Ordinal));
+        Assert.Contains("pattern: '^(", apiErrorSchema, StringComparison.Ordinal);
+        Assert.Contains("      required:\n        - code", NormalizeNewLines(apiErrorSchema), StringComparison.Ordinal);
+    }
+
     private static string ReadDocument()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../api/openapi.yaml"));
