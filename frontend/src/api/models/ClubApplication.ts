@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,128 +22,86 @@ import { mapValues } from "../runtime";
 export interface ClubApplication {
   /**
    *
-   * @type {number}
-   * @memberof ClubApplication
    */
   id: number;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   category?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   description?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof ClubApplication
    */
   applicantUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   applicantName?: string | null;
   /**
    * 拟邀请的指导老师用户 ID。
-   * @type {number}
-   * @memberof ClubApplication
    */
   advisorUserId?: number | null;
   /**
    * 拟邀请的指导老师姓名。
-   * @type {string}
-   * @memberof ClubApplication
    */
   advisorName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   applyReason: string;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   materialUrl: string;
   /**
    *
-   * @type {ClubApplicationAuditStatusEnum}
-   * @memberof ClubApplication
    */
   auditStatus: ClubApplicationAuditStatusEnum;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   auditStatusText: string;
   /**
    *
-   * @type {number}
-   * @memberof ClubApplication
    */
   reviewerUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   reviewerName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   reviewComment?: string | null;
   /**
    * 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
-   * @type {string}
-   * @memberof ClubApplication
    */
   contactPhone?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   clubStatus?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubApplication
    */
   clubStatusText: string;
   /**
    *
-   * @type {Date}
-   * @memberof ClubApplication
    */
   foundedAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof ClubApplication
    */
   createdAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof ClubApplication
    */
   updatedAt?: Date | null;
 }
@@ -264,14 +222,14 @@ export function ClubApplicationFromJSONTyped(
         ? undefined
         : json["foundedAt"] === null
           ? null
-          : new Date(json["foundedAt"]),
-    createdAt: new Date(json["createdAt"]),
+          : parseDateTime(json["foundedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
     updatedAt:
       json["updatedAt"] === undefined
         ? undefined
         : json["updatedAt"] === null
           ? null
-          : new Date(json["updatedAt"]),
+          : parseDateTime(json["updatedAt"]),
   };
 }
 
@@ -306,8 +264,11 @@ export function ClubApplicationToJSONTyped(
     contactPhone: value["contactPhone"],
     clubStatus: value["clubStatus"],
     clubStatusText: value["clubStatusText"],
-    foundedAt: value["foundedAt"] == null ? value["foundedAt"] : value["foundedAt"].toISOString(),
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"] == null ? value["updatedAt"] : value["updatedAt"].toISOString(),
+    foundedAt:
+      value["foundedAt"] == null ? value["foundedAt"] : serializeDateTime(value["foundedAt"]),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
   };
 }

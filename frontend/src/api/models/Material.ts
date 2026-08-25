@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * A club-owned material and its current inventory balance.
  * @export
@@ -22,68 +22,46 @@ import { mapValues } from "../runtime";
 export interface Material {
   /**
    * Material identifier in MATERIALS.MATERIAL_ID.
-   * @type {number}
-   * @memberof Material
    */
   id: number;
   /**
    * Club that owns the material.
-   * @type {number}
-   * @memberof Material
    */
   clubId: number;
   /**
    * Display name of the owning club.
-   * @type {string}
-   * @memberof Material
    */
   clubName: string;
   /**
    * Material name.
-   * @type {string}
-   * @memberof Material
    */
   name: string;
   /**
    * Optional model or specification.
-   * @type {string}
-   * @memberof Material
    */
   specification?: string | null;
   /**
    * Total registered inventory quantity.
-   * @type {number}
-   * @memberof Material
    */
   totalQuantity: number;
   /**
    * Quantity currently available to borrow.
-   * @type {number}
-   * @memberof Material
    */
   availableQuantity: number;
   /**
    * Quantity currently checked out.
-   * @type {number}
-   * @memberof Material
    */
   borrowedQuantity: number;
   /**
    * Optional physical storage location.
-   * @type {string}
-   * @memberof Material
    */
   storageLocation?: string | null;
   /**
    * Whether the material is available for new borrows.
-   * @type {MaterialStatusEnum}
-   * @memberof Material
    */
   status: MaterialStatusEnum;
   /**
    * Material creation time in UTC.
-   * @type {Date}
-   * @memberof Material
    */
   createdAt: Date;
 }
@@ -142,7 +120,7 @@ export function MaterialFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
           ? null
           : json["storageLocation"],
     status: json["status"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -169,6 +147,7 @@ export function MaterialToJSONTyped(
     borrowedQuantity: value["borrowedQuantity"],
     storageLocation: value["storageLocation"],
     status: value["status"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

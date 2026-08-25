@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,68 +22,46 @@ import { mapValues } from "../runtime";
 export interface ActivityParticipation {
   /**
    *
-   * @type {number}
-   * @memberof ActivityParticipation
    */
   id: number;
   /**
    *
-   * @type {number}
-   * @memberof ActivityParticipation
    */
   activityId: number;
   /**
    *
-   * @type {number}
-   * @memberof ActivityParticipation
    */
   userId: number;
   /**
    * 参与者姓名；姓名为空时回退为用户名。
-   * @type {string}
-   * @memberof ActivityParticipation
    */
   userName: string;
   /**
    * 参与者学号或工号。
-   * @type {string}
-   * @memberof ActivityParticipation
    */
   studentNo?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ActivityParticipation
    */
   registerStatus?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof ActivityParticipation
    */
   registeredAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof ActivityParticipation
    */
   checkinAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof ActivityParticipation
    */
   checkoutAt?: Date | null;
   /**
    *
-   * @type {string}
-   * @memberof ActivityParticipation
    */
   signStatus?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ActivityParticipation
    */
   remark?: string | null;
 }
@@ -132,19 +110,19 @@ export function ActivityParticipationFromJSONTyped(
         ? undefined
         : json["registeredAt"] === null
           ? null
-          : new Date(json["registeredAt"]),
+          : parseDateTime(json["registeredAt"]),
     checkinAt:
       json["checkinAt"] === undefined
         ? undefined
         : json["checkinAt"] === null
           ? null
-          : new Date(json["checkinAt"]),
+          : parseDateTime(json["checkinAt"]),
     checkoutAt:
       json["checkoutAt"] === undefined
         ? undefined
         : json["checkoutAt"] === null
           ? null
-          : new Date(json["checkoutAt"]),
+          : parseDateTime(json["checkoutAt"]),
     signStatus:
       json["signStatus"] === undefined
         ? undefined
@@ -176,10 +154,13 @@ export function ActivityParticipationToJSONTyped(
     studentNo: value["studentNo"],
     registerStatus: value["registerStatus"],
     registeredAt:
-      value["registeredAt"] == null ? value["registeredAt"] : value["registeredAt"].toISOString(),
-    checkinAt: value["checkinAt"] == null ? value["checkinAt"] : value["checkinAt"].toISOString(),
+      value["registeredAt"] == null
+        ? value["registeredAt"]
+        : serializeDateTime(value["registeredAt"]),
+    checkinAt:
+      value["checkinAt"] == null ? value["checkinAt"] : serializeDateTime(value["checkinAt"]),
     checkoutAt:
-      value["checkoutAt"] == null ? value["checkoutAt"] : value["checkoutAt"].toISOString(),
+      value["checkoutAt"] == null ? value["checkoutAt"] : serializeDateTime(value["checkoutAt"]),
     signStatus: value["signStatus"],
     remark: value["remark"],
   };

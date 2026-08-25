@@ -22,56 +22,38 @@ import { mapValues } from "../runtime";
 export interface AuthRole {
   /**
    * 角色 ID。
-   * @type {number}
-   * @memberof AuthRole
    */
   id: number;
   /**
    * 角色编码。
-   * @type {string}
-   * @memberof AuthRole
    */
   code: string;
   /**
    * 角色名称。
-   * @type {string}
-   * @memberof AuthRole
    */
   name: string;
   /**
    * 前端展示用角色名称，例如“A社团成员”“A社团负责人”。
-   * @type {string}
-   * @memberof AuthRole
    */
   displayName: string;
   /**
    * 角色作用域，system 表示全局，club 表示社团范围。
-   * @type {AuthRoleScopeEnum}
-   * @memberof AuthRole
    */
   scope: AuthRoleScopeEnum;
   /**
    * 当前角色对应的单个社团 ID；全局角色为空。
-   * @type {number}
-   * @memberof AuthRole
    */
   clubId?: number | null;
   /**
    * 该角色覆盖的社团范围；用于展示和权限判断中的社团范围角色。
-   * @type {Array<number>}
-   * @memberof AuthRole
    */
   clubIds: Array<number>;
   /**
    * 该角色授予的权限编码列表。
-   * @type {Array<string>}
-   * @memberof AuthRole
    */
   permissions: Array<string>;
   /**
    * 角色权限说明。
-   * @type {string}
-   * @memberof AuthRole
    */
   permissionDesc?: string | null;
 }

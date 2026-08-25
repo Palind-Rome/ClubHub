@@ -22,32 +22,22 @@ import { mapValues } from "../runtime";
 export interface UserRoleSummary {
   /**
    *
-   * @type {string}
-   * @memberof UserRoleSummary
    */
   roleCode: string;
   /**
    *
-   * @type {string}
-   * @memberof UserRoleSummary
    */
   roleName: string;
   /**
    *
-   * @type {string}
-   * @memberof UserRoleSummary
    */
   roleScope?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof UserRoleSummary
    */
   clubId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof UserRoleSummary
    */
   clubName?: string | null;
 }

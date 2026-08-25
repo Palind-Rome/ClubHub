@@ -30,20 +30,14 @@ import {
 export interface DependencyHealthReport {
   /**
    *
-   * @type {DependencyHealthReportStatusEnum}
-   * @memberof DependencyHealthReport
    */
   status: DependencyHealthReportStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof DependencyHealthReport
    */
   durationMs: number;
   /**
    *
-   * @type {{ [key: string]: DependencyHealthCheck; }}
-   * @memberof DependencyHealthReport
    */
   checks: { [key: string]: DependencyHealthCheck };
 }

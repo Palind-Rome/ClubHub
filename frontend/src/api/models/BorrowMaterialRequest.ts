@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * Request to register a material borrow without an approval step.
  * @export
@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface BorrowMaterialRequest {
   /**
    * Material to borrow.
-   * @type {number}
-   * @memberof BorrowMaterialRequest
    */
   materialId: number;
   /**
    * Club that owns the material and borrow record.
-   * @type {number}
-   * @memberof BorrowMaterialRequest
    */
   clubId: number;
   /**
    * Quantity to borrow; must not exceed available inventory.
-   * @type {number}
-   * @memberof BorrowMaterialRequest
    */
   quantity: number;
   /**
    * Required return deadline, later than the borrow time and no more than 7 days after it.
-   * @type {Date}
-   * @memberof BorrowMaterialRequest
    */
   expectedReturnAt: Date;
 }
@@ -72,7 +64,10 @@ export function BorrowMaterialRequestFromJSONTyped(
     materialId: json["materialId"],
     clubId: json["clubId"],
     quantity: json["quantity"],
-    expectedReturnAt: new Date(json["expectedReturnAt"]),
+    expectedReturnAt:
+      json["expectedReturnAt"] == null
+        ? json["expectedReturnAt"]
+        : parseDateTime(json["expectedReturnAt"]),
   };
 }
 
@@ -92,6 +87,9 @@ export function BorrowMaterialRequestToJSONTyped(
     materialId: value["materialId"],
     clubId: value["clubId"],
     quantity: value["quantity"],
-    expectedReturnAt: value["expectedReturnAt"].toISOString(),
+    expectedReturnAt:
+      value["expectedReturnAt"] == null
+        ? value["expectedReturnAt"]
+        : serializeDateTime(value["expectedReturnAt"]),
   };
 }

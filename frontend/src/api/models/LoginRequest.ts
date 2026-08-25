@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface LoginRequest {
   /**
    * 用户名或学工号。
-   * @type {string}
-   * @memberof LoginRequest
    */
   username: string;
   /**
    * 登录密码。
-   * @type {string}
-   * @memberof LoginRequest
    */
   password: string;
 }

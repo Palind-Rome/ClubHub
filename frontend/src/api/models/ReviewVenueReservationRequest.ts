@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewVenueReservationRequest {
   /**
    *
-   * @type {boolean}
-   * @memberof ReviewVenueReservationRequest
    */
   approved: boolean;
   /**
    *
-   * @type {string}
-   * @memberof ReviewVenueReservationRequest
    */
   reviewComment?: string | null;
 }

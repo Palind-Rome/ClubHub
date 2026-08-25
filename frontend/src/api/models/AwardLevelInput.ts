@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface AwardLevelInput {
   /**
    * 已有等级 ID；新增等级时为空。
-   * @type {number}
-   * @memberof AwardLevelInput
    */
   awardLevelId?: number | null;
   /**
    * 等级名称。
-   * @type {string}
-   * @memberof AwardLevelInput
    */
   levelName: string;
   /**
    * 该等级贡献到成员考核的奖项分。
-   * @type {number}
-   * @memberof AwardLevelInput
    */
   awardScore: number;
   /**
    * 奖励金额；非经费类荣誉可为空。
-   * @type {number}
-   * @memberof AwardLevelInput
    */
   amount?: number | null;
   /**
    * 名额；不限名额时为空。
-   * @type {number}
-   * @memberof AwardLevelInput
    */
   quota?: number | null;
   /**
    * 等级展示顺序。
-   * @type {number}
-   * @memberof AwardLevelInput
    */
   displayOrder?: number;
   /**
    * 等级状态。
-   * @type {AwardLevelInputLevelStatusEnum}
-   * @memberof AwardLevelInput
    */
   levelStatus?: AwardLevelInputLevelStatusEnum;
 }

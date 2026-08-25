@@ -22,21 +22,15 @@ import { mapValues } from "../runtime";
 export interface ReviewActivityRequest {
   /**
    *
-   * @type {boolean}
-   * @memberof ReviewActivityRequest
    */
   approved?: boolean | null;
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof ReviewActivityRequest
    * @deprecated
    */
   reviewerUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof ReviewActivityRequest
    */
   comment?: string | null;
 }

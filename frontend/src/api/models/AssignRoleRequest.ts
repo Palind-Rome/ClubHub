@@ -21,21 +21,15 @@ import { mapValues } from "../runtime";
  */
 export interface AssignRoleRequest {
   /**
-   * 被分配角色的用户 ID。
-   * @type {number}
-   * @memberof AssignRoleRequest
+   * 旧版兼容字段；v1 资源路由以 path 中的 userId 为准。
    */
-  targetUserId: number;
+  targetUserId?: number;
   /**
    * 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。
-   * @type {string}
-   * @memberof AssignRoleRequest
    */
   roleCode: string;
   /**
    * 社团级角色所属社团 ID；系统级角色可为空。
-   * @type {number}
-   * @memberof AssignRoleRequest
    */
   clubId?: number | null;
 }
@@ -44,7 +38,6 @@ export interface AssignRoleRequest {
  * Check if a given object implements the AssignRoleRequest interface.
  */
 export function instanceOfAssignRoleRequest(value: object): value is AssignRoleRequest {
-  if (!("targetUserId" in value) || value["targetUserId"] === undefined) return false;
   if (!("roleCode" in value) || value["roleCode"] === undefined) return false;
   return true;
 }
@@ -61,7 +54,7 @@ export function AssignRoleRequestFromJSONTyped(
     return json;
   }
   return {
-    targetUserId: json["targetUserId"],
+    targetUserId: json["targetUserId"] == null ? undefined : json["targetUserId"],
     roleCode: json["roleCode"],
     clubId:
       json["clubId"] === undefined ? undefined : json["clubId"] === null ? null : json["clubId"],

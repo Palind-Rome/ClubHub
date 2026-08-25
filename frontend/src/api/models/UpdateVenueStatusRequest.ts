@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface UpdateVenueStatusRequest {
   /**
    * 执行状态变更操作的用户 ID，用于校验 venue:disable 权限。
-   * @type {number}
-   * @memberof UpdateVenueStatusRequest
    */
   operatorUserId: number;
   /**
    *
-   * @type {UpdateVenueStatusRequestStatusEnum}
-   * @memberof UpdateVenueStatusRequest
    */
   status: UpdateVenueStatusRequestStatusEnum;
   /**
    * status 为 maintenance 时可选填写的维护结束时间。
-   * @type {Date}
-   * @memberof UpdateVenueStatusRequest
    */
   maintenanceUntil?: Date | null;
   /**
    * 若状态变更与后续预约冲突，是否自动取消这些冲突预约。
-   * @type {boolean}
-   * @memberof UpdateVenueStatusRequest
    */
   cancelConflictingReservations?: boolean | null;
 }
@@ -87,7 +79,7 @@ export function UpdateVenueStatusRequestFromJSONTyped(
         ? undefined
         : json["maintenanceUntil"] === null
           ? null
-          : new Date(json["maintenanceUntil"]),
+          : parseDateTime(json["maintenanceUntil"]),
     cancelConflictingReservations:
       json["cancelConflictingReservations"] === undefined
         ? undefined
@@ -115,7 +107,7 @@ export function UpdateVenueStatusRequestToJSONTyped(
     maintenanceUntil:
       value["maintenanceUntil"] == null
         ? value["maintenanceUntil"]
-        : value["maintenanceUntil"].toISOString(),
+        : serializeDateTime(value["maintenanceUntil"]),
     cancelConflictingReservations: value["cancelConflictingReservations"],
   };
 }

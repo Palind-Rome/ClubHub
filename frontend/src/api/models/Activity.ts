@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,170 +22,114 @@ import { mapValues } from "../runtime";
 export interface Activity {
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   id: number;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   title: string;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   activityType?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   clubName: string;
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   clubId: number;
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   creatorUserId?: number | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   startTime: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   endTime: Date | null;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   location?: string | null;
   /**
    *
-   * @type {ActivityStatusEnum}
-   * @memberof Activity
    */
   status: ActivityStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   maxParticipants?: number | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   registrationDeadline?: Date | null;
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   reviewerUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof Activity
    */
   reviewComment?: string | null;
   /**
    * 活动经费预算金额，未申请时为空。
-   * @type {number}
-   * @memberof Activity
    */
   budgetAmount?: number | null;
   /**
    * 活动经费用途，未申请时为空。
-   * @type {string}
-   * @memberof Activity
    */
   budgetPurpose?: string | null;
   /**
    * 活动经费预算明细，未申请时为空。
-   * @type {string}
-   * @memberof Activity
    */
   budgetDetail?: string | null;
   /**
    * 经费审批状态，可取 pending、approved、rejected；为空表示尚未提交经费申请。
-   * @type {string}
-   * @memberof Activity
    */
   budgetStatus?: string | null;
   /**
    * 经费审批人用户 ID。
-   * @type {number}
-   * @memberof Activity
    */
   budgetReviewerId?: number | null;
   /**
    * 经费审批意见。
-   * @type {string}
-   * @memberof Activity
    */
   budgetComment?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   publishedAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   checkinStartAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   checkinEndAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   checkoutStartAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof Activity
    */
   checkoutEndAt?: Date | null;
   /**
    *
-   * @type {number}
-   * @memberof Activity
    */
   currentParticipants: number;
   /**
    * 当前用户是否已报名；未传 currentUserId 时为 false
-   * @type {boolean}
-   * @memberof Activity
    */
   isRegistered: boolean;
 }
@@ -251,8 +195,8 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         : json["creatorUserId"] === null
           ? null
           : json["creatorUserId"],
-    startTime: json["startTime"] == null ? null : new Date(json["startTime"]),
-    endTime: json["endTime"] == null ? null : new Date(json["endTime"]),
+    startTime: json["startTime"] == null ? null : parseDateTime(json["startTime"]),
+    endTime: json["endTime"] == null ? null : parseDateTime(json["endTime"]),
     location:
       json["location"] === undefined
         ? undefined
@@ -271,7 +215,7 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         ? undefined
         : json["registrationDeadline"] === null
           ? null
-          : new Date(json["registrationDeadline"]),
+          : parseDateTime(json["registrationDeadline"]),
     reviewerUserId:
       json["reviewerUserId"] === undefined
         ? undefined
@@ -325,31 +269,31 @@ export function ActivityFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         ? undefined
         : json["publishedAt"] === null
           ? null
-          : new Date(json["publishedAt"]),
+          : parseDateTime(json["publishedAt"]),
     checkinStartAt:
       json["checkinStartAt"] === undefined
         ? undefined
         : json["checkinStartAt"] === null
           ? null
-          : new Date(json["checkinStartAt"]),
+          : parseDateTime(json["checkinStartAt"]),
     checkinEndAt:
       json["checkinEndAt"] === undefined
         ? undefined
         : json["checkinEndAt"] === null
           ? null
-          : new Date(json["checkinEndAt"]),
+          : parseDateTime(json["checkinEndAt"]),
     checkoutStartAt:
       json["checkoutStartAt"] === undefined
         ? undefined
         : json["checkoutStartAt"] === null
           ? null
-          : new Date(json["checkoutStartAt"]),
+          : parseDateTime(json["checkoutStartAt"]),
     checkoutEndAt:
       json["checkoutEndAt"] === undefined
         ? undefined
         : json["checkoutEndAt"] === null
           ? null
-          : new Date(json["checkoutEndAt"]),
+          : parseDateTime(json["checkoutEndAt"]),
     currentParticipants: json["currentParticipants"],
     isRegistered: json["isRegistered"],
   };
@@ -375,15 +319,16 @@ export function ActivityToJSONTyped(
     clubName: value["clubName"],
     clubId: value["clubId"],
     creatorUserId: value["creatorUserId"],
-    startTime: value["startTime"] == null ? value["startTime"] : value["startTime"].toISOString(),
-    endTime: value["endTime"] == null ? value["endTime"] : value["endTime"].toISOString(),
+    startTime:
+      value["startTime"] == null ? value["startTime"] : serializeDateTime(value["startTime"]),
+    endTime: value["endTime"] == null ? value["endTime"] : serializeDateTime(value["endTime"]),
     location: value["location"],
     status: value["status"],
     maxParticipants: value["maxParticipants"],
     registrationDeadline:
       value["registrationDeadline"] == null
         ? value["registrationDeadline"]
-        : value["registrationDeadline"].toISOString(),
+        : serializeDateTime(value["registrationDeadline"]),
     reviewerUserId: value["reviewerUserId"],
     reviewComment: value["reviewComment"],
     budgetAmount: value["budgetAmount"],
@@ -393,21 +338,23 @@ export function ActivityToJSONTyped(
     budgetReviewerId: value["budgetReviewerId"],
     budgetComment: value["budgetComment"],
     publishedAt:
-      value["publishedAt"] == null ? value["publishedAt"] : value["publishedAt"].toISOString(),
+      value["publishedAt"] == null ? value["publishedAt"] : serializeDateTime(value["publishedAt"]),
     checkinStartAt:
       value["checkinStartAt"] == null
         ? value["checkinStartAt"]
-        : value["checkinStartAt"].toISOString(),
+        : serializeDateTime(value["checkinStartAt"]),
     checkinEndAt:
-      value["checkinEndAt"] == null ? value["checkinEndAt"] : value["checkinEndAt"].toISOString(),
+      value["checkinEndAt"] == null
+        ? value["checkinEndAt"]
+        : serializeDateTime(value["checkinEndAt"]),
     checkoutStartAt:
       value["checkoutStartAt"] == null
         ? value["checkoutStartAt"]
-        : value["checkoutStartAt"].toISOString(),
+        : serializeDateTime(value["checkoutStartAt"]),
     checkoutEndAt:
       value["checkoutEndAt"] == null
         ? value["checkoutEndAt"]
-        : value["checkoutEndAt"].toISOString(),
+        : serializeDateTime(value["checkoutEndAt"]),
     currentParticipants: value["currentParticipants"],
     isRegistered: value["isRegistered"],
   };

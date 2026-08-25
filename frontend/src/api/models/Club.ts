@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,146 +22,98 @@ import { mapValues } from "../runtime";
 export interface Club {
   /**
    *
-   * @type {number}
-   * @memberof Club
    */
   id: number;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   category?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof Club
    */
   foundedAt?: Date | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   status?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   statusText: string;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   logoUrl?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof Club
    */
   presidentUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   presidentName?: string | null;
   /**
    * 当前指导老师用户 ID，由 USER_ROLES 中 ADVISOR 社团角色关系推导。
-   * @type {number}
-   * @memberof Club
    */
   advisorUserId?: number | null;
   /**
    * 当前指导老师展示名称；优先由 ADVISOR 角色对应用户推导，历史数据可回退到社团文本字段。
-   * @type {string}
-   * @memberof Club
    */
   advisorName?: string | null;
   /**
    * 社团对外联系电话或负责人联系电话。
-   * @type {string}
-   * @memberof Club
    */
   contactPhone?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   auditStatus?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   auditStatusText: string;
   /**
    *
-   * @type {number}
-   * @memberof Club
    */
   applicantUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   applicantName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   applyReason?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   materialUrl?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof Club
    */
   reviewerUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   reviewerName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Club
    */
   reviewComment?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof Club
    */
   createdAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof Club
    */
   updatedAt?: Date | null;
 }
@@ -206,7 +158,7 @@ export function ClubFromJSONTyped(json: any, ignoreDiscriminator: boolean): Club
         ? undefined
         : json["foundedAt"] === null
           ? null
-          : new Date(json["foundedAt"]),
+          : parseDateTime(json["foundedAt"]),
     status:
       json["status"] === undefined ? undefined : json["status"] === null ? null : json["status"],
     statusText: json["statusText"],
@@ -291,13 +243,13 @@ export function ClubFromJSONTyped(json: any, ignoreDiscriminator: boolean): Club
         : json["reviewComment"] === null
           ? null
           : json["reviewComment"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
     updatedAt:
       json["updatedAt"] === undefined
         ? undefined
         : json["updatedAt"] === null
           ? null
-          : new Date(json["updatedAt"]),
+          : parseDateTime(json["updatedAt"]),
   };
 }
 
@@ -315,7 +267,8 @@ export function ClubToJSONTyped(value?: Club | null, ignoreDiscriminator: boolea
     name: value["name"],
     description: value["description"],
     category: value["category"],
-    foundedAt: value["foundedAt"] == null ? value["foundedAt"] : value["foundedAt"].toISOString(),
+    foundedAt:
+      value["foundedAt"] == null ? value["foundedAt"] : serializeDateTime(value["foundedAt"]),
     status: value["status"],
     statusText: value["statusText"],
     logoUrl: value["logoUrl"],
@@ -333,7 +286,9 @@ export function ClubToJSONTyped(value?: Club | null, ignoreDiscriminator: boolea
     reviewerUserId: value["reviewerUserId"],
     reviewerName: value["reviewerName"],
     reviewComment: value["reviewComment"],
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"] == null ? value["updatedAt"] : value["updatedAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
   };
 }

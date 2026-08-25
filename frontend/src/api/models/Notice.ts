@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 公告通知及当前用户已读状态。
  * @export
@@ -22,110 +22,74 @@ import { mapValues } from "../runtime";
 export interface Notice {
   /**
    * 通知 ID。
-   * @type {number}
-   * @memberof Notice
    */
   id: number;
   /**
    * 社团 ID；全校通知可为空。
-   * @type {number}
-   * @memberof Notice
    */
   clubId?: number | null;
   /**
    * 社团名称。
-   * @type {string}
-   * @memberof Notice
    */
   clubName?: string | null;
   /**
    * 发布人用户 ID。
-   * @type {number}
-   * @memberof Notice
    */
   publisherUserId: number;
   /**
    * 发布人展示名称。
-   * @type {string}
-   * @memberof Notice
    */
   publisherName?: string | null;
   /**
    * 通知类型，例如 announcement、urgent、event。
-   * @type {string}
-   * @memberof Notice
    */
   noticeType: string;
   /**
    * 通知标题。
-   * @type {string}
-   * @memberof Notice
    */
   title: string;
   /**
    * 通知正文。
-   * @type {string}
-   * @memberof Notice
    */
   content: string;
   /**
    * 定向类型。
-   * @type {NoticeTargetTypeEnum}
-   * @memberof Notice
    */
   targetType: NoticeTargetTypeEnum;
   /**
    * 目标 ID；社团通知为 clubId，部门通知为成员任期 memberId，成员通知为 userId，全校通知为空。
-   * @type {number}
-   * @memberof Notice
    */
   targetId?: number | null;
   /**
    * 前端展示用目标名称。
-   * @type {string}
-   * @memberof Notice
    */
   targetName?: string | null;
   /**
    * 已发布通知的发布时间；草稿状态下表示最近保存时间。
-   * @type {Date}
-   * @memberof Notice
    */
   publishAt: Date;
   /**
    * 过期时间。
-   * @type {Date}
-   * @memberof Notice
    */
   expireAt?: Date | null;
   /**
    * 通知状态。
-   * @type {NoticeNoticeStatusEnum}
-   * @memberof Notice
    */
   noticeStatus: NoticeNoticeStatusEnum;
   /**
    * 当前查看用户是否已读。
-   * @type {boolean}
-   * @memberof Notice
    */
   isRead: boolean;
   /**
    * 当前查看用户已读时间。
-   * @type {Date}
-   * @memberof Notice
    */
   readAt?: Date | null;
   /**
    * 当前规则下可接收该通知的用户数；仅发布者或对应范围的通知管理者可见。
-   * @type {number}
-   * @memberof Notice
    */
   audienceCount?: number | null;
   /**
    * 已读人数；仅发布者或对应范围的通知管理者可见。
-   * @type {number}
-   * @memberof Notice
    */
   readCount?: number | null;
 }
@@ -209,13 +173,13 @@ export function NoticeFromJSONTyped(json: any, ignoreDiscriminator: boolean): No
         : json["targetName"] === null
           ? null
           : json["targetName"],
-    publishAt: new Date(json["publishAt"]),
+    publishAt: json["publishAt"] == null ? json["publishAt"] : parseDateTime(json["publishAt"]),
     expireAt:
       json["expireAt"] === undefined
         ? undefined
         : json["expireAt"] === null
           ? null
-          : new Date(json["expireAt"]),
+          : parseDateTime(json["expireAt"]),
     noticeStatus: json["noticeStatus"],
     isRead: json["isRead"],
     readAt:
@@ -223,7 +187,7 @@ export function NoticeFromJSONTyped(json: any, ignoreDiscriminator: boolean): No
         ? undefined
         : json["readAt"] === null
           ? null
-          : new Date(json["readAt"]),
+          : parseDateTime(json["readAt"]),
     audienceCount:
       json["audienceCount"] === undefined
         ? undefined
@@ -263,11 +227,12 @@ export function NoticeToJSONTyped(
     targetType: value["targetType"],
     targetId: value["targetId"],
     targetName: value["targetName"],
-    publishAt: value["publishAt"].toISOString(),
-    expireAt: value["expireAt"] == null ? value["expireAt"] : value["expireAt"].toISOString(),
+    publishAt:
+      value["publishAt"] == null ? value["publishAt"] : serializeDateTime(value["publishAt"]),
+    expireAt: value["expireAt"] == null ? value["expireAt"] : serializeDateTime(value["expireAt"]),
     noticeStatus: value["noticeStatus"],
     isRead: value["isRead"],
-    readAt: value["readAt"] == null ? value["readAt"] : value["readAt"].toISOString(),
+    readAt: value["readAt"] == null ? value["readAt"] : serializeDateTime(value["readAt"]),
     audienceCount: value["audienceCount"],
     readCount: value["readCount"],
   };

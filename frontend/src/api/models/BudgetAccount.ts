@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 社团年度经费账户。已占用和余额由经费流水汇总得到，不由客户端手填。
  * @export
@@ -22,68 +22,46 @@ import { mapValues } from "../runtime";
 export interface BudgetAccount {
   /**
    * 经费账户 ID。
-   * @type {number}
-   * @memberof BudgetAccount
    */
   id: number;
   /**
    * 账户所属社团 ID。
-   * @type {number}
-   * @memberof BudgetAccount
    */
   clubId: number;
   /**
    * 账户所属社团名称。
-   * @type {string}
-   * @memberof BudgetAccount
    */
   clubName: string;
   /**
    * 经费年度，通常使用自然年或学年标识。
-   * @type {string}
-   * @memberof BudgetAccount
    */
   fiscalYear: string;
   /**
    * 经费账户名称。
-   * @type {string}
-   * @memberof BudgetAccount
    */
   accountName: string;
   /**
    * 年度批准额度。
-   * @type {number}
-   * @memberof BudgetAccount
    */
   initialAmount: number;
   /**
    * 已由审批通过申请占用的金额。
-   * @type {number}
-   * @memberof BudgetAccount
    */
   committedAmount: number;
   /**
    * 当前剩余额度，由年度额度和流水汇总计算。
-   * @type {number}
-   * @memberof BudgetAccount
    */
   remainingAmount: number;
   /**
    * 账户状态；active 启用，closed 关闭。
-   * @type {BudgetAccountStatusEnum}
-   * @memberof BudgetAccount
    */
   status: BudgetAccountStatusEnum;
   /**
    * 账户创建时间。
-   * @type {Date}
-   * @memberof BudgetAccount
    */
   createdAt: Date;
   /**
    * 账户最近更新时间。
-   * @type {Date}
-   * @memberof BudgetAccount
    */
   updatedAt: Date;
 }
@@ -134,8 +112,8 @@ export function BudgetAccountFromJSONTyped(json: any, ignoreDiscriminator: boole
     committedAmount: json["committedAmount"],
     remainingAmount: json["remainingAmount"],
     status: json["status"],
-    createdAt: new Date(json["createdAt"]),
-    updatedAt: new Date(json["updatedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? json["updatedAt"] : parseDateTime(json["updatedAt"]),
   };
 }
 
@@ -161,7 +139,9 @@ export function BudgetAccountToJSONTyped(
     committedAmount: value["committedAmount"],
     remainingAmount: value["remainingAmount"],
     status: value["status"],
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
   };
 }

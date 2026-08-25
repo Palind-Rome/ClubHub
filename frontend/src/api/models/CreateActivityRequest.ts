@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 创建活动请求。创建人由服务端从登录态写入，客户端无需也不应提交 creatorUserId。
  * @export
@@ -22,63 +22,43 @@ import { mapValues } from "../runtime";
 export interface CreateActivityRequest {
   /**
    *
-   * @type {number}
-   * @memberof CreateActivityRequest
    */
   clubId: number;
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof CreateActivityRequest
    * @deprecated
    */
   creatorUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateActivityRequest
    */
   title: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateActivityRequest
    */
   activityType?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateActivityRequest
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateActivityRequest
    */
   location?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateActivityRequest
    */
   startTime: Date;
   /**
    *
-   * @type {Date}
-   * @memberof CreateActivityRequest
    */
   endTime: Date;
   /**
    *
-   * @type {number}
-   * @memberof CreateActivityRequest
    */
   maxParticipants?: number | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateActivityRequest
    */
   registrationDeadline?: Date | null;
 }
@@ -132,8 +112,8 @@ export function CreateActivityRequestFromJSONTyped(
         : json["location"] === null
           ? null
           : json["location"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    startTime: json["startTime"] == null ? json["startTime"] : parseDateTime(json["startTime"]),
+    endTime: json["endTime"] == null ? json["endTime"] : parseDateTime(json["endTime"]),
     maxParticipants:
       json["maxParticipants"] === undefined
         ? undefined
@@ -145,7 +125,7 @@ export function CreateActivityRequestFromJSONTyped(
         ? undefined
         : json["registrationDeadline"] === null
           ? null
-          : new Date(json["registrationDeadline"]),
+          : parseDateTime(json["registrationDeadline"]),
   };
 }
 
@@ -168,12 +148,13 @@ export function CreateActivityRequestToJSONTyped(
     activityType: value["activityType"],
     description: value["description"],
     location: value["location"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    startTime:
+      value["startTime"] == null ? value["startTime"] : serializeDateTime(value["startTime"]),
+    endTime: value["endTime"] == null ? value["endTime"] : serializeDateTime(value["endTime"]),
     maxParticipants: value["maxParticipants"],
     registrationDeadline:
       value["registrationDeadline"] == null
         ? value["registrationDeadline"]
-        : value["registrationDeadline"].toISOString(),
+        : serializeDateTime(value["registrationDeadline"]),
   };
 }

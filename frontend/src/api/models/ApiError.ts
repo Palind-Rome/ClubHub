@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface ApiError {
   /**
    *
-   * @type {string}
-   * @memberof ApiError
    */
   code?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ApiError
    */
   message: string;
   /**
    *
-   * @type {string}
-   * @memberof ApiError
    */
   detail?: string | null;
 }

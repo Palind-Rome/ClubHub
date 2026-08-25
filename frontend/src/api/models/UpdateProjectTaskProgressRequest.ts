@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface UpdateProjectTaskProgressRequest {
   /**
    * 完成进度百分比。
-   * @type {number}
-   * @memberof UpdateProjectTaskProgressRequest
    */
   progress: number;
   /**
    * 更新后的任务状态。
-   * @type {UpdateProjectTaskProgressRequestTaskStatusEnum}
-   * @memberof UpdateProjectTaskProgressRequest
    */
   taskStatus: UpdateProjectTaskProgressRequestTaskStatusEnum;
   /**
    * 延期原因；仅 delayed 状态必填，completed 时会被清空。
-   * @type {string}
-   * @memberof UpdateProjectTaskProgressRequest
    */
   delayReason?: string | null;
   /**
    * 本次进度汇报内容；进行中任务必须填写。
-   * @type {string}
-   * @memberof UpdateProjectTaskProgressRequest
    */
   reportContent?: string | null;
 }

@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewProjectRequest {
   /**
    * Review result. running means approved; closed means rejected or closed.
-   * @type {ReviewProjectRequestProjectStatusEnum}
-   * @memberof ReviewProjectRequest
    */
   projectStatus: ReviewProjectRequestProjectStatusEnum;
   /**
    * Optional review comment.
-   * @type {string}
-   * @memberof ReviewProjectRequest
    */
   reviewComment?: string | null;
 }

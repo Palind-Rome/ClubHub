@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface UpdateLearningProgressRequest {
   /**
    * Latest learning progress percentage.
-   * @type {number}
-   * @memberof UpdateLearningProgressRequest
    */
   progress: number;
   /**
    * Latest accumulated learning duration in seconds.
-   * @type {number}
-   * @memberof UpdateLearningProgressRequest
    */
   durationSeconds?: number | null;
 }

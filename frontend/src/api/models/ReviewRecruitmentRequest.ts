@@ -22,14 +22,6 @@ import { mapValues } from "../runtime";
 export interface ReviewRecruitmentRequest {
   /**
    *
-   * @type {number}
-   * @memberof ReviewRecruitmentRequest
-   */
-  currentUserId: number;
-  /**
-   *
-   * @type {ReviewRecruitmentRequestDecisionEnum}
-   * @memberof ReviewRecruitmentRequest
    */
   decision: ReviewRecruitmentRequestDecisionEnum;
 }
@@ -50,7 +42,6 @@ export type ReviewRecruitmentRequestDecisionEnum =
 export function instanceOfReviewRecruitmentRequest(
   value: object,
 ): value is ReviewRecruitmentRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("decision" in value) || value["decision"] === undefined) return false;
   return true;
 }
@@ -67,7 +58,6 @@ export function ReviewRecruitmentRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     decision: json["decision"],
   };
 }
@@ -85,7 +75,6 @@ export function ReviewRecruitmentRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     decision: value["decision"],
   };
 }

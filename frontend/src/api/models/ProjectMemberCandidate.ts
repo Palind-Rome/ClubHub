@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface ProjectMemberCandidate {
   /**
    * 候选用户 ID。
-   * @type {number}
-   * @memberof ProjectMemberCandidate
    */
   userId: number;
   /**
    * 候选用户真实姓名。
-   * @type {string}
-   * @memberof ProjectMemberCandidate
    */
   realName?: string | null;
   /**
    * 候选用户学号或工号。
-   * @type {string}
-   * @memberof ProjectMemberCandidate
    */
   studentNo?: string | null;
   /**
    * 前端下拉框展示文本。
-   * @type {string}
-   * @memberof ProjectMemberCandidate
    */
   displayName: string;
 }

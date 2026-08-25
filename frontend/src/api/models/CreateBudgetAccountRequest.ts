@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface CreateBudgetAccountRequest {
   /**
    * 账户所属社团 ID。
-   * @type {number}
-   * @memberof CreateBudgetAccountRequest
    */
   clubId: number;
   /**
    * 经费年度，同一社团同一年度只能有一个经费账户。
-   * @type {string}
-   * @memberof CreateBudgetAccountRequest
    */
   fiscalYear: string;
   /**
    * 经费账户名称。
-   * @type {string}
-   * @memberof CreateBudgetAccountRequest
    */
   accountName: string;
   /**
    * 年度批准额度。
-   * @type {number}
-   * @memberof CreateBudgetAccountRequest
    */
   initialAmount: number;
 }

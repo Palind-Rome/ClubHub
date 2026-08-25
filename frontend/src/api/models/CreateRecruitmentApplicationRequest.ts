@@ -22,14 +22,6 @@ import { mapValues } from "../runtime";
 export interface CreateRecruitmentApplicationRequest {
   /**
    *
-   * @type {number}
-   * @memberof CreateRecruitmentApplicationRequest
-   */
-  currentUserId: number;
-  /**
-   *
-   * @type {string}
-   * @memberof CreateRecruitmentApplicationRequest
    */
   applicationReason: string;
 }
@@ -40,7 +32,6 @@ export interface CreateRecruitmentApplicationRequest {
 export function instanceOfCreateRecruitmentApplicationRequest(
   value: object,
 ): value is CreateRecruitmentApplicationRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("applicationReason" in value) || value["applicationReason"] === undefined) return false;
   return true;
 }
@@ -59,7 +50,6 @@ export function CreateRecruitmentApplicationRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     applicationReason: json["applicationReason"],
   };
 }
@@ -79,7 +69,6 @@ export function CreateRecruitmentApplicationRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     applicationReason: value["applicationReason"],
   };
 }

@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface ActivitySignRequest {
   /**
    *
-   * @type {string}
-   * @memberof ActivitySignRequest
    */
   code: string;
 }

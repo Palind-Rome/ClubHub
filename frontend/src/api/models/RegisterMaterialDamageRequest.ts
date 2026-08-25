@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface RegisterMaterialDamageRequest {
   /**
    * Required description of the observed damage.
-   * @type {string}
-   * @memberof RegisterMaterialDamageRequest
    */
   damageDescription: string;
   /**
    * Non-negative compensation amount in CNY.
-   * @type {number}
-   * @memberof RegisterMaterialDamageRequest
    */
   compensationAmount: number;
 }

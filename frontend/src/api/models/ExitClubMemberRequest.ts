@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface ExitClubMemberRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof ExitClubMemberRequest
    * @deprecated
    */
   currentUserId?: number;

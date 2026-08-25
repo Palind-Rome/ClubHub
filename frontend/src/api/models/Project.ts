@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * Project initiation application and review result.
  * @export
@@ -22,74 +22,50 @@ import { mapValues } from "../runtime";
 export interface Project {
   /**
    * Project id in PROJECTS.PROJECT_ID.
-   * @type {number}
-   * @memberof Project
    */
   id: number;
   /**
    * Club that owns the project application.
-   * @type {number}
-   * @memberof Project
    */
   clubId: number;
   /**
    * Project name submitted by the club.
-   * @type {string}
-   * @memberof Project
    */
   projectName: string;
   /**
    * Optional project description.
-   * @type {string}
-   * @memberof Project
    */
   description?: string | null;
   /**
    * Optional project leader user id.
-   * @type {number}
-   * @memberof Project
    */
   leaderUserId?: number | null;
   /**
    * Planned project start time.
-   * @type {Date}
-   * @memberof Project
    */
   startDate: Date;
   /**
    * Optional planned project end time.
-   * @type {Date}
-   * @memberof Project
    */
   endDate?: Date | null;
   /**
    * Current project status.
-   * @type {ProjectProjectStatusEnum}
-   * @memberof Project
    */
   projectStatus: ProjectProjectStatusEnum;
   /**
    * User id of the reviewer after approval or rejection.
-   * @type {number}
-   * @memberof Project
    */
   reviewerUserId?: number | null;
   /**
    * Optional reviewer comment.
-   * @type {string}
-   * @memberof Project
    */
   reviewComment?: string | null;
   /**
    * 当前登录用户是否可以进入该项目的任务空间。
-   * @type {boolean}
-   * @memberof Project
    */
   canViewTasks: boolean;
   /**
    * Project application creation time.
-   * @type {Date}
-   * @memberof Project
    */
   createdAt: Date;
 }
@@ -145,13 +121,13 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         : json["leaderUserId"] === null
           ? null
           : json["leaderUserId"],
-    startDate: new Date(json["startDate"]),
+    startDate: json["startDate"] == null ? json["startDate"] : parseDateTime(json["startDate"]),
     endDate:
       json["endDate"] === undefined
         ? undefined
         : json["endDate"] === null
           ? null
-          : new Date(json["endDate"]),
+          : parseDateTime(json["endDate"]),
     projectStatus: json["projectStatus"],
     reviewerUserId:
       json["reviewerUserId"] === undefined
@@ -166,7 +142,7 @@ export function ProjectFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
           ? null
           : json["reviewComment"],
     canViewTasks: json["canViewTasks"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -188,12 +164,14 @@ export function ProjectToJSONTyped(
     projectName: value["projectName"],
     description: value["description"],
     leaderUserId: value["leaderUserId"],
-    startDate: value["startDate"].toISOString(),
-    endDate: value["endDate"] == null ? value["endDate"] : value["endDate"].toISOString(),
+    startDate:
+      value["startDate"] == null ? value["startDate"] : serializeDateTime(value["startDate"]),
+    endDate: value["endDate"] == null ? value["endDate"] : serializeDateTime(value["endDate"]),
     projectStatus: value["projectStatus"],
     reviewerUserId: value["reviewerUserId"],
     reviewComment: value["reviewComment"],
     canViewTasks: value["canViewTasks"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

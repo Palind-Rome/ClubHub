@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,104 +22,70 @@ import { mapValues } from "../runtime";
 export interface VenueReservation {
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   id: number;
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   venueId: number;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   venueName: string;
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   clubId: number;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   clubName: string;
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   activityId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   activityTitle?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   applicantUserId: number;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   applicantName?: string | null;
   /**
    * 预约开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
-   * @type {Date}
-   * @memberof VenueReservation
    */
   startTime: Date;
   /**
    * 预约结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
-   * @type {Date}
-   * @memberof VenueReservation
    */
   endTime: Date;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   purpose: string;
   /**
    *
-   * @type {VenueReservationStatusEnum}
-   * @memberof VenueReservation
    */
   status: VenueReservationStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof VenueReservation
    */
   reviewerUserId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   reviewerName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof VenueReservation
    */
   reviewComment?: string | null;
   /**
    * 创建时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
-   * @type {Date}
-   * @memberof VenueReservation
    */
   createdAt: Date;
 }
@@ -190,8 +156,8 @@ export function VenueReservationFromJSONTyped(
         : json["applicantName"] === null
           ? null
           : json["applicantName"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    startTime: json["startTime"] == null ? json["startTime"] : parseDateTime(json["startTime"]),
+    endTime: json["endTime"] == null ? json["endTime"] : parseDateTime(json["endTime"]),
     purpose: json["purpose"],
     status: json["status"],
     reviewerUserId:
@@ -212,7 +178,7 @@ export function VenueReservationFromJSONTyped(
         : json["reviewComment"] === null
           ? null
           : json["reviewComment"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -238,13 +204,15 @@ export function VenueReservationToJSONTyped(
     activityTitle: value["activityTitle"],
     applicantUserId: value["applicantUserId"],
     applicantName: value["applicantName"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    startTime:
+      value["startTime"] == null ? value["startTime"] : serializeDateTime(value["startTime"]),
+    endTime: value["endTime"] == null ? value["endTime"] : serializeDateTime(value["endTime"]),
     purpose: value["purpose"],
     status: value["status"],
     reviewerUserId: value["reviewerUserId"],
     reviewerName: value["reviewerName"],
     reviewComment: value["reviewComment"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

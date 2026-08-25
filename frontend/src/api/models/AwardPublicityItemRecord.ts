@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 公示批次中的单条获奖申请。
  * @export
@@ -22,74 +22,50 @@ import { mapValues } from "../runtime";
 export interface AwardPublicityItemRecord {
   /**
    * 公示明细 ID。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   publicityItemId: number;
   /**
    * 所属公示批次 ID。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   publicityBatchId: number;
   /**
    * 被公示的评奖评优申请 ID。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   awardApplicationId: number;
   /**
    * 获奖成员用户 ID。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   applicantUserId: number;
   /**
    * 获奖成员展示名。
-   * @type {string}
-   * @memberof AwardPublicityItemRecord
    */
   applicantName: string;
   /**
    * 公示奖项名称。
-   * @type {string}
-   * @memberof AwardPublicityItemRecord
    */
   awardName: string;
   /**
    * 公示奖项等级名称。
-   * @type {string}
-   * @memberof AwardPublicityItemRecord
    */
   levelName: string;
   /**
    * 公示采用的最终奖项分。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   finalAwardScore?: number | null;
   /**
    * 公示采用的最终奖励金额。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   finalAmount?: number | null;
   /**
    * 公示名单展示顺序。
-   * @type {number}
-   * @memberof AwardPublicityItemRecord
    */
   displayOrder: number;
   /**
    * 公示结果状态。
-   * @type {AwardPublicityItemRecordPublicityResultEnum}
-   * @memberof AwardPublicityItemRecord
    */
   publicityResult: AwardPublicityItemRecordPublicityResultEnum;
   /**
    * 明细创建时间。
-   * @type {Date}
-   * @memberof AwardPublicityItemRecord
    */
   createdAt: Date;
 }
@@ -157,7 +133,7 @@ export function AwardPublicityItemRecordFromJSONTyped(
           : json["finalAmount"],
     displayOrder: json["displayOrder"],
     publicityResult: json["publicityResult"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -185,6 +161,7 @@ export function AwardPublicityItemRecordToJSONTyped(
     finalAmount: value["finalAmount"],
     displayOrder: value["displayOrder"],
     publicityResult: value["publicityResult"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

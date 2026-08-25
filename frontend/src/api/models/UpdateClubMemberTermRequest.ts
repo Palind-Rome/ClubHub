@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,69 +22,47 @@ import { mapValues } from "../runtime";
 export interface UpdateClubMemberTermRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof UpdateClubMemberTermRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    * 成员任期调整后的部门 ID；传 null 表示不归属任何部门。
-   * @type {number}
-   * @memberof UpdateClubMemberTermRequest
    */
   departmentId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 departmentId。
-   * @type {string}
-   * @memberof UpdateClubMemberTermRequest
    */
   departmentName?: string | null;
   /**
    * 成员任期调整后的小组 ID；传 null 表示不归属任何小组。
-   * @type {number}
-   * @memberof UpdateClubMemberTermRequest
    */
   groupId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 groupId。
-   * @type {string}
-   * @memberof UpdateClubMemberTermRequest
    */
   groupName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubMemberTermRequest
    */
   positionName?: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubMemberTermRequest
    */
   termName?: string;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateClubMemberTermRequest
    */
   termStart?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateClubMemberTermRequest
    */
   termEnd?: Date | null;
   /**
    *
-   * @type {UpdateClubMemberTermRequestMemberStatusEnum}
-   * @memberof UpdateClubMemberTermRequest
    */
   memberStatus?: UpdateClubMemberTermRequestMemberStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof UpdateClubMemberTermRequest
    */
   contributionScore?: number | null;
 }
@@ -149,13 +127,13 @@ export function UpdateClubMemberTermRequestFromJSONTyped(
         ? undefined
         : json["termStart"] === null
           ? null
-          : new Date(json["termStart"]),
+          : parseDateTime(json["termStart"]),
     termEnd:
       json["termEnd"] === undefined
         ? undefined
         : json["termEnd"] === null
           ? null
-          : new Date(json["termEnd"]),
+          : parseDateTime(json["termEnd"]),
     memberStatus: json["memberStatus"] == null ? undefined : json["memberStatus"],
     contributionScore:
       json["contributionScore"] === undefined
@@ -186,8 +164,9 @@ export function UpdateClubMemberTermRequestToJSONTyped(
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],
-    termStart: value["termStart"] == null ? value["termStart"] : value["termStart"].toISOString(),
-    termEnd: value["termEnd"] == null ? value["termEnd"] : value["termEnd"].toISOString(),
+    termStart:
+      value["termStart"] == null ? value["termStart"] : serializeDateTime(value["termStart"]),
+    termEnd: value["termEnd"] == null ? value["termEnd"] : serializeDateTime(value["termEnd"]),
     memberStatus: value["memberStatus"],
     contributionScore: value["contributionScore"],
   };

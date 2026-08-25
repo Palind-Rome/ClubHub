@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface CreateBudgetApplicationRequest {
   /**
    * 关联经费账户 ID。
-   * @type {number}
-   * @memberof CreateBudgetApplicationRequest
    */
   accountId: number;
   /**
    * 关联活动，可不填。
-   * @type {number}
-   * @memberof CreateBudgetApplicationRequest
    */
   activityId?: number | null;
   /**
    * 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
-   * @type {CreateBudgetApplicationRequestTypeEnum}
-   * @memberof CreateBudgetApplicationRequest
    */
   type: CreateBudgetApplicationRequestTypeEnum;
   /**
    * 经费申请标题。
-   * @type {string}
-   * @memberof CreateBudgetApplicationRequest
    */
   title: string;
   /**
    * 申请金额，必须大于 0。
-   * @type {number}
-   * @memberof CreateBudgetApplicationRequest
    */
   amount: number;
   /**
    * 经费用途。
-   * @type {string}
-   * @memberof CreateBudgetApplicationRequest
    */
   purpose: string;
   /**
    * 经费明细说明，可包含预算条目、数量、单价或报销说明。
-   * @type {string}
-   * @memberof CreateBudgetApplicationRequest
    */
   detail?: string | null;
 }

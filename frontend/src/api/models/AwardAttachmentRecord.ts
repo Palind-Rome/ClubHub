@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 评奖评优申请材料附件。
  * @export
@@ -22,50 +22,34 @@ import { mapValues } from "../runtime";
 export interface AwardAttachmentRecord {
   /**
    * 附件记录 ID。
-   * @type {number}
-   * @memberof AwardAttachmentRecord
    */
   attachmentId: number;
   /**
    * 所属评奖评优申请 ID。
-   * @type {number}
-   * @memberof AwardAttachmentRecord
    */
   awardApplicationId: number;
   /**
    * 附件展示名称。
-   * @type {string}
-   * @memberof AwardAttachmentRecord
    */
   attachmentName: string;
   /**
    * 申请材料的内部文件引用；客户端下载文件应调用申请材料下载接口。
-   * @type {string}
-   * @memberof AwardAttachmentRecord
    */
   attachmentUrl: string;
   /**
    * 附件类型或材料分类。
-   * @type {string}
-   * @memberof AwardAttachmentRecord
    */
   attachmentType?: string | null;
   /**
    * 上传人用户 ID。
-   * @type {number}
-   * @memberof AwardAttachmentRecord
    */
   uploadedByUserId: number;
   /**
    * 上传人展示名。
-   * @type {string}
-   * @memberof AwardAttachmentRecord
    */
   uploadedByName?: string | null;
   /**
    * 上传时间。
-   * @type {Date}
-   * @memberof AwardAttachmentRecord
    */
   uploadedAt: Date;
 }
@@ -112,7 +96,7 @@ export function AwardAttachmentRecordFromJSONTyped(
         : json["uploadedByName"] === null
           ? null
           : json["uploadedByName"],
-    uploadedAt: new Date(json["uploadedAt"]),
+    uploadedAt: json["uploadedAt"] == null ? json["uploadedAt"] : parseDateTime(json["uploadedAt"]),
   };
 }
 
@@ -136,6 +120,7 @@ export function AwardAttachmentRecordToJSONTyped(
     attachmentType: value["attachmentType"],
     uploadedByUserId: value["uploadedByUserId"],
     uploadedByName: value["uploadedByName"],
-    uploadedAt: value["uploadedAt"].toISOString(),
+    uploadedAt:
+      value["uploadedAt"] == null ? value["uploadedAt"] : serializeDateTime(value["uploadedAt"]),
   };
 }

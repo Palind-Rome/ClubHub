@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface ClubEvaluationScorePreview {
   /**
    * 根据活动签到、签退和参与记录生成的活动分。
-   * @type {number}
-   * @memberof ClubEvaluationScorePreview
    */
   activityScore: number;
   /**
    * 根据项目任务进度、完成状态和成果审核生成的任务分。
-   * @type {number}
-   * @memberof ClubEvaluationScorePreview
    */
   taskScore: number;
   /**
    * 根据课程学习记录和进度生成的学习分。
-   * @type {number}
-   * @memberof ClubEvaluationScorePreview
    */
   learningScore: number;
   /**
    * 根据同社团、同成员、同学期评优评奖记录汇总生成的奖项分。
-   * @type {number}
-   * @memberof ClubEvaluationScorePreview
    */
   awardScore: number;
   /**
    * 四项系统生成分合计。
-   * @type {number}
-   * @memberof ClubEvaluationScorePreview
    */
   totalScore: number;
   /**
    * 后端根据总分计算的等级。
-   * @type {string}
-   * @memberof ClubEvaluationScorePreview
    */
   grade: string;
 }

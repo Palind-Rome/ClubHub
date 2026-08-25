@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface UpdateBudgetAccountRequest {
   /**
    * 经费账户名称。
-   * @type {string}
-   * @memberof UpdateBudgetAccountRequest
    */
   accountName: string;
   /**
    * 年度批准额度，不能低于已审批占用金额。
-   * @type {number}
-   * @memberof UpdateBudgetAccountRequest
    */
   initialAmount: number;
   /**
    * 账户状态；active 启用，closed 关闭。
-   * @type {UpdateBudgetAccountRequestStatusEnum}
-   * @memberof UpdateBudgetAccountRequest
    */
   status: UpdateBudgetAccountRequestStatusEnum;
 }

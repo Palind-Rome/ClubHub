@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,56 +22,34 @@ import { mapValues } from "../runtime";
 export interface CreateRecruitmentRequest {
   /**
    *
-   * @type {number}
-   * @memberof CreateRecruitmentRequest
-   */
-  currentUserId: number;
-  /**
-   *
-   * @type {number}
-   * @memberof CreateRecruitmentRequest
    */
   clubId: number;
   /**
    *
-   * @type {string}
-   * @memberof CreateRecruitmentRequest
    */
   title: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateRecruitmentRequest
    */
   description?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateRecruitmentRequest
    */
   startAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof CreateRecruitmentRequest
    */
   endAt: Date;
   /**
    *
-   * @type {number}
-   * @memberof CreateRecruitmentRequest
    */
   quota: number;
   /**
    *
-   * @type {string}
-   * @memberof CreateRecruitmentRequest
    */
   requirements: string;
   /**
    *
-   * @type {CreateRecruitmentRequestRecruitStatusEnum}
-   * @memberof CreateRecruitmentRequest
    */
   recruitStatus?: CreateRecruitmentRequestRecruitStatusEnum;
 }
@@ -92,7 +70,6 @@ export type CreateRecruitmentRequestRecruitStatusEnum =
 export function instanceOfCreateRecruitmentRequest(
   value: object,
 ): value is CreateRecruitmentRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("clubId" in value) || value["clubId"] === undefined) return false;
   if (!("title" in value) || value["title"] === undefined) return false;
   if (!("startAt" in value) || value["startAt"] === undefined) return false;
@@ -114,7 +91,6 @@ export function CreateRecruitmentRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     clubId: json["clubId"],
     title: json["title"],
     description:
@@ -123,8 +99,8 @@ export function CreateRecruitmentRequestFromJSONTyped(
         : json["description"] === null
           ? null
           : json["description"],
-    startAt: new Date(json["startAt"]),
-    endAt: new Date(json["endAt"]),
+    startAt: json["startAt"] == null ? json["startAt"] : parseDateTime(json["startAt"]),
+    endAt: json["endAt"] == null ? json["endAt"] : parseDateTime(json["endAt"]),
     quota: json["quota"],
     requirements: json["requirements"],
     recruitStatus: json["recruitStatus"] == null ? undefined : json["recruitStatus"],
@@ -144,12 +120,11 @@ export function CreateRecruitmentRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     clubId: value["clubId"],
     title: value["title"],
     description: value["description"],
-    startAt: value["startAt"].toISOString(),
-    endAt: value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     quota: value["quota"],
     requirements: value["requirements"],
     recruitStatus: value["recruitStatus"],

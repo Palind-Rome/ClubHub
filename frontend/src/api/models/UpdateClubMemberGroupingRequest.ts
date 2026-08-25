@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface UpdateClubMemberGroupingRequest {
   /**
    * 成员调整后的部门 ID；传 null 表示不归属任何部门。
-   * @type {number}
-   * @memberof UpdateClubMemberGroupingRequest
    */
   departmentId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 departmentId。
-   * @type {string}
-   * @memberof UpdateClubMemberGroupingRequest
    */
   departmentName?: string | null;
   /**
    * 成员调整后的小组 ID；传 null 表示不归属任何小组。
-   * @type {number}
-   * @memberof UpdateClubMemberGroupingRequest
    */
   groupId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 groupId。
-   * @type {string}
-   * @memberof UpdateClubMemberGroupingRequest
    */
   groupName?: string | null;
 }
