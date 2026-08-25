@@ -1,6 +1,7 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Infrastructure.Idempotency;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Api.Validation;
 using System.Text.Json.Serialization.Metadata;
@@ -12,7 +13,10 @@ using Org.OpenAPITools.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Conventions.Insert(0, new ApiVersionRouteConvention());
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, new DefaultJsonTypeInfoResolver
@@ -83,6 +87,20 @@ if (!app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseForwardedHeaders();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api", out var remainingPath) &&
+        !remainingPath.StartsWithSegments("/v1"))
+    {
+        context.Response.Headers["Deprecation"] = "true";
+        context.Response.Headers["Sunset"] = "Thu, 31 Dec 2026 16:00:00 GMT";
+        context.Response.Headers.Link =
+            $"</api/v1{remainingPath}{context.Request.QueryString}>; rel=\"successor-version\"";
+    }
+
+    await next();
+});
 
 app.UseCors(policy =>
     policy.AllowAnyOrigin()
