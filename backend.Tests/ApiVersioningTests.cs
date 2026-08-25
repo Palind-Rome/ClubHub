@@ -1,11 +1,42 @@
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace ClubHub.Api.Tests;
 
 public sealed class ApiVersioningTests : IClassFixture<ClubHubWebApplicationFactory>
 {
+    private static readonly string[] CanonicalResourceRoutes =
+    [
+        "/api/v1/auth/permissions",
+        "/api/v1/users/{userId}/roles",
+        "/api/v1/clubs/{clubId}",
+        "/api/v1/clubs/applications/{clubId}/reviews",
+        "/api/v1/clubs/{clubId}/members/self",
+        "/api/v1/clubs/{clubId}/members/{memberId}",
+        "/api/v1/activities/{activityId}/reviews",
+        "/api/v1/activities/{activityId}/budget-reviews",
+        "/api/v1/activities/{activityId}/checkins",
+        "/api/v1/activities/{activityId}/checkouts",
+        "/api/v1/recruitments/{recruitId}/reviews",
+        "/api/v1/applications/{applicationId}/reviews",
+        "/api/v1/projects/{projectId}/reviews",
+        "/api/v1/projects/{projectId}",
+        "/api/v1/venue-reservations/{reservationId}/reviews",
+        "/api/v1/learning/instructors",
+        "/api/v1/learning/items/{itemId}/reviews",
+        "/api/v1/learning/items/{itemId}/learning-records",
+        "/api/v1/learning/items/{itemId}/file",
+        "/api/v1/learning/resources"
+    ];
+
+    private readonly ClubHubWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public ApiVersioningTests(ClubHubWebApplicationFactory factory) =>
+    public ApiVersioningTests(ClubHubWebApplicationFactory factory)
+    {
+        _factory = factory;
         _client = factory.CreateClient();
+    }
 
     [Fact]
     public async Task VersionedControllerRouteIsAvailable()
@@ -37,5 +68,27 @@ public sealed class ApiVersioningTests : IClassFixture<ClubHubWebApplicationFact
     {
         Assert.True(ClubHub.Api.Infrastructure.Rest.ApiRouteDeprecation.TryGetSuccessor(legacyPath, out var successor));
         Assert.Equal(canonicalPath, successor);
+    }
+
+    [Fact]
+    public void CanonicalResourceRoutesAreRegisteredAtRuntime()
+    {
+        var routes = _factory.Services
+            .GetRequiredService<EndpointDataSource>()
+            .Endpoints
+            .OfType<RouteEndpoint>()
+            .Select(endpoint => NormalizeRoute(endpoint.RoutePattern.RawText))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.All(CanonicalResourceRoutes, route => Assert.Contains(route, routes));
+    }
+
+    private static string NormalizeRoute(string? route)
+    {
+        var normalized = System.Text.RegularExpressions.Regex.Replace(
+            route ?? string.Empty,
+            @":[^}]+",
+            string.Empty);
+        return $"/{normalized.TrimStart('/')}";
     }
 }
