@@ -20,7 +20,8 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         await SeedVenuesAsync();
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/v1/venues?page=2&pageSize=1");
+        using var response = await client.GetAsync(
+            "/api/v1/venues?status=maintenance&page=2&pageSize=1");
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
         response.EnsureSuccessStatusCode();
@@ -84,23 +85,28 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         Assert.False(response.Headers.Contains("X-Page"));
     }
 
-    private Task SeedVenuesAsync() => SeedVenuesAsync(3);
+    private Task SeedVenuesAsync() => SeedVenuesAsync(3, "maintenance");
 
-    private async Task SeedVenuesAsync(int count)
+    private async Task SeedVenuesAsync(int count, string status = "available")
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
-        var existingIds = db.Venues
+        var existingVenues = db.Venues
             .Where(venue => venue.VenueId > 14_300 && venue.VenueId <= 14_300 + count)
-            .Select(venue => venue.VenueId)
-            .ToHashSet();
+            .ToList();
+        foreach (var venue in existingVenues)
+        {
+            venue.VenueStatus = status;
+        }
+
+        var existingIds = existingVenues.Select(venue => venue.VenueId).ToHashSet();
         db.Venues.AddRange(Enumerable.Range(1, count)
             .Where(index => !existingIds.Contains(14_300 + index))
             .Select(index => new Venue
             {
                 VenueId = 14_300 + index,
                 VenueName = $"分页场地 {index}",
-                VenueStatus = "available",
+                VenueStatus = status,
                 CreatedAt = DateTime.UtcNow
             }));
         await db.SaveChangesAsync();

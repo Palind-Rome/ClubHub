@@ -61,11 +61,21 @@ public sealed class LearningDownloadSafetyTests : IClassFixture<ClubHubWebApplic
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
-            var studentRoleId = await db.Roles
-                .Where(role => role.RoleCode == "STUDENT")
-                .Select(role => role.RoleId)
-                .SingleAsync();
             var now = DateTime.UtcNow;
+            var studentRole = await db.Roles.SingleOrDefaultAsync(role => role.RoleCode == "STUDENT");
+            if (studentRole is null)
+            {
+                studentRole = new Role
+                {
+                    RoleId = 6_700_000 + suffix,
+                    RoleCode = "STUDENT",
+                    RoleName = "普通学生",
+                    RoleScope = "system",
+                    CreatedAt = now
+                };
+                db.Roles.Add(studentRole);
+            }
+
             db.AddRange(
                 new User
                 {
@@ -87,7 +97,7 @@ public sealed class LearningDownloadSafetyTests : IClassFixture<ClubHubWebApplic
                 {
                     UserRoleId = 5_700_000 + suffix,
                     UserId = userId,
-                    RoleId = studentRoleId,
+                    RoleId = studentRole.RoleId,
                     AssignedAt = now
                 },
                 new LearningItem
