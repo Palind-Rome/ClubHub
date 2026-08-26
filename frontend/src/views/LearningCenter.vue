@@ -21,6 +21,7 @@ import {
 } from "../api";
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
+import { prepareLearningDownload } from "../learningDownload";
 
 const api = apiClient;
 
@@ -1102,7 +1103,7 @@ async function startLearning(item: LearningItem) {
   }
 }
 
-/** 通过权限校验后记录下载行为并保存文件。 */
+/** 完整读取受保护文件后确认成功下载并保存文件。 */
 async function downloadItem(item: LearningItem) {
   if (!item.canDownload) {
     ElMessage.warning(item.downloadUnavailableReason || "当前不能下载该资源");
@@ -1111,12 +1112,11 @@ async function downloadItem(item: LearningItem) {
 
   downloadingId.value = item.id;
   try {
-    const audit = await api.createLearningDownload({ itemId: item.id });
-    const response = await fetch(audit.fileUrl, {
-      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
+    const objectUrl = await prepareLearningDownload({
+      itemId: item.id,
+      token: auth.value?.token ?? "",
+      confirmDownload: () => api.createLearningDownload({ itemId: item.id }),
     });
-    if (!response.ok) throw new Error("文件内容获取失败");
-    const objectUrl = URL.createObjectURL(await response.blob());
     const link = document.createElement("a");
     link.href = objectUrl;
     link.download = item.title;

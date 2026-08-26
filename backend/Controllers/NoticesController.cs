@@ -1,6 +1,7 @@
 using System.Globalization;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -72,36 +73,87 @@ public class NoticesController : ControllerBase
         if (clubId is not null) query = query.Where(n => n.ClubId == clubId.Value);
         if (normalizedTargetType is not null) query = query.Where(n => n.TargetType == normalizedTargetType);
 
-        var notices = await query
-            .OrderByDescending(n => n.PublishAt)
-            .ThenByDescending(n => n.NoticeId)
-            .ToListAsync();
-        var context = await NoticeListContext.LoadAsync(_db, notices);
-        var result = new List<ApiNotice>();
+        var candidateClubIds = await query
+            .Where(notice => notice.ClubId != null)
+            .Select(notice => notice.ClubId!.Value)
+            .Distinct()
+            .ToListAsync(HttpContext.RequestAborted);
+        var manageableClubIds = candidateClubIds
+            .Where(candidateClubId => NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, candidateClubId))
+            .ToArray();
+        var viewableClubIds = candidateClubIds
+            .Where(candidateClubId => NoticeAuthorizationPolicy.CanViewClub(permissionRoles, candidateClubId))
+            .ToArray();
+        var canManageSchool = NoticeAuthorizationPolicy.CanManageNotice(permissionRoles, null);
+        var viewerDepartments = viewer.ClubMemberships
+            .Where(IsActiveMemberTerm)
+            .Where(member => !string.IsNullOrWhiteSpace(member.DepartmentName))
+            .Select(member => DepartmentAudienceKey(member.ClubId, member.DepartmentName!))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var departmentTargetIds = viewerDepartments.Count == 0
+            ? []
+            : (await _db.ClubMembers
+                .AsNoTracking()
+                .Where(member => candidateClubIds.Contains(member.ClubId))
+                .Select(member => new { member.MemberId, member.ClubId, member.DepartmentName })
+                .ToListAsync(HttpContext.RequestAborted))
+                .Where(member => !string.IsNullOrWhiteSpace(member.DepartmentName) &&
+                    viewerDepartments.Contains(DepartmentAudienceKey(member.ClubId, member.DepartmentName!)))
+                .Select(member => member.MemberId)
+                .ToArray();
 
-        foreach (var notice in notices)
+        var requestedStatus = normalizedStatus ?? StatusPublished;
+        query = requestedStatus switch
         {
-            var effectiveStatus = EffectiveStatus(notice, now);
-            if (normalizedStatus is not null)
-            {
-                if (effectiveStatus != normalizedStatus) continue;
-            }
-            else if (effectiveStatus != StatusPublished)
-            {
-                continue;
-            }
-
-            if (!CanViewNotice(viewer, permissionRoles, notice, effectiveStatus, context))
-            {
-                continue;
-            }
-
-            var dto = ToApiNotice(notice, viewer.UserId, permissionRoles, context, effectiveStatus);
-            if (unreadOnly && dto.IsRead) continue;
-            result.Add(dto);
+            StatusDraft => query.Where(notice =>
+                (notice.NoticeStatus ?? string.Empty).Trim().ToLower() == StatusDraft),
+            StatusExpired => query.Where(notice =>
+                ((notice.NoticeStatus ?? string.Empty).Trim() == string.Empty ||
+                 (notice.NoticeStatus ?? string.Empty).Trim().ToLower() == StatusPublished) &&
+                notice.ExpireAt != null && notice.ExpireAt <= now),
+            _ => query.Where(notice =>
+                ((notice.NoticeStatus ?? string.Empty).Trim() == string.Empty ||
+                 (notice.NoticeStatus ?? string.Empty).Trim().ToLower() == StatusPublished) &&
+                (notice.ExpireAt == null || notice.ExpireAt > now))
+        };
+        if (requestedStatus == StatusPublished)
+        {
+            query = query.Where(notice =>
+                notice.TargetType == TargetSchool ||
+                (notice.TargetType == TargetClub && notice.ClubId != null &&
+                 viewableClubIds.Contains(notice.ClubId.Value)) ||
+                (notice.TargetType == TargetDepartment && notice.ClubId != null &&
+                 (manageableClubIds.Contains(notice.ClubId.Value) ||
+                  (notice.TargetId != null && departmentTargetIds.Contains(notice.TargetId.Value)))) ||
+                (notice.TargetType == TargetMember &&
+                 (notice.TargetId == viewer.UserId ||
+                  (notice.ClubId == null && canManageSchool) ||
+                  (notice.ClubId != null && manageableClubIds.Contains(notice.ClubId.Value)))));
         }
+        else
+        {
+            query = query.Where(notice =>
+                notice.PublisherUserId == viewer.UserId ||
+                (notice.ClubId == null && canManageSchool) ||
+                (notice.ClubId != null && manageableClubIds.Contains(notice.ClubId.Value)));
+        }
+        if (unreadOnly) query = query.Where(notice => !notice.Reads.Any(read => read.UserId == viewer.UserId));
 
-        return Ok(result);
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.OrderByDescending(n => n.PublishAt).ThenByDescending(n => n.NoticeId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+
+        var context = await NoticeListContext.LoadAsync(_db, page.Items);
+        return Ok(page.Items
+            .Select(notice => ToApiNotice(
+                notice,
+                viewer.UserId,
+                permissionRoles,
+                context,
+                requestedStatus))
+            .ToList());
     }
 
     [HttpPost]

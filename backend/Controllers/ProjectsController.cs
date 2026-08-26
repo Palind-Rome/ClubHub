@@ -100,7 +100,7 @@ public class ProjectsController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
         var access = await BuildProjectTaskAccessContextAsync(projects);
-        ApiPaginationResultFilter.ApplyResponseHeaders(Request, Response, page, pageSize, totalCount);
+        ApiPagination.ApplyResponseHeaders(Request, Response, page, pageSize, totalCount);
 
         return Ok(projects
             .Select(project => ToProjectDto(project, CanViewProjectTasks(project, access.User, access.ActiveMemberProjectIds)))

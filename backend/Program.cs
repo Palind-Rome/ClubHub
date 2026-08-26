@@ -17,7 +17,6 @@ builder.Services.AddControllers(options =>
     {
         options.Conventions.Insert(0, new ApiVersionRouteConvention());
         options.Filters.Add<ApiErrorResultFilter>();
-        options.Filters.Add<ApiPaginationResultFilter>();
     })
     .AddJsonOptions(options =>
     {

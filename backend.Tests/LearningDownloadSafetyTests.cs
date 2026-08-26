@@ -28,6 +28,13 @@ public sealed class LearningDownloadSafetyTests : IClassFixture<ClubHubWebApplic
         Assert.Equal("cancelled", record.EnrollStatus);
         Assert.Null(record.DownloadedAt);
         Assert.False(await db.OperationLogs.AnyAsync(log => log.TargetId == itemId));
+
+        using var statisticsResponse = await client.GetAsync(
+            $"/api/v1/learning/items/{itemId}/statistics");
+        statisticsResponse.EnsureSuccessStatusCode();
+        using var statistics = await System.Text.Json.JsonDocument.ParseAsync(
+            await statisticsResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(0, statistics.RootElement.GetProperty("downloadCount").GetInt32());
     }
 
     [Fact]
@@ -62,18 +69,19 @@ public sealed class LearningDownloadSafetyTests : IClassFixture<ClubHubWebApplic
         {
             var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
             var now = DateTime.UtcNow;
-            var studentRole = await db.Roles.SingleOrDefaultAsync(role => role.RoleCode == "STUDENT");
-            if (studentRole is null)
+            var systemAdminRole = await db.Roles
+                .SingleOrDefaultAsync(role => role.RoleCode == "SYSTEM_ADMIN");
+            if (systemAdminRole is null)
             {
-                studentRole = new Role
+                systemAdminRole = new Role
                 {
                     RoleId = 6_700_000 + suffix,
-                    RoleCode = "STUDENT",
-                    RoleName = "普通学生",
+                    RoleCode = "SYSTEM_ADMIN",
+                    RoleName = "系统管理员",
                     RoleScope = "system",
                     CreatedAt = now
                 };
-                db.Roles.Add(studentRole);
+                db.Roles.Add(systemAdminRole);
             }
 
             db.AddRange(
@@ -97,7 +105,7 @@ public sealed class LearningDownloadSafetyTests : IClassFixture<ClubHubWebApplic
                 {
                     UserRoleId = 5_700_000 + suffix,
                     UserId = userId,
-                    RoleId = studentRole.RoleId,
+                    RoleId = systemAdminRole.RoleId,
                     AssignedAt = now
                 },
                 new LearningItem

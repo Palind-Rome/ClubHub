@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -159,10 +160,110 @@ public class LearningController : ControllerBase
             .AsQueryable();
         if (clubId is not null) query = query.Where(item => item.ClubId == clubId.Value);
 
-        var items = await query
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenBy(item => item.ItemId)
-            .ToListAsync();
+        var candidateClubIds = await query
+            .Select(item => item.ClubId)
+            .Distinct()
+            .ToListAsync(HttpContext.RequestAborted);
+        var managedClubIds = candidateClubIds.Where(candidateClubId =>
+            HasPermission(permissionRoles, ResourceUploadPermission, candidateClubId) ||
+            HasPermission(permissionRoles, ResourceReviewPermission, candidateClubId) ||
+            HasPermission(permissionRoles, ResourceDeletePermission, candidateClubId)).ToArray();
+        var ownRecordClubIds = candidateClubIds
+            .Where(candidateClubId => HasPermission(permissionRoles, OwnRecordsViewPermission, candidateClubId))
+            .ToArray();
+        var clubViewIds = candidateClubIds
+            .Where(candidateClubId =>
+                HasPermission(permissionRoles, ClubResourceViewPermission, candidateClubId) &&
+                IsActiveClubMember(viewer, candidateClubId))
+            .ToArray();
+        var canViewPublic = HasPermission(permissionRoles, PublicViewPermission, null);
+        var source = _db.LearningItems.AsNoTracking();
+        var visibleItemIds = source
+            .Where(item => managedClubIds.Contains(item.ClubId))
+            .Select(item => item.ItemId);
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => item.TeacherUserId == currentUserId.Value &&
+                ((item.ItemType ?? string.Empty).Trim().ToLower() == "course" ||
+                 (item.ItemType ?? string.Empty).Trim().ToLower() == "lecture" ||
+                 (item.ItemType ?? string.Empty).Trim().ToLower() == "training"))
+            .Select(item => item.ItemId));
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => ownRecordClubIds.Contains(item.ClubId) &&
+                item.Records.Any(record => record.UserId == currentUserId.Value) &&
+                (item.Records
+                    .Where(record => record.UserId == currentUserId.Value)
+                    .OrderByDescending(record => record.EnrolledAt)
+                    .ThenByDescending(record => record.RecordId)
+                    .Select(record => record.EnrollStatus)
+                    .FirstOrDefault() ?? string.Empty).Trim().ToLower() !=
+                    LearningWorkflow.RecordStatusCancelled)
+            .Select(item => item.ItemId));
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => item.UploaderUserId == currentUserId.Value &&
+                ((item.ItemStatus ?? string.Empty).Trim().ToLower() == LearningWorkflow.ItemStatusPendingReview ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == "pending" ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == "reviewing" ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == LearningWorkflow.ItemStatusRejected))
+            .Select(item => item.ItemId));
+
+        var regularItems = source.Where(item =>
+            (item.ItemStatus ?? string.Empty).Trim() != string.Empty &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusDraft &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusPendingReview &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != "pending" &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != "reviewing" &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusRejected);
+        if (canViewPublic)
+        {
+            visibleItemIds = visibleItemIds.Union(regularItems
+                .Where(item => (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityPublic)
+                .Select(item => item.ItemId));
+        }
+        visibleItemIds = visibleItemIds.Union(regularItems
+            .Where(item => clubViewIds.Contains(item.ClubId) &&
+                (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityClub)
+            .Select(item => item.ItemId));
+
+        var viewerDepartments = viewer.ClubMemberships
+            .Where(member => UsersController.IsActive(member.MemberStatus))
+            .Where(member => !string.IsNullOrWhiteSpace(member.DepartmentName))
+            .GroupBy(member => member.ClubId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(member => member.JoinAt)
+                    .ThenByDescending(member => member.MemberId)
+                    .First().DepartmentName!.Trim());
+        foreach (var (departmentClubId, departmentName) in viewerDepartments)
+        {
+            if (!HasPermission(permissionRoles, ClubResourceViewPermission, departmentClubId)) continue;
+            var capturedClubId = departmentClubId;
+            var capturedDepartment = departmentName.ToUpperInvariant();
+            visibleItemIds = visibleItemIds.Union(regularItems
+                .Where(item => item.ClubId == capturedClubId &&
+                    (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityDepartment &&
+                    item.Uploader != null &&
+                    item.Uploader.ClubMemberships
+                        .Where(member => member.ClubId == capturedClubId &&
+                            (member.MemberStatus == null || member.MemberStatus == string.Empty ||
+                             member.MemberStatus.ToLower() == "active" ||
+                             member.MemberStatus.ToLower() == "normal" ||
+                             member.MemberStatus.ToLower() == "enabled") &&
+                            member.DepartmentName != null && member.DepartmentName.Trim() != string.Empty)
+                        .OrderByDescending(member => member.JoinAt)
+                        .ThenByDescending(member => member.MemberId)
+                        .Select(member => member.DepartmentName!.Trim().ToUpper())
+                        .FirstOrDefault() == capturedDepartment)
+                .Select(item => item.ItemId));
+        }
+
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.Where(item => visibleItemIds.Contains(item.ItemId))
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.ItemId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        var items = page.Items;
         if (items.Count == 0) return Ok(Array.Empty<ApiLearningItem>());
 
         var itemIds = items.Select(item => item.ItemId).ToArray();
@@ -1248,7 +1349,7 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 校验资源可见范围和下载设置，并追加独立下载审计日志。
+    /// 在客户端完成文件读取后，校验资源访问权限并追加成功下载审计日志。
     /// </summary>
     [HttpPost("items/{itemId:int}/download")]
     [HttpPost("items/{itemId:int}/downloads")]
@@ -1429,12 +1530,15 @@ public class LearningController : ControllerBase
             }
         }
 
-        var records = await query
-            .OrderByDescending(record => record.EnrolledAt)
-            .ThenBy(record => record.RecordId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(record => record.EnrolledAt)
+                .ThenBy(record => record.RecordId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(records.Select(ToRecordDto));
+        return Ok(page.Items.Select(ToRecordDto));
     }
 
     /// <summary>

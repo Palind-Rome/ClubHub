@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -57,11 +58,13 @@ public class VenuesController : ControllerBase
             query = query.Where(v => v.VenueStatus == normalizedStatus);
         }
 
-        var venues = await query
-            .OrderBy(v => v.VenueId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.OrderBy(v => v.VenueId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(venues.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     [HttpPost]

@@ -39,7 +39,7 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         using var client = _factory.CreateClient();
 
         using var response = await client.GetAsync(
-            $"/api/v1/venues?page=1&pageSize={ApiPaginationResultFilter.MaximumPageSize + 1}");
+            $"/api/v1/venues?page=1&pageSize={ApiPagination.MaximumPageSize + 1}");
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -60,7 +60,7 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
         response.EnsureSuccessStatusCode();
-        Assert.True(expectedCount > ApiPaginationResultFilter.DefaultPageSize);
+        Assert.True(expectedCount > ApiPagination.DefaultPageSize);
         Assert.Equal(expectedCount, body.RootElement.GetArrayLength());
         Assert.False(response.Headers.Contains("X-Page"));
     }
@@ -68,7 +68,7 @@ public sealed class ApiPaginationTests : IClassFixture<ClubHubWebApplicationFact
     [Fact]
     public async Task CollectionWithoutPaginationQueryReturnsRecordsBeyondDefaultPageSize()
     {
-        const int recordCount = ApiPaginationResultFilter.DefaultPageSize + 10;
+        const int recordCount = ApiPagination.DefaultPageSize + 10;
         await SeedVenuesAsync(recordCount);
         using var client = _factory.CreateClient();
 

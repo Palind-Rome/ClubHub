@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -47,12 +48,29 @@ public sealed class ForumPostsController : ControllerBase
         if (includeHidden && !canModerate)
             return StatusCode(403, new { message = "\u5f53\u524d\u7528\u6237\u6ca1\u6709\u67e5\u770b\u5df2\u9690\u85cf\u5185\u5bb9\u7684\u6743\u9650\u3002" });
 
-        var posts = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
+        var topicQuery = _db.ForumPosts.AsNoTracking().Include(post => post.User)
             .Where(post => post.ClubId == clubId)
-            .OrderByDescending(post => post.IsTop).ThenByDescending(post => post.CreatedAt).ThenByDescending(post => post.PostId)
-            .ToListAsync();
-        var topics = posts.Where(post => post.ParentPostId is null).Where(post => includeHidden || IsPublished(post))
-            .Select(topic => ToApiPost(topic, posts.Where(reply => reply.ParentPostId == topic.PostId)
+            .Where(post => post.ParentPostId == null)
+            .Where(post => includeHidden || post.PostStatus == Published);
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            topicQuery
+                .OrderByDescending(post => post.IsTop)
+                .ThenByDescending(post => post.CreatedAt)
+                .ThenByDescending(post => post.PostId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+
+        var topicIds = page.Items.Select(topic => topic.PostId).ToArray();
+        var replies = topicIds.Length == 0
+            ? []
+            : await _db.ForumPosts.AsNoTracking().Include(post => post.User)
+                .Where(reply => reply.ParentPostId != null && topicIds.Contains(reply.ParentPostId.Value))
+                .Where(reply => includeHidden || reply.PostStatus == Published)
+                .OrderBy(reply => reply.CreatedAt).ThenBy(reply => reply.PostId)
+                .ToListAsync(HttpContext.RequestAborted);
+        var topics = page.Items
+            .Select(topic => ToApiPost(topic, replies.Where(reply => reply.ParentPostId == topic.PostId)
                 .Where(reply => includeHidden || (IsPublished(topic) && IsPublished(reply)))
                 .OrderBy(reply => reply.CreatedAt).ThenBy(reply => reply.PostId)
                 .Select(reply => ToApiPost(reply, [])).ToList())).ToList();

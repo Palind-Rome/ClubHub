@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -51,16 +52,63 @@ public class RecruitmentsController : ControllerBase
             query = query.Where(r => r.ClubId == clubId.Value);
         }
 
-        var now = BusinessNow();
-        var recruitments = await query
-            .OrderByDescending(r => r.CreatedAt)
-            .ThenByDescending(r => r.RecruitId)
-            .ToListAsync();
+        var draftStatuses = new[] { "draft", "草稿" };
+        var pendingStatuses = new[] { "pending_review", "pending", "reviewing", "审核中", "待审核" };
+        var publishedStatuses = new[] { "published", "open", "approved", "报名中", "申请中", "发布", "已通过" };
+        var closedStatuses = new[] { "closed", "ended", "finished", "结束", "已结束" };
+        var knownStatuses = draftStatuses
+            .Concat(pendingStatuses)
+            .Concat(publishedStatuses)
+            .Concat(closedStatuses)
+            .ToArray();
+        var managedClubIds = viewer.UserRoles
+            .Where(role => role.ClubId is not null && IsRecruitmentManagerRole(role.Role))
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .ToArray();
+        var canManageAll = UsersController.IsSystemAdmin(viewer);
+        var canReview = UsersController.IsPlatformAdmin(viewer) || canManageAll;
 
-        return Ok(recruitments
-            .Where(r => CanViewRecruitment(viewer, r))
-            .Where(r => normalizedStatus is null || EffectiveRecruitmentStatus(r, now) == normalizedStatus)
-            .Select(r => ToRecruitmentDto(r, viewer, now)));
+        query = query.Where(recruitment =>
+            canManageAll ||
+            (!draftStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) &&
+             knownStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())) ||
+            managedClubIds.Contains(recruitment.ClubId) ||
+            (canReview &&
+             pendingStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())));
+
+        var now = BusinessNow();
+        query = normalizedStatus switch
+        {
+            RecruitmentStatuses.Draft => query.Where(recruitment =>
+                draftStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) ||
+                !knownStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())),
+            RecruitmentStatuses.PendingReview => query.Where(recruitment =>
+                pendingStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())),
+            RecruitmentStatuses.NotStarted => query.Where(recruitment =>
+                publishedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) &&
+                (recruitment.EndAt == null || recruitment.EndAt >= now) &&
+                recruitment.StartAt > now),
+            RecruitmentStatuses.Accepting => query.Where(recruitment =>
+                publishedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) &&
+                (recruitment.EndAt == null || recruitment.EndAt >= now) &&
+                (recruitment.StartAt == null || recruitment.StartAt <= now)),
+            RecruitmentStatuses.Ended => query.Where(recruitment =>
+                closedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) ||
+                (publishedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) &&
+                 recruitment.EndAt != null && recruitment.EndAt < now)),
+            _ => query
+        };
+
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(r => r.CreatedAt)
+                .ThenByDescending(r => r.RecruitId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+
+        return Ok(page.Items.Select(r => ToRecruitmentDto(r, viewer, now)));
     }
 
     [HttpPost]
@@ -275,7 +323,10 @@ public class RecruitmentsController : ControllerBase
         var viewerUserId = User.GetUserId();
         if (viewerUserId is null) return Unauthorized(new { message = "登录状态已失效，请重新登录。" });
 
-        var result = await _applicationService.GetApplicationsAsync(recruitId, viewerUserId.Value);
+        var result = await _applicationService.GetApplicationsAsync(
+            recruitId,
+            viewerUserId.Value,
+            HttpContext);
         return ToActionResult(result);
     }
 

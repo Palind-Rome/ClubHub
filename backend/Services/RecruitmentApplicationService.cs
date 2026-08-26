@@ -2,6 +2,7 @@ using System.Data;
 using ClubHub.Api.Controllers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Oracle.ManagedDataAccess.Client;
@@ -20,7 +21,8 @@ public class RecruitmentApplicationService
 
     public async Task<ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>> GetApplicationsAsync(
         int recruitId,
-        int viewerUserId)
+        int viewerUserId,
+        HttpContext httpContext)
     {
         if (viewerUserId <= 0) return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Fail(400, "请选择当前用户。");
 
@@ -37,12 +39,22 @@ public class RecruitmentApplicationService
             query = query.Where(a => a.UserId == viewer.UserId);
         }
 
-        var applications = await query
-            .OrderByDescending(a => a.SubmittedAt)
-            .ThenByDescending(a => a.ApplicationId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(a => a.SubmittedAt)
+                .ThenByDescending(a => a.ApplicationId),
+            httpContext,
+            httpContext.RequestAborted);
+        if (page.Error is not null)
+        {
+            return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Fail(
+                StatusCodes.Status400BadRequest,
+                page.Error.Message,
+                page.Error.Code);
+        }
 
-        return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Ok(applications.Select(ToApplicationDto).ToList());
+        return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Ok(
+            page.Items.Select(ToApplicationDto).ToList());
     }
 
     public async Task<ServiceResult<RecruitmentApplicationDto>> CreateApplicationAsync(

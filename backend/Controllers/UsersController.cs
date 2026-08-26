@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -110,11 +111,13 @@ public class UsersController : ControllerBase
             query = query.Where(u => u.UserId == viewer.UserId);
         }
 
-        var users = await query
-            .OrderBy(u => u.UserId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.OrderBy(u => u.UserId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(users.Select(ToUserSummary));
+        return Ok(page.Items.Select(ToUserSummary));
     }
 
     [HttpPatch("{userId:int}/status")]

@@ -1,5 +1,6 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -146,13 +147,13 @@ public class AwardWorkflowController : ControllerBase
                 (d.Summary != null && d.Summary.ToUpper().Contains(normalizedKeyword)));
         }
 
-        var documents = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderBy(d => d.RuleScope == AwardRuleScopeGlobal ? 0 : 1)
             .ThenByDescending(d => d.PublishedAt ?? d.UpdatedAt)
-            .ThenBy(d => d.RuleTitle)
-            .ToListAsync();
+            .ThenBy(d => d.RuleTitle), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(documents.Select(ToAwardRuleDocumentRecordDto).ToList());
+        return Ok(page.Items.Select(ToAwardRuleDocumentRecordDto).ToList());
     }
 
     [HttpPost("award-rule-documents")]
@@ -469,12 +470,12 @@ public class AwardWorkflowController : ControllerBase
                 s.Levels.Any(level => level.LevelName.ToUpper().Contains(normalizedKeyword)));
         }
 
-        var schemes = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderByDescending(s => s.ApplicationStartAt ?? s.CreatedAt)
-            .ThenBy(s => s.AwardName)
-            .ToListAsync();
+            .ThenBy(s => s.AwardName), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(schemes.Select(ToAwardSchemeRecordDto).ToList());
+        return Ok(page.Items.Select(ToAwardSchemeRecordDto).ToList());
     }
 
     [HttpPost("award-schemes")]
@@ -625,12 +626,12 @@ public class AwardWorkflowController : ControllerBase
             .Where(a => normalizedStatus == null || a.ApplicationStatus == normalizedStatus)
             .Where(a => normalizedStep == null || a.CurrentStep == normalizedStep);
 
-        var applications = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderByDescending(a => a.SubmittedAt ?? a.CreatedAt)
-            .ThenByDescending(a => a.AwardApplicationId)
-            .ToListAsync();
+            .ThenByDescending(a => a.AwardApplicationId), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(applications.Select(ToAwardApplicationRecordDto).ToList());
+        return Ok(page.Items.Select(ToAwardApplicationRecordDto).ToList());
     }
 
     [HttpGet("award-applications/{awardApplicationId:int}")]
@@ -1067,11 +1068,11 @@ public class AwardWorkflowController : ControllerBase
                 b.PublicityStartAt <= now);
         }
 
-        var batches = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderByDescending(b => b.PublicityStartAt ?? b.CreatedAt)
-            .ThenByDescending(b => b.PublicityBatchId)
-            .ToListAsync();
-        return Ok(batches.Select(ToAwardPublicityBatchRecordDto).ToList());
+            .ThenByDescending(b => b.PublicityBatchId), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToAwardPublicityBatchRecordDto).ToList());
     }
 
     private async Task<IActionResult> GetPublicAwardPublicityBatchesAsync(
@@ -1101,11 +1102,11 @@ public class AwardWorkflowController : ControllerBase
         }
         query = query.Where(b => b.PublicityStartAt != null && b.PublicityStartAt <= now);
 
-        var batches = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderByDescending(b => b.PublicityStartAt ?? b.CreatedAt)
-            .ThenByDescending(b => b.PublicityBatchId)
-            .ToListAsync();
-        return Ok(batches.Select(ToAwardPublicityBatchRecordDto).ToList());
+            .ThenByDescending(b => b.PublicityBatchId), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToAwardPublicityBatchRecordDto).ToList());
     }
 
     [HttpPost("award-publicity")]
