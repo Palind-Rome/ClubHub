@@ -71,8 +71,8 @@ public class RecruitmentsController : ControllerBase
 
         query = query.Where(recruitment =>
             canManageAll ||
-            (!draftStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) &&
-             knownStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())) ||
+            publishedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) ||
+            closedStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower()) ||
             managedClubIds.Contains(recruitment.ClubId) ||
             (canReview &&
              pendingStatuses.Contains((recruitment.RecruitStatus ?? string.Empty).Trim().ToLower())));
