@@ -4332,8 +4332,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验当前用户的资源可见范围和下载权限后，追加独立操作日志；不创建、恢复或修改学习记录。客户端成功创建审计后再请求受保护文件。
-   * 记录学习资源下载审计
+   * 客户端完整读取受保护文件后调用；服务端重新校验资源可见范围和下载权限并追加成功交付日志，不创建、恢复或修改学习记录。文件读取失败时不得调用本接口。
+   * 确认学习资源已成功下载
    */
   async createLearningDownloadRaw(
     requestParameters: CreateLearningDownloadRequest,
@@ -4348,8 +4348,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 校验当前用户的资源可见范围和下载权限后，追加独立操作日志；不创建、恢复或修改学习记录。客户端成功创建审计后再请求受保护文件。
-   * 记录学习资源下载审计
+   * 客户端完整读取受保护文件后调用；服务端重新校验资源可见范围和下载权限并追加成功交付日志，不创建、恢复或修改学习记录。文件读取失败时不得调用本接口。
+   * 确认学习资源已成功下载
    */
   async createLearningDownload(
     requestParameters: CreateLearningDownloadRequest,
