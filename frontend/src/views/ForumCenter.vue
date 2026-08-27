@@ -170,7 +170,7 @@ async function deletePost(post: ForumPost) {
   }
 
   try {
-    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
       method: "DELETE",
     });
     ElMessage.success("删除成功");
