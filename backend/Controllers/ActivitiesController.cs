@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ApiActivity = Org.OpenAPITools.Models.Activity;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
@@ -55,54 +56,38 @@ public class ActivitiesController : ControllerBase
         var viewerUserId = currentUserId.GetValueOrDefault();
 
         var query = _db.Activities
+            .AsNoTracking()
             .OrderBy(a => a.ActivityId)
-            .Select(a => new ActivityDto(
-                a.ActivityId,
-                a.Title,
-                a.ActivityType,
-                a.Description,
-                a.Club != null ? a.Club.ClubName : "",
-                a.ClubId,
-                a.CreatorUserId,
-                a.StartAt,
-                a.EndAt,
-                a.Location,
-                a.ActivityStatus,
-                a.Capacity,
-                a.RegistrationDeadline,
-                a.ReviewerUserId,
-                a.ReviewComment,
-                a.BudgetAmount,
-                a.BudgetPurpose,
-                a.BudgetDetail,
-                a.BudgetStatus,
-                a.BudgetReviewerId,
-                a.BudgetComment,
-                a.PublishedAt,
-                a.CheckinStartAt,
-                a.CheckinEndAt,
-                a.CheckoutStartAt,
-                a.CheckoutEndAt,
-                _db.ActivityParticipations.Count(p =>
+            .Select(a => new
+            {
+                Entity = a,
+                ClubName = a.Club != null ? a.Club.ClubName : "",
+                CurrentParticipants = _db.ActivityParticipations.Count(p =>
                     p.ActivityId == a.ActivityId &&
                     (p.RegisterStatus == RegisterStatusPending ||
                      p.RegisterStatus == RegisterStatusAccepted ||
                      p.RegisterStatus == RegisterStatusOnsite)),
-                shouldCheckRegistration &&
+                IsRegistered = shouldCheckRegistration &&
                 _db.ActivityParticipations.Any(p =>
                     p.ActivityId == a.ActivityId &&
                     p.UserId == viewerUserId &&
                     (p.RegisterStatus == RegisterStatusPending ||
                      p.RegisterStatus == RegisterStatusAccepted ||
                      p.RegisterStatus == RegisterStatusOnsite))
-            ));
+            });
         var page = await ApiPaginationQuery.MaterializeAsync(
             query,
             HttpContext,
             HttpContext.RequestAborted);
         if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(page.Items);
+        return Ok(page.Items
+            .Select(item => ToApiModel(
+                item.Entity,
+                item.ClubName,
+                item.CurrentParticipants,
+                item.IsRegistered))
+            .ToArray());
     }
 
     [HttpPost]
@@ -170,7 +155,10 @@ public class ActivitiesController : ControllerBase
             activity.ActivityId,
             CancellationToken.None);
 
-        return CreatedAtAction(nameof(GetById), new { activityId = activity.ActivityId }, ToDto(activity, 0));
+        return CreatedAtAction(
+            nameof(GetById),
+            new { activityId = activity.ActivityId },
+            ToApiModel(activity, 0));
     }
 
     [HttpGet("{activityId:int}")]
@@ -200,7 +188,7 @@ public class ActivitiesController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        return Ok(ToDto(
+        return Ok(ToApiModel(
             activity,
             registrationStats?.CurrentParticipants ?? 0,
             registrationStats?.IsRegistered ?? false));
@@ -359,7 +347,7 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        return Ok(ToApiModel(activity, currentParticipants));
     }
 
     [HttpPut("{activityId:int}/budget")]
@@ -469,7 +457,7 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        return Ok(ToApiModel(activity, currentParticipants));
     }
 
     [HttpGet("{activityId:int}/participations")]
@@ -748,74 +736,108 @@ public class ActivitiesController : ControllerBase
              p.RegisterStatus == RegisterStatusOnsite));
     }
 
-    private static ActivityDto ToDto(Activity activity, int currentParticipants, bool isRegistered = false)
+    internal static ApiActivity ToApiModel(
+        Activity activity,
+        int currentParticipants,
+        bool isRegistered = false)
     {
-        return new ActivityDto(
-            activity.ActivityId,
-            activity.Title,
-            activity.ActivityType,
-            activity.Description,
+        return ToApiModel(
+            activity,
             activity.Club?.ClubName ?? "",
-            activity.ClubId,
-            activity.CreatorUserId,
-            activity.StartAt,
-            activity.EndAt,
-            activity.Location,
-            activity.ActivityStatus,
-            activity.Capacity,
-            activity.RegistrationDeadline,
-            activity.ReviewerUserId,
-            activity.ReviewComment,
-            activity.BudgetAmount,
-            activity.BudgetPurpose,
-            activity.BudgetDetail,
-            activity.BudgetStatus,
-            activity.BudgetReviewerId,
-            activity.BudgetComment,
-            activity.PublishedAt,
-            activity.CheckinStartAt,
-            activity.CheckinEndAt,
-            activity.CheckoutStartAt,
-            activity.CheckoutEndAt,
             currentParticipants,
-            isRegistered
-        );
+            isRegistered);
     }
 
-    private static ActivityDto ToDto(
+    private static ApiActivity ToApiModel(
+        Activity activity,
+        string clubName,
+        int currentParticipants,
+        bool isRegistered)
+    {
+        return new ApiActivity
+        {
+            Id = activity.ActivityId,
+            Title = activity.Title,
+            ActivityType = activity.ActivityType,
+            Description = activity.Description,
+            ClubName = clubName,
+            ClubId = activity.ClubId,
+            CreatorUserId = activity.CreatorUserId,
+            StartTime = activity.StartAt,
+            EndTime = activity.EndAt,
+            Location = activity.Location,
+            Status = ParseActivityStatus(activity.ActivityStatus),
+            MaxParticipants = activity.Capacity,
+            RegistrationDeadline = activity.RegistrationDeadline,
+            ReviewerUserId = activity.ReviewerUserId,
+            ReviewComment = activity.ReviewComment,
+            BudgetAmount = activity.BudgetAmount is { } amount ? decimal.ToDouble(amount) : null,
+            BudgetPurpose = activity.BudgetPurpose,
+            BudgetDetail = activity.BudgetDetail,
+            BudgetStatus = activity.BudgetStatus,
+            BudgetReviewerId = activity.BudgetReviewerId,
+            BudgetComment = activity.BudgetComment,
+            PublishedAt = activity.PublishedAt,
+            CheckinStartAt = activity.CheckinStartAt,
+            CheckinEndAt = activity.CheckinEndAt,
+            CheckoutStartAt = activity.CheckoutStartAt,
+            CheckoutEndAt = activity.CheckoutEndAt,
+            CurrentParticipants = currentParticipants,
+            IsRegistered = isRegistered
+        };
+    }
+
+    internal static ApiActivity ToApiModel(
         ActivityPublicCacheEntry activity,
         int currentParticipants,
         bool isRegistered)
     {
-        return new ActivityDto(
-            activity.Id,
-            activity.Title,
-            activity.ActivityType,
-            activity.Description,
-            activity.ClubName,
-            activity.ClubId,
-            activity.CreatorUserId,
-            activity.StartTime,
-            activity.EndTime,
-            activity.Location,
-            activity.Status,
-            activity.MaxParticipants,
-            activity.RegistrationDeadline,
-            activity.ReviewerUserId,
-            activity.ReviewComment,
-            activity.BudgetAmount,
-            activity.BudgetPurpose,
-            activity.BudgetDetail,
-            activity.BudgetStatus,
-            activity.BudgetReviewerId,
-            activity.BudgetComment,
-            activity.PublishedAt,
-            activity.CheckinStartAt,
-            activity.CheckinEndAt,
-            activity.CheckoutStartAt,
-            activity.CheckoutEndAt,
-            currentParticipants,
-            isRegistered);
+        return new ApiActivity
+        {
+            Id = activity.Id,
+            Title = activity.Title,
+            ActivityType = activity.ActivityType,
+            Description = activity.Description,
+            ClubName = activity.ClubName,
+            ClubId = activity.ClubId,
+            CreatorUserId = activity.CreatorUserId,
+            StartTime = activity.StartTime,
+            EndTime = activity.EndTime,
+            Location = activity.Location,
+            Status = ParseActivityStatus(activity.Status),
+            MaxParticipants = activity.MaxParticipants,
+            RegistrationDeadline = activity.RegistrationDeadline,
+            ReviewerUserId = activity.ReviewerUserId,
+            ReviewComment = activity.ReviewComment,
+            BudgetAmount = activity.BudgetAmount is { } amount ? decimal.ToDouble(amount) : null,
+            BudgetPurpose = activity.BudgetPurpose,
+            BudgetDetail = activity.BudgetDetail,
+            BudgetStatus = activity.BudgetStatus,
+            BudgetReviewerId = activity.BudgetReviewerId,
+            BudgetComment = activity.BudgetComment,
+            PublishedAt = activity.PublishedAt,
+            CheckinStartAt = activity.CheckinStartAt,
+            CheckinEndAt = activity.CheckinEndAt,
+            CheckoutStartAt = activity.CheckoutStartAt,
+            CheckoutEndAt = activity.CheckoutEndAt,
+            CurrentParticipants = currentParticipants,
+            IsRegistered = isRegistered
+        };
+    }
+
+    internal static ApiActivity.StatusEnum ParseActivityStatus(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "draft" => ApiActivity.StatusEnum.DraftEnum,
+            "pending_review" => ApiActivity.StatusEnum.PendingReviewEnum,
+            "published" => ApiActivity.StatusEnum.PublishedEnum,
+            "rejected" => ApiActivity.StatusEnum.RejectedEnum,
+            "ongoing" => ApiActivity.StatusEnum.OngoingEnum,
+            "finished" => ApiActivity.StatusEnum.FinishedEnum,
+            "cancelled" => ApiActivity.StatusEnum.CancelledEnum,
+            _ => throw new InvalidOperationException($"未知活动状态：{status ?? "<null>"}")
+        };
     }
 
     private static ObjectResult Error(int statusCode, string code, string message)
@@ -830,37 +852,6 @@ public class ActivitiesController : ControllerBase
         };
     }
 }
-
-public record ActivityDto(
-    int Id,
-    string Title,
-    string? ActivityType,
-    string? Description,
-    string ClubName,
-    int ClubId,
-    int? CreatorUserId,
-    DateTime? StartTime,
-    DateTime? EndTime,
-    string? Location,
-    string? Status,
-    int? MaxParticipants,
-    DateTime? RegistrationDeadline,
-    int? ReviewerUserId,
-    string? ReviewComment,
-    decimal? BudgetAmount,
-    string? BudgetPurpose,
-    string? BudgetDetail,
-    string? BudgetStatus,
-    int? BudgetReviewerId,
-    string? BudgetComment,
-    DateTime? PublishedAt,
-    DateTime? CheckinStartAt,
-    DateTime? CheckinEndAt,
-    DateTime? CheckoutStartAt,
-    DateTime? CheckoutEndAt,
-    int CurrentParticipants,
-    bool IsRegistered
-);
 
 public class CreateActivityRequest
 {
