@@ -37,7 +37,8 @@ const canModerate = computed(() => {
     );
     if (!hasPermission) return false;
     if (role.scope === "system") return true;
-    return role.clubId === clubId || role.clubIds?.includes(clubId);
+    if (role.scope === "club") return role.clubId === clubId;
+    return false;
   });
 });
 const canPostToSelectedClub = computed(
