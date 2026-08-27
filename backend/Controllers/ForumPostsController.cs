@@ -15,7 +15,7 @@ namespace ClubHub.Api.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("api/clubs/{clubId:int}/forum-posts")]
+[Route("api/v1/clubs/{clubId:int}/forum-posts")]
 public sealed class ForumPostsController : ControllerBase
 {
     private const string Published = "published";
@@ -112,7 +112,7 @@ public sealed class ForumPostsController : ControllerBase
         _db.ForumPosts.Add(post);
         await _db.SaveChangesAsync();
         post.User = context.User;
-        return Created($"/api/clubs/{clubId}/forum-posts/{post.PostId}", ToApiPost(post, []));
+        return Created($"/api/v1/clubs/{clubId}/forum-posts/{post.PostId}", ToApiPost(post, []));
     }
 
     [HttpPatch("{postId:int}")]

@@ -5222,7 +5222,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/forum-posts/{postId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/{postId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
 
@@ -9390,7 +9390,6 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters["Authorization"] = `Bearer ${tokenString}`;
       }
     }
-
 
     let urlPath = `/api/v1/clubs/{clubId}/forum-posts/{postId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));

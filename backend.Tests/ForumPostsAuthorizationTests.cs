@@ -19,7 +19,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public async Task CreateTopic_ActiveMember_CreatesTopic()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
-        using var response = await client.PostAsync($"/api/clubs/{clubId}/forum-posts", Json("{\"title\":\"topic\",\"content\":\"body\"}"));
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json("{\"title\":\"topic\",\"content\":\"body\"}"));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
@@ -27,7 +27,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public async Task ForumEndpoints_WithoutBearerToken_ReturnUnauthorized()
     {
         using var client = _factory.CreateClient();
-        using var response = await client.GetAsync("/api/clubs/1/forum-posts");
+        using var response = await client.GetAsync("/api/v1/clubs/1/forum-posts");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -35,7 +35,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public async Task CreateTopic_NonMember_IsForbidden()
     {
         var (client, clubId) = await SeedAsync(member: false, moderate: false);
-        using var response = await client.PostAsync($"/api/clubs/{clubId}/forum-posts", Json("{\"title\":\"topic\",\"content\":\"body\"}"));
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json("{\"title\":\"topic\",\"content\":\"body\"}"));
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -45,7 +45,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
-        using var response = await client.PostAsync($"/api/clubs/{clubId}/forum-posts", Json($"{{\"parentPostId\":{reply},\"content\":\"nested\"}}"));
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json($"{{\"parentPostId\":{reply},\"content\":\"nested\"}}"));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -55,7 +55,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
-        using var response = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{reply}", Json("{\"isTop\":true,\"postStatus\":\"published\"}"));
+        using var response = await client.PatchAsync($"/api/v1/clubs/{clubId}/forum-posts/{reply}", Json("{\"isTop\":true,\"postStatus\":\"published\"}"));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -64,13 +64,13 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":true,\"postStatus\":\"hidden\"}"));
+        using var hidden = await client.PatchAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":true,\"postStatus\":\"hidden\"}"));
         Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
         using var hiddenDocument = System.Text.Json.JsonDocument.Parse(
             await hidden.Content.ReadAsStringAsync());
         Assert.Equal("hidden", hiddenDocument.RootElement.GetProperty("postStatus").GetString());
 
-        using var restored = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"published\"}"));
+        using var restored = await client.PatchAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"published\"}"));
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
         using var restoredDocument = System.Text.Json.JsonDocument.Parse(
             await restored.Content.ReadAsStringAsync());
@@ -82,10 +82,10 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var hidden = await client.PatchAsync($"/api/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"hidden\"}"));
+        using var hidden = await client.PatchAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}", Json("{\"isTop\":false,\"postStatus\":\"hidden\"}"));
         Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
 
-        using var response = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var response = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(0, document.RootElement.GetArrayLength());
@@ -96,7 +96,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
@@ -107,7 +107,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var otherClient = await SeedAdditionalMemberAsync(clubId);
 
         var topic = await PostAndReadId(ownerClient, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var response = await otherClient.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        using var response = await otherClient.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -116,7 +116,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: true);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
@@ -128,15 +128,15 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply1\"}}");
         await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply2\"}}");
 
-        using var beforeDelete = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var beforeDelete = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
         using var beforeDocument = System.Text.Json.JsonDocument.Parse(await beforeDelete.Content.ReadAsStringAsync());
         var repliesBeforeDelete = beforeDocument.RootElement[0].GetProperty("replies").GetArrayLength();
         Assert.Equal(2, repliesBeforeDelete);
 
-        using var deleteResponse = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{topic}");
+        using var deleteResponse = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-        using var afterDelete = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var afterDelete = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
         using var afterDocument = System.Text.Json.JsonDocument.Parse(await afterDelete.Content.ReadAsStringAsync());
         Assert.Equal(0, afterDocument.RootElement.GetArrayLength());
     }
@@ -148,7 +148,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
 
-        using var response = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{reply}");
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{reply}");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
@@ -217,7 +217,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     private static StringContent Json(string value) => new(value, Encoding.UTF8, "application/json");
     private static async Task<int> PostAndReadId(HttpClient client, int clubId, string body)
     {
-        using var response = await client.PostAsync($"/api/clubs/{clubId}/forum-posts", Json(body));
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json(body));
         Assert.True(response.IsSuccessStatusCode);
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetInt32();
