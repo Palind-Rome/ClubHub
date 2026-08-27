@@ -27,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 const fileInput = ref<HTMLInputElement>();
+const textareaRef = ref<HTMLTextAreaElement>();
 const isUploading = ref(false);
 
 const textContent = computed({
@@ -52,7 +53,7 @@ async function handleImageUpload(event: Event) {
     })) as { imageUrl: string; fileName: string };
 
     const markdownImage = `![${response.fileName}](${response.imageUrl})`;
-    const textarea = document.querySelector("textarea");
+    const textarea = textareaRef.value;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -98,6 +99,7 @@ function triggerImageUpload() {
       </el-button>
     </div>
     <textarea
+      ref="textareaRef"
       v-model="textContent"
       :placeholder="placeholder"
       :rows="rows"
