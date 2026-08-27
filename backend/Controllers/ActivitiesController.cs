@@ -36,17 +36,20 @@ public class ActivitiesController : ControllerBase
     private readonly AuthService _authService;
     private readonly PublicQueryCacheService _publicQueryCache;
     private readonly IDistributedRateLimiter _rateLimiter;
+    private readonly ILogger<ActivitiesController> _logger;
 
     public ActivitiesController(
         ClubHubDbContext db,
         AuthService authService,
         PublicQueryCacheService publicQueryCache,
-        IDistributedRateLimiter rateLimiter)
+        IDistributedRateLimiter rateLimiter,
+        ILogger<ActivitiesController> logger)
     {
         _db = db;
         _authService = authService;
         _publicQueryCache = publicQueryCache;
         _rateLimiter = rateLimiter;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -81,13 +84,24 @@ public class ActivitiesController : ControllerBase
             HttpContext.RequestAborted);
         if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(page.Items
-            .Select(item => ToApiModel(
-                item.Entity,
-                item.ClubName,
-                item.CurrentParticipants,
-                item.IsRegistered))
-            .ToArray());
+        var response = new List<ApiActivity>(page.Items.Count);
+        foreach (var item in page.Items)
+        {
+            if (!TryToApiModel(
+                    item.Entity,
+                    item.ClubName,
+                    item.CurrentParticipants,
+                    item.IsRegistered,
+                    out var apiActivity))
+            {
+                LogInvalidActivityStatus(item.Entity.ActivityId, item.Entity.ActivityStatus);
+                continue;
+            }
+
+            response.Add(apiActivity);
+        }
+
+        return Ok(response);
     }
 
     [HttpPost]
@@ -155,10 +169,15 @@ public class ActivitiesController : ControllerBase
             activity.ActivityId,
             CancellationToken.None);
 
+        if (!TryToApiModel(activity, 0, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
         return CreatedAtAction(
             nameof(GetById),
             new { activityId = activity.ActivityId },
-            ToApiModel(activity, 0));
+            response);
     }
 
     [HttpGet("{activityId:int}")]
@@ -188,10 +207,16 @@ public class ActivitiesController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        return Ok(ToApiModel(
-            activity,
-            registrationStats?.CurrentParticipants ?? 0,
-            registrationStats?.IsRegistered ?? false));
+        if (!TryToApiModel(
+                activity,
+                registrationStats?.CurrentParticipants ?? 0,
+                registrationStats?.IsRegistered ?? false,
+                out var response))
+        {
+            return InvalidActivityStatus(activity.Id, activity.Status);
+        }
+
+        return Ok(response);
     }
 
     [HttpPost("{activityId:int}/registrations")]
@@ -347,7 +372,12 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToApiModel(activity, currentParticipants));
+        if (!TryToApiModel(activity, currentParticipants, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
+        return Ok(response);
     }
 
     [HttpPut("{activityId:int}/budget")]
@@ -457,7 +487,12 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToApiModel(activity, currentParticipants));
+        if (!TryToApiModel(activity, currentParticipants, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
+        return Ok(response);
     }
 
     [HttpGet("{activityId:int}/participations")]
@@ -736,21 +771,46 @@ public class ActivitiesController : ControllerBase
              p.RegisterStatus == RegisterStatusOnsite));
     }
 
-    internal static ApiActivity ToApiModel(
+    internal static bool TryToApiModel(
         Activity activity,
         int currentParticipants,
-        bool isRegistered = false)
+        bool isRegistered,
+        out ApiActivity apiActivity)
     {
-        return ToApiModel(
+        return TryToApiModel(
             activity,
             activity.Club?.ClubName ?? "",
             currentParticipants,
-            isRegistered);
+            isRegistered,
+            out apiActivity);
     }
 
-    private static ApiActivity ToApiModel(
+    private static bool TryToApiModel(
         Activity activity,
         string clubName,
+        int currentParticipants,
+        bool isRegistered,
+        out ApiActivity apiActivity)
+    {
+        if (!TryParseActivityStatus(activity.ActivityStatus, out var status))
+        {
+            apiActivity = null!;
+            return false;
+        }
+
+        apiActivity = BuildApiActivity(
+            activity,
+            clubName,
+            status,
+            currentParticipants,
+            isRegistered);
+        return true;
+    }
+
+    private static ApiActivity BuildApiActivity(
+        Activity activity,
+        string clubName,
+        ApiActivity.StatusEnum status,
         int currentParticipants,
         bool isRegistered)
     {
@@ -766,7 +826,7 @@ public class ActivitiesController : ControllerBase
             StartTime = activity.StartAt,
             EndTime = activity.EndAt,
             Location = activity.Location,
-            Status = ParseActivityStatus(activity.ActivityStatus),
+            Status = status,
             MaxParticipants = activity.Capacity,
             RegistrationDeadline = activity.RegistrationDeadline,
             ReviewerUserId = activity.ReviewerUserId,
@@ -787,29 +847,29 @@ public class ActivitiesController : ControllerBase
         };
     }
 
-    internal static ApiActivity ToApiModel(
+    internal static bool TryToApiModel(
         ActivityPublicCacheEntry activity,
         int currentParticipants,
-        bool isRegistered)
+        bool isRegistered,
+        out ApiActivity apiActivity)
     {
-        return new ApiActivity
+        var entity = new Activity
         {
-            Id = activity.Id,
+            ActivityId = activity.Id,
             Title = activity.Title,
             ActivityType = activity.ActivityType,
             Description = activity.Description,
-            ClubName = activity.ClubName,
             ClubId = activity.ClubId,
             CreatorUserId = activity.CreatorUserId,
-            StartTime = activity.StartTime,
-            EndTime = activity.EndTime,
+            StartAt = activity.StartTime,
+            EndAt = activity.EndTime,
             Location = activity.Location,
-            Status = ParseActivityStatus(activity.Status),
-            MaxParticipants = activity.MaxParticipants,
+            ActivityStatus = activity.Status,
+            Capacity = activity.MaxParticipants,
             RegistrationDeadline = activity.RegistrationDeadline,
             ReviewerUserId = activity.ReviewerUserId,
             ReviewComment = activity.ReviewComment,
-            BudgetAmount = activity.BudgetAmount is { } amount ? decimal.ToDouble(amount) : null,
+            BudgetAmount = activity.BudgetAmount,
             BudgetPurpose = activity.BudgetPurpose,
             BudgetDetail = activity.BudgetDetail,
             BudgetStatus = activity.BudgetStatus,
@@ -819,25 +879,65 @@ public class ActivitiesController : ControllerBase
             CheckinStartAt = activity.CheckinStartAt,
             CheckinEndAt = activity.CheckinEndAt,
             CheckoutStartAt = activity.CheckoutStartAt,
-            CheckoutEndAt = activity.CheckoutEndAt,
-            CurrentParticipants = currentParticipants,
-            IsRegistered = isRegistered
+            CheckoutEndAt = activity.CheckoutEndAt
         };
+
+        return TryToApiModel(
+            entity,
+            activity.ClubName,
+            currentParticipants,
+            isRegistered,
+            out apiActivity);
     }
 
-    internal static ApiActivity.StatusEnum ParseActivityStatus(string? status)
+    internal static bool TryParseActivityStatus(
+        string? status,
+        out ApiActivity.StatusEnum parsedStatus)
     {
-        return status?.Trim().ToLowerInvariant() switch
+        switch (status?.Trim().ToLowerInvariant())
         {
-            "draft" => ApiActivity.StatusEnum.DraftEnum,
-            "pending_review" => ApiActivity.StatusEnum.PendingReviewEnum,
-            "published" => ApiActivity.StatusEnum.PublishedEnum,
-            "rejected" => ApiActivity.StatusEnum.RejectedEnum,
-            "ongoing" => ApiActivity.StatusEnum.OngoingEnum,
-            "finished" => ApiActivity.StatusEnum.FinishedEnum,
-            "cancelled" => ApiActivity.StatusEnum.CancelledEnum,
-            _ => throw new InvalidOperationException($"未知活动状态：{status ?? "<null>"}")
-        };
+            case "draft":
+                parsedStatus = ApiActivity.StatusEnum.DraftEnum;
+                return true;
+            case "pending_review":
+                parsedStatus = ApiActivity.StatusEnum.PendingReviewEnum;
+                return true;
+            case "published":
+                parsedStatus = ApiActivity.StatusEnum.PublishedEnum;
+                return true;
+            case "rejected":
+                parsedStatus = ApiActivity.StatusEnum.RejectedEnum;
+                return true;
+            case "ongoing":
+                parsedStatus = ApiActivity.StatusEnum.OngoingEnum;
+                return true;
+            case "finished":
+                parsedStatus = ApiActivity.StatusEnum.FinishedEnum;
+                return true;
+            case "cancelled":
+                parsedStatus = ApiActivity.StatusEnum.CancelledEnum;
+                return true;
+            default:
+                parsedStatus = default;
+                return false;
+        }
+    }
+
+    private void LogInvalidActivityStatus(int activityId, string? status)
+    {
+        _logger.LogError(
+            "活动 {ActivityId} 包含未知状态 {Status}",
+            activityId,
+            status);
+    }
+
+    private IActionResult InvalidActivityStatus(int activityId, string? status)
+    {
+        LogInvalidActivityStatus(activityId, status);
+        return Error(
+            StatusCodes.Status503ServiceUnavailable,
+            ApiErrorCodes.ServiceUnavailable,
+            "活动状态数据异常，请稍后重试。");
     }
 
     private static ObjectResult Error(int statusCode, string code, string message)

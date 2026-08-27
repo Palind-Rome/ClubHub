@@ -3,7 +3,12 @@ using System.Text.Json;
 using ClubHub.Api.Controllers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ApiActivity = Org.OpenAPITools.Models.Activity;
 
 namespace ClubHub.Api.Tests;
@@ -44,8 +49,9 @@ public sealed class ActivityResponseModelTests
             Club = new Club { ClubId = 7, ClubName = "数据库社" }
         };
 
-        var result = ActivitiesController.ToApiModel(activity, 12, true);
+        var mapped = ActivitiesController.TryToApiModel(activity, 12, true, out var result);
 
+        Assert.True(mapped);
         Assert.IsType<ApiActivity>(result);
         Assert.Equal(119, result.Id);
         Assert.Equal("数据库设计交流会", result.Title);
@@ -58,6 +64,8 @@ public sealed class ActivityResponseModelTests
 
     [Theory]
     [InlineData("draft", ApiActivity.StatusEnum.DraftEnum)]
+    [InlineData(" PUBLISHED ", ApiActivity.StatusEnum.PublishedEnum)]
+    [InlineData("OnGoInG", ApiActivity.StatusEnum.OngoingEnum)]
     [InlineData("pending_review", ApiActivity.StatusEnum.PendingReviewEnum)]
     [InlineData("published", ApiActivity.StatusEnum.PublishedEnum)]
     [InlineData("rejected", ApiActivity.StatusEnum.RejectedEnum)]
@@ -68,17 +76,20 @@ public sealed class ActivityResponseModelTests
         string status,
         ApiActivity.StatusEnum expected)
     {
-        Assert.Equal(expected, ActivitiesController.ParseActivityStatus(status));
+        var parsed = ActivitiesController.TryParseActivityStatus(status, out var result);
+
+        Assert.True(parsed);
+        Assert.Equal(expected, result);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
+    [InlineData("   ")]
     [InlineData("archived")]
-    public void StatusMappingRejectsValuesOutsideOpenApiContract(string? status)
+    public void StatusMappingReturnsFalseForValuesOutsideOpenApiContract(string? status)
     {
-        Assert.Throws<InvalidOperationException>(
-            () => ActivitiesController.ParseActivityStatus(status));
+        Assert.False(ActivitiesController.TryParseActivityStatus(status, out _));
     }
 
     [Fact]
@@ -110,6 +121,10 @@ public sealed class ActivityResponseModelTests
         using var response = await client.GetAsync("/api/activities?page=1&pageSize=10");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("1", response.Headers.GetValues("X-Page").Single());
+        Assert.Equal("10", response.Headers.GetValues("X-Page-Size").Single());
+        Assert.Equal("1", response.Headers.GetValues("X-Total-Count").Single());
+        Assert.True(response.Headers.Contains("Link"));
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var item = Assert.Single(document.RootElement.EnumerateArray());
         Assert.Equal("published", item.GetProperty("status").GetString());
@@ -119,9 +134,109 @@ public sealed class ActivityResponseModelTests
     }
 
     [Fact]
+    public async Task ActivityListSkipsNullAndUnknownStatuses()
+    {
+        await using var baseFactory = new ClubHubWebApplicationFactory();
+        await using var factory = WithNullActivityLogger(baseFactory);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+            db.Clubs.Add(new Club
+            {
+                ClubId = 1,
+                ClubName = "数据库社",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.Activities.AddRange(
+                new Activity
+                {
+                    ActivityId = 117,
+                    ClubId = 1,
+                    Title = "空状态活动",
+                    ActivityStatus = null,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Activity
+                {
+                    ActivityId = 118,
+                    ClubId = 1,
+                    Title = "未知状态活动",
+                    ActivityStatus = "archived",
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Activity
+                {
+                    ActivityId = 119,
+                    ClubId = 1,
+                    Title = "有效活动",
+                    ActivityStatus = "published",
+                    CreatedAt = DateTime.UtcNow
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/activities");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal(119, item.GetProperty("id").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("archived")]
+    public async Task ActivityDetailReturnsControlledErrorForInvalidStatus(string? status)
+    {
+        await using var baseFactory = new ClubHubWebApplicationFactory();
+        await using var factory = WithNullActivityLogger(baseFactory);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+            db.Clubs.Add(new Club
+            {
+                ClubId = 1,
+                ClubName = "数据库社",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.Activities.Add(new Activity
+            {
+                ActivityId = 119,
+                ClubId = 1,
+                Title = "异常状态活动",
+                ActivityStatus = status,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/activities/119");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(
+            ApiErrorCodes.ServiceUnavailable,
+            document.RootElement.GetProperty("code").GetString());
+        Assert.Equal(
+            "活动状态数据异常，请稍后重试。",
+            document.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public void HandwrittenActivityDtoIsRemoved()
     {
         Assert.Null(typeof(ActivitiesController).Assembly.GetType(
             "ClubHub.Api.Controllers.ActivityDto"));
+    }
+
+    private static WebApplicationFactory<Program> WithNullActivityLogger(
+        ClubHubWebApplicationFactory factory)
+    {
+        return factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddSingleton<ILogger<ActivitiesController>>(
+                    NullLogger<ActivitiesController>.Instance)));
     }
 }
