@@ -27,9 +27,16 @@ let stopSessionListener: (() => void) | null = null;
 const canPost = computed(() =>
   (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:post"),
 );
-const canModerate = computed(() =>
-  (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:moderate"),
-);
+const canModerate = computed(() => {
+  if (!selectedClubId.value) return false;
+  const roles = auth.value?.roles ?? [];
+  return roles.some(role => {
+    const hasPermission = (role.permissions ?? []).some((p: string) => p === "*" || p === "forum:moderate");
+    if (!hasPermission) return false;
+    if (role.scope === "system") return true;
+    return role.clubId === selectedClubId.value || role.clubIds?.includes(selectedClubId.value);
+  });
+});
 const canPostToSelectedClub = computed(
   () =>
     canPost.value &&
