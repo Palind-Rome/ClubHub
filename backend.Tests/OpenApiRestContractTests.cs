@@ -32,7 +32,7 @@ public class OpenApiRestContractTests
     public void EveryDocumentedApiPathUsesV1Prefix()
     {
         var document = ReadDocument();
-        var paths = Regex.Matches(document, @"(?m)^  (?<path>/api/[^:]+):$")
+        var paths = Regex.Matches(document, @"(?m)^  (?<path>/api/[^:]+):\s*$")
             .Select(match => match.Groups["path"].Value)
             .ToArray();
 
