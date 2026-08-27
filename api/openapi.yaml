@@ -1568,11 +1568,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-<<<<<<< HEAD
 
   /api/v1/clubs/{clubId}/forum-posts/{postId}:
-=======
->>>>>>> 4190e7c (fix(api): 修复路径定义冲突)
     delete:
       summary: 删除社团讨论区话题或回复
       description: 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
