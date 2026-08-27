@@ -3,6 +3,7 @@ import { MATERIAL_ACCESS_PERMISSIONS } from "./materialPermissions";
 
 export type NavigationIcon =
   | "account"
+  | "dashboard"
   | "activity"
   | "award"
   | "budget"
@@ -53,7 +54,10 @@ export function buildNavigationGroups(permissions: string[]): NavigationGroup[] 
   return [
     {
       label: "个人空间",
-      items: [{ label: "账号与权限", path: "/auth", icon: "account" }],
+      items: [
+        { label: "答辩工作台", path: "/dashboard", icon: "dashboard" },
+        { label: "账号与权限", path: "/auth", icon: "account" },
+      ],
     },
     {
       label: "社团运营",

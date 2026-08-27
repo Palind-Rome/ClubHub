@@ -1703,9 +1703,27 @@ onUnmounted(() => {
         >
           新增奖项
         </el-button>
-        <el-button type="success" :icon="Plus" @click="openCreateApplicationDialog">
-          发起申请
-        </el-button>
+        <el-tooltip
+          :disabled="
+            Boolean(selectedClubId && creatableAwardSchemes.length && applicantOptions.length)
+          "
+          content="当前社团没有可申请奖项，或当前身份不在有效申请成员范围内。"
+        >
+          <span>
+            <el-button
+              type="success"
+              :icon="Plus"
+              :disabled="
+                !selectedClubId ||
+                creatableAwardSchemes.length === 0 ||
+                applicantOptions.length === 0
+              "
+              @click="openCreateApplicationDialog"
+            >
+              发起申请
+            </el-button>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 

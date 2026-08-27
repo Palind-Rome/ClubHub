@@ -885,6 +885,7 @@ onUnmounted(() => {
       stripe
       empty-text="暂无成员考核记录"
       row-key="evaluationId"
+      class="defense-data-table"
     >
       <el-table-column prop="userName" label="成员" min-width="140" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />
@@ -908,7 +909,7 @@ onUnmounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="170" fixed="right">
+      <el-table-column label="操作" min-width="170">
         <template #default="{ row }">
           <el-button :icon="View" @click="openDetail(row)">查看</el-button>
           <el-button

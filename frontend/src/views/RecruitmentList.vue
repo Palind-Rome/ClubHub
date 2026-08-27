@@ -791,7 +791,13 @@ onUnmounted(() => {
         <el-tab-pane :label="`其他社团 ${otherRecruitments.length}`" name="other" />
       </el-tabs>
 
-      <el-table v-loading="loading" :data="displayedRecruitments" stripe empty-text="暂无纳新数据">
+      <el-table
+        v-loading="loading"
+        :data="displayedRecruitments"
+        stripe
+        empty-text="暂无纳新数据"
+        class="defense-data-table"
+      >
         <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">
             <div class="title-line">{{ row.title }}</div>
@@ -830,7 +836,7 @@ onUnmounted(() => {
             <span v-else class="muted">未申请</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" min-width="280">
           <template #default="{ row }">
             <template v-if="shouldShowApplyAction(row)">
               <el-button

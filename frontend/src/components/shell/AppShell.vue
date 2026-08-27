@@ -9,6 +9,7 @@ const props = defineProps<{
   navigationGroups: NavigationGroup[];
   activeMenu: string;
   pageTitle: string;
+  pageEyebrow: string;
   accountLabel: string;
   roleLabels: string[];
   healthOk: boolean;
@@ -66,7 +67,7 @@ function changeTheme(command: string | number | object) {
             <el-icon><Menu /></el-icon>
           </el-button>
           <div>
-            <span class="eyebrow">ClubHub Workspace</span>
+            <span class="eyebrow">{{ pageEyebrow }}</span>
             <h1>{{ pageTitle }}</h1>
           </div>
         </div>
@@ -235,6 +236,16 @@ function changeTheme(command: string | number | object) {
 .status-dot.online {
   background: var(--club-success);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--club-success) 12%, transparent);
+}
+
+.health-button .status-dot {
+  margin-left: -3px;
+}
+
+.health-button :deep(> span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .shell-content {

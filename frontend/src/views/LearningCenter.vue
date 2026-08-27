@@ -1365,6 +1365,7 @@ onUnmounted(() => {
       v-loading="loading"
       :data="filteredItems"
       :empty-text="learningSection === 'course' ? '暂无符合条件的课程' : '暂无符合条件的资源'"
+      class="defense-data-table"
     >
       <el-table-column label="标题" min-width="180">
         <template #default="{ row }">
@@ -1428,7 +1429,7 @@ onUnmounted(() => {
           {{ itemRecordStatusLabel(row) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="560" fixed="right">
+      <el-table-column label="操作" min-width="320">
         <template #default="{ row }">
           <el-button
             v-if="isCourseItem(row) && canEnrollCourses && row.instructorUserId !== currentUserId"

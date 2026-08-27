@@ -979,9 +979,20 @@ onUnmounted(() => {
         <h2>项目管理</h2>
         <p class="subtitle">演示社团项目立项申请、负责人分配和立项审核流程。</p>
       </div>
-      <el-button type="primary" :disabled="!currentUserId" @click="openCreateDialog">
-        提交立项申请
-      </el-button>
+      <el-tooltip
+        :disabled="Boolean(currentUserId && creatableClubs.length)"
+        content="当前账号没有可提交立项申请的社团，请切换为有效社团负责人身份。"
+      >
+        <span>
+          <el-button
+            type="primary"
+            :disabled="!currentUserId || creatableClubs.length === 0"
+            @click="openCreateDialog"
+          >
+            提交立项申请
+          </el-button>
+        </span>
+      </el-tooltip>
     </div>
 
     <el-card class="filter-card" shadow="never">
@@ -1008,7 +1019,13 @@ onUnmounted(() => {
       </el-form>
     </el-card>
 
-    <el-table v-loading="loading" :data="projects" stripe empty-text="暂无项目数据">
+    <el-table
+      v-loading="loading"
+      :data="projects"
+      stripe
+      empty-text="暂无项目数据"
+      class="defense-data-table"
+    >
       <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
       <el-table-column label="所属社团" min-width="140">
         <template #default="{ row }">
@@ -1044,7 +1061,7 @@ onUnmounted(() => {
         min-width="160"
         show-overflow-tooltip
       />
-      <el-table-column label="操作" width="340" fixed="right">
+      <el-table-column label="操作" min-width="270">
         <template #default="{ row }">
           <div v-if="hasProjectActions(row)" class="project-action-groups">
             <div class="project-action-group">

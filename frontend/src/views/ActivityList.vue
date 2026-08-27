@@ -739,7 +739,7 @@ async function openParticipations(activity: Activity) {
       stripe
       border
       empty-text="暂无活动数据"
-      class="activity-table"
+      class="activity-table defense-data-table"
     >
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column prop="clubName" label="主办社团" width="120" />
@@ -763,7 +763,7 @@ async function openParticipations(activity: Activity) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="420" width="420" align="center" fixed="right">
+      <el-table-column label="操作" min-width="280" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
@@ -1120,11 +1120,11 @@ async function openParticipations(activity: Activity) {
 }
 .action-buttons {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  min-width: 400px;
+  min-width: 240px;
   min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {

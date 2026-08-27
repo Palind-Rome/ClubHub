@@ -6,6 +6,7 @@ import {
   Coin,
   Collection,
   DataAnalysis,
+  DataBoard,
   Files,
   Goods,
   Medal,
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 
 const iconComponents: Record<NavigationIcon, Component> = {
   account: User,
+  dashboard: DataBoard,
   activity: Calendar,
   award: Medal,
   budget: Coin,

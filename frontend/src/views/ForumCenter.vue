@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ChatDotRound, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
-import type { Club } from "../api/models";
+import type { Club, UserSummary } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 
@@ -26,6 +26,7 @@ const showHidden = ref(false);
 const replyingTo = ref<Post | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
+const currentMemberClubIds = ref(new Set<number>());
 const topicFormRef = ref<FormInstance>();
 const replyFormRef = ref<FormInstance>();
 const topicForm = reactive({ title: "", content: "" });
@@ -40,6 +41,11 @@ const canPost = computed(() =>
 const canModerate = computed(() =>
   (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:moderate"),
 );
+const canPostToSelectedClub = computed(
+  () =>
+    canPost.value &&
+    Boolean(selectedClubId.value && currentMemberClubIds.value.has(selectedClubId.value)),
+);
 const topicRules: FormRules = {
   title: [{ required: true, message: "请输入话题标题", trigger: "blur" }],
   content: [{ required: true, message: "请输入话题内容", trigger: "blur" }],
@@ -50,7 +56,22 @@ const replyRules: FormRules = {
 
 async function loadClubs() {
   try {
-    clubs.value = await requestJson<Club[]>("/api/v1/clubs");
+    const [clubResult, userResult] = await Promise.allSettled([
+      requestJson<Club[]>("/api/v1/clubs"),
+      requestJson<UserSummary[]>("/api/v1/users"),
+    ]);
+    if (clubResult.status === "rejected") throw clubResult.reason;
+    clubs.value = clubResult.value;
+    const users = userResult.status === "fulfilled" ? userResult.value : [];
+    const currentUser = users.find((user) => user.id === auth.value?.user.id);
+    currentMemberClubIds.value = new Set(
+      (currentUser?.memberships ?? [])
+        .filter((membership) => {
+          const status = (membership.memberStatus ?? "active").trim().toLowerCase();
+          return ["active", "normal", "enabled", "在任", "正常"].includes(status);
+        })
+        .map((membership) => membership.clubId),
+    );
     selectedClubId.value ??= clubs.value[0]?.id;
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
@@ -163,7 +184,14 @@ onUnmounted(() => stopSessionListener?.());
       :closable="false"
       show-icon
     />
-    <el-card v-if="canPost && selectedClubId" class="composer" shadow="never">
+    <el-alert
+      v-else-if="canPost && selectedClubId && !canPostToSelectedClub"
+      title="你可以浏览该社团讨论，但只有当前有效成员才能发布或回复。"
+      type="info"
+      :closable="false"
+      show-icon
+    />
+    <el-card v-if="canPostToSelectedClub" class="composer" shadow="never">
       <template #header>发布话题</template>
       <el-form ref="topicFormRef" :model="topicForm" :rules="topicRules" label-position="top">
         <el-form-item label="标题" prop="title"
@@ -199,7 +227,7 @@ onUnmounted(() => stopSessionListener?.());
       <p>{{ topic.content }}</p>
       <div class="actions">
         <el-button
-          v-if="canPost"
+          v-if="canPostToSelectedClub"
           link
           :icon="ChatDotRound"
           :disabled="topic.postStatus === 'hidden'"

@@ -12,6 +12,7 @@ const darkModeCriticalViews = [
   "AuthFlow.vue",
   "AwardList.vue",
   "ClubList.vue",
+  "DashboardHome.vue",
   "EvaluationList.vue",
   "MaterialBorrow.vue",
   "NoticeCenter.vue",

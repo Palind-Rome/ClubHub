@@ -190,7 +190,7 @@ function optionalText(value: string) {
 
 function authRedirectPath() {
   const redirect = route.query.redirect;
-  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/clubs";
+  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/dashboard";
 }
 
 function applyAuth(nextAuth: AuthResponse) {

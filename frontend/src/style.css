@@ -169,6 +169,53 @@ a {
   border-radius: var(--club-radius-md);
 }
 
+/* 核心答辩页面统一使用与蓝粉应用壳一致的表格表面。 */
+.defense-data-table.el-table {
+  --el-table-border-color: var(--club-border);
+  --el-table-header-bg-color: color-mix(
+    in srgb,
+    var(--club-primary-soft) 58%,
+    var(--club-surface-solid)
+  );
+  --el-table-row-hover-bg-color: color-mix(
+    in srgb,
+    var(--club-accent-soft) 34%,
+    var(--club-surface-solid)
+  );
+
+  overflow: hidden;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-lg);
+  background: var(--club-bg-elevated);
+  box-shadow: var(--club-shadow-sm);
+}
+
+.defense-data-table.el-table::before,
+.defense-data-table.el-table .el-table__inner-wrapper::before {
+  display: none;
+}
+
+.defense-data-table.el-table th.el-table__cell {
+  color: var(--club-text-secondary);
+  background: var(--el-table-header-bg-color);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+}
+
+.defense-data-table.el-table td.el-table__cell {
+  border-bottom-color: var(--club-border);
+  background: color-mix(in srgb, var(--club-surface-solid) 78%, transparent);
+}
+
+.defense-data-table.el-table .cell {
+  line-height: 1.55;
+}
+
+.defense-data-table.el-table .el-button + .el-button {
+  margin-left: 6px;
+}
+
 .el-overlay {
   background-color: rgba(15, 23, 42, 0.46);
   backdrop-filter: blur(8px);
