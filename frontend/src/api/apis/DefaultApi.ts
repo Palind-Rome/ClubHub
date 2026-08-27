@@ -942,7 +942,13 @@ export interface DamageMaterialBorrowRequest {
 }
 
 export interface DeleteClubForumPostRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   postId: number;
 }
 
