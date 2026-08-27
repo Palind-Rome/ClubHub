@@ -13436,7 +13436,7 @@ export class DefaultApi extends runtime.BaseAPI {
       formParams.append("image", requestParameters["image"] as any);
     }
 
-    let urlPath = `/api/clubs/{clubId}/forum-posts/upload-image`;
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/upload-image`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {

@@ -160,7 +160,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         Assert.NotEqual(0, level3Reply);
 
         // Verify structure in GET
-        using var getResponse = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var getResponse = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
         using var getDocument = System.Text.Json.JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
         var topicReply = getDocument.RootElement[0].GetProperty("replies")[0];
         var level1Nested = topicReply.GetProperty("replies")[0];
@@ -170,11 +170,11 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         Assert.Equal("level3", level2Nested.GetProperty("content").GetString());
 
         // Delete level 2 reply -> should cascade delete level 3
-        using var deleteLevel2 = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{level2Reply}");
+        using var deleteLevel2 = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{level2Reply}");
         Assert.Equal(HttpStatusCode.NoContent, deleteLevel2.StatusCode);
 
         // Verify level 2 and 3 deleted, but level 1 still exists
-        using var afterDeleteResponse = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var afterDeleteResponse = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
         using var afterDeleteDocument = System.Text.Json.JsonDocument.Parse(await afterDeleteResponse.Content.ReadAsStringAsync());
         var topicReplyAfter = afterDeleteDocument.RootElement[0].GetProperty("replies")[0];
         Assert.Equal("level1", topicReplyAfter.GetProperty("content").GetString());

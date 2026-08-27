@@ -47,7 +47,7 @@ async function handleImageUpload(event: Event) {
     const formData = new FormData();
     formData.append("image", file);
 
-    const response = (await requestJson(`/api/clubs/${props.clubId}/forum-posts/upload-image`, {
+    const response = (await requestJson(`/api/v1/clubs/${props.clubId}/forum-posts/upload-image`, {
       method: "POST",
       body: formData,
     })) as { imageUrl: string; fileName: string };
