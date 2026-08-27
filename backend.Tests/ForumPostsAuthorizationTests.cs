@@ -114,9 +114,11 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     [Fact]
     public async Task DeleteTopic_ByModerator_Succeeds()
     {
-        var (client, clubId) = await SeedAsync(member: true, moderate: true);
-        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
-        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{topic}");
+        var (ownerClient, clubId) = await SeedAsync(member: true, moderate: false);
+        var (moderatorClient, _) = await SeedAsync(member: false, moderate: true);
+        var topic = await PostAndReadId(ownerClient, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        using var response = await moderatorClient.DeleteAsync(
+            $"/api/v1/clubs/{clubId}/forum-posts/{topic}");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
