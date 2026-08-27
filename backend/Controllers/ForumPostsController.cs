@@ -286,22 +286,29 @@ public sealed class ForumPostsController : ControllerBase
         if (image == null)
             return BadRequest(new { message = "\u6587\u4ef6\u4e0d\u5b58\u5728" });
 
-        var (success, imageUrl, fileName, errorMessage) = await _imageUploadService.UploadAsync(
+        var result = await _imageUploadService.UploadAsync(
             clubId,
             image,
             HttpContext.RequestAborted);
 
-        if (!success)
+        if (!result.Success)
         {
-            if (image.Length > 5 * 1024 * 1024)
-                return StatusCode(413, new { message = errorMessage ?? "\u6587\u4ef6\u8d85\u8fc7\u5927\u5c0f\u9650\u5236" });
-            return BadRequest(new { message = errorMessage ?? "\u4e0a\u4f20\u5931\u8d25" });
+            return result.FailureKind switch
+            {
+                UploadFailureKind.InvalidFile =>
+                    BadRequest(new { message = result.ErrorMessage ?? "\u6587\u4ef6\u4e0d\u7b26\u5408\u8981\u6c42" }),
+                UploadFailureKind.TooLarge =>
+                    StatusCode(413, new { message = result.ErrorMessage ?? "\u6587\u4ef6\u8fc7\u5927" }),
+                UploadFailureKind.Storage =>
+                    StatusCode(500, new { message = "\u4e0a\u4f20\u5931\u8d25" }),
+                _ => StatusCode(500, new { message = "\u4e0a\u4f20\u5931\u8d25" })
+            };
         }
 
         var response = new ApiForumImageUploadResponse
         {
-            ImageUrl = imageUrl,
-            FileName = fileName,
+            ImageUrl = result.ImageUrl,
+            FileName = result.FileName,
             UploadedAt = DateTime.UtcNow
         };
 

@@ -4,6 +4,15 @@ using OSS = AlibabaCloud.OSS.V2;
 
 namespace ClubHub.Api.Services;
 
+public enum UploadFailureKind
+{
+    InvalidFile,
+    TooLarge,
+    Storage
+}
+
+public sealed record UploadResult(bool Success, string? ImageUrl, string? FileName, UploadFailureKind? FailureKind, string? ErrorMessage);
+
 public sealed class ForumImageUploadService : IDisposable
 {
     private static readonly FrozenSet<string> AllowedMimeTypes = FrozenSet.Create(StringComparer.OrdinalIgnoreCase,
@@ -26,10 +35,12 @@ public sealed class ForumImageUploadService : IDisposable
     private readonly OssStorageOptions _options;
     private readonly OSS.Client? _client;
     private readonly Exception? _configurationError;
+    private readonly ILogger<ForumImageUploadService> _logger;
 
-    public ForumImageUploadService(IOptions<OssStorageOptions> options)
+    public ForumImageUploadService(IOptions<OssStorageOptions> options, ILogger<ForumImageUploadService> logger)
     {
         _options = options.Value;
+        _logger = logger;
         if (!IsConfigured()) return;
 
         try
@@ -70,47 +81,43 @@ public sealed class ForumImageUploadService : IDisposable
     /// <summary>
     /// 验证图片文件的合法性（MIME 类型、大小等）
     /// </summary>
-    public (bool IsValid, string? ErrorMessage) ValidateImage(IFormFile file)
+    public (bool IsValid, UploadFailureKind? FailureKind, string? ErrorMessage) ValidateImage(IFormFile file)
     {
         if (file == null)
-            return (false, "文件不存在");
+            return (false, UploadFailureKind.InvalidFile, "文件不存在");
 
         if (file.Length == 0)
-            return (false, "文件大小为 0");
+            return (false, UploadFailureKind.InvalidFile, "文件大小为 0");
 
         if (file.Length > MaxFileSizeBytes)
-            return (false, $"文件过大，最大允许 {MaxFileSizeBytes / (1024 * 1024)} MB");
+            return (false, UploadFailureKind.TooLarge, $"文件过大，最大允许 {MaxFileSizeBytes / (1024 * 1024)} MB");
 
         var mimeType = file.ContentType?.ToLowerInvariant() ?? string.Empty;
         if (!AllowedMimeTypes.Contains(mimeType))
-            return (false, "不支持的文件类型，仅支持 jpg、png、gif、webp");
+            return (false, UploadFailureKind.InvalidFile, "不支持的文件类型，仅支持 jpg、png、gif、webp");
 
         var fileName = file.FileName?.ToLowerInvariant() ?? string.Empty;
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(extension))
-            return (false, "文件扩展名不合法");
+            return (false, UploadFailureKind.InvalidFile, "文件扩展名不合法");
 
-        return (true, null);
+        return (true, null, null);
     }
 
     /// <summary>
     /// 上传图片到 OSS
     /// </summary>
-    public async Task<(bool Success, string? ImageUrl, string? FileName, string? ErrorMessage)> UploadAsync(
+    public async Task<UploadResult> UploadAsync(
         int clubId,
         IFormFile file,
         CancellationToken cancellationToken)
     {
-        var validation = ValidateImage(file);
-        if (!validation.IsValid)
-            return (false, null, null, validation.ErrorMessage);
+        var (isValid, failureKind, errorMessage) = ValidateImage(file);
+        if (!isValid)
+            return new(false, null, null, failureKind, errorMessage);
 
         if (_client == null)
-        {
-            if (_configurationError != null)
-                return (false, null, null, $"OSS 服务未正确配置：{_configurationError.Message}");
-            return (false, null, null, "OSS 服务未正确配置，请检查配置和 ECS RAM 角色");
-        }
+            return new(false, null, null, UploadFailureKind.Storage, "OSS 服务未正确配置");
 
         var fileName = file.FileName ?? "image.jpg";
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -131,7 +138,7 @@ public sealed class ForumImageUploadService : IDisposable
                 cancellationToken: cancellationToken);
 
             var imageUrl = BuildImageUrl(objectName);
-            return (true, imageUrl, Path.GetFileName(objectName), null);
+            return new(true, imageUrl, Path.GetFileName(objectName), null, null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -139,7 +146,8 @@ public sealed class ForumImageUploadService : IDisposable
         }
         catch (Exception exception)
         {
-            return (false, null, null, $"上传失败：{exception.Message}");
+            _logger.LogError(exception, "OSS upload failed for club {ClubId} file {FileName}", clubId, fileName);
+            return new(false, null, null, UploadFailureKind.Storage, "上传失败");
         }
     }
 
