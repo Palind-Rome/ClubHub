@@ -332,7 +332,7 @@ onUnmounted(() => stopSessionListener?.());
           :moderating-post-ids="moderatingPostIds"
           @reply-to="
             replyingTo = $event;
-            replyingToParentId = $event.parentPostId || $event.id;
+            replyingToParentId = $event.id;
           "
           @moderate="(post, change) => moderate(post, change)"
           @delete="deletePost($event)"
