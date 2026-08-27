@@ -30,8 +30,10 @@ const canPost = computed(() =>
 const canModerate = computed(() => {
   if (!selectedClubId.value) return false;
   const roles = auth.value?.roles ?? [];
-  return roles.some(role => {
-    const hasPermission = (role.permissions ?? []).some((p: string) => p === "*" || p === "forum:moderate");
+  return roles.some((role) => {
+    const hasPermission = (role.permissions ?? []).some(
+      (p: string) => p === "*" || p === "forum:moderate",
+    );
     if (!hasPermission) return false;
     if (role.scope === "system") return true;
     return role.clubId === selectedClubId.value || role.clubIds?.includes(selectedClubId.value);
