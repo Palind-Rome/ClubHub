@@ -52,104 +52,13 @@ public sealed class ForumPostsController : ControllerBase
         if (includeHidden && !canModerate)
             return StatusCode(403, new { message = "当前用户没有查看已隐藏内容的权限。" });
 
-        // 1. 分页查询主题帖（仅顶级帖子）
-        var topicQuery = _db.ForumPosts.AsNoTracking().Include(post => post.User)
+        var posts = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
             .Where(post => post.ClubId == clubId)
-            .Where(post => post.ParentPostId == null)
-            .Where(post => includeHidden || post.PostStatus == Published);
-
-        var page = await ApiPaginationQuery.MaterializeAsync(
-            topicQuery
-                .OrderByDescending(post => post.IsTop)
-                .ThenByDescending(post => post.CreatedAt)
-                .ThenByDescending(post => post.PostId),
-            HttpContext,
-            HttpContext.RequestAborted);
-
-        if (page.Error is not null) return BadRequest(page.Error);
-
-        var topicIds = page.Items.Select(topic => topic.PostId).ToArray();
-        if (topicIds.Length == 0)
-            return Ok(new List<ApiPost>());
-
-        // 2. 使用 CTE 递归查询，一次性获取所有相关回复（任意深度）
-        var allReplies = await GetRepliesRecursiveAsync(topicIds, includeHidden, HttpContext.RequestAborted);
-
-        // 3. 在内存中构建嵌套树
-        var topicDict = page.Items.ToDictionary(t => t.PostId);
-        var replyDict = allReplies.ToDictionary(r => r.PostId);
-        
-        // 构建父子关系
-        foreach (var reply in allReplies)
-        {
-            if (reply.ParentPostId.HasValue && replyDict.ContainsKey(reply.ParentPostId.Value))
-            {
-                // 父帖子存在，建立关系
-                var parent = replyDict[reply.ParentPostId.Value];
-                // 使用辅助集合暂存子回复
-            }
-        }
-
-        // 4. 构建最终结果
-        var topics = page.Items
-            .Select(topic => ToApiPost(topic, BuildNestedRepliesFromDict(allReplies, topic.PostId)))
-            .ToList();
-
+            .OrderByDescending(post => post.IsTop).ThenByDescending(post => post.CreatedAt).ThenByDescending(post => post.PostId)
+            .ToListAsync();
+        var topics = posts.Where(post => post.ParentPostId is null).Where(post => includeHidden || IsPublished(post))
+            .Select(topic => ToApiPost(topic, BuildNestedReplies(posts, topic.PostId, includeHidden))).ToList();
         return Ok(topics);
-    }
-
-    private async Task<List<ForumPost>> GetRepliesRecursiveAsync(
-        int[] topicIds, 
-        bool includeHidden, 
-        CancellationToken cancellationToken)
-    {
-        // 使用 FromSqlRaw 执行递归 CTE 查询
-        var sql = @"
-    WITH RECURSIVE reply_tree AS (
-        -- 锚点：直接回复主题的帖子
-        SELECT * FROM forum_posts
-        WHERE parent_post_id = ANY(@topicIds)
-        AND (@includeHidden OR post_status = @published)
-        
-        UNION ALL
-        
-        -- 递归：子回复
-        SELECT p.* FROM forum_posts p
-        INNER JOIN reply_tree rt ON rt.post_id = p.parent_post_id
-        WHERE @includeHidden OR p.post_status = @published
-    )
-    SELECT * FROM reply_tree
-    ORDER BY created_at, post_id";
-
-        var parameters = new[]
-        {
-            new NpgsqlParameter("@topicIds", topicIds),
-            new NpgsqlParameter("@includeHidden", includeHidden),
-            new NpgsqlParameter("@published", (int)PostStatus.Published)
-        };
-
-        return await _db.ForumPosts
-            .FromSqlRaw(sql, parameters)
-            .Include(p => p.User)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-    }
-
-    private List<ApiPost> BuildNestedRepliesFromDict(
-        List<ForumPost> allReplies, 
-        int parentId)
-    {
-        var children = allReplies
-            .Where(r => r.ParentPostId == parentId)
-            .OrderBy(r => r.CreatedAt)
-            .ThenBy(r => r.PostId)
-            .ToList();
-
-        return children
-            .Select(reply => ToApiPost(
-                reply, 
-                BuildNestedRepliesFromDict(allReplies, reply.PostId)))
-            .ToList();
     }
 
     [HttpPost]
