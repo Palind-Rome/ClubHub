@@ -83,12 +83,9 @@ const formatTime = (value: Date) => new Date(value).toLocaleString("zh-CN", { ho
         :can-post="canPost"
         :can-delete-post="canDeletePost"
         :moderating-post-ids="moderatingPostIds"
-          @reply-to="
-            replyingTo = $event;
-            replyingToParentId = $event.parentPostId || $event.id;
-          "
-          @moderate="(post, change) => moderate(post, change)"
-          @delete="deletePost($event)"
+        @reply-to="emit('reply-to', $event)"
+        @moderate="(post, change) => emit('moderate', post, change)"
+        @delete="emit('delete', $event)"
       />
     </div>
   </div>
