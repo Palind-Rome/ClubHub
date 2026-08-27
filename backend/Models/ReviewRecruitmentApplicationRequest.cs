@@ -25,13 +25,6 @@ namespace Org.OpenAPITools.Models
     [DataContract]
     public partial class ReviewRecruitmentApplicationRequest 
     {
-        /// <summary>
-        /// Gets or Sets CurrentUserId
-        /// </summary>
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
 
         /// <summary>
         /// Gets or Sets Decision

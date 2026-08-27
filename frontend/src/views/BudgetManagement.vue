@@ -243,7 +243,7 @@ async function loadClubs() {
     return false;
   }
 
-  clubs.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
+  clubs.value = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
   ensureActiveClub();
   return true;
 }
@@ -253,7 +253,7 @@ async function loadAccounts() {
   if (activeClubId.value && activeClubId.value !== 0)
     params.set("clubId", String(activeClubId.value));
   const query = params.toString() ? `?${params.toString()}` : "";
-  accounts.value = await requestJson<BudgetAccount[]>(`/api/budget/accounts${query}`);
+  accounts.value = await requestJson<BudgetAccount[]>(`/api/v1/budget/accounts${query}`);
 }
 
 async function loadApplications() {
@@ -261,7 +261,9 @@ async function loadApplications() {
   if (activeClubId.value && activeClubId.value !== 0)
     params.set("clubId", String(activeClubId.value));
   const query = params.toString() ? `?${params.toString()}` : "";
-  applications.value = await requestJson<BudgetApplication[]>(`/api/budget/applications${query}`);
+  applications.value = await requestJson<BudgetApplication[]>(
+    `/api/v1/budget/applications${query}`,
+  );
 }
 
 async function loadTransactions() {
@@ -269,13 +271,15 @@ async function loadTransactions() {
   if (activeClubId.value && activeClubId.value !== 0)
     params.set("clubId", String(activeClubId.value));
   const query = params.toString() ? `?${params.toString()}` : "";
-  transactions.value = await requestJson<BudgetTransaction[]>(`/api/budget/transactions${query}`);
+  transactions.value = await requestJson<BudgetTransaction[]>(
+    `/api/v1/budget/transactions${query}`,
+  );
 }
 
 async function loadActivities() {
   const userId = auth.value?.user.id;
   const query = userId ? `?currentUserId=${userId}` : "";
-  activities.value = await requestJson<ActivityOption[]>(`/api/activities${query}`);
+  activities.value = await requestJson<ActivityOption[]>(`/api/v1/activities${query}`);
 }
 
 async function refreshData() {
@@ -389,7 +393,7 @@ async function submitAccount() {
 
   try {
     if (editingAccount.value) {
-      await requestJson<BudgetAccount>(`/api/budget/accounts/${editingAccount.value.id}`, {
+      await requestJson<BudgetAccount>(`/api/v1/budget/accounts/${editingAccount.value.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -400,7 +404,7 @@ async function submitAccount() {
       });
       ElMessage.success("经费账户已更新");
     } else {
-      await requestJson<BudgetAccount>("/api/budget/accounts", {
+      await requestJson<BudgetAccount>("/api/v1/budget/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -450,7 +454,7 @@ async function submitApplication() {
   if (!(await applicationFormRef.value?.validate())) return;
 
   try {
-    await requestJson<BudgetApplication>("/api/budget/applications", {
+    await requestJson<BudgetApplication>("/api/v1/budget/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -489,7 +493,7 @@ async function submitReview() {
 
   try {
     await requestJson<BudgetApplication>(
-      `/api/budget/applications/${reviewTarget.value.id}/review`,
+      `/api/v1/budget/applications/${reviewTarget.value.id}/review`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -521,7 +525,7 @@ async function cancelApplication(application: BudgetApplication) {
       cancelButtonText: "取消",
       type: "warning",
     });
-    await requestJson<BudgetApplication>(`/api/budget/applications/${application.id}/cancel`, {
+    await requestJson<BudgetApplication>(`/api/v1/budget/applications/${application.id}/cancel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comment: "申请人撤销" }),

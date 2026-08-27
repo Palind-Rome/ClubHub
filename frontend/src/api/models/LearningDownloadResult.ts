@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 下载权限校验通过后返回的可访问资源地址与记录时间；OSS 资源返回受鉴权的后端流式下载地址。
  * @export
@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface LearningDownloadResult {
   /**
    * 学习资源 ID。
-   * @type {number}
-   * @memberof LearningDownloadResult
    */
   itemId: number;
   /**
    * 资源标题。
-   * @type {string}
-   * @memberof LearningDownloadResult
    */
   title: string;
   /**
    * 受鉴权的后端文件地址或历史文件地址。
-   * @type {string}
-   * @memberof LearningDownloadResult
    */
   fileUrl: string;
   /**
    * 本次下载记录时间。
-   * @type {Date}
-   * @memberof LearningDownloadResult
    */
   downloadedAt: Date;
 }
@@ -72,7 +64,8 @@ export function LearningDownloadResultFromJSONTyped(
     itemId: json["itemId"],
     title: json["title"],
     fileUrl: json["fileUrl"],
-    downloadedAt: new Date(json["downloadedAt"]),
+    downloadedAt:
+      json["downloadedAt"] == null ? json["downloadedAt"] : parseDateTime(json["downloadedAt"]),
   };
 }
 
@@ -92,6 +85,9 @@ export function LearningDownloadResultToJSONTyped(
     itemId: value["itemId"],
     title: value["title"],
     fileUrl: value["fileUrl"],
-    downloadedAt: value["downloadedAt"].toISOString(),
+    downloadedAt:
+      value["downloadedAt"] == null
+        ? value["downloadedAt"]
+        : serializeDateTime(value["downloadedAt"]),
   };
 }

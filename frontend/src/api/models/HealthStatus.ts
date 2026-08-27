@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface HealthStatus {
   /**
    *
-   * @type {string}
-   * @memberof HealthStatus
    */
   status: string;
   /**
    *
-   * @type {Date}
-   * @memberof HealthStatus
    */
   timestamp: Date;
 }
@@ -53,7 +49,7 @@ export function HealthStatusFromJSONTyped(json: any, ignoreDiscriminator: boolea
   }
   return {
     status: json["status"],
-    timestamp: new Date(json["timestamp"]),
+    timestamp: json["timestamp"] == null ? json["timestamp"] : parseDateTime(json["timestamp"]),
   };
 }
 
@@ -71,6 +67,7 @@ export function HealthStatusToJSONTyped(
 
   return {
     status: value["status"],
-    timestamp: value["timestamp"].toISOString(),
+    timestamp:
+      value["timestamp"] == null ? value["timestamp"] : serializeDateTime(value["timestamp"]),
   };
 }

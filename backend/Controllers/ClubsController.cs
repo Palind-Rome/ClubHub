@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,6 @@ using Org.OpenAPITools.Converters;
 using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
 using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
 using CreateClubMemberTermRequest = Org.OpenAPITools.Models.CreateClubMemberTermRequest;
-using ExitClubMemberRequest = Org.OpenAPITools.Models.ExitClubMemberRequest;
 using ApiLearningTeacherCandidate = Org.OpenAPITools.Models.LearningTeacherCandidate;
 using UpdateClubDepartmentRequest = Org.OpenAPITools.Models.UpdateClubDepartmentRequest;
 using UpdateClubGroupRequest = Org.OpenAPITools.Models.UpdateClubGroupRequest;
@@ -169,11 +169,13 @@ public class ClubsController : ControllerBase
             }
         }
 
-        var clubs = await query
-            .OrderBy(c => c.ClubId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.OrderBy(c => c.ClubId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(clubs.Select(ToClubDto));
+        return Ok(page.Items.Select(ToClubDto));
     }
 
     [HttpGet("applications")]
@@ -237,12 +239,15 @@ public class ClubsController : ControllerBase
             query = query.Where(c => c.CreatedAt < endExclusive);
         }
 
-        var applications = await query
-            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
-            .ThenByDescending(c => c.ClubId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+                .ThenByDescending(c => c.ClubId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(applications.Select(ToApplicationDto));
+        return Ok(page.Items.Select(ToApplicationDto));
     }
 
     [HttpPost("applications")]
@@ -444,6 +449,7 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("applications/{clubId:int}/review")]
+    [HttpPost("applications/{clubId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewClubApplication")]
     public async Task<IActionResult> ReviewApplication(int clubId, [FromBody] ReviewClubApplicationRequest req)
     {
@@ -711,12 +717,15 @@ public class ClubsController : ControllerBase
         var query = DepartmentQuery(includeInactive)
             .Where(d => d.ClubId == clubId);
 
-        var departments = await query
-            .OrderBy(d => d.DisplayOrder)
-            .ThenBy(d => d.DepartmentName)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderBy(d => d.DisplayOrder)
+                .ThenBy(d => d.DepartmentName),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(departments.Select(department => ToDepartmentRecordDto(department, includeInactive)));
+        return Ok(page.Items.Select(department => ToDepartmentRecordDto(department, includeInactive)));
     }
 
     [HttpPost("{clubId:int}/departments")]
@@ -1079,19 +1088,22 @@ public class ClubsController : ControllerBase
             query = query.Where(cm => cm.TermName == termFilter);
         }
 
-        var members = await query
-            .OrderBy(cm => cm.DepartmentId == null ? 1 : 0)
-            .ThenBy(cm => cm.Department!.DisplayOrder)
-            .ThenBy(cm => cm.DepartmentName)
-            .ThenBy(cm => cm.GroupId == null ? 1 : 0)
-            .ThenBy(cm => cm.Group!.DisplayOrder)
-            .ThenBy(cm => cm.GroupName)
-            .ThenBy(cm => cm.PositionName)
-            .ThenByDescending(cm => cm.TermStart)
-            .ThenBy(cm => cm.UserId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderBy(cm => cm.DepartmentId == null ? 1 : 0)
+                .ThenBy(cm => cm.Department!.DisplayOrder)
+                .ThenBy(cm => cm.DepartmentName)
+                .ThenBy(cm => cm.GroupId == null ? 1 : 0)
+                .ThenBy(cm => cm.Group!.DisplayOrder)
+                .ThenBy(cm => cm.GroupName)
+                .ThenBy(cm => cm.PositionName)
+                .ThenByDescending(cm => cm.TermStart)
+                .ThenBy(cm => cm.UserId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(members.Select(ToMemberRecordDto));
+        return Ok(page.Items.Select(ToMemberRecordDto));
     }
 
     [HttpPatch("{clubId:int}/members/{memberId:int}/grouping")]
@@ -1362,7 +1374,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/members/self/exit")]
-    public async Task<IActionResult> ExitCurrentMember(int clubId, [FromBody] ExitClubMemberRequest req)
+    [HttpDelete("{clubId:int}/members/self")]
+    public async Task<IActionResult> ExitCurrentMember(int clubId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -1378,7 +1391,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/members/{memberId:int}/exit")]
-    public async Task<IActionResult> RemoveMember(int clubId, int memberId, [FromBody] ExitClubMemberRequest req)
+    [HttpDelete("{clubId:int}/members/{memberId:int}")]
+    public async Task<IActionResult> RemoveMember(int clubId, int memberId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)
@@ -1424,19 +1438,61 @@ public class ClubsController : ControllerBase
         }
 
         var normalizedTerm = EmptyToNull(termName);
-        var evaluations = await EvaluationQuery()
+        var viewer = access.Viewer!;
+        var canViewAll = UsersController.IsPlatformAdmin(viewer) ||
+            IsClubEvaluationPrincipal(viewer, clubId);
+        var canViewPublishedAwards = HasClubParticipantRole(viewer, clubId) ||
+            viewer.ClubMemberships.Any(cm => cm.ClubId == clubId && IsCurrentMemberTerm(cm));
+        var publishedEvaluationStatuses = new[] { "published", "public", "公示", "已公示" };
+        var awardEvaluationTypes = new[] { "award", "honor", "prize", "评奖评优", "评优评奖", "奖项" };
+        var scopedUserIds = Array.Empty<int>();
+        if (!canViewAll)
+        {
+            var scopes = GetCadreGroupingScopes(viewer, clubId).ToArray();
+            if (scopes.Length > 0)
+            {
+                var currentMembers = await _db.ClubMembers
+                    .AsNoTracking()
+                    .Where(member => member.ClubId == clubId)
+                    .ToListAsync(HttpContext.RequestAborted);
+                scopedUserIds = currentMembers
+                    .GroupBy(member => member.UserId)
+                    .Select(group => group
+                        .OrderByDescending(IsCurrentMemberTerm)
+                        .ThenByDescending(member => member.TermStart)
+                        .ThenByDescending(member => member.JoinAt)
+                        .First())
+                    .Where(member => scopes.Any(scope => GroupingMatchesScope(
+                        member.DepartmentName,
+                        member.GroupName,
+                        scope.DepartmentName,
+                        scope.GroupName)))
+                    .Select(member => member.UserId)
+                    .ToArray();
+            }
+        }
+
+        var query = EvaluationQuery()
             .Where(ev => ev.ClubId == clubId)
             .Where(ev => normalizedTerm == null || ev.TermName == normalizedTerm)
-            .Where(ev => normalizedType == null || ev.EvaluationType == normalizedType)
-            .OrderByDescending(ev => ev.CreatedAt)
-            .ThenBy(ev => ev.UserId)
-            .ToListAsync();
+            .Where(ev => normalizedType == null || ev.EvaluationType == normalizedType);
+        if (!canViewAll)
+        {
+            query = query.Where(ev =>
+                scopedUserIds.Contains(ev.UserId) ||
+                (ev.UserId == viewer.UserId &&
+                 publishedEvaluationStatuses.Contains((ev.PublicStatus ?? string.Empty).Trim().ToLower())) ||
+                (canViewPublishedAwards &&
+                 awardEvaluationTypes.Contains((ev.EvaluationType ?? string.Empty).Trim().ToLower()) &&
+                 publishedEvaluationStatuses.Contains((ev.PublicStatus ?? string.Empty).Trim().ToLower())));
+        }
 
-        var visible = evaluations
-            .Where(ev => CanViewEvaluationRecord(access.Viewer!, clubId, ev))
-            .Select(ToEvaluationRecordDto)
-            .ToList();
-        return Ok(visible);
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.OrderByDescending(ev => ev.CreatedAt).ThenBy(ev => ev.UserId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToEvaluationRecordDto).ToList());
     }
 
     [HttpGet("{clubId:int}/evaluations/score-preview")]
@@ -1848,7 +1904,8 @@ public class ClubsController : ControllerBase
     }
 
     [HttpPatch("{clubId:int}/dissolve")]
-    public async Task<IActionResult> Dissolve(int clubId, [FromBody] DissolveClubRequest req)
+    [HttpDelete("{clubId:int}")]
+    public async Task<IActionResult> Dissolve(int clubId)
     {
         var currentUserId = User.GetUserId();
         if (currentUserId is null)

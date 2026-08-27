@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface CreateVenueRequest {
   /**
    * 执行创建操作的用户 ID，用于校验 venue:create 权限。
-   * @type {number}
-   * @memberof CreateVenueRequest
    */
   operatorUserId: number;
   /**
    *
-   * @type {string}
-   * @memberof CreateVenueRequest
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateVenueRequest
    */
   building?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateVenueRequest
    */
   roomNo?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof CreateVenueRequest
    */
   capacity: number;
   /**
    *
-   * @type {CreateVenueRequestStatusEnum}
-   * @memberof CreateVenueRequest
    */
   status?: CreateVenueRequestStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof CreateVenueRequest
    */
   managerUserId?: number | null;
 }

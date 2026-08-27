@@ -22,58 +22,40 @@ import { mapValues } from "../runtime";
 export interface UpdateClubProfileRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof UpdateClubProfileRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    */
   category: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    */
   logoUrl?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof UpdateClubProfileRequest
    */
   presidentUserId?: number | null;
   /**
    * 指导老师用户 ID；后端会校验该用户为教师账号，并维护本社团 ADVISOR 角色关系。
-   * @type {number}
-   * @memberof UpdateClubProfileRequest
    */
   advisorUserId?: number | null;
   /**
    * 历史兼容字段；新流程请使用 advisorUserId。
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    * @deprecated
    */
   advisorName?: string | null;
   /**
    * 社团对外联系电话或负责人联系电话。
-   * @type {string}
-   * @memberof UpdateClubProfileRequest
    */
   contactPhone?: string | null;
 }

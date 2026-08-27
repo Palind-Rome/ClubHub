@@ -308,7 +308,7 @@ async function loadVenues() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/venues");
+    const res = await fetch("/api/v1/venues");
     if (!res.ok) throw new Error(await readErrorMessage(res));
     venues.value = await res.json();
   } catch (e) {
@@ -327,8 +327,8 @@ async function loadReservationOptions() {
 
   try {
     const [clubRes, activityRes] = await Promise.all([
-      fetch(`/api/clubs`),
-      fetch(`/api/activities`),
+      fetch(`/api/v1/clubs`),
+      fetch(`/api/v1/activities`),
     ]);
     if (!clubRes.ok) throw new Error(await readErrorMessage(clubRes));
     if (!activityRes.ok) throw new Error(await readErrorMessage(activityRes));
@@ -344,7 +344,7 @@ async function loadReservationOptions() {
 async function loadApprovedReservations() {
   try {
     const slots = await requestJson<VenueOccupiedSlotPayload[]>(
-      "/api/venue-reservations/occupied-slots",
+      "/api/v1/venue-reservations/occupied-slots",
     );
     approvedReservations.value = slots.map((slot) => ({
       id: slot.reservationId,
@@ -370,7 +370,7 @@ async function loadMyReservations() {
   myReservationsLoading.value = true;
   try {
     myReservations.value = await requestJson<VenueReservation[]>(
-      `/api/venue-reservations?applicantUserId=${applicantUserId}`,
+      `/api/v1/venue-reservations?applicantUserId=${applicantUserId}`,
     );
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "加载我的预约失败");
@@ -432,7 +432,7 @@ async function submitReservation() {
       return;
     }
 
-    latestReservation.value = await requestJson<VenueReservation>("/api/venue-reservations", {
+    latestReservation.value = await requestJson<VenueReservation>("/api/v1/venue-reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -478,7 +478,7 @@ async function deleteReservation(reservation: VenueReservation) {
 
   deletingReservationId.value = reservation.id;
   try {
-    await requestJson<void>(`/api/venue-reservations/${reservation.id}`, {
+    await requestJson<void>(`/api/v1/venue-reservations/${reservation.id}`, {
       method: "DELETE",
     });
 

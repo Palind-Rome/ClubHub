@@ -8,9 +8,9 @@ using System.Text.RegularExpressions;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Infrastructure.Redis;
+using ClubHub.Api.Infrastructure.Rest;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Org.OpenAPITools.Models;
 using StackExchange.Redis;
 
 namespace ClubHub.Api.Infrastructure.Idempotency;
@@ -374,7 +374,7 @@ public sealed partial class IdempotencyMiddleware
     private static async Task WriteErrorAsync(HttpContext context, int status, string message)
     {
         context.Response.StatusCode = status;
-        await context.Response.WriteAsJsonAsync(new ApiError { Message = message });
+        await context.Response.WriteAsJsonAsync(ApiErrorFactory.Create(status, message));
     }
 
     private static async Task SafeReleaseAsync(

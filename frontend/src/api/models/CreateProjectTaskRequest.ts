@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 项目负责人创建任务的请求。
  * @export
@@ -22,32 +22,22 @@ import { mapValues } from "../runtime";
 export interface CreateProjectTaskRequest {
   /**
    * 正在参与该项目的执行人用户 ID 列表。
-   * @type {Set<number>}
-   * @memberof CreateProjectTaskRequest
    */
   assigneeUserIds: Set<number>;
   /**
    * 任务标题。
-   * @type {string}
-   * @memberof CreateProjectTaskRequest
    */
   title: string;
   /**
    * 可选任务说明。
-   * @type {string}
-   * @memberof CreateProjectTaskRequest
    */
   content?: string | null;
   /**
    * 任务优先级。
-   * @type {CreateProjectTaskRequestPriorityEnum}
-   * @memberof CreateProjectTaskRequest
    */
   priority: CreateProjectTaskRequestPriorityEnum;
   /**
    * 截止时间，必须晚于任务创建时间。
-   * @type {Date}
-   * @memberof CreateProjectTaskRequest
    */
   dueDate: Date;
 }
@@ -94,7 +84,7 @@ export function CreateProjectTaskRequestFromJSONTyped(
     content:
       json["content"] === undefined ? undefined : json["content"] === null ? null : json["content"],
     priority: json["priority"],
-    dueDate: new Date(json["dueDate"]),
+    dueDate: json["dueDate"] == null ? json["dueDate"] : parseDateTime(json["dueDate"]),
   };
 }
 
@@ -115,6 +105,6 @@ export function CreateProjectTaskRequestToJSONTyped(
     title: value["title"],
     content: value["content"],
     priority: value["priority"],
-    dueDate: value["dueDate"].toISOString(),
+    dueDate: value["dueDate"] == null ? value["dueDate"] : serializeDateTime(value["dueDate"]),
   };
 }

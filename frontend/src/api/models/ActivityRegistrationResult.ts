@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface ActivityRegistrationResult {
   /**
    * 活动参与记录 ID
-   * @type {number}
-   * @memberof ActivityRegistrationResult
    */
   participationId: number;
   /**
    *
-   * @type {number}
-   * @memberof ActivityRegistrationResult
    */
   activityId: number;
   /**
    *
-   * @type {number}
-   * @memberof ActivityRegistrationResult
    */
   userId: number;
   /**
    *
-   * @type {ActivityRegistrationResultRegisterStatusEnum}
-   * @memberof ActivityRegistrationResult
    */
   registerStatus: ActivityRegistrationResultRegisterStatusEnum;
   /**
    *
-   * @type {Date}
-   * @memberof ActivityRegistrationResult
    */
   registeredAt: Date;
   /**
    * 报名成功后的当前有效报名人数
-   * @type {number}
-   * @memberof ActivityRegistrationResult
    */
   currentParticipants: number;
   /**
    *
-   * @type {string}
-   * @memberof ActivityRegistrationResult
    */
   message: string;
 }
@@ -108,7 +94,8 @@ export function ActivityRegistrationResultFromJSONTyped(
     activityId: json["activityId"],
     userId: json["userId"],
     registerStatus: json["registerStatus"],
-    registeredAt: new Date(json["registeredAt"]),
+    registeredAt:
+      json["registeredAt"] == null ? json["registeredAt"] : parseDateTime(json["registeredAt"]),
     currentParticipants: json["currentParticipants"],
     message: json["message"],
   };
@@ -131,7 +118,10 @@ export function ActivityRegistrationResultToJSONTyped(
     activityId: value["activityId"],
     userId: value["userId"],
     registerStatus: value["registerStatus"],
-    registeredAt: value["registeredAt"].toISOString(),
+    registeredAt:
+      value["registeredAt"] == null
+        ? value["registeredAt"]
+        : serializeDateTime(value["registeredAt"]),
     currentParticipants: value["currentParticipants"],
     message: value["message"],
   };

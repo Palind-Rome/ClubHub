@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 import type { AwardLevelInput } from "./AwardLevelInput";
 import {
   AwardLevelInputFromJSON,
@@ -30,104 +30,70 @@ import {
 export interface CreateAwardSchemeRequest {
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   awardName: string;
   /**
    *
-   * @type {CreateAwardSchemeRequestAwardCategoryEnum}
-   * @memberof CreateAwardSchemeRequest
    */
   awardCategory: CreateAwardSchemeRequestAwardCategoryEnum;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   academicYear: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   termName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   sponsorUnit?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   rewardLevel?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   fundingSource?: string | null;
   /**
    *
-   * @type {boolean}
-   * @memberof CreateAwardSchemeRequest
    */
   isRanked?: boolean;
   /**
    *
-   * @type {boolean}
-   * @memberof CreateAwardSchemeRequest
    */
   isFixedAmount?: boolean;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateAwardSchemeRequest
    */
   materialDescription?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardSchemeRequest
    */
   applicationStartAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardSchemeRequest
    */
   applicationEndAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardSchemeRequest
    */
   publicityStartAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardSchemeRequest
    */
   publicityEndAt?: Date | null;
   /**
    *
-   * @type {CreateAwardSchemeRequestSchemeStatusEnum}
-   * @memberof CreateAwardSchemeRequest
    */
   schemeStatus?: CreateAwardSchemeRequestSchemeStatusEnum;
   /**
    *
-   * @type {Array<AwardLevelInput>}
-   * @memberof CreateAwardSchemeRequest
    */
   levels: Array<AwardLevelInput>;
 }
@@ -230,25 +196,25 @@ export function CreateAwardSchemeRequestFromJSONTyped(
         ? undefined
         : json["applicationStartAt"] === null
           ? null
-          : new Date(json["applicationStartAt"]),
+          : parseDateTime(json["applicationStartAt"]),
     applicationEndAt:
       json["applicationEndAt"] === undefined
         ? undefined
         : json["applicationEndAt"] === null
           ? null
-          : new Date(json["applicationEndAt"]),
+          : parseDateTime(json["applicationEndAt"]),
     publicityStartAt:
       json["publicityStartAt"] === undefined
         ? undefined
         : json["publicityStartAt"] === null
           ? null
-          : new Date(json["publicityStartAt"]),
+          : parseDateTime(json["publicityStartAt"]),
     publicityEndAt:
       json["publicityEndAt"] === undefined
         ? undefined
         : json["publicityEndAt"] === null
           ? null
-          : new Date(json["publicityEndAt"]),
+          : parseDateTime(json["publicityEndAt"]),
     schemeStatus: json["schemeStatus"] == null ? undefined : json["schemeStatus"],
     levels: (json["levels"] as Array<any>).map(AwardLevelInputFromJSON),
   };
@@ -281,19 +247,19 @@ export function CreateAwardSchemeRequestToJSONTyped(
     applicationStartAt:
       value["applicationStartAt"] == null
         ? value["applicationStartAt"]
-        : value["applicationStartAt"].toISOString(),
+        : serializeDateTime(value["applicationStartAt"]),
     applicationEndAt:
       value["applicationEndAt"] == null
         ? value["applicationEndAt"]
-        : value["applicationEndAt"].toISOString(),
+        : serializeDateTime(value["applicationEndAt"]),
     publicityStartAt:
       value["publicityStartAt"] == null
         ? value["publicityStartAt"]
-        : value["publicityStartAt"].toISOString(),
+        : serializeDateTime(value["publicityStartAt"]),
     publicityEndAt:
       value["publicityEndAt"] == null
         ? value["publicityEndAt"]
-        : value["publicityEndAt"].toISOString(),
+        : serializeDateTime(value["publicityEndAt"]),
     schemeStatus: value["schemeStatus"],
     levels: (value["levels"] as Array<any>).map(AwardLevelInputToJSON),
   };

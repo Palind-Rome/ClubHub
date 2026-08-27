@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 import type { AwardPublicityItemRecord } from "./AwardPublicityItemRecord";
 import {
   AwardPublicityItemRecordFromJSON,
@@ -30,86 +30,58 @@ import {
 export interface AwardPublicityBatchRecord {
   /**
    * 公示批次 ID。
-   * @type {number}
-   * @memberof AwardPublicityBatchRecord
    */
   publicityBatchId: number;
   /**
    * 所属社团 ID。
-   * @type {number}
-   * @memberof AwardPublicityBatchRecord
    */
   clubId: number;
   /**
    * 所属社团名称。
-   * @type {string}
-   * @memberof AwardPublicityBatchRecord
    */
   clubName: string;
   /**
    * 公示标题。
-   * @type {string}
-   * @memberof AwardPublicityBatchRecord
    */
   title: string;
   /**
    * 公示说明。
-   * @type {string}
-   * @memberof AwardPublicityBatchRecord
    */
   description?: string | null;
   /**
    * 公示开始时间。
-   * @type {Date}
-   * @memberof AwardPublicityBatchRecord
    */
   publicityStartAt?: Date | null;
   /**
    * 公示结束时间。
-   * @type {Date}
-   * @memberof AwardPublicityBatchRecord
    */
   publicityEndAt?: Date | null;
   /**
    * 公示批次状态。
-   * @type {AwardPublicityBatchRecordPublicityStatusEnum}
-   * @memberof AwardPublicityBatchRecord
    */
   publicityStatus: AwardPublicityBatchRecordPublicityStatusEnum;
   /**
    * 公示批次状态中文文案。
-   * @type {string}
-   * @memberof AwardPublicityBatchRecord
    */
   publicityStatusText: string;
   /**
    * 发布人用户 ID。
-   * @type {number}
-   * @memberof AwardPublicityBatchRecord
    */
   publisherUserId?: number | null;
   /**
    * 发布人展示名。
-   * @type {string}
-   * @memberof AwardPublicityBatchRecord
    */
   publisherName?: string | null;
   /**
    * 批次创建时间。
-   * @type {Date}
-   * @memberof AwardPublicityBatchRecord
    */
   createdAt: Date;
   /**
    * 批次最近更新时间。
-   * @type {Date}
-   * @memberof AwardPublicityBatchRecord
    */
   updatedAt: Date;
   /**
    * 公示名单明细。
-   * @type {Array<AwardPublicityItemRecord>}
-   * @memberof AwardPublicityBatchRecord
    */
   items: Array<AwardPublicityItemRecord>;
 }
@@ -171,13 +143,13 @@ export function AwardPublicityBatchRecordFromJSONTyped(
         ? undefined
         : json["publicityStartAt"] === null
           ? null
-          : new Date(json["publicityStartAt"]),
+          : parseDateTime(json["publicityStartAt"]),
     publicityEndAt:
       json["publicityEndAt"] === undefined
         ? undefined
         : json["publicityEndAt"] === null
           ? null
-          : new Date(json["publicityEndAt"]),
+          : parseDateTime(json["publicityEndAt"]),
     publicityStatus: json["publicityStatus"],
     publicityStatusText: json["publicityStatusText"],
     publisherUserId:
@@ -192,8 +164,8 @@ export function AwardPublicityBatchRecordFromJSONTyped(
         : json["publisherName"] === null
           ? null
           : json["publisherName"],
-    createdAt: new Date(json["createdAt"]),
-    updatedAt: new Date(json["updatedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? json["updatedAt"] : parseDateTime(json["updatedAt"]),
     items: (json["items"] as Array<any>).map(AwardPublicityItemRecordFromJSON),
   };
 }
@@ -219,17 +191,19 @@ export function AwardPublicityBatchRecordToJSONTyped(
     publicityStartAt:
       value["publicityStartAt"] == null
         ? value["publicityStartAt"]
-        : value["publicityStartAt"].toISOString(),
+        : serializeDateTime(value["publicityStartAt"]),
     publicityEndAt:
       value["publicityEndAt"] == null
         ? value["publicityEndAt"]
-        : value["publicityEndAt"].toISOString(),
+        : serializeDateTime(value["publicityEndAt"]),
     publicityStatus: value["publicityStatus"],
     publicityStatusText: value["publicityStatusText"],
     publisherUserId: value["publisherUserId"],
     publisherName: value["publisherName"],
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
     items: (value["items"] as Array<any>).map(AwardPublicityItemRecordToJSON),
   };
 }

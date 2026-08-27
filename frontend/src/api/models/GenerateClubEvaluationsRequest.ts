@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface GenerateClubEvaluationsRequest {
   /**
    * 需要生成考核记录的学期或任期名称；需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
-   * @type {string}
-   * @memberof GenerateClubEvaluationsRequest
    */
   termName: string;
   /**
    * 是否刷新已存在的草稿记录；已公示记录始终不会覆盖。
-   * @type {boolean}
-   * @memberof GenerateClubEvaluationsRequest
    */
   overwriteDrafts?: boolean;
 }

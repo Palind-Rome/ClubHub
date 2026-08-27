@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface ReviewLearningItemRequest {
   /**
    * approved 表示审核通过并发布，rejected 表示驳回。
-   * @type {ReviewLearningItemRequestResultEnum}
-   * @memberof ReviewLearningItemRequest
    */
   result: ReviewLearningItemRequestResultEnum;
 }

@@ -37,62 +37,42 @@ import {
 export interface UserSummary {
   /**
    *
-   * @type {number}
-   * @memberof UserSummary
    */
   id: number;
   /**
    *
-   * @type {string}
-   * @memberof UserSummary
    */
   username?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserSummary
    */
   realName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserSummary
    */
   studentNo?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserSummary
    */
   displayName: string;
   /**
    *
-   * @type {string}
-   * @memberof UserSummary
    */
   accountStatus?: string | null;
   /**
    *
-   * @type {Array<UserRoleSummary>}
-   * @memberof UserSummary
    */
   roles: Array<UserRoleSummary>;
   /**
    *
-   * @type {Array<UserMembershipSummary>}
-   * @memberof UserSummary
    */
   memberships: Array<UserMembershipSummary>;
   /**
    *
-   * @type {boolean}
-   * @memberof UserSummary
    */
   canSubmitClubApplication: boolean;
   /**
    *
-   * @type {boolean}
-   * @memberof UserSummary
    */
   canReviewClubApplication: boolean;
 }

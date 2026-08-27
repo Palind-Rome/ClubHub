@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -90,6 +91,7 @@ public class ProjectsController : ControllerBase
 
         var query = _db.Projects.AsNoTracking();
         if (clubId is not null) query = query.Where(p => p.ClubId == clubId);
+        var totalCount = await query.CountAsync();
 
         var projects = await query
             .OrderByDescending(p => p.CreatedAt)
@@ -98,6 +100,7 @@ public class ProjectsController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
         var access = await BuildProjectTaskAccessContextAsync(projects);
+        ApiPagination.ApplyResponseHeaders(Request, Response, page, pageSize, totalCount);
 
         return Ok(projects
             .Select(project => ToProjectDto(project, CanViewProjectTasks(project, access.User, access.ActiveMemberProjectIds)))
@@ -266,6 +269,7 @@ public class ProjectsController : ControllerBase
     /// Reviews a project initiation application. Requirement 1.10 uses one advisor review round.
     /// </summary>
     [HttpPost("{projectId:int}/review")]
+    [HttpPost("{projectId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewProject")]
     [Authorize]
     public async Task<IActionResult> Review(int projectId, [FromBody] ReviewProjectRequest? req)
@@ -311,6 +315,7 @@ public class ProjectsController : ControllerBase
     /// Allows system admins, club leaders, or platform club admins to cancel eligible projects.
     /// </summary>
     [HttpPost("{projectId:int}/cancel")]
+    [HttpPatch("{projectId:int}")]
     [Authorize]
     public async Task<IActionResult> Cancel(int projectId, [FromBody] CancelProjectRequest? req)
     {

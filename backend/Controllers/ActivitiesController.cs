@@ -3,6 +3,7 @@ using System.Data;
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Extensions;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -53,7 +54,7 @@ public class ActivitiesController : ControllerBase
         var shouldCheckRegistration = currentUserId is > 0;
         var viewerUserId = currentUserId.GetValueOrDefault();
 
-        var activities = await _db.Activities
+        var query = _db.Activities
             .OrderBy(a => a.ActivityId)
             .Select(a => new ActivityDto(
                 a.ActivityId,
@@ -94,10 +95,14 @@ public class ActivitiesController : ControllerBase
                     (p.RegisterStatus == RegisterStatusPending ||
                      p.RegisterStatus == RegisterStatusAccepted ||
                      p.RegisterStatus == RegisterStatusOnsite))
-            ))
-            .ToListAsync();
+            ));
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query,
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(activities);
+        return Ok(page.Items);
     }
 
     [HttpPost]
@@ -308,6 +313,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [HttpPost("{activityId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewActivity")]
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
@@ -371,6 +377,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/budget/review")]
+    [HttpPost("{activityId:int}/budget-reviews")]
     [Authorize]
     public IActionResult ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
@@ -498,7 +505,7 @@ public class ActivitiesController : ControllerBase
             query = query.Where(row => row.participation.UserId == currentUserId.Value);
         }
 
-        var participations = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderBy(row => row.participation.ParticipationId)
             .Select(row => new ActivityParticipationDto(
                 row.participation.ParticipationId,
@@ -512,13 +519,14 @@ public class ActivitiesController : ControllerBase
                 row.participation.CheckoutAt,
                 row.participation.SignStatus,
                 row.participation.Remark
-            ))
-            .ToListAsync();
+            )), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(participations);
+        return Ok(page.Items);
     }
 
     [HttpPost("{activityId:int}/checkin")]
+    [HttpPost("{activityId:int}/checkins")]
     [Authorize]
     public async Task<IActionResult> Checkin(int activityId, [FromBody] ActivitySignRequest req)
     {
@@ -526,6 +534,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/checkout")]
+    [HttpPost("{activityId:int}/checkouts")]
     [Authorize]
     public async Task<IActionResult> Checkout(int activityId, [FromBody] ActivitySignRequest req)
     {

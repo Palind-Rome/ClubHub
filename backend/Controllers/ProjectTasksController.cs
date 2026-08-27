@@ -1,5 +1,6 @@
 using System.Data;
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -91,12 +92,15 @@ public class ProjectTasksController : ControllerBase
                 : item.TaskStatus != CompletedStatus));
         if (!canViewAll) query = query.Where(item => item.Assignees.Any(assignee => assignee.UserId == userId.Value));
 
-        var tasks = await query
-            .OrderBy(item => item.TaskStatus == CompletedStatus ? 1 : 0)
-            .ThenBy(item => item.DueDate)
-            .ThenBy(item => item.TaskId)
-            .ToListAsync();
-        return Ok(tasks.Select(ToDto).ToList());
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderBy(item => item.TaskStatus == CompletedStatus ? 1 : 0)
+                .ThenBy(item => item.DueDate)
+                .ThenBy(item => item.TaskId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToDto).ToList());
     }
 
     [HttpDelete("{taskId:int}")]
@@ -336,14 +340,18 @@ public class ProjectTasksController : ControllerBase
             return Error(403, "project_task_report_view_forbidden", "只有项目负责人或仍在参与项目的任务执行人可以查看任务进度记录。");
         }
 
-        var reports = await _db.ProjectTaskProgressReports
+        var reportsQuery = _db.ProjectTaskProgressReports
             .AsNoTracking()
             .Include(item => item.Reporter)
             .Where(item => item.TaskId == taskId)
             .OrderByDescending(item => item.SubmittedAt)
-            .ThenByDescending(item => item.TaskProgressReportId)
-            .ToListAsync();
-        return Ok(reports.Select(ToReportDto).ToList());
+            .ThenByDescending(item => item.TaskProgressReportId);
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            reportsQuery,
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToReportDto).ToList());
     }
 
     [HttpPost("{taskId:int}/deliverable")]

@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface UpdateVenueRequest {
   /**
    * 执行维护操作的用户 ID，用于校验 venue:update 权限。
-   * @type {number}
-   * @memberof UpdateVenueRequest
    */
   operatorUserId: number;
   /**
    *
-   * @type {string}
-   * @memberof UpdateVenueRequest
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateVenueRequest
    */
   building?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UpdateVenueRequest
    */
   roomNo?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof UpdateVenueRequest
    */
   capacity: number;
   /**
    *
-   * @type {number}
-   * @memberof UpdateVenueRequest
    */
   managerUserId?: number | null;
 }

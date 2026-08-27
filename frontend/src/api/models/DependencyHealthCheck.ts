@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface DependencyHealthCheck {
   /**
    *
-   * @type {DependencyHealthCheckStatusEnum}
-   * @memberof DependencyHealthCheck
    */
   status: DependencyHealthCheckStatusEnum;
   /**
    *
-   * @type {string}
-   * @memberof DependencyHealthCheck
    */
   description?: string | null;
 }

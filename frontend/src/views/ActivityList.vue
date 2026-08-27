@@ -389,7 +389,7 @@ async function loadActivities() {
       query.set("currentUserId", String(currentUserId.value));
     }
 
-    const url = query.toString() ? `/api/activities?${query}` : "/api/activities";
+    const url = query.toString() ? `/api/v1/activities?${query}` : "/api/v1/activities";
     activities.value = await requestJson<Activity[]>(url);
     activities.value = activities.value.map((activity) => ({
       ...activity,
@@ -411,7 +411,7 @@ async function loadClubOptions() {
   }
 
   try {
-    clubOptions.value = await requestJson<ClubOption[]>(`/api/clubs`);
+    clubOptions.value = await requestJson<ClubOption[]>(`/api/v1/clubs`);
   } catch (e) {
     clubOptions.value = [];
     ElMessage.error(e instanceof Error ? e.message : "社团列表加载失败");
@@ -473,7 +473,7 @@ async function createActivity() {
 
   saving.value = true;
   try {
-    await requestJson<Activity>("/api/activities", {
+    await requestJson<Activity>("/api/v1/activities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -508,7 +508,7 @@ async function registerActivity(activity: Activity) {
   registeringActivityId.value = activity.id;
   try {
     const result = await requestJson<{ currentParticipants?: number; message?: string }>(
-      `/api/activities/${activity.id}/registrations`,
+      `/api/v1/activities/${activity.id}/registrations`,
       {
         method: "POST",
       },
@@ -543,7 +543,7 @@ async function reviewActivity() {
 
   saving.value = true;
   try {
-    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/review`, {
+    await requestJson<Activity>(`/api/v1/activities/${currentActivity.value.id}/reviews`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -639,7 +639,7 @@ async function saveCheckinSettings() {
 
   saving.value = true;
   try {
-    await requestJson<Activity>(`/api/activities/${currentActivity.value.id}/checkin-settings`, {
+    await requestJson<Activity>(`/api/v1/activities/${currentActivity.value.id}/checkin-settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settingsForm.value),
@@ -674,7 +674,7 @@ async function submitSign() {
 
   saving.value = true;
   try {
-    await requestJson(`/api/activities/${currentActivity.value.id}/${signForm.value.type}`, {
+    await requestJson(`/api/v1/activities/${currentActivity.value.id}/${signForm.value.type}s`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -703,7 +703,7 @@ async function openParticipations(activity: Activity) {
   participationLoading.value = true;
   try {
     participations.value = await requestJson<ActivityParticipation[]>(
-      `/api/activities/${activity.id}/participations`,
+      `/api/v1/activities/${activity.id}/participations`,
     );
   } catch (e) {
     error.value = e instanceof Error ? e.message : "加载参与记录失败";

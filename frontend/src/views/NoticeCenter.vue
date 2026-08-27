@@ -147,7 +147,7 @@ async function loadClubs() {
   if (!currentUserId.value) return;
   clubLoading.value = true;
   try {
-    clubs.value = await requestJson<Club[]>(`/api/clubs`);
+    clubs.value = await requestJson<Club[]>(`/api/v1/clubs`);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "社团列表加载失败");
   } finally {
@@ -172,7 +172,7 @@ async function loadMembers() {
       includeHistory: "false",
     });
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === memberRequestId) members.value = data;
   } catch (e) {
@@ -201,7 +201,7 @@ async function loadNotices() {
     if (filters.clubId) query.set("clubId", String(filters.clubId));
     if (filters.unreadOnly) query.set("unreadOnly", "true");
 
-    const data = await requestJson<Notice[]>(`/api/notices?${query.toString()}`);
+    const data = await requestJson<Notice[]>(`/api/v1/notices?${query.toString()}`);
     if (requestId === noticeRequestId) notices.value = data;
   } catch (e) {
     if (requestId === noticeRequestId) {
@@ -282,20 +282,23 @@ async function submitNotice(noticeStatus: "draft" | "published") {
     if (noticeId !== null && editingNoticeVersion.value) {
       headers["If-Unmodified-Since"] = new Date(editingNoticeVersion.value).toUTCString();
     }
-    await requestJson<Notice>(noticeId === null ? "/api/notices" : `/api/notices/${noticeId}`, {
-      method: noticeId === null ? "POST" : "PATCH",
-      headers,
-      body: JSON.stringify({
-        noticeType: publishForm.noticeType,
-        title: publishForm.title,
-        content: publishForm.content,
-        targetType: publishForm.targetType,
-        clubId: target.clubId,
-        targetId: target.targetId,
-        expireAt: publishForm.expireAt || null,
-        noticeStatus,
-      }),
-    });
+    await requestJson<Notice>(
+      noticeId === null ? "/api/v1/notices" : `/api/v1/notices/${noticeId}`,
+      {
+        method: noticeId === null ? "POST" : "PATCH",
+        headers,
+        body: JSON.stringify({
+          noticeType: publishForm.noticeType,
+          title: publishForm.title,
+          content: publishForm.content,
+          targetType: publishForm.targetType,
+          clubId: target.clubId,
+          targetId: target.targetId,
+          expireAt: publishForm.expireAt || null,
+          noticeStatus,
+        }),
+      },
+    );
     ElMessage.success(noticeStatus === "draft" ? "通知草稿已保存" : "通知已发布");
     publishDialogVisible.value = false;
     editingNoticeId.value = null;
@@ -326,7 +329,7 @@ async function publishDraft(row: Notice) {
 
   draftActionId.value = row.id;
   try {
-    await requestJson<Notice>(`/api/notices/${row.id}`, {
+    await requestJson<Notice>(`/api/v1/notices/${row.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -358,7 +361,7 @@ async function deleteDraft(row: Notice) {
 
   deletingId.value = row.id;
   try {
-    await requestJson<void>(`/api/notices/${row.id}`, {
+    await requestJson<void>(`/api/v1/notices/${row.id}`, {
       method: "DELETE",
       headers: { "If-Unmodified-Since": new Date(row.publishAt).toUTCString() },
     });
@@ -430,7 +433,7 @@ async function markRead(row: Notice) {
 
   markingId.value = row.id;
   try {
-    const result = await requestJson<NoticeReadResponse>(`/api/notices/${row.id}/reads`, {
+    const result = await requestJson<NoticeReadResponse>(`/api/v1/notices/${row.id}/reads`, {
       method: "POST",
     });
     row.isRead = result.isRead;

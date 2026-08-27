@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface AssignProjectLeaderRequest {
   /**
    * User id of a current valid club member.
-   * @type {number}
-   * @memberof AssignProjectLeaderRequest
    */
   leaderUserId: number;
 }

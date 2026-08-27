@@ -1,6 +1,7 @@
 using System.Data;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -79,6 +80,7 @@ public class LearningController : ControllerBase
     /// 按学工号查询课程表单可使用的授课人，教师和学生均可选择，内部用户编号仅随选项提交。
     /// </summary>
     [HttpGet("instructor-lookup")]
+    [HttpGet("instructors")]
     public async Task<IActionResult> GetInstructorByUserNumber(
         [FromQuery] int clubId,
         [FromQuery] string? userNumber)
@@ -158,10 +160,110 @@ public class LearningController : ControllerBase
             .AsQueryable();
         if (clubId is not null) query = query.Where(item => item.ClubId == clubId.Value);
 
-        var items = await query
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenBy(item => item.ItemId)
-            .ToListAsync();
+        var candidateClubIds = await query
+            .Select(item => item.ClubId)
+            .Distinct()
+            .ToListAsync(HttpContext.RequestAborted);
+        var managedClubIds = candidateClubIds.Where(candidateClubId =>
+            HasPermission(permissionRoles, ResourceUploadPermission, candidateClubId) ||
+            HasPermission(permissionRoles, ResourceReviewPermission, candidateClubId) ||
+            HasPermission(permissionRoles, ResourceDeletePermission, candidateClubId)).ToArray();
+        var ownRecordClubIds = candidateClubIds
+            .Where(candidateClubId => HasPermission(permissionRoles, OwnRecordsViewPermission, candidateClubId))
+            .ToArray();
+        var clubViewIds = candidateClubIds
+            .Where(candidateClubId =>
+                HasPermission(permissionRoles, ClubResourceViewPermission, candidateClubId) &&
+                IsActiveClubMember(viewer, candidateClubId))
+            .ToArray();
+        var canViewPublic = HasPermission(permissionRoles, PublicViewPermission, null);
+        var source = _db.LearningItems.AsNoTracking();
+        var visibleItemIds = source
+            .Where(item => managedClubIds.Contains(item.ClubId))
+            .Select(item => item.ItemId);
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => item.TeacherUserId == currentUserId.Value &&
+                ((item.ItemType ?? string.Empty).Trim().ToLower() == "course" ||
+                 (item.ItemType ?? string.Empty).Trim().ToLower() == "lecture" ||
+                 (item.ItemType ?? string.Empty).Trim().ToLower() == "training"))
+            .Select(item => item.ItemId));
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => ownRecordClubIds.Contains(item.ClubId) &&
+                item.Records.Any(record => record.UserId == currentUserId.Value) &&
+                (item.Records
+                    .Where(record => record.UserId == currentUserId.Value)
+                    .OrderByDescending(record => record.EnrolledAt)
+                    .ThenByDescending(record => record.RecordId)
+                    .Select(record => record.EnrollStatus)
+                    .FirstOrDefault() ?? string.Empty).Trim().ToLower() !=
+                    LearningWorkflow.RecordStatusCancelled)
+            .Select(item => item.ItemId));
+        visibleItemIds = visibleItemIds.Union(source
+            .Where(item => item.UploaderUserId == currentUserId.Value &&
+                ((item.ItemStatus ?? string.Empty).Trim().ToLower() == LearningWorkflow.ItemStatusPendingReview ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == "pending" ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == "reviewing" ||
+                 (item.ItemStatus ?? string.Empty).Trim().ToLower() == LearningWorkflow.ItemStatusRejected))
+            .Select(item => item.ItemId));
+
+        var regularItems = source.Where(item =>
+            (item.ItemStatus ?? string.Empty).Trim() != string.Empty &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusDraft &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusPendingReview &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != "pending" &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != "reviewing" &&
+            (item.ItemStatus ?? string.Empty).Trim().ToLower() != LearningWorkflow.ItemStatusRejected);
+        if (canViewPublic)
+        {
+            visibleItemIds = visibleItemIds.Union(regularItems
+                .Where(item => (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityPublic)
+                .Select(item => item.ItemId));
+        }
+        visibleItemIds = visibleItemIds.Union(regularItems
+            .Where(item => clubViewIds.Contains(item.ClubId) &&
+                (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityClub)
+            .Select(item => item.ItemId));
+
+        var viewerDepartments = viewer.ClubMemberships
+            .Where(member => UsersController.IsActive(member.MemberStatus))
+            .Where(member => !string.IsNullOrWhiteSpace(member.DepartmentName))
+            .GroupBy(member => member.ClubId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(member => member.JoinAt)
+                    .ThenByDescending(member => member.MemberId)
+                    .First().DepartmentName!.Trim());
+        foreach (var (departmentClubId, departmentName) in viewerDepartments)
+        {
+            if (!HasPermission(permissionRoles, ClubResourceViewPermission, departmentClubId)) continue;
+            var capturedClubId = departmentClubId;
+            var capturedDepartment = departmentName.ToUpperInvariant();
+            visibleItemIds = visibleItemIds.Union(regularItems
+                .Where(item => item.ClubId == capturedClubId &&
+                    (item.Visibility ?? string.Empty).Trim().ToLower() == LearningWorkflow.VisibilityDepartment &&
+                    item.Uploader != null &&
+                    item.Uploader.ClubMemberships
+                        .Where(member => member.ClubId == capturedClubId &&
+                            (member.MemberStatus == null || member.MemberStatus == string.Empty ||
+                             member.MemberStatus.ToLower() == "active" ||
+                             member.MemberStatus.ToLower() == "normal" ||
+                             member.MemberStatus.ToLower() == "enabled") &&
+                            member.DepartmentName != null && member.DepartmentName.Trim() != string.Empty)
+                        .OrderByDescending(member => member.JoinAt)
+                        .ThenByDescending(member => member.MemberId)
+                        .Select(member => member.DepartmentName!.Trim().ToUpper())
+                        .FirstOrDefault() == capturedDepartment)
+                .Select(item => item.ItemId));
+        }
+
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query.Where(item => visibleItemIds.Contains(item.ItemId))
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.ItemId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        var items = page.Items;
         if (items.Count == 0) return Ok(Array.Empty<ApiLearningItem>());
 
         var itemIds = items.Select(item => item.ItemId).ToArray();
@@ -320,6 +422,7 @@ public class LearningController : ControllerBase
     /// 接收拖拽或文件选择器提交的单个文件，并直接创建对应的社团学习资源。
     /// </summary>
     [HttpPost("resources/upload")]
+    [HttpPost("resources")]
     [RequestSizeLimit(MaxUploadBytes + 1024 * 1024)]
     public async Task<IActionResult> UploadResource(
         [FromForm] int clubId,
@@ -646,11 +749,12 @@ public class LearningController : ControllerBase
     /// 校验资源访问权限后返回历史本地文件，或从私有 OSS 读取对象并流式传输。
     /// </summary>
     [HttpGet("items/{itemId:int}/file")]
-    public async Task<IActionResult> GetResourceFile(int itemId)
+    public async Task<IActionResult> GetResourceFile(int itemId, [FromQuery] bool download = false)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
+
         var item = await LoadLearningItemForAccessAsync(itemId);
         if (item is null)
         {
@@ -691,7 +795,8 @@ public class LearningController : ControllerBase
                 {
                     Response.ContentLength = metadata.ContentLength;
                 }
-                if (!string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
+                if (!download &&
+                    !string.IsNullOrWhiteSpace(metadata.ContentDisposition) &&
                     metadata.ContentDisposition.IndexOfAny(['\r', '\n']) < 0)
                 {
                     Response.Headers.ContentDisposition = metadata.ContentDisposition;
@@ -842,6 +947,7 @@ public class LearningController : ControllerBase
     /// 社团管理员或系统管理员审核待发布的课程、资源。
     /// </summary>
     [HttpPost("items/{itemId:int}/review")]
+    [HttpPost("items/{itemId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewLearningItem")]
     public async Task<IActionResult> ReviewItem(
         int itemId,
@@ -1156,6 +1262,7 @@ public class LearningController : ControllerBase
     /// 为视频、文档或资料创建或恢复当前用户的学习记录。
     /// </summary>
     [HttpPost("items/{itemId:int}/learning")]
+    [HttpPost("items/{itemId:int}/learning-records")]
     public async Task<IActionResult> StartLearning(int itemId)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
@@ -1242,94 +1349,62 @@ public class LearningController : ControllerBase
     }
 
     /// <summary>
-    /// 校验资源可见范围和下载设置，记录下载用户、时间及来源 IP。
+    /// 在客户端完成文件读取后，校验资源访问权限并追加成功下载审计日志。
     /// </summary>
     [HttpPost("items/{itemId:int}/download")]
-    public async Task<IActionResult> DownloadItem(int itemId)
+    [HttpPost("items/{itemId:int}/downloads")]
+    public async Task<IActionResult> RecordDownload(int itemId)
     {
         if (itemId <= 0) return BadRequest("资源 ID 必须大于 0。");
         var currentUserId = User.GetUserId();
         if (currentUserId is null) return Unauthorized("登录状态已失效，请重新登录。");
 
-        for (var attempt = 1; attempt <= MaxCreateRetries; attempt++)
+        var item = await LoadLearningItemForAccessAsync(itemId);
+        if (item is null) return NotFound("学习资源不存在。");
+
+        var user = await LoadUserAsync(currentUserId.Value);
+        if (user is null) return NotFound("当前用户不存在。");
+        if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
+        var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
+        if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
         {
-            await using var transaction =
-                await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
-
-            var item = await LoadLearningItemForAccessAsync(itemId);
-            if (item is null) return NotFound("学习资源不存在。");
-
-            var user = await LoadUserAsync(currentUserId.Value);
-            if (user is null) return NotFound("当前用户不存在。");
-            if (!UsersController.IsActive(user.AccountStatus)) return BadRequest("当前用户账号已停用。");
-            var permissionRoles = await _authService.GetPermissionRolesAsync(currentUserId.Value);
-            if (!HasPermission(permissionRoles, OwnRecordsViewPermission, item.ClubId))
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有下载学习资源的权限。");
-            }
-
-            var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
-            var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
-            var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
-            if (accessDecision is not null)
-            {
-                return StatusCode(accessDecision.StatusCode, accessDecision.Message);
-            }
-
-            var downloadDecision = GetDownloadDecision(item);
-            if (downloadDecision is not null)
-            {
-                return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
-            }
-
-            var downloadUrl = _objectStorage.IsStorageReference(item.FileUrl)
-                ? $"{LocalFileUrlPrefix}{itemId}/file"
-                : item.FileUrl!.Trim();
-
-            var now = LearningWorkflow.BusinessNow();
-            if (record is null)
-            {
-                record = new DbLearningRecord
-                {
-                    ItemId = itemId,
-                    UserId = currentUserId.Value,
-                    EnrollStatus = LearningWorkflow.RecordStatusLearning,
-                    EnrolledAt = now,
-                    Progress = 0,
-                    DurationSeconds = 0
-                };
-                _db.LearningRecords.Add(record);
-            }
-            else if (LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
-                     LearningWorkflow.RecordStatusCancelled)
-            {
-                record.EnrollStatus = LearningWorkflow.RecordStatusLearning;
-                record.EnrolledAt = now;
-            }
-
-            record.DownloadedAt = now;
-            record.DownloadIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            try
-            {
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return Ok(new ApiLearningDownloadResult
-                {
-                    ItemId = item.ItemId,
-                    Title = item.Title,
-                    FileUrl = downloadUrl,
-                    DownloadedAt = LearningWorkflow.AsUtc(now)
-                });
-            }
-            catch (DbUpdateException) when (attempt < MaxCreateRetries)
-            {
-                await transaction.RollbackAsync();
-                _db.ChangeTracker.Clear();
-            }
+            return StatusCode(StatusCodes.Status403Forbidden, "当前用户没有下载学习资源的权限。");
         }
 
-        return Conflict("记录下载行为时发生并发冲突，请重试。");
+        var record = await GetLatestLearningRecordAsync(itemId, currentUserId.Value);
+        var canManage = CanManageLearningItem(permissionRoles, item, currentUserId.Value);
+        var accessDecision = GetLearningAccessDecision(user, permissionRoles, item, record, canManage);
+        if (accessDecision is not null)
+        {
+            return StatusCode(accessDecision.StatusCode, accessDecision.Message);
+        }
+
+        var downloadDecision = GetDownloadDecision(item);
+        if (downloadDecision is not null)
+        {
+            return StatusCode(downloadDecision.StatusCode, downloadDecision.Message);
+        }
+
+        var now = LearningWorkflow.BusinessNow();
+        _db.OperationLogs.Add(new OperationLog
+        {
+            UserId = currentUserId.Value,
+            ModuleName = "learning",
+            OperationType = "download",
+            TargetTable = "LEARNING_ITEMS",
+            TargetId = item.ItemId,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+
+        return Ok(new ApiLearningDownloadResult
+        {
+            ItemId = item.ItemId,
+            Title = item.Title,
+            FileUrl = $"/api/v1/learning/items/{itemId}/file?download=true",
+            DownloadedAt = LearningWorkflow.AsUtc(now)
+        });
     }
 
     /// <summary>
@@ -1367,6 +1442,21 @@ public class LearningController : ControllerBase
             .ToList();
         var learnerCount = activeRecords.Count;
         var totalDuration = activeRecords.Sum(record => (long)(record.DurationSeconds ?? 0));
+        var auditedDownloadUserIds = await _db.OperationLogs
+            .AsNoTracking()
+            .Where(log =>
+                log.ModuleName == "learning" &&
+                log.OperationType == "download" &&
+                log.TargetTable == "LEARNING_ITEMS" &&
+                log.TargetId == itemId &&
+                log.UserId != null)
+            .Select(log => log.UserId!.Value)
+            .Distinct()
+            .ToListAsync();
+        var downloadCount = auditedDownloadUserIds
+            .Concat(records.Where(record => record.DownloadedAt.HasValue).Select(record => record.UserId))
+            .Distinct()
+            .Count();
 
         return Ok(new ApiLearningItemStatistics
         {
@@ -1377,7 +1467,7 @@ public class LearningController : ControllerBase
                 LearningWorkflow.NormalizeRecordStatus(record.EnrollStatus) ==
                     LearningWorkflow.RecordStatusCompleted ||
                 record.Progress >= 100),
-            DownloadCount = records.Count(record => record.DownloadedAt.HasValue),
+            DownloadCount = downloadCount,
             AverageProgress = learnerCount == 0
                 ? 0
                 : Math.Round(activeRecords.Average(record => (double)(record.Progress ?? 0)), 2),
@@ -1440,12 +1530,15 @@ public class LearningController : ControllerBase
             }
         }
 
-        var records = await query
-            .OrderByDescending(record => record.EnrolledAt)
-            .ThenBy(record => record.RecordId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(record => record.EnrolledAt)
+                .ThenBy(record => record.RecordId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(records.Select(ToRecordDto));
+        return Ok(page.Items.Select(ToRecordDto));
     }
 
     /// <summary>

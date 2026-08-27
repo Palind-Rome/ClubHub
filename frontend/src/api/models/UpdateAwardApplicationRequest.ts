@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface UpdateAwardApplicationRequest {
   /**
    *
-   * @type {number}
-   * @memberof UpdateAwardApplicationRequest
    */
   awardLevelId: number;
   /**
    *
-   * @type {string}
-   * @memberof UpdateAwardApplicationRequest
    */
   applicationReason: string;
   /**
    * 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
-   * @type {string}
-   * @memberof UpdateAwardApplicationRequest
    */
   materialUrl?: string | null;
 }

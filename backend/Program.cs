@@ -1,6 +1,7 @@
 using ClubHub.Api.Data;
 using ClubHub.Api.Infrastructure.Redis;
 using ClubHub.Api.Infrastructure.Idempotency;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Api.Validation;
 using System.Text.Json.Serialization.Metadata;
@@ -12,7 +13,11 @@ using Org.OpenAPITools.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Conventions.Insert(0, new ApiVersionRouteConvention());
+        options.Filters.Add<ApiErrorResultFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, new DefaultJsonTypeInfoResolver
@@ -84,12 +89,42 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseForwardedHeaders();
 
+app.Use(async (context, next) =>
+{
+    if (ApiRouteDeprecation.IsDeprecated(context.Request.Path))
+    {
+        context.Response.Headers["Deprecation"] = "true";
+        context.Response.Headers["Sunset"] = "Thu, 31 Dec 2026 16:00:00 GMT";
+        if (ApiRouteDeprecation.TryGetSuccessor(context.Request.Path, out var successorPath))
+        {
+            var querySeparator = successorPath.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+            var successorQuery = context.Request.QueryString.HasValue
+                ? $"{querySeparator}{context.Request.QueryString.Value![1..]}"
+                : string.Empty;
+            context.Response.Headers.Link =
+                $"<{successorPath}{successorQuery}>; rel=\"successor-version\"";
+        }
+    }
+
+    await next();
+});
+
 app.UseCors(policy =>
     policy.AllowAnyOrigin()
           .AllowAnyMethod()
           .AllowAnyHeader());
 
 app.UseRouting();
+
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var response = statusCodeContext.HttpContext.Response;
+    var request = statusCodeContext.HttpContext.Request;
+    if (request.Path.StartsWithSegments("/api") && response.StatusCode >= 400)
+    {
+        await response.WriteAsJsonAsync(ApiErrorFactory.Create(response.StatusCode));
+    }
+});
 
 app.Use(async (context, next) =>
 {
@@ -100,10 +135,9 @@ app.Use(async (context, next) =>
     catch (PermissionSnapshotUnavailableException) when (!context.Response.HasStarted)
     {
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-        await context.Response.WriteAsJsonAsync(new
-        {
-            message = "无法安全失效权限缓存，本次写入已回滚，请稍后重试。"
-        });
+        await context.Response.WriteAsJsonAsync(ApiErrorFactory.Create(
+            StatusCodes.Status503ServiceUnavailable,
+            "无法安全失效权限缓存，本次写入已回滚，请稍后重试。"));
     }
 });
 

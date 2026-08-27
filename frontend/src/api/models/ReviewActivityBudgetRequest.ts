@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewActivityBudgetRequest {
   /**
    * 经费审批结果，true 为通过，false 为驳回。
-   * @type {boolean}
-   * @memberof ReviewActivityBudgetRequest
    */
   approved: boolean;
   /**
    * 经费审批意见。
-   * @type {string}
-   * @memberof ReviewActivityBudgetRequest
    */
   comment?: string | null;
 }

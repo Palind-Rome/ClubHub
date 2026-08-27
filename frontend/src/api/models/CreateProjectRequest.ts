@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * Request body for creating a project initiation application.
  * @export
@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface CreateProjectRequest {
   /**
    * Club that submits the project application.
-   * @type {number}
-   * @memberof CreateProjectRequest
    */
   clubId: number;
   /**
    * Project name.
-   * @type {string}
-   * @memberof CreateProjectRequest
    */
   projectName: string;
   /**
    * Optional project description.
-   * @type {string}
-   * @memberof CreateProjectRequest
    */
   description?: string | null;
   /**
    * Optional project leader user id.
-   * @type {number}
-   * @memberof CreateProjectRequest
    */
   leaderUserId?: number | null;
   /**
    * Planned project start time.
-   * @type {Date}
-   * @memberof CreateProjectRequest
    */
   startDate: Date;
   /**
    * Optional planned project end time.
-   * @type {Date}
-   * @memberof CreateProjectRequest
    */
   endDate?: Date | null;
 }
@@ -94,13 +82,13 @@ export function CreateProjectRequestFromJSONTyped(
         : json["leaderUserId"] === null
           ? null
           : json["leaderUserId"],
-    startDate: new Date(json["startDate"]),
+    startDate: json["startDate"] == null ? json["startDate"] : parseDateTime(json["startDate"]),
     endDate:
       json["endDate"] === undefined
         ? undefined
         : json["endDate"] === null
           ? null
-          : new Date(json["endDate"]),
+          : parseDateTime(json["endDate"]),
   };
 }
 
@@ -121,7 +109,8 @@ export function CreateProjectRequestToJSONTyped(
     projectName: value["projectName"],
     description: value["description"],
     leaderUserId: value["leaderUserId"],
-    startDate: value["startDate"].toISOString(),
-    endDate: value["endDate"] == null ? value["endDate"] : value["endDate"].toISOString(),
+    startDate:
+      value["startDate"] == null ? value["startDate"] : serializeDateTime(value["startDate"]),
+    endDate: value["endDate"] == null ? value["endDate"] : serializeDateTime(value["endDate"]),
   };
 }

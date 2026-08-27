@@ -26,7 +26,7 @@ describe("requestJson", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(requestJson<{ ok: boolean }>("/api/example")).resolves.toEqual({ ok: true });
+    await expect(requestJson<{ ok: boolean }>("/api/v1/example")).resolves.toEqual({ ok: true });
     const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(requestInit.headers).get("Authorization")).toBe("Bearer api-token");
   });
@@ -36,7 +36,7 @@ describe("requestJson", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await requestJson("/api/example", { headers: { Authorization: "Bearer explicit-token" } });
+    await requestJson("/api/v1/example", { headers: { Authorization: "Bearer explicit-token" } });
     const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(requestInit.headers).get("Authorization")).toBe("Bearer explicit-token");
   });
@@ -45,7 +45,7 @@ describe("requestJson", () => {
     saveAuth(auth);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
 
-    await expect(requestJson("/api/example")).rejects.toThrow("登录状态已失效");
+    await expect(requestJson("/api/v1/example")).rejects.toThrow("登录状态已失效");
     expect(readAuth()).toBeNull();
   });
 
@@ -60,6 +60,6 @@ describe("requestJson", () => {
       ),
     );
 
-    await expect(requestJson("/api/example")).rejects.toThrow("场地不可用");
+    await expect(requestJson("/api/v1/example")).rejects.toThrow("场地不可用");
   });
 });

@@ -212,7 +212,7 @@ async function loadClubs() {
 
   clubLoading.value = true;
   try {
-    const data = await requestJson<Club[]>(`/api/clubs`);
+    const data = await requestJson<Club[]>(`/api/v1/clubs`);
     if (requestId !== clubRequestId) return;
     clubs.value = data;
     syncSelectedClubFilter();
@@ -237,10 +237,10 @@ async function loadRecruitments() {
   loading.value = true;
   error.value = "";
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    const query = new URLSearchParams();
     if (filters.status) query.set("status", filters.status);
     if (filters.clubId) query.set("clubId", String(filters.clubId));
-    const data = await requestJson<Recruitment[]>(`/api/recruitments?${query.toString()}`);
+    const data = await requestJson<Recruitment[]>(`/api/v1/recruitments?${query.toString()}`);
     if (requestId !== recruitmentRequestId) return;
     recruitments.value = data;
     await syncApplicationWorkbench(requestId);
@@ -290,7 +290,7 @@ async function loadApplications(row: Recruitment) {
   applicationLoading.value = true;
   try {
     const data = await requestJson<RecruitmentApplication[]>(
-      `/api/recruitments/${row.id}/applications?viewerUserId=${currentUserId.value}`,
+      `/api/v1/recruitments/${row.id}/applications`,
     );
     if (requestId === applicationRequestId) applications.value = data;
   } catch (e) {
@@ -379,7 +379,6 @@ async function submitRecruitment(action: RecruitmentWorkflowStatus) {
   saving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       clubId: recruitmentForm.clubId,
       title: recruitmentForm.title,
       description: emptyToNull(recruitmentForm.description),
@@ -391,14 +390,14 @@ async function submitRecruitment(action: RecruitmentWorkflowStatus) {
     };
 
     if (recruitmentFormMode.value === "create") {
-      await requestJson<Recruitment>("/api/recruitments", {
+      await requestJson<Recruitment>("/api/v1/recruitments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
     } else if (recruitmentTarget.value) {
-      await requestJson<Recruitment>(`/api/recruitments/${recruitmentTarget.value.id}`, {
+      await requestJson<Recruitment>(`/api/v1/recruitments/${recruitmentTarget.value.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -438,12 +437,11 @@ async function submitApplication() {
   applying.value = true;
   try {
     await requestJson<RecruitmentApplication>(
-      `/api/recruitments/${applicationTarget.value.id}/applications`,
+      `/api/v1/recruitments/${applicationTarget.value.id}/applications`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           applicationReason: applicationForm.applicationReason,
         }),
       },
@@ -489,7 +487,7 @@ async function deleteDraftRecruitment(row: Recruitment) {
 
   saving.value = true;
   try {
-    await requestJson<void>(`/api/recruitments/${row.id}?currentUserId=${currentUserId.value}`, {
+    await requestJson<void>(`/api/v1/recruitments/${row.id}`, {
       method: "DELETE",
     });
     ElMessage.success("草稿已删除");
@@ -520,11 +518,10 @@ async function reviewRecruitment(row: Recruitment, decision: RecruitmentReviewDe
 
   recruitmentReviewing.value = true;
   try {
-    await requestJson<Recruitment>(`/api/recruitments/${row.id}/review`, {
-      method: "PATCH",
+    await requestJson<Recruitment>(`/api/v1/recruitments/${row.id}/reviews`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         decision,
       }),
     });
@@ -572,12 +569,11 @@ async function submitReview() {
   reviewing.value = true;
   try {
     await requestJson<RecruitmentApplication>(
-      `/api/recruitments/applications/${reviewTarget.value.id}/review`,
+      `/api/v1/applications/${reviewTarget.value.id}/reviews`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           decision: reviewForm.decision,
           interviewScore: reviewForm.interviewScore,
         }),

@@ -1,4 +1,5 @@
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -94,8 +95,12 @@ public class ProjectMembersController : ControllerBase
 
         await _membershipService.EnsureLeaderMembershipAsync(project);
 
-        var candidates = await _membershipService.GetCandidateUsersAsync(project);
-        return Ok(candidates.Select(ToCandidateDto).ToList());
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            _membershipService.GetCandidateUsersQuery(project),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
+        return Ok(page.Items.Select(ToCandidateDto).ToList());
     }
 
     [HttpPost("members")]

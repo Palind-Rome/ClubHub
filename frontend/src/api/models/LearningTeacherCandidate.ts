@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface LearningTeacherCandidate {
   /**
    * 选择授课人后提交的内部用户 ID。
-   * @type {number}
-   * @memberof LearningTeacherCandidate
    */
   id: number;
   /**
    * 授课人姓名。
-   * @type {string}
-   * @memberof LearningTeacherCandidate
    */
   realName?: string | null;
   /**
    * 授课人的学号或工号。
-   * @type {string}
-   * @memberof LearningTeacherCandidate
    */
   studentNo?: string | null;
   /**
    * 包含教师或学生身份、姓名及学工号的展示文本。
-   * @type {string}
-   * @memberof LearningTeacherCandidate
    */
   displayName: string;
 }

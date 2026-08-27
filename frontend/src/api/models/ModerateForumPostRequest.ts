@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ModerateForumPostRequest {
   /**
    * 是否置顶；仅一级话题可以置顶，回复必须为 false。
-   * @type {boolean}
-   * @memberof ModerateForumPostRequest
    */
   isTop: boolean;
   /**
    * 管理后的帖子状态；hidden 表示隐藏内容，仅管理员可查看。
-   * @type {ModerateForumPostRequestPostStatusEnum}
-   * @memberof ModerateForumPostRequest
    */
   postStatus: ModerateForumPostRequestPostStatusEnum;
 }

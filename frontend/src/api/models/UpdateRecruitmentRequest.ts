@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 import type { RecruitmentWorkflowStatus } from "./RecruitmentWorkflowStatus";
 import {
   RecruitmentWorkflowStatusFromJSON,
@@ -30,50 +30,30 @@ import {
 export interface UpdateRecruitmentRequest {
   /**
    *
-   * @type {number}
-   * @memberof UpdateRecruitmentRequest
-   */
-  currentUserId: number;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateRecruitmentRequest
    */
   title?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UpdateRecruitmentRequest
    */
   description?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateRecruitmentRequest
    */
   startAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateRecruitmentRequest
    */
   endAt?: Date | null;
   /**
    *
-   * @type {number}
-   * @memberof UpdateRecruitmentRequest
    */
   quota?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof UpdateRecruitmentRequest
    */
   requirements?: string | null;
   /**
    * 仅允许 draft 或 pending_review；后端会拒绝其他状态，发布者不能直接改为开放或结束状态。
-   * @type {RecruitmentWorkflowStatus}
-   * @memberof UpdateRecruitmentRequest
    */
   recruitStatus?: RecruitmentWorkflowStatus | null;
 }
@@ -84,7 +64,6 @@ export interface UpdateRecruitmentRequest {
 export function instanceOfUpdateRecruitmentRequest(
   value: object,
 ): value is UpdateRecruitmentRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   return true;
 }
 
@@ -100,7 +79,6 @@ export function UpdateRecruitmentRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     title: json["title"] === undefined ? undefined : json["title"] === null ? null : json["title"],
     description:
       json["description"] === undefined
@@ -113,13 +91,13 @@ export function UpdateRecruitmentRequestFromJSONTyped(
         ? undefined
         : json["startAt"] === null
           ? null
-          : new Date(json["startAt"]),
+          : parseDateTime(json["startAt"]),
     endAt:
       json["endAt"] === undefined
         ? undefined
         : json["endAt"] === null
           ? null
-          : new Date(json["endAt"]),
+          : parseDateTime(json["endAt"]),
     quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
     requirements:
       json["requirements"] === undefined
@@ -149,11 +127,10 @@ export function UpdateRecruitmentRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     title: value["title"],
     description: value["description"],
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
-    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     quota: value["quota"],
     requirements: value["requirements"],
     recruitStatus: RecruitmentWorkflowStatusToJSON(value["recruitStatus"]),

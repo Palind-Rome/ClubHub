@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 创建课程或上传学习资源的请求。
  * @export
@@ -22,80 +22,54 @@ import { mapValues } from "../runtime";
 export interface CreateLearningItemRequest {
   /**
    * 发布资源的社团。
-   * @type {number}
-   * @memberof CreateLearningItemRequest
    */
   clubId: number;
   /**
    * 课程或资源标题。
-   * @type {string}
-   * @memberof CreateLearningItemRequest
    */
   title: string;
   /**
    * 课程或资源说明。
-   * @type {string}
-   * @memberof CreateLearningItemRequest
    */
   description?: string | null;
   /**
    * 可选的课程授课人，可以是教师或学生；非课程资源可为空。
-   * @type {number}
-   * @memberof CreateLearningItemRequest
    */
   instructorUserId?: number | null;
   /**
    * 支持 course、lecture、training、video、document、material。
-   * @type {string}
-   * @memberof CreateLearningItemRequest
    */
   itemType: string;
   /**
    * 资源分类。
-   * @type {string}
-   * @memberof CreateLearningItemRequest
    */
   categoryName?: string | null;
   /**
    * 视频、文档或资料的 HTTP/HTTPS 文件地址；非课程资源必填。
-   * @type {string}
-   * @memberof CreateLearningItemRequest
    */
   fileUrl?: string | null;
   /**
    * 课程开始时间；课程类型必填。
-   * @type {Date}
-   * @memberof CreateLearningItemRequest
    */
   startAt?: Date | null;
   /**
    * 课程结束时间。
-   * @type {Date}
-   * @memberof CreateLearningItemRequest
    */
   endAt?: Date | null;
   /**
    * 课程容量；课程类型必填。
-   * @type {number}
-   * @memberof CreateLearningItemRequest
    */
   capacity?: number | null;
   /**
    * 公开、社团内或上传人所在部门内可见。
-   * @type {CreateLearningItemRequestVisibilityEnum}
-   * @memberof CreateLearningItemRequest
    */
   visibility: CreateLearningItemRequestVisibilityEnum;
   /**
    * 是否允许直接下载；课程无文件时建议 deny。
-   * @type {CreateLearningItemRequestDownloadPermissionEnum}
-   * @memberof CreateLearningItemRequest
    */
   downloadPermission: CreateLearningItemRequestDownloadPermissionEnum;
   /**
    * 初始发布状态。
-   * @type {CreateLearningItemRequestItemStatusEnum}
-   * @memberof CreateLearningItemRequest
    */
   itemStatus: CreateLearningItemRequestItemStatusEnum;
 }
@@ -187,13 +161,13 @@ export function CreateLearningItemRequestFromJSONTyped(
         ? undefined
         : json["startAt"] === null
           ? null
-          : new Date(json["startAt"]),
+          : parseDateTime(json["startAt"]),
     endAt:
       json["endAt"] === undefined
         ? undefined
         : json["endAt"] === null
           ? null
-          : new Date(json["endAt"]),
+          : parseDateTime(json["endAt"]),
     capacity:
       json["capacity"] === undefined
         ? undefined
@@ -226,8 +200,8 @@ export function CreateLearningItemRequestToJSONTyped(
     itemType: value["itemType"],
     categoryName: value["categoryName"],
     fileUrl: value["fileUrl"],
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
-    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     capacity: value["capacity"],
     visibility: value["visibility"],
     downloadPermission: value["downloadPermission"],

@@ -151,7 +151,7 @@ public class ProjectMembershipService
         return false;
     }
 
-    public Task<List<User>> GetCandidateUsersAsync(Project project)
+    public IQueryable<User> GetCandidateUsersQuery(Project project)
     {
         var businessDate = DateTime.UtcNow.Date;
 
@@ -170,8 +170,7 @@ public class ProjectMembershipService
                 member.MemberStatus == ActiveStatus))
             .OrderBy(user => user.RealName)
             .ThenBy(user => user.StudentNo)
-            .ThenBy(user => user.UserId)
-            .ToListAsync();
+            .ThenBy(user => user.UserId);
     }
 
     /// <summary>

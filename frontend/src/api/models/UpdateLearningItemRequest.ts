@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 更新课程或学习资源的请求。
  * @export
@@ -22,74 +22,50 @@ import { mapValues } from "../runtime";
 export interface UpdateLearningItemRequest {
   /**
    * 课程或资源标题。
-   * @type {string}
-   * @memberof UpdateLearningItemRequest
    */
   title: string;
   /**
    * 课程或资源说明。
-   * @type {string}
-   * @memberof UpdateLearningItemRequest
    */
   description?: string | null;
   /**
    * 可选的课程授课人，可以是教师或学生；非课程资源可为空。
-   * @type {number}
-   * @memberof UpdateLearningItemRequest
    */
   instructorUserId?: number | null;
   /**
    * 支持 course、lecture、training、video、document、material。
-   * @type {string}
-   * @memberof UpdateLearningItemRequest
    */
   itemType: string;
   /**
    * 资源分类。
-   * @type {string}
-   * @memberof UpdateLearningItemRequest
    */
   categoryName?: string | null;
   /**
    * 视频、文档或资料的 HTTP/HTTPS 文件地址。
-   * @type {string}
-   * @memberof UpdateLearningItemRequest
    */
   fileUrl?: string | null;
   /**
    * 课程开始时间。
-   * @type {Date}
-   * @memberof UpdateLearningItemRequest
    */
   startAt?: Date | null;
   /**
    * 课程结束时间。
-   * @type {Date}
-   * @memberof UpdateLearningItemRequest
    */
   endAt?: Date | null;
   /**
    * 课程容量。
-   * @type {number}
-   * @memberof UpdateLearningItemRequest
    */
   capacity?: number | null;
   /**
    * 公开、社团内或上传人所在部门内可见。
-   * @type {UpdateLearningItemRequestVisibilityEnum}
-   * @memberof UpdateLearningItemRequest
    */
   visibility: UpdateLearningItemRequestVisibilityEnum;
   /**
    * 下载设置。
-   * @type {UpdateLearningItemRequestDownloadPermissionEnum}
-   * @memberof UpdateLearningItemRequest
    */
   downloadPermission: UpdateLearningItemRequestDownloadPermissionEnum;
   /**
    * 更新后的发布状态。
-   * @type {UpdateLearningItemRequestItemStatusEnum}
-   * @memberof UpdateLearningItemRequest
    */
   itemStatus: UpdateLearningItemRequestItemStatusEnum;
 }
@@ -180,13 +156,13 @@ export function UpdateLearningItemRequestFromJSONTyped(
         ? undefined
         : json["startAt"] === null
           ? null
-          : new Date(json["startAt"]),
+          : parseDateTime(json["startAt"]),
     endAt:
       json["endAt"] === undefined
         ? undefined
         : json["endAt"] === null
           ? null
-          : new Date(json["endAt"]),
+          : parseDateTime(json["endAt"]),
     capacity:
       json["capacity"] === undefined
         ? undefined
@@ -218,8 +194,8 @@ export function UpdateLearningItemRequestToJSONTyped(
     itemType: value["itemType"],
     categoryName: value["categoryName"],
     fileUrl: value["fileUrl"],
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
-    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     capacity: value["capacity"],
     visibility: value["visibility"],
     downloadPermission: value["downloadPermission"],

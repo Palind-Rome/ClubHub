@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface SubmitProjectTaskDeliverableRequest {
   /**
    * 成果标题。
-   * @type {string}
-   * @memberof SubmitProjectTaskDeliverableRequest
    */
   deliverableTitle: string;
   /**
    * 成果说明。
-   * @type {string}
-   * @memberof SubmitProjectTaskDeliverableRequest
    */
   deliverableDesc?: string | null;
   /**
    * 成果链接，仅允许 HTTP 或 HTTPS 地址。
-   * @type {string}
-   * @memberof SubmitProjectTaskDeliverableRequest
    */
   deliverableUrl?: string | null;
 }

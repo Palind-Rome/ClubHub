@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Rest;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Org.OpenAPITools.Models;
 
 namespace ClubHub.Api.Services;
 
@@ -137,13 +137,11 @@ public sealed class AuthTokenAuthenticationHandler : AuthenticationHandler<Authe
         Response.StatusCode = unavailable
             ? StatusCodes.Status503ServiceUnavailable
             : StatusCodes.Status401Unauthorized;
-        await Response.WriteAsJsonAsync(new ApiError
-        {
-            Code = unavailable ? "auth_session_unavailable" : "authentication_required",
-            Message = unavailable
+        await Response.WriteAsJsonAsync(ApiErrorFactory.Create(
+            Response.StatusCode,
+            unavailable
                 ? "会话服务暂不可用，请稍后重试。"
-                : "登录状态已失效，请重新登录。"
-        });
+                : "登录状态已失效，请重新登录。"));
     }
 
     private const string AuthSessionUnavailableItemKey = "clubhub.auth-session-unavailable";

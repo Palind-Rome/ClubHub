@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 社团成员学期考核或评优评奖结果记录，对应 EVALUATIONS 表。
  * @export
@@ -22,164 +22,110 @@ import { mapValues } from "../runtime";
 export interface ClubEvaluationRecord {
   /**
    * 评价记录 ID。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   evaluationId: number;
   /**
    * semester 表示学期考核，award 表示评优评奖结果。
-   * @type {ClubEvaluationRecordEvaluationTypeEnum}
-   * @memberof ClubEvaluationRecord
    */
   evaluationType: ClubEvaluationRecordEvaluationTypeEnum;
   /**
    * 评价类型中文文案。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   evaluationTypeText: string;
   /**
    * 所属社团 ID。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   clubId: number;
   /**
    * 所属社团名称。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   clubName: string;
   /**
    * 被考核或获奖成员用户 ID。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   userId: number;
   /**
    * 被考核或获奖成员姓名。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   userName: string;
   /**
    * 被考核或获奖成员学号。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   studentNo?: string | null;
   /**
    * 成员当前所属部门。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   departmentName?: string | null;
   /**
    * 成员当前所属小组。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   groupName?: string | null;
   /**
    * 成员当前职位。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   positionName?: string | null;
   /**
    * 录入或最后维护该记录的用户 ID。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   evaluatorUserId?: number | null;
   /**
    * 录入或最后维护该记录的用户姓名。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   evaluatorName?: string | null;
   /**
    * 考核或评奖所属学期。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   termName: string;
   /**
    * 评奖评优标题；学期考核时为空。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   awardTitle?: string | null;
   /**
    * 奖项等级；学期考核时为空。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   awardLevel?: string | null;
   /**
    * 获奖原因或推荐理由；学期考核时为空。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   awardReason?: string | null;
   /**
    * 活动参与得分，取值范围 0-100；学期考核由后端根据活动签到、签退和参与记录生成。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   activityScore: number;
   /**
    * 项目任务得分，取值范围 0-100；学期考核由后端根据项目任务进度、完成状态和成果审核生成。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   taskScore: number;
   /**
    * 学习记录得分，取值范围 0-100；学期考核由后端根据课程学习记录和进度生成。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   learningScore: number;
   /**
    * 奖项分，取值范围 0-100；学期考核由后端汇总同社团、同成员、同学期的评优评奖记录生成。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   awardScore: number;
   /**
    * 后端汇总计算的总分，满分 400。
-   * @type {number}
-   * @memberof ClubEvaluationRecord
    */
   totalScore: number;
   /**
    * 后端根据总分计算的等级。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   grade: string;
   /**
    * 公示状态；draft 为草稿，published 为已公示。
-   * @type {ClubEvaluationRecordPublicStatusEnum}
-   * @memberof ClubEvaluationRecord
    */
   publicStatus: ClubEvaluationRecordPublicStatusEnum;
   /**
    * 公示状态中文文案。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   publicStatusText: string;
   /**
    * 考核说明、获奖补充说明或负责人备注。
-   * @type {string}
-   * @memberof ClubEvaluationRecord
    */
   commentText?: string | null;
   /**
    * 记录创建时间。
-   * @type {Date}
-   * @memberof ClubEvaluationRecord
    */
   createdAt?: Date | null;
 }
@@ -320,7 +266,7 @@ export function ClubEvaluationRecordFromJSONTyped(
         ? undefined
         : json["createdAt"] === null
           ? null
-          : new Date(json["createdAt"]),
+          : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -363,6 +309,7 @@ export function ClubEvaluationRecordToJSONTyped(
     publicStatus: value["publicStatus"],
     publicStatusText: value["publicStatusText"],
     commentText: value["commentText"],
-    createdAt: value["createdAt"] == null ? value["createdAt"] : value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

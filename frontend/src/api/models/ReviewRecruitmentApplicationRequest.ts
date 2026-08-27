@@ -22,20 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewRecruitmentApplicationRequest {
   /**
    *
-   * @type {number}
-   * @memberof ReviewRecruitmentApplicationRequest
-   */
-  currentUserId: number;
-  /**
-   *
-   * @type {ReviewRecruitmentApplicationRequestDecisionEnum}
-   * @memberof ReviewRecruitmentApplicationRequest
    */
   decision: ReviewRecruitmentApplicationRequestDecisionEnum;
   /**
    *
-   * @type {number}
-   * @memberof ReviewRecruitmentApplicationRequest
    */
   interviewScore?: number | null;
 }
@@ -56,7 +46,6 @@ export type ReviewRecruitmentApplicationRequestDecisionEnum =
 export function instanceOfReviewRecruitmentApplicationRequest(
   value: object,
 ): value is ReviewRecruitmentApplicationRequest {
-  if (!("currentUserId" in value) || value["currentUserId"] === undefined) return false;
   if (!("decision" in value) || value["decision"] === undefined) return false;
   return true;
 }
@@ -75,7 +64,6 @@ export function ReviewRecruitmentApplicationRequestFromJSONTyped(
     return json;
   }
   return {
-    currentUserId: json["currentUserId"],
     decision: json["decision"],
     interviewScore:
       json["interviewScore"] === undefined
@@ -101,7 +89,6 @@ export function ReviewRecruitmentApplicationRequestToJSONTyped(
   }
 
   return {
-    currentUserId: value["currentUserId"],
     decision: value["decision"],
     interviewScore: value["interviewScore"],
   };

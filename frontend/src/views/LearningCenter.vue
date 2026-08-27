@@ -21,6 +21,7 @@ import {
 } from "../api";
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
+import { prepareLearningDownload } from "../learningDownload";
 
 const api = apiClient;
 
@@ -359,7 +360,7 @@ function validateFileUrl(_rule: unknown, value: string, callback: (error?: Error
     return;
   }
   const isInternalRef =
-    normalized.startsWith("/api/learning/items/") ||
+    normalized.startsWith("/api/v1/learning/items/") ||
     normalized.startsWith("clubs/") ||
     normalized.startsWith("oss://");
   if (normalized && !/^https?:\/\/\S+$/i.test(normalized) && !isInternalRef) {
@@ -521,7 +522,7 @@ async function uploadPendingResources() {
       formData.append("downloadPermission", uploadForm.downloadPermission);
 
       try {
-        const response = await fetch("/api/learning/resources/upload", {
+        const response = await fetch("/api/v1/learning/resources", {
           method: "POST",
           headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
           body: formData,
@@ -581,7 +582,7 @@ async function openPreview(item: LearningItem) {
   previewLoading.value = true;
   previewDialogVisible.value = true;
   try {
-    const response = await fetch(`/api/learning/items/${item.id}/preview-session`, {
+    const response = await fetch(`/api/v1/learning/items/${item.id}/preview-session`, {
       method: "POST",
       credentials: "same-origin",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
@@ -597,7 +598,7 @@ async function openPreview(item: LearningItem) {
     const resolvedKind = kind === "image" || kind === "video" ? kind : "pdf";
     previewKind.value = resolvedKind;
     previewConverted.value = response.headers.get("X-ClubHub-Preview-Converted") === "true";
-    const contentUrl = `/api/learning/items/${item.id}/preview?v=${Date.now()}`;
+    const contentUrl = `/api/v1/learning/items/${item.id}/preview?v=${Date.now()}`;
     if (resolvedKind !== "pdf") {
       previewUrl.value = contentUrl;
       return;
@@ -668,7 +669,7 @@ async function deleteResource(item: LearningItem) {
 
   deletingId.value = item.id;
   try {
-    const response = await fetch(`/api/learning/items/${item.id}`, {
+    const response = await fetch(`/api/v1/learning/items/${item.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
     });
@@ -1102,7 +1103,7 @@ async function startLearning(item: LearningItem) {
   }
 }
 
-/** 通过权限校验后记录下载行为并打开文件地址。 */
+/** 完整读取受保护文件后确认成功下载并保存文件。 */
 async function downloadItem(item: LearningItem) {
   if (!item.canDownload) {
     ElMessage.warning(item.downloadUnavailableReason || "当前不能下载该资源");
@@ -1110,34 +1111,20 @@ async function downloadItem(item: LearningItem) {
   }
 
   downloadingId.value = item.id;
-  const opened = window.open("about:blank", "_blank");
-  if (opened) opened.opener = null;
   try {
-    const result = await api.downloadLearningItem({ itemId: item.id });
-    if (result.fileUrl.startsWith("/api/learning/items/") && result.fileUrl.endsWith("/file")) {
-      opened?.close();
-      const response = await fetch(result.fileUrl, {
-        headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
-      });
-      if (!response.ok) throw new Error("文件内容获取失败");
-      const objectUrl = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = item.title;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
-    } else if (opened) {
-      opened.location.replace(result.fileUrl);
-    } else {
-      const link = document.createElement("a");
-      link.href = result.fileUrl;
-      link.download = item.title;
-      link.click();
-    }
+    const objectUrl = await prepareLearningDownload({
+      itemId: item.id,
+      token: auth.value?.token ?? "",
+      confirmDownload: () => api.createLearningDownload({ itemId: item.id }),
+    });
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = item.title;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
     ElMessage.success("下载权限校验通过，已记录本次下载");
     await loadLearningItems();
   } catch (error) {
-    opened?.close();
     ElMessage.error(toErrorMessage(error, "资源下载失败"));
   } finally {
     downloadingId.value = null;

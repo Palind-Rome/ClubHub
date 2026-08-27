@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ProjectTaskAssignee {
   /**
    * 执行人用户 ID。
-   * @type {number}
-   * @memberof ProjectTaskAssignee
    */
   userId: number;
   /**
    * 执行人姓名或账号展示名。
-   * @type {string}
-   * @memberof ProjectTaskAssignee
    */
   displayName: string;
 }

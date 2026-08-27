@@ -181,7 +181,7 @@ async function loadVenues() {
   loading.value = true;
   error.value = "";
   try {
-    const res = await fetch("/api/venues");
+    const res = await fetch("/api/v1/venues");
     if (!res.ok) throw new Error(await readErrorMessage(res));
     venues.value = await res.json();
   } catch (e) {
@@ -207,7 +207,7 @@ async function loadManagerOptions() {
   };
 
   try {
-    const res = await fetch(`/api/users`);
+    const res = await fetch(`/api/v1/users`);
     if (!res.ok) throw new Error(await readErrorMessage(res));
     const users = (await res.json()) as UserOption[];
     managerOptions.value = users.some((option) => option.id === user.id)
@@ -279,7 +279,7 @@ async function submitVenue() {
 }
 
 async function createVenue() {
-  const res = await fetch("/api/venues", {
+  const res = await fetch("/api/v1/venues", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -292,7 +292,7 @@ async function createVenue() {
 }
 
 async function updateVenue(venueId: number) {
-  const res = await fetch(`/api/venues/${venueId}`, {
+  const res = await fetch(`/api/v1/venues/${venueId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(venuePayload()),
@@ -417,7 +417,7 @@ async function updateVenueStatus(
   maintenanceUntil: string | null = null,
   cancelConflictingReservations = false,
 ) {
-  const res = await fetch(`/api/venues/${venueId}/status`, {
+  const res = await fetch(`/api/v1/venues/${venueId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -432,7 +432,7 @@ async function updateVenueStatus(
 }
 
 async function fetchVenueReservations(venueId: number) {
-  return requestJson<VenueReservation[]>(`/api/venue-reservations?venueId=${venueId}`);
+  return requestJson<VenueReservation[]>(`/api/v1/venue-reservations?venueId=${venueId}`);
 }
 
 function findStatusConflictReservations(
@@ -484,12 +484,9 @@ async function deleteVenue(venue: Venue) {
 
   deletingId.value = venue.id;
   try {
-    const res = await fetch(`/api/venues/${venue.id}`, {
+    await requestJson<void>(`/api/v1/venues/${venue.id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ operatorUserId: operatorUserId.value }),
     });
-    if (!res.ok) throw new Error(await readErrorMessage(res));
     ElMessage.success("场地已删除。");
     await loadVenues();
   } catch (e) {

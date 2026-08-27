@@ -22,21 +22,15 @@ import { mapValues } from "../runtime";
 export interface ReviewClubApplicationRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof ReviewClubApplicationRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    *
-   * @type {ReviewClubApplicationRequestDecisionEnum}
-   * @memberof ReviewClubApplicationRequest
    */
   decision: ReviewClubApplicationRequestDecisionEnum;
   /**
    *
-   * @type {string}
-   * @memberof ReviewClubApplicationRequest
    */
   reviewComment?: string | null;
 }

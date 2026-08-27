@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,13 +130,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("permissions")]
-    public IActionResult GetPermissions()
-    {
-        return Ok(_authService.GetPermissionCatalog());
-    }
+    public IActionResult GetPermissions() => Ok(_authService.GetPermissionCatalog());
 
     [Authorize]
     [HttpGet("permissions/check")]
+    [HttpGet("~/api/v1/users/me/permissions")]
     public async Task<IActionResult> CheckPermission(
         [FromQuery] string permission,
         [FromQuery] int? clubId)
@@ -151,11 +150,28 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("roles/assign")]
-    public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
+    [HttpPost("~/api/v1/users/{userId:int}/roles")]
+    public async Task<IActionResult> AssignRole(
+        [FromBody] AssignRoleRequest request,
+        [FromRoute] int? userId = null)
     {
         if (!TryGetCurrentUserId(out var operatorUserId))
         {
             return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
+        }
+
+        if (userId is not null && request.TargetUserId > 0 && request.TargetUserId != userId.Value)
+        {
+            return BadRequest(new ApiError
+            {
+                Code = ApiErrorCodes.ValidationError,
+                Message = "路径用户 ID 与请求体目标用户 ID 不一致。"
+            });
+        }
+
+        if (userId is not null)
+        {
+            request.TargetUserId = userId.Value;
         }
 
         var result = await _authService.AssignRoleAsync(request, operatorUserId);

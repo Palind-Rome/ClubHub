@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface UpdateUserAccountStatusRequest {
   /**
    * normal 表示启用，disabled 表示停用。
-   * @type {UpdateUserAccountStatusRequestAccountStatusEnum}
-   * @memberof UpdateUserAccountStatusRequest
    */
   accountStatus: UpdateUserAccountStatusRequestAccountStatusEnum;
 }

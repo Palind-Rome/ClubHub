@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 评奖评优评定细则，支持学校级通用细则和社团级细则。
  * @export
@@ -22,140 +22,94 @@ import { mapValues } from "../runtime";
 export interface AwardRuleDocumentRecord {
   /**
    * 细则 ID。
-   * @type {number}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleDocumentId: number;
   /**
    * 社团级细则所属社团；学校级细则为空。
-   * @type {number}
-   * @memberof AwardRuleDocumentRecord
    */
   clubId?: number | null;
   /**
    * 所属社团名称；学校级细则为空。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   clubName?: string | null;
   /**
    * 细则标题。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleTitle: string;
   /**
    * global 表示学校级通用细则，club 表示社团级细则。
-   * @type {AwardRuleDocumentRecordRuleScopeEnum}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleScope: AwardRuleDocumentRecordRuleScopeEnum;
   /**
    * 细则范围中文文案。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleScopeText: string;
   /**
    * 适用学年或年度。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   academicYear: string;
   /**
    * 适用学期。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   termName?: string | null;
   /**
    * 发布或制定单位。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   issuerName?: string | null;
   /**
    * 细则摘要。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   summary?: string | null;
   /**
    * 细则正文。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   contentText?: string | null;
   /**
    * 细则附件的内部文件引用；客户端下载文件应调用评定细则附件下载接口。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   materialUrl?: string | null;
   /**
    * 细则附件展示名称。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   materialName?: string | null;
   /**
    * 细则版本号。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   versionNo: string;
   /**
    * 细则状态。
-   * @type {AwardRuleDocumentRecordRuleStatusEnum}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleStatus: AwardRuleDocumentRecordRuleStatusEnum;
   /**
    * 细则状态中文文案。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   ruleStatusText: string;
   /**
    * 生效开始时间。
-   * @type {Date}
-   * @memberof AwardRuleDocumentRecord
    */
   effectiveStartAt?: Date | null;
   /**
    * 生效结束时间。
-   * @type {Date}
-   * @memberof AwardRuleDocumentRecord
    */
   effectiveEndAt?: Date | null;
   /**
    * 发布人用户 ID。
-   * @type {number}
-   * @memberof AwardRuleDocumentRecord
    */
   publishedByUserId?: number | null;
   /**
    * 发布人展示名。
-   * @type {string}
-   * @memberof AwardRuleDocumentRecord
    */
   publishedByName?: string | null;
   /**
    * 发布时间。
-   * @type {Date}
-   * @memberof AwardRuleDocumentRecord
    */
   publishedAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof AwardRuleDocumentRecord
    */
   createdAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof AwardRuleDocumentRecord
    */
   updatedAt: Date;
 }
@@ -263,13 +217,13 @@ export function AwardRuleDocumentRecordFromJSONTyped(
         ? undefined
         : json["effectiveStartAt"] === null
           ? null
-          : new Date(json["effectiveStartAt"]),
+          : parseDateTime(json["effectiveStartAt"]),
     effectiveEndAt:
       json["effectiveEndAt"] === undefined
         ? undefined
         : json["effectiveEndAt"] === null
           ? null
-          : new Date(json["effectiveEndAt"]),
+          : parseDateTime(json["effectiveEndAt"]),
     publishedByUserId:
       json["publishedByUserId"] === undefined
         ? undefined
@@ -287,9 +241,9 @@ export function AwardRuleDocumentRecordFromJSONTyped(
         ? undefined
         : json["publishedAt"] === null
           ? null
-          : new Date(json["publishedAt"]),
-    createdAt: new Date(json["createdAt"]),
-    updatedAt: new Date(json["updatedAt"]),
+          : parseDateTime(json["publishedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? json["updatedAt"] : parseDateTime(json["updatedAt"]),
   };
 }
 
@@ -325,16 +279,18 @@ export function AwardRuleDocumentRecordToJSONTyped(
     effectiveStartAt:
       value["effectiveStartAt"] == null
         ? value["effectiveStartAt"]
-        : value["effectiveStartAt"].toISOString(),
+        : serializeDateTime(value["effectiveStartAt"]),
     effectiveEndAt:
       value["effectiveEndAt"] == null
         ? value["effectiveEndAt"]
-        : value["effectiveEndAt"].toISOString(),
+        : serializeDateTime(value["effectiveEndAt"]),
     publishedByUserId: value["publishedByUserId"],
     publishedByName: value["publishedByName"],
     publishedAt:
-      value["publishedAt"] == null ? value["publishedAt"] : value["publishedAt"].toISOString(),
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"].toISOString(),
+      value["publishedAt"] == null ? value["publishedAt"] : serializeDateTime(value["publishedAt"]),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
   };
 }

@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface AddProjectMemberRequest {
   /**
    * 所属社团当前有效成员的用户 ID。
-   * @type {number}
-   * @memberof AddProjectMemberRequest
    */
   userId: number;
   /**
    * 新成员的项目内角色。
-   * @type {AddProjectMemberRequestMemberRoleEnum}
-   * @memberof AddProjectMemberRequest
    */
   memberRole: AddProjectMemberRequestMemberRoleEnum;
   /**
    * 可选备注。
-   * @type {string}
-   * @memberof AddProjectMemberRequest
    */
   remark?: string | null;
 }

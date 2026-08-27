@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 import type { ProjectTaskAssignee } from "./ProjectTaskAssignee";
 import {
   ProjectTaskAssigneeFromJSON,
@@ -30,140 +30,94 @@ import {
 export interface ProjectTask {
   /**
    * 项目任务 ID。
-   * @type {number}
-   * @memberof ProjectTask
    */
   id: number;
   /**
    * 所属项目 ID。
-   * @type {number}
-   * @memberof ProjectTask
    */
   projectId: number;
   /**
    * 任务执行人列表；每位执行人都必须正在参与该项目。
-   * @type {Array<ProjectTaskAssignee>}
-   * @memberof ProjectTask
    */
   assignees: Array<ProjectTaskAssignee>;
   /**
    * 任务标题。
-   * @type {string}
-   * @memberof ProjectTask
    */
   title: string;
   /**
    * 任务详细内容。
-   * @type {string}
-   * @memberof ProjectTask
    */
   content?: string | null;
   /**
    * 任务优先级。
-   * @type {ProjectTaskPriorityEnum}
-   * @memberof ProjectTask
    */
   priority: ProjectTaskPriorityEnum;
   /**
    * 任务创建或开始时间。
-   * @type {Date}
-   * @memberof ProjectTask
    */
   startDate: Date;
   /**
    * 任务截止时间。
-   * @type {Date}
-   * @memberof ProjectTask
    */
   dueDate: Date;
   /**
    * 任务完成时间；未完成时为空。
-   * @type {Date}
-   * @memberof ProjectTask
    */
   finishDate?: Date | null;
   /**
    * 完成进度百分比。
-   * @type {number}
-   * @memberof ProjectTask
    */
   progress: number;
   /**
    * 任务状态。
-   * @type {ProjectTaskTaskStatusEnum}
-   * @memberof ProjectTask
    */
   taskStatus: ProjectTaskTaskStatusEnum;
   /**
    * 延期原因；延期或逾期未完成时必填。
-   * @type {string}
-   * @memberof ProjectTask
    */
   delayReason?: string | null;
   /**
    * 已提交成果标题。
-   * @type {string}
-   * @memberof ProjectTask
    */
   deliverableTitle?: string | null;
   /**
    * 已提交成果说明。
-   * @type {string}
-   * @memberof ProjectTask
    */
   deliverableDesc?: string | null;
   /**
    * 已提交成果链接，仅允许 HTTP 或 HTTPS 地址。
-   * @type {string}
-   * @memberof ProjectTask
    */
   deliverableUrl?: string | null;
   /**
    * 成果审核状态。
-   * @type {ProjectTaskDeliverableStatusEnum}
-   * @memberof ProjectTask
    */
   deliverableStatus: ProjectTaskDeliverableStatusEnum;
   /**
    * 审核人用户 ID。
-   * @type {number}
-   * @memberof ProjectTask
    */
   reviewerUserId?: number | null;
   /**
    * 审核人姓名和学号/工号展示。
-   * @type {string}
-   * @memberof ProjectTask
    */
   reviewerDisplayName?: string | null;
   /**
    * 审核意见。
-   * @type {string}
-   * @memberof ProjectTask
    */
   reviewComment?: string | null;
   /**
    * 成果提交人用户 ID。
-   * @type {number}
-   * @memberof ProjectTask
    */
   deliverableSubmitterId?: number | null;
   /**
    * 成果提交人姓名和学号/工号展示。
-   * @type {string}
-   * @memberof ProjectTask
    */
   deliverableSubmitterDisplayName?: string | null;
   /**
    * 成果提交时间。
-   * @type {Date}
-   * @memberof ProjectTask
    */
   deliverableSubmittedAt?: Date | null;
   /**
    * 成果审核时间。
-   * @type {Date}
-   * @memberof ProjectTask
    */
   deliverableReviewedAt?: Date | null;
 }
@@ -237,14 +191,14 @@ export function ProjectTaskFromJSONTyped(json: any, ignoreDiscriminator: boolean
     content:
       json["content"] === undefined ? undefined : json["content"] === null ? null : json["content"],
     priority: json["priority"],
-    startDate: new Date(json["startDate"]),
-    dueDate: new Date(json["dueDate"]),
+    startDate: json["startDate"] == null ? json["startDate"] : parseDateTime(json["startDate"]),
+    dueDate: json["dueDate"] == null ? json["dueDate"] : parseDateTime(json["dueDate"]),
     finishDate:
       json["finishDate"] === undefined
         ? undefined
         : json["finishDate"] === null
           ? null
-          : new Date(json["finishDate"]),
+          : parseDateTime(json["finishDate"]),
     progress: json["progress"],
     taskStatus: json["taskStatus"],
     delayReason:
@@ -307,13 +261,13 @@ export function ProjectTaskFromJSONTyped(json: any, ignoreDiscriminator: boolean
         ? undefined
         : json["deliverableSubmittedAt"] === null
           ? null
-          : new Date(json["deliverableSubmittedAt"]),
+          : parseDateTime(json["deliverableSubmittedAt"]),
     deliverableReviewedAt:
       json["deliverableReviewedAt"] === undefined
         ? undefined
         : json["deliverableReviewedAt"] === null
           ? null
-          : new Date(json["deliverableReviewedAt"]),
+          : parseDateTime(json["deliverableReviewedAt"]),
   };
 }
 
@@ -336,10 +290,11 @@ export function ProjectTaskToJSONTyped(
     title: value["title"],
     content: value["content"],
     priority: value["priority"],
-    startDate: value["startDate"].toISOString(),
-    dueDate: value["dueDate"].toISOString(),
+    startDate:
+      value["startDate"] == null ? value["startDate"] : serializeDateTime(value["startDate"]),
+    dueDate: value["dueDate"] == null ? value["dueDate"] : serializeDateTime(value["dueDate"]),
     finishDate:
-      value["finishDate"] == null ? value["finishDate"] : value["finishDate"].toISOString(),
+      value["finishDate"] == null ? value["finishDate"] : serializeDateTime(value["finishDate"]),
     progress: value["progress"],
     taskStatus: value["taskStatus"],
     delayReason: value["delayReason"],
@@ -355,10 +310,10 @@ export function ProjectTaskToJSONTyped(
     deliverableSubmittedAt:
       value["deliverableSubmittedAt"] == null
         ? value["deliverableSubmittedAt"]
-        : value["deliverableSubmittedAt"].toISOString(),
+        : serializeDateTime(value["deliverableSubmittedAt"]),
     deliverableReviewedAt:
       value["deliverableReviewedAt"] == null
         ? value["deliverableReviewedAt"]
-        : value["deliverableReviewedAt"].toISOString(),
+        : serializeDateTime(value["deliverableReviewedAt"]),
   };
 }

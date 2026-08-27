@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewBudgetApplicationRequest {
   /**
    * 是否审核通过。
-   * @type {boolean}
-   * @memberof ReviewBudgetApplicationRequest
    */
   approved: boolean;
   /**
    * 审核意见。
-   * @type {string}
-   * @memberof ReviewBudgetApplicationRequest
    */
   comment?: string | null;
 }

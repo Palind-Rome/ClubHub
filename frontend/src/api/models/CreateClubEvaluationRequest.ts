@@ -22,81 +22,55 @@ import { mapValues } from "../runtime";
 export interface CreateClubEvaluationRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    * semester 表示学期考核，award 表示评优评奖结果。
-   * @type {CreateClubEvaluationRequestEvaluationTypeEnum}
-   * @memberof CreateClubEvaluationRequest
    */
   evaluationType: CreateClubEvaluationRequestEvaluationTypeEnum;
   /**
    * 被考核或获奖成员用户 ID。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    */
   userId: number;
   /**
    * 考核或评奖所属学期；evaluationType 为 semester 时需能解析为时间窗口，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年。
-   * @type {string}
-   * @memberof CreateClubEvaluationRequest
    */
   termName: string;
   /**
    * 评奖评优标题；学期考核可为空。
-   * @type {string}
-   * @memberof CreateClubEvaluationRequest
    */
   awardTitle?: string | null;
   /**
    * 奖项等级；学期考核可为空。
-   * @type {string}
-   * @memberof CreateClubEvaluationRequest
    */
   awardLevel?: string | null;
   /**
    * 获奖原因或推荐理由；学期考核可为空。
-   * @type {string}
-   * @memberof CreateClubEvaluationRequest
    */
   awardReason?: string | null;
   /**
    * 学期考核参与分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    */
   activityScore?: number | null;
   /**
    * 学期考核任务分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    */
   taskScore?: number | null;
   /**
    * 学期考核学习分；可使用系统生成分，也可由维护人在确认前微调。评优评奖记录可传 0。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    */
   learningScore?: number | null;
   /**
    * 学期考核奖项分；通常来自同社团、同成员、同学期已公示评优评奖记录，也可由维护人在确认前微调。评优评奖记录中表示该奖项贡献的奖项分。
-   * @type {number}
-   * @memberof CreateClubEvaluationRequest
    */
   awardScore?: number | null;
   /**
    * 公示状态；默认保存为草稿。
-   * @type {CreateClubEvaluationRequestPublicStatusEnum}
-   * @memberof CreateClubEvaluationRequest
    */
   publicStatus?: CreateClubEvaluationRequestPublicStatusEnum;
   /**
    * 考核说明、获奖补充说明或负责人备注。
-   * @type {string}
-   * @memberof CreateClubEvaluationRequest
    */
   commentText?: string | null;
 }

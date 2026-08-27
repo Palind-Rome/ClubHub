@@ -22,27 +22,19 @@ import { mapValues } from "../runtime";
 export interface CreateClubRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof CreateClubRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubRequest
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubRequest
    */
   category: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubRequest
    */
   description?: string | null;
 }

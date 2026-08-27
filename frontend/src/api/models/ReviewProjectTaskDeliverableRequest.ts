@@ -22,14 +22,10 @@ import { mapValues } from "../runtime";
 export interface ReviewProjectTaskDeliverableRequest {
   /**
    * 是否审核通过。
-   * @type {boolean}
-   * @memberof ReviewProjectTaskDeliverableRequest
    */
   approved: boolean;
   /**
    * 审核意见。
-   * @type {string}
-   * @memberof ReviewProjectTaskDeliverableRequest
    */
   reviewComment?: string | null;
 }

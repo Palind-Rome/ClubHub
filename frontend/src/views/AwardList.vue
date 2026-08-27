@@ -627,7 +627,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await requestJson<Club[]>("/api/clubs");
+    clubs.value = await requestJson<Club[]>("/api/v1/clubs");
     if (
       !selectedClubId.value ||
       !accessibleClubs.value.some((club) => club.id === selectedClubId.value)
@@ -653,7 +653,7 @@ async function loadMembers() {
   try {
     const query = new URLSearchParams({ includeHistory: "false" });
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === memberRequestId) members.value = data;
   } catch {
@@ -682,10 +682,10 @@ async function loadAwardWorkspace() {
   clearAwardWorkspaceData();
   try {
     const [schemeData, ruleDocumentData, applicationData, publicityData] = await Promise.all([
-      requestJson<AwardSchemeRecord[]>(`/api/clubs/${clubId}/award-schemes`),
-      requestJson<AwardRuleDocumentRecord[]>(`/api/clubs/${clubId}/award-rule-documents`),
-      requestJson<AwardApplicationRecord[]>(`/api/clubs/${clubId}/award-applications`),
-      requestJson<AwardPublicityBatchRecord[]>(`/api/clubs/${clubId}/award-publicity`),
+      requestJson<AwardSchemeRecord[]>(`/api/v1/clubs/${clubId}/award-schemes`),
+      requestJson<AwardRuleDocumentRecord[]>(`/api/v1/clubs/${clubId}/award-rule-documents`),
+      requestJson<AwardApplicationRecord[]>(`/api/v1/clubs/${clubId}/award-applications`),
+      requestJson<AwardPublicityBatchRecord[]>(`/api/v1/clubs/${clubId}/award-publicity`),
     ]);
     if (requestId !== loadRequestId) return;
     schemes.value = schemeData;
@@ -842,8 +842,8 @@ async function submitScheme() {
       })),
     };
     const url = schemeTarget.value
-      ? `/api/clubs/${selectedClubId.value}/award-schemes/${schemeTarget.value.awardSchemeId}`
-      : `/api/clubs/${selectedClubId.value}/award-schemes`;
+      ? `/api/v1/clubs/${selectedClubId.value}/award-schemes/${schemeTarget.value.awardSchemeId}`
+      : `/api/v1/clubs/${selectedClubId.value}/award-schemes`;
     await requestJson<AwardSchemeRecord>(url, {
       method: schemeTarget.value ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -944,8 +944,8 @@ async function submitRuleDocument() {
     };
     const wasEditing = Boolean(ruleTarget.value);
     const url = wasEditing
-      ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value!.ruleDocumentId}`
-      : `/api/clubs/${selectedClubId.value}/award-rule-documents`;
+      ? `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value!.ruleDocumentId}`
+      : `/api/v1/clubs/${selectedClubId.value}/award-rule-documents`;
     let savedDocument = await requestJson<AwardRuleDocumentRecord>(url, {
       method: wasEditing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -977,7 +977,7 @@ async function uploadRuleDocumentFile(ruleDocumentId: number) {
   const formData = new FormData();
   formData.append("file", file, file.name);
   const response = await fetchAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
@@ -995,7 +995,7 @@ async function publishRuleDocument(row: AwardRuleDocumentRecord) {
   saving.value = true;
   try {
     await requestJson<AwardRuleDocumentRecord>(
-      `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/publish`,
+      `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/publish`,
       { method: "POST" },
     );
     ElMessage.success("评定细则已发布");
@@ -1074,7 +1074,7 @@ async function submitApplication() {
     let savedApplication: AwardApplicationRecord;
     if (applicationTarget.value) {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1087,7 +1087,7 @@ async function submitApplication() {
       );
     } else {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1106,7 +1106,7 @@ async function submitApplication() {
     }
     if (applicationSubmitAfterUpload.value) {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
         { method: "POST" },
       );
       applicationTarget.value = savedApplication;
@@ -1141,7 +1141,7 @@ async function uploadApplicationFiles(awardApplicationId: number) {
     formData.append("file", file, file.name);
     formData.append("attachmentType", "申请材料");
     const response = await fetchAwardFile(
-      `/api/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
@@ -1160,7 +1160,7 @@ async function submitExistingApplication(row: AwardApplicationRecord) {
   if (!selectedClubId.value) return;
   try {
     await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${row.awardApplicationId}/submit`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${row.awardApplicationId}/submit`,
       { method: "POST" },
     );
     ElMessage.success("申请已提交审核");
@@ -1173,7 +1173,7 @@ async function submitExistingApplication(row: AwardApplicationRecord) {
 async function downloadRuleDocument(row: AwardRuleDocumentRecord) {
   if (!selectedClubId.value || !row.materialUrl) return;
   await downloadManagedAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/file`,
     row.materialName || row.ruleTitle,
   );
 }
@@ -1184,7 +1184,7 @@ async function downloadApplicationAttachment(
 ) {
   if (!selectedClubId.value) return;
   await downloadManagedAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-applications/${application.awardApplicationId}/attachments/${attachment.attachmentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-applications/${application.awardApplicationId}/attachments/${attachment.attachmentId}/file`,
     attachment.attachmentName,
   );
 }
@@ -1242,7 +1242,7 @@ async function submitReview() {
   saving.value = true;
   try {
     await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}/review`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}/review`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1305,7 +1305,7 @@ async function submitPublicity() {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1334,7 +1334,7 @@ async function publishPublicity(row: AwardPublicityBatchRecord) {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/publish`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/publish`,
       { method: "POST" },
     );
     ElMessage.success("公示已发布");
@@ -1357,7 +1357,7 @@ async function archivePublicity(row: AwardPublicityBatchRecord) {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/archive`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/archive`,
       { method: "POST" },
     );
     ElMessage.success("公示已归档，奖项分可进入成员考核");
@@ -1398,7 +1398,7 @@ async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
 
   try {
     const application = await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${item.awardApplicationId}`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${item.awardApplicationId}`,
     );
     detailTarget.value = application;
     detailVisible.value = true;

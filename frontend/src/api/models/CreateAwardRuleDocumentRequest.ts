@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 创建评奖评优评定细则的请求。
  * @export
@@ -22,80 +22,54 @@ import { mapValues } from "../runtime";
 export interface CreateAwardRuleDocumentRequest {
   /**
    * 细则标题。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   ruleTitle: string;
   /**
    * global 为学校级细则，club 为当前社团细则。
-   * @type {CreateAwardRuleDocumentRequestRuleScopeEnum}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   ruleScope?: CreateAwardRuleDocumentRequestRuleScopeEnum;
   /**
    * 适用学年或年度。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   academicYear: string;
   /**
    * 适用学期。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   termName?: string | null;
   /**
    * 发布或制定单位。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   issuerName?: string | null;
   /**
    * 细则摘要。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   summary?: string | null;
   /**
    * 细则正文。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   contentText?: string | null;
   /**
    * 兼容字段，由附件上传接口维护内部文件引用；新前端不应让用户手填地址。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   materialUrl?: string | null;
   /**
    * 附件展示名称。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   materialName?: string | null;
   /**
    * 版本号。
-   * @type {string}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   versionNo?: string;
   /**
    * 初始状态。
-   * @type {CreateAwardRuleDocumentRequestRuleStatusEnum}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   ruleStatus?: CreateAwardRuleDocumentRequestRuleStatusEnum;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   effectiveStartAt?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof CreateAwardRuleDocumentRequest
    */
   effectiveEndAt?: Date | null;
 }
@@ -186,13 +160,13 @@ export function CreateAwardRuleDocumentRequestFromJSONTyped(
         ? undefined
         : json["effectiveStartAt"] === null
           ? null
-          : new Date(json["effectiveStartAt"]),
+          : parseDateTime(json["effectiveStartAt"]),
     effectiveEndAt:
       json["effectiveEndAt"] === undefined
         ? undefined
         : json["effectiveEndAt"] === null
           ? null
-          : new Date(json["effectiveEndAt"]),
+          : parseDateTime(json["effectiveEndAt"]),
   };
 }
 
@@ -223,10 +197,10 @@ export function CreateAwardRuleDocumentRequestToJSONTyped(
     effectiveStartAt:
       value["effectiveStartAt"] == null
         ? value["effectiveStartAt"]
-        : value["effectiveStartAt"].toISOString(),
+        : serializeDateTime(value["effectiveStartAt"]),
     effectiveEndAt:
       value["effectiveEndAt"] == null
         ? value["effectiveEndAt"]
-        : value["effectiveEndAt"].toISOString(),
+        : serializeDateTime(value["effectiveEndAt"]),
   };
 }

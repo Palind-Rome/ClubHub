@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ClubHub.Api.Data;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -100,12 +101,15 @@ public class VenueReservationsController : ControllerBase
             query = query.Where(r => r.ReviewerUserId == reviewerUserId);
         }
 
-        var reservations = await query
-            .OrderByDescending(r => r.CreatedAt)
-            .ThenByDescending(r => r.ReservationId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(r => r.CreatedAt)
+                .ThenByDescending(r => r.ReservationId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(reservations.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     [HttpGet("{reservationId:int}")]
@@ -163,12 +167,15 @@ public class VenueReservationsController : ControllerBase
             query = query.Where(r => r.VenueId == venueId.Value);
         }
 
-        var reservations = await query
-            .OrderBy(r => r.StartAt)
-            .ThenBy(r => r.ReservationId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderBy(r => r.StartAt)
+                .ThenBy(r => r.ReservationId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(reservations.Select(r => new VenueOccupiedSlot
+        return Ok(page.Items.Select(r => new VenueOccupiedSlot
         {
             ReservationId = r.ReservationId,
             VenueId = r.VenueId,
@@ -268,6 +275,7 @@ public class VenueReservationsController : ControllerBase
     }
 
     [HttpPost("{reservationId:int}/review")]
+    [HttpPost("{reservationId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewVenueReservation")]
     public async Task<IActionResult> Review(int reservationId, [FromBody] ReviewVenueReservationRequest req)
     {
