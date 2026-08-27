@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ChatDotRound, Delete, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import type { Club, ForumPost, UserSummary } from "../api/models";
+import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 
@@ -87,7 +88,8 @@ async function loadPosts() {
   loadError.value = null;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const posts = await requestJson<ForumPost[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const data = await requestJson<any[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const posts = data.map(ForumPostFromJSON);
     if (requestVersion === postsRequestVersion) {
       topics.value = posts;
       loadError.value = null;
