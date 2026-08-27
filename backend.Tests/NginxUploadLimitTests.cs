@@ -12,11 +12,13 @@ public sealed class NginxUploadLimitTests
 
         var apiLocation = Regex.Match(
             configuration,
-            @"(?mi)^[ \t]*location[ \t]+/api/[ \t]*\{(?<body>[\s\S]*)^[ \t]*\}");
+            @"(?mi)location\s+/api/\s*\{(?<body>.*?)\n\s*\}",
+            RegexOptions.Singleline);
         Assert.True(apiLocation.Success, "Cannot locate the /api/ location.");
         Assert.Matches(
             new Regex(
-                @"(?mi)^[ \t]*client_max_body_size[ \t]+51m[ \t]*;[ \t]*(?:#.*)?$"),
+                @"(?mi)^\s*client_max_body_size\s+51m\s*;",
+                RegexOptions.Multiline),
             apiLocation.Groups["body"].Value);
     }
 
