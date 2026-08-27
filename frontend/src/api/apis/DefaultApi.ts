@@ -268,16 +268,6 @@ import {
   DependencyHealthReportToJSON,
 } from "../models/DependencyHealthReport";
 import {
-  type DissolveClubRequest,
-  DissolveClubRequestFromJSON,
-  DissolveClubRequestToJSON,
-} from "../models/DissolveClubRequest";
-import {
-  type ExitClubMemberRequest,
-  ExitClubMemberRequestFromJSON,
-  ExitClubMemberRequestToJSON,
-} from "../models/ExitClubMemberRequest";
-import {
   type ForumImageUploadResponse,
   ForumImageUploadResponseFromJSON,
   ForumImageUploadResponseToJSON,
@@ -2477,7 +2467,13 @@ export interface UploadClubAwardRuleDocumentFileRequest {
 }
 
 export interface UploadForumImageRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 图片文件，支持 jpg、png、gif、webp，文件大小 ≤ 5MB
+   */
   image: Blob;
 }
 
@@ -5293,7 +5289,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
    * 删除社团讨论区话题或回复
    */
   async deleteClubForumPostRaw(
@@ -5307,7 +5303,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
    * 删除社团讨论区话题或回复
    */
   async deleteClubForumPost(

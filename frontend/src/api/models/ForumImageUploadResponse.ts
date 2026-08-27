@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 论坛图片上传响应
  * @export
@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface ForumImageUploadResponse {
   /**
    * 上传后的图片 OSS URL，可直接在 Markdown 中使用。
-   * @type {string}
-   * @memberof ForumImageUploadResponse
    */
   imageUrl: string;
   /**
    * 图片文件名。
-   * @type {string}
-   * @memberof ForumImageUploadResponse
    */
   fileName: string;
   /**
    * 上传时间。
-   * @type {Date}
-   * @memberof ForumImageUploadResponse
    */
   uploadedAt: Date;
 }
@@ -66,7 +60,7 @@ export function ForumImageUploadResponseFromJSONTyped(
   return {
     imageUrl: json["imageUrl"],
     fileName: json["fileName"],
-    uploadedAt: new Date(json["uploadedAt"]),
+    uploadedAt: json["uploadedAt"] == null ? json["uploadedAt"] : parseDateTime(json["uploadedAt"]),
   };
 }
 
@@ -85,6 +79,7 @@ export function ForumImageUploadResponseToJSONTyped(
   return {
     imageUrl: value["imageUrl"],
     fileName: value["fileName"],
-    uploadedAt: value["uploadedAt"].toISOString(),
+    uploadedAt:
+      value["uploadedAt"] == null ? value["uploadedAt"] : serializeDateTime(value["uploadedAt"]),
   };
 }
