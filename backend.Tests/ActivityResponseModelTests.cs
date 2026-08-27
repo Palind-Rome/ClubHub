@@ -176,9 +176,10 @@ public sealed class ActivityResponseModelTests
         }
 
         using var client = factory.CreateClient();
-        using var response = await client.GetAsync("/api/activities");
+        using var response = await client.GetAsync("/api/activities?page=1&pageSize=10");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("1", response.Headers.GetValues("X-Total-Count").Single());
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var item = Assert.Single(document.RootElement.EnumerateArray());
         Assert.Equal(119, item.GetProperty("id").GetInt32());

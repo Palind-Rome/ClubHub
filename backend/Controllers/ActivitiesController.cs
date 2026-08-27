@@ -32,6 +32,10 @@ public class ActivitiesController : ControllerBase
     private const string ActivityReviewPermission = "activity:review";
     private const string ActivityCheckinManagePermission = "activity:checkin:manage";
     private const string ActivityCheckinPermission = "activity:checkin";
+    private static readonly string[] ApiActivityStatuses =
+    [
+        "draft", "pending_review", "published", "rejected", "ongoing", "finished", "cancelled"
+    ];
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
     private readonly PublicQueryCacheService _publicQueryCache;
@@ -60,6 +64,7 @@ public class ActivitiesController : ControllerBase
 
         var query = _db.Activities
             .AsNoTracking()
+            .Where(a => a.ActivityStatus != null && ApiActivityStatuses.Contains(a.ActivityStatus))
             .OrderBy(a => a.ActivityId)
             .Select(a => new
             {
