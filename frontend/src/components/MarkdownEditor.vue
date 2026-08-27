@@ -59,7 +59,12 @@ async function handleImageUpload(event: Event) {
       const end = textarea.selectionEnd;
       const before = textContent.value.substring(0, start);
       const after = textContent.value.substring(end);
-      textContent.value = `${before}\n${markdownImage}\n${after}`;
+      const nextContent = `${before}\n${markdownImage}\n${after}`;
+      if (nextContent.length > props.maxlength) {
+        ElMessage.error(`插入图片后内容不能超过 ${props.maxlength} 个字符`);
+        return;
+      }
+      textContent.value = nextContent;
       textarea.focus();
       textarea.setSelectionRange(
         start + markdownImage.length + 2,
