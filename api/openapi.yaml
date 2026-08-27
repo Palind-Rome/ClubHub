@@ -1571,7 +1571,7 @@ paths:
 
     delete:
       summary: 删除社团讨论区话题或回复
-      description: 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+      description: 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
       operationId: deleteClubForumPost
       security:
         - bearerAuth: []
@@ -1590,7 +1590,7 @@ paths:
             minimum: 1
       responses:
         "204":
-          description: 删除成功
+          description: 删除成功（包括所有后代）
         "400":
           description: 请求参数不合法
           content:

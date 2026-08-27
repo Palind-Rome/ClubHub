@@ -144,6 +144,44 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     }
 
     [Fact]
+    public async Task NestedReplies_UpToThreeLevels_CreateQueryAndCascadeDelete()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create topic -> reply level 1 -> reply level 2 -> reply level 3
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        var level1Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"level1\"}}");
+        var level2Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level1Reply},\"content\":\"level2\"}}");
+        var level3Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level2Reply},\"content\":\"level3\"}}");
+
+        // Verify all created
+        Assert.NotEqual(0, level1Reply);
+        Assert.NotEqual(0, level2Reply);
+        Assert.NotEqual(0, level3Reply);
+
+        // Verify structure in GET
+        using var getResponse = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var getDocument = System.Text.Json.JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
+        var topicReply = getDocument.RootElement[0].GetProperty("replies")[0];
+        var level1Nested = topicReply.GetProperty("replies")[0];
+        var level2Nested = level1Nested.GetProperty("replies")[0];
+        Assert.Equal("level1", topicReply.GetProperty("content").GetString());
+        Assert.Equal("level2", level1Nested.GetProperty("content").GetString());
+        Assert.Equal("level3", level2Nested.GetProperty("content").GetString());
+
+        // Delete level 2 reply -> should cascade delete level 3
+        using var deleteLevel2 = await client.DeleteAsync($"/api/clubs/{clubId}/forum-posts/{level2Reply}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteLevel2.StatusCode);
+
+        // Verify level 2 and 3 deleted, but level 1 still exists
+        using var afterDeleteResponse = await client.GetAsync($"/api/clubs/{clubId}/forum-posts");
+        using var afterDeleteDocument = System.Text.Json.JsonDocument.Parse(await afterDeleteResponse.Content.ReadAsStringAsync());
+        var topicReplyAfter = afterDeleteDocument.RootElement[0].GetProperty("replies")[0];
+        Assert.Equal("level1", topicReplyAfter.GetProperty("content").GetString());
+        Assert.Equal(0, topicReplyAfter.GetProperty("replies").GetArrayLength());
+    }
+
+    [Fact]
     public async Task DeleteReply_ByOwner_Succeeds()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
