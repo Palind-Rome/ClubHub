@@ -144,12 +144,21 @@ public sealed class ForumPostsController : ControllerBase
             while (toProcess.Count > 0)
             {
                 var currentId = toProcess.Dequeue();
-                var children = await _db.ForumPosts.Where(r => r.ParentPostId == currentId).ToListAsync();
-                foreach (var child in children)
-                {
-                    descendantsToDelete.Add(child);
-                    toProcess.Enqueue(child.PostId);
-                }
+var repliesByParent = (await _db.ForumPosts
+        .Where(item => item.ClubId == clubId)
+        .ToListAsync())
+    .ToLookup(item => item.ParentPostId);
+
+while (toProcess.Count > 0)
+{
+    var currentId = toProcess.Dequeue();
+    var children = repliesByParent[currentId];
+    foreach (var child in children)
+    {
+        descendantsToDelete.Add(child);
+        toProcess.Enqueue(child.PostId);
+    }
+}
             }
         }
 
