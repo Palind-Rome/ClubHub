@@ -40,13 +40,13 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     }
 
     [Fact]
-    public async Task CreateReply_ToReply_IsRejected()
+    public async Task CreateReply_ToReply_IsAllowed()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
         using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json($"{{\"parentPostId\":{reply},\"content\":\"nested\"}}"));
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
