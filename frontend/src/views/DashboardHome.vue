@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Refresh } from "@element-plus/icons-vue";
 import { apiClient } from "../apiClient";
-import { readAuth } from "../authSession";
+import { onSessionChange, readAuth } from "../authSession";
 import BusinessFlow from "../components/ui/BusinessFlow.vue";
 
 type Metric = { label: string; value: number | null; note: string; path: string };
 
-const auth = readAuth();
+const auth = ref(readAuth());
 const loading = ref(false);
 const activities = ref<number | null>(null);
 const projects = ref<number | null>(null);
@@ -15,7 +15,7 @@ const notices = ref<number | null>(null);
 const recruitments = ref<number | null>(null);
 
 const roleSummary = computed(() => {
-  const roles = auth?.roles ?? [];
+  const roles = auth.value?.roles ?? [];
   return roles.length
     ? roles.map((role) => role.displayName || role.name).join(" · ")
     : "暂无业务角色";
@@ -27,7 +27,7 @@ const attentionItems = computed(() => {
   else if (notices.value > 0) items.push(`还有 ${notices.value} 条未读通知需要查看。`);
   else items.push("当前账号的通知已全部阅读。");
 
-  const hasClubScope = (auth?.roles ?? []).some(
+  const hasClubScope = (auth.value?.roles ?? []).some(
     (role) => role.scope === "club" && (Boolean(role.clubId) || role.clubIds.length > 0),
   );
   if (!hasClubScope) {
@@ -65,7 +65,7 @@ const flows = [
 
 async function loadDashboard() {
   loading.value = true;
-  const userId = auth?.user.id;
+  const userId = auth.value?.user?.id;
   const [activityResult, projectResult, noticeResult, recruitmentResult] = await Promise.allSettled(
     [
       apiClient.getActivities({ currentUserId: userId }),
@@ -83,7 +83,17 @@ async function loadDashboard() {
   loading.value = false;
 }
 
-onMounted(loadDashboard);
+let stopSessionListener: (() => void) | undefined;
+
+onMounted(() => {
+  stopSessionListener = onSessionChange(() => {
+    auth.value = readAuth();
+    void loadDashboard();
+  });
+  void loadDashboard();
+});
+
+onUnmounted(() => stopSessionListener?.());
 </script>
 
 <template>
@@ -105,7 +115,7 @@ onMounted(loadDashboard);
       <div class="permission-summary">
         <span>权限范围</span>
         <strong>{{
-          auth?.permissions.includes("*")
+          (auth?.permissions ?? []).includes("*")
             ? "系统全部权限"
             : `${auth?.permissions.length ?? 0} 项业务权限`
         }}</strong>

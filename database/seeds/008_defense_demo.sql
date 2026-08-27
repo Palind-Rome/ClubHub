@@ -47,13 +47,21 @@ WHERE TRIM(LOWER(project_name)) IN ('1', 'aaa', 'zzzz', 'test', '测试')
    OR NOT EXISTS (SELECT 1 FROM users WHERE users.user_id = projects.leader_user_id);
 
 UPDATE NOTICES
-SET title = '历史通知记录 ' || notice_id,
+SET title = CASE
+      WHEN TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试')
+        THEN '历史通知记录 ' || notice_id
+      ELSE title
+    END,
     content = NVL(content, TO_CLOB('该记录已在答辩前完成内容补全。'))
 WHERE TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试')
    OR content IS NULL;
 
 UPDATE LEARNING_ITEMS
-SET title = '历史学习资料 ' || item_id,
+SET title = CASE
+      WHEN TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试')
+        THEN '历史学习资料 ' || item_id
+      ELSE title
+    END,
     description = NVL(description, TO_CLOB('该资料已在答辩前完成说明补全。'))
 WHERE TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试')
    OR description IS NULL;

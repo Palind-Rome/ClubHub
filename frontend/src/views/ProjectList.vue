@@ -983,7 +983,14 @@ onUnmounted(() => {
         :disabled="Boolean(currentUserId && creatableClubs.length)"
         content="当前账号没有可提交立项申请的社团，请切换为有效社团负责人身份。"
       >
-        <span>
+        <span
+          :tabindex="!currentUserId || creatableClubs.length === 0 ? 0 : -1"
+          :aria-label="
+            !currentUserId || creatableClubs.length === 0
+              ? '当前账号没有可提交立项申请的社团，请切换为有效社团负责人身份。'
+              : undefined
+          "
+        >
           <el-button
             type="primary"
             :disabled="!currentUserId || creatableClubs.length === 0"

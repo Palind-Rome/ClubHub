@@ -7,6 +7,7 @@ import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";
+import { authRedirectPath } from "../authRedirect";
 
 const router = useRouter();
 const route = useRoute();
@@ -125,7 +126,7 @@ async function login() {
     });
     applyAuth(result);
     ElMessage.success("登录成功");
-    router.push(authRedirectPath());
+    router.push(authRedirectPath(route.query.redirect));
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "登录失败");
   } finally {
@@ -146,7 +147,7 @@ async function register() {
     });
     applyAuth(result);
     ElMessage.success("注册成功");
-    router.push(authRedirectPath());
+    router.push(authRedirectPath(route.query.redirect));
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "注册失败");
   } finally {
@@ -186,11 +187,6 @@ function buildRegisterPayload(): RegisterRequest {
 function optionalText(value: string) {
   const normalized = value.trim();
   return normalized ? normalized : undefined;
-}
-
-function authRedirectPath() {
-  const redirect = route.query.redirect;
-  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/dashboard";
 }
 
 function applyAuth(nextAuth: AuthResponse) {

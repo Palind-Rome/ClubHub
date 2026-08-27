@@ -1709,7 +1709,18 @@ onUnmounted(() => {
           "
           content="当前社团没有可申请奖项，或当前身份不在有效申请成员范围内。"
         >
-          <span>
+          <span
+            :tabindex="
+              !selectedClubId || creatableAwardSchemes.length === 0 || applicantOptions.length === 0
+                ? 0
+                : -1
+            "
+            :aria-label="
+              !selectedClubId || creatableAwardSchemes.length === 0 || applicantOptions.length === 0
+                ? '当前社团没有可申请奖项，或当前身份不在有效申请成员范围内。'
+                : undefined
+            "
+          >
             <el-button
               type="success"
               :icon="Plus"

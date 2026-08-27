@@ -11,12 +11,58 @@ export function readAuth(): AuthResponse | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as AuthResponse;
+    const parsed: unknown = JSON.parse(raw);
+    if (isAuthResponse(parsed)) return parsed;
+    removeStoredSession();
+    return null;
   } catch {
-    localStorage.removeItem(authKey);
-    localStorage.removeItem(roleKeyName);
+    removeStoredSession();
     return null;
   }
+}
+
+function isAuthResponse(value: unknown): value is AuthResponse {
+  if (!isRecord(value) || typeof value.token !== "string") return false;
+  if (!isRecord(value.user)) return false;
+  if (
+    typeof value.user.id !== "number" ||
+    typeof value.user.username !== "string" ||
+    typeof value.user.realName !== "string" ||
+    typeof value.user.accountStatus !== "string"
+  ) {
+    return false;
+  }
+  if (!Array.isArray(value.permissions) || !value.permissions.every(isString)) return false;
+  if (!Array.isArray(value.roles) || !value.roles.every(isAuthRole)) return false;
+  return true;
+}
+
+function isAuthRole(value: unknown) {
+  return (
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.code === "string" &&
+    typeof value.name === "string" &&
+    typeof value.displayName === "string" &&
+    (value.scope === "system" || value.scope === "club") &&
+    Array.isArray(value.clubIds) &&
+    value.clubIds.every((clubId) => typeof clubId === "number") &&
+    Array.isArray(value.permissions) &&
+    value.permissions.every(isString)
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function removeStoredSession() {
+  localStorage.removeItem(authKey);
+  localStorage.removeItem(roleKeyName);
 }
 
 export function saveAuth(auth: AuthResponse) {

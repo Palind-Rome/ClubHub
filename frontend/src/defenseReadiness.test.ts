@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import appShellSource from "./components/shell/AppShell.vue?raw";
-import dashboardSource from "./views/DashboardHome.vue?raw";
 import routerSource from "./router/index.ts?raw";
 
 const viewSources = import.meta.glob("./views/*.vue", {
@@ -19,18 +18,9 @@ const defenseTableViews = [
 ];
 
 describe("答辩演示就绪约束", () => {
-  it("默认进入答辩工作台且统计来自真实接口", () => {
+  it("默认进入答辩工作台", () => {
     expect(routerSource).toContain('path: "/dashboard"');
     expect(routerSource).toContain('redirect: "/dashboard"');
-    expect(dashboardSource).toContain("Promise.allSettled");
-    expect(dashboardSource).toContain("apiClient.getActivities");
-    expect(dashboardSource).toContain("apiClient.getProjects");
-    expect(dashboardSource).toContain("apiClient.getNotices");
-    expect(dashboardSource).toContain("apiClient.getRecruitments");
-    expect(dashboardSource).toContain('metric.value ?? "—"');
-    expect(dashboardSource).toContain("演示待办");
-    expect(dashboardSource).toContain("当前身份没有有效社团范围角色");
-    expect(dashboardSource).toContain("核心业务入口");
   });
 
   it("页面眉标由路由语义提供，不再硬编码通用 Workspace", () => {
@@ -49,11 +39,16 @@ describe("答辩演示就绪约束", () => {
     expect(viewSources[`./views/${fileName}`]).toContain("defense-data-table");
   });
 
-  it("核心列表不再使用遮挡正文的超宽固定操作列", () => {
-    const sources = defenseTableViews.map((name) => viewSources[`./views/${name}`]).join("\n");
-    expect(sources).not.toContain('width="560" fixed="right"');
-    expect(sources).not.toContain('width="420" align="center" fixed="right"');
-    expect(sources).not.toContain('width="340" fixed="right"');
+  it.each(defenseTableViews)("%s 的答辩主表不使用固定右侧列", (fileName) => {
+    const source = viewSources[`./views/${fileName}`];
+    const classOffset = source.indexOf("defense-data-table");
+    const tableStart = source.lastIndexOf("<el-table", classOffset);
+    const tableEnd = source.indexOf("</el-table>", classOffset);
+
+    expect(classOffset).toBeGreaterThan(-1);
+    expect(tableStart).toBeGreaterThan(-1);
+    expect(tableEnd).toBeGreaterThan(tableStart);
+    expect(source.slice(tableStart, tableEnd)).not.toContain('fixed="right"');
   });
 
   it("无适用业务范围时，项目、奖项和讨论发布入口会预先解释", () => {

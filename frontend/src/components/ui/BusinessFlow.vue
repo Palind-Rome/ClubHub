@@ -13,7 +13,7 @@ defineProps<{
       <p>{{ description }}</p>
     </div>
     <ol>
-      <li v-for="(step, index) in steps" :key="step">
+      <li v-for="(step, index) in steps" :key="`${index}-${step}`">
         <span>{{ index + 1 }}</span>
         <strong>{{ step }}</strong>
       </li>

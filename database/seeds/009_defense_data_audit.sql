@@ -2,7 +2,7 @@
 
 SELECT activity_id, title, location
 FROM activities
-WHERE TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试')
+WHERE TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试', '驳回')
    OR TRIM(LOWER(location)) IN ('1', 'aaa', 'test', '测试')
    OR (activity_status IN ('published', 'ongoing') AND end_at < SYSDATE);
 

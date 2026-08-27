@@ -38,6 +38,15 @@ describe("auth session", () => {
     expect(localStorage.getItem("clubhub-active-role")).toBeNull();
   });
 
+  it("removes a structurally invalid session object", () => {
+    localStorage.setItem("clubhub-auth", "{}");
+    localStorage.setItem("clubhub-active-role", "role-1");
+
+    expect(readAuth()).toBeNull();
+    expect(localStorage.getItem("clubhub-auth")).toBeNull();
+    expect(localStorage.getItem("clubhub-active-role")).toBeNull();
+  });
+
   it("notifies listeners and supports cleanup", () => {
     const callback = vi.fn();
     const stop = onSessionChange(callback);
