@@ -178,7 +178,10 @@ function canDeletePost(post: ForumPost): boolean {
   return (auth.value?.user.id && post.userId === auth.value.user.id) || canModerate.value;
 }
 
-const formatTime = (value: Date) => value.toLocaleString("zh-CN", { hour12: false });
+const formatTime = (value: Date | string) => {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return date.toLocaleString("zh-CN", { hour12: false });
+};
 watch(selectedClubId, () => void loadPosts());
 watch(showHidden, () => void loadPosts());
 onMounted(() => {
