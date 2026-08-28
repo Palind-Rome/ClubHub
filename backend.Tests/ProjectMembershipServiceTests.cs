@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClubHub.Api.Tests;
@@ -35,7 +36,7 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
             Username = $"user-{baseId}",
             PasswordHash = "unused",
             RealName = "Test User",
-            AccountStatus = accountStatus,
+            AccountStatus = accountStatus ?? "active",
             CreatedAt = now
         });
         await db.SaveChangesAsync();
@@ -356,7 +357,7 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
         // Existing project member
         db.Add(new User { UserId = baseId + 2, Username = "existing", PasswordHash = "unused", RealName = "Existing", AccountStatus = "active", CreatedAt = now });
         db.Add(new ClubMember { MemberId = baseId + 101, ClubId = clubId, UserId = baseId + 2, MemberStatus = "active", TermStart = now.AddMonths(-1), TermEnd = now.AddMonths(1) });
-        db.Add(new ProjectMember { MemberId = baseId + 200, ProjectId = projectId, UserId = baseId + 2, MemberStatus = "active", AssignedAt = now });
+        db.Add(new ProjectMember { ProjectMemberId = baseId + 200, ProjectId = projectId, UserId = baseId + 2, MemberStatus = "active", JoinedAt = now });
 
         await db.SaveChangesAsync();
 
