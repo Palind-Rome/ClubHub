@@ -37,6 +37,8 @@ builder.Services
             TimeSpan.FromMinutes(options.SlidingLifetimeMinutes),
         "Authentication session absolute lifetime must not be shorter than sliding lifetime.")
     .ValidateOnStart();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<CaptchaService>();
 builder.Services.AddSingleton<IAuthSessionService, AuthSessionService>();
 builder.Services.AddSingleton<IPermissionSnapshotCache, PermissionSnapshotCache>();
 builder.Services.AddSingleton<IDistributedRateLimiter, DistributedRateLimiter>();

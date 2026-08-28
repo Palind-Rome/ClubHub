@@ -12,17 +12,39 @@ namespace ClubHub.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly CaptchaService _captchaService;
     private readonly IDistributedRateLimiter _rateLimiter;
 
-    public AuthController(AuthService authService, IDistributedRateLimiter rateLimiter)
+    public AuthController(
+        AuthService authService,
+        CaptchaService captchaService,
+        IDistributedRateLimiter rateLimiter)
     {
         _authService = authService;
+        _captchaService = captchaService;
         _rateLimiter = rateLimiter;
+    }
+
+    [HttpGet("captcha")]
+    public async Task<IActionResult> GetCaptcha()
+    {
+        var rateLimit = await AcquireRateLimitAsync(
+            "captcha-ip",
+            ClientIp(),
+            30,
+            TimeSpan.FromMinutes(5));
+        if (rateLimit is not null) return rateLimit;
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(_captchaService.CreateChallenge());
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        var captchaError = ValidateCaptcha(request.CaptchaToken, request.CaptchaCode);
+        if (captchaError is not null) return captchaError;
+
         var rateLimit = await AcquireRateLimitAsync(
             "register-ip",
             ClientIp(),
@@ -37,6 +59,9 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        var captchaError = ValidateCaptcha(request.CaptchaToken, request.CaptchaCode);
+        if (captchaError is not null) return captchaError;
+
         var accountSubject = (request.Username ?? string.Empty).Trim().ToLowerInvariant();
         var accountLimit = await AcquireRateLimitAsync(
             "login-account",
@@ -222,6 +247,17 @@ public class AuthController : ControllerBase
 
     private string ClientIp() =>
         HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    private IActionResult? ValidateCaptcha(string? token, string? code)
+    {
+        if (_captchaService.TryConsume(token, code)) return null;
+
+        return BadRequest(new ApiError
+        {
+            Code = ApiErrorCodes.ValidationError,
+            Message = "验证码无效或已过期，请刷新后重试。"
+        });
+    }
 
     private IActionResult ToActionResult<T>(AuthServiceResult<T> result)
     {
