@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { ElButton, ElMessage } from "element-plus";
 import { Picture, Loading } from "@element-plus/icons-vue";
 import { requestJson } from "../composables/useApiRequest";
+import { ForumImageUploadResponseFromJSON } from "../api/models";
 
 interface Props {
   modelValue: string;
@@ -47,10 +48,12 @@ async function handleImageUpload(event: Event) {
     const formData = new FormData();
     formData.append("image", file);
 
-    const response = (await requestJson(`/api/v1/clubs/${props.clubId}/forum-posts/upload-image`, {
-      method: "POST",
-      body: formData,
-    })) as { imageUrl: string; fileName: string };
+    const response = ForumImageUploadResponseFromJSON(
+      await requestJson(`/api/v1/clubs/${props.clubId}/forum-posts/upload-image`, {
+        method: "POST",
+        body: formData,
+      } as unknown),
+    );
 
     const markdownImage = `![${response.fileName}](${response.imageUrl})`;
     const textarea = textareaRef.value;

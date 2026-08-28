@@ -93,7 +93,7 @@ async function loadPosts() {
   loadError.value = null;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const data = await requestJson<any[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const data = await requestJson<unknown[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     const posts = data.map(ForumPostFromJSON);
     if (requestVersion === postsRequestVersion) {
       topics.value = posts;
