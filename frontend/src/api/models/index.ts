@@ -29,6 +29,7 @@ export * from "./BudgetReviewRecord";
 export * from "./BudgetTransaction";
 export * from "./CancelBudgetApplicationRequest";
 export * from "./CancelProjectRequest";
+export * from "./CaptchaChallenge";
 export * from "./Club";
 export * from "./ClubApplication";
 export * from "./ClubDepartmentRecord";
