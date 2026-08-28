@@ -163,9 +163,10 @@ public sealed class ForumImageUploadService : IDisposable
 
     private string BuildImageUrl(string objectName)
     {
-        var endpoint = NormalizeEndpoint(_options.Endpoint).TrimStart("https://".AsSpan()).TrimStart("http://".AsSpan());
+        var normalizedEndpoint = NormalizeEndpoint(_options.Endpoint);
+        var endpointWithoutScheme = normalizedEndpoint["https://".Length..];
         var bucket = _options.Bucket.Trim();
-        return $"https://{bucket}.{endpoint}/{objectName}";
+        return $"https://{bucket}.{endpointWithoutScheme}/{objectName}";
     }
 
     private static string NormalizeEndpoint(string endpoint)
