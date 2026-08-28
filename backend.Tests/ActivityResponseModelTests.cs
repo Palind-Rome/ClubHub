@@ -1,9 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using ClubHub.Api.Controllers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Infrastructure.Rest;
+using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,6 +93,49 @@ public sealed class ActivityResponseModelTests
     public void StatusMappingReturnsFalseForValuesOutsideOpenApiContract(string? status)
     {
         Assert.False(ActivitiesController.TryParseActivityStatus(status, out _));
+    }
+
+    [Fact]
+    public void RegistrationStatusGateAcceptsPublishedStatusWithWhitespace()
+    {
+        Assert.True(ActivitiesController.IsPublishedActivityStatus(" PUBLISHED "));
+    }
+
+    [Fact]
+    public async Task CheckinSettingsAcceptPublishedStatusWithWhitespace()
+    {
+        await using var factory = new ClubHubWebApplicationFactory();
+        using var client = await CreateAuthenticatedActivityClient(factory, "CLUB_OFFICER");
+        var now = DateTime.Now;
+
+        using var response = await client.PutAsJsonAsync(
+            "/api/activities/119/checkin-settings",
+            new
+            {
+                checkinCode = "check",
+                checkinStartAt = now.AddMinutes(-5),
+                checkinEndAt = now.AddMinutes(20),
+                checkoutCode = "checkout",
+                checkoutStartAt = now.AddMinutes(30),
+                checkoutEndAt = now.AddMinutes(50)
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CheckinAcceptsPublishedStatusWithWhitespace()
+    {
+        await using var factory = new ClubHubWebApplicationFactory();
+        using var client = await CreateAuthenticatedActivityClient(factory, "CLUB_MEMBER");
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/activities/119/checkin",
+            new { code = "check" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("checked_in", document.RootElement.GetProperty("signStatus").GetString());
     }
 
     [Fact]
@@ -265,6 +311,73 @@ public sealed class ActivityResponseModelTests
     {
         Assert.Null(typeof(ActivitiesController).Assembly.GetType(
             "ClubHub.Api.Controllers.ActivityDto"));
+    }
+
+    private static async Task<HttpClient> CreateAuthenticatedActivityClient(
+        ClubHubWebApplicationFactory factory,
+        string roleCode)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var now = DateTime.Now;
+        var user = new User
+        {
+            UserId = 21,
+            Username = "activity-status-test",
+            PasswordHash = "unused",
+            RealName = "活动状态测试用户",
+            AccountStatus = "normal",
+            CreatedAt = now
+        };
+        db.Users.Add(user);
+        db.Clubs.Add(new Club
+        {
+            ClubId = 1,
+            ClubName = "数据库社",
+            ClubStatus = "active",
+            CreatedAt = now
+        });
+        db.Roles.Add(new Role
+        {
+            RoleId = 31,
+            RoleCode = roleCode,
+            RoleName = "活动状态测试角色",
+            RoleScope = "club",
+            CreatedAt = now
+        });
+        db.UserRoles.Add(new UserRole
+        {
+            UserRoleId = 41,
+            UserId = user.UserId,
+            RoleId = 31,
+            ClubId = 1,
+            AssignedAt = now
+        });
+        db.Activities.Add(new Activity
+        {
+            ActivityId = 119,
+            ClubId = 1,
+            Title = "状态门禁归一化活动",
+            ActivityStatus = " PUBLISHED ",
+            StartAt = now.AddHours(-1),
+            EndAt = now.AddHours(2),
+            CheckinCode = "check",
+            CheckinStartAt = now.AddMinutes(-10),
+            CheckinEndAt = now.AddMinutes(10),
+            CheckoutCode = "checkout",
+            CheckoutStartAt = now.AddMinutes(20),
+            CheckoutEndAt = now.AddMinutes(40),
+            CreatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        var token = scope.ServiceProvider
+            .GetRequiredService<AuthTokenService>()
+            .CreateToken(user);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     private static WebApplicationFactory<Program> WithNullActivityLogger(

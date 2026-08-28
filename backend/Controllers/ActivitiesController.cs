@@ -246,7 +246,7 @@ public class ActivitiesController : ControllerBase
                 return Error(StatusCodes.Status404NotFound, "ACTIVITY_NOT_FOUND", "活动不存在");
             }
 
-            if (!string.Equals(activity.ActivityStatus, ActivityStatusPublished, StringComparison.OrdinalIgnoreCase))
+            if (!IsPublishedActivityStatus(activity.ActivityStatus))
             {
                 return Error(StatusCodes.Status400BadRequest, "ACTIVITY_NOT_PUBLISHED", "活动未发布，暂不能报名");
             }
@@ -353,7 +353,8 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "必须提供审核结果 approved。" });
         }
 
-        if (activity.ActivityStatus is "published" or "ongoing" or "finished" or "cancelled")
+        if (NormalizeActivityStatus(activity.ActivityStatus)
+            is "published" or "ongoing" or "finished" or "cancelled")
         {
             return BadRequest(new { message = "已发布或已结束的活动不能重复审核。" });
         }
@@ -441,7 +442,7 @@ public class ActivitiesController : ControllerBase
             return permissionError;
         }
 
-        if (activity.ActivityStatus is not "published" and not "ongoing")
+        if (!IsCheckinEnabledActivityStatus(activity.ActivityStatus))
         {
             return BadRequest(new { message = "只有已发布或进行中的活动才能设置签到签退规则。" });
         }
@@ -599,7 +600,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = isCheckin ? "签到码不能为空。" : "签退码不能为空。" });
         }
 
-        if (activity.ActivityStatus is not "published" and not "ongoing")
+        if (!IsCheckinEnabledActivityStatus(activity.ActivityStatus))
         {
             return BadRequest(new { message = "只有已发布或进行中的活动可以签到或签退。" });
         }
@@ -900,7 +901,7 @@ public class ActivitiesController : ControllerBase
         string? status,
         out ApiActivity.StatusEnum parsedStatus)
     {
-        switch (status?.Trim().ToLowerInvariant())
+        switch (NormalizeActivityStatus(status))
         {
             case "draft":
                 parsedStatus = ApiActivity.StatusEnum.DraftEnum;
@@ -928,6 +929,18 @@ public class ActivitiesController : ControllerBase
                 return false;
         }
     }
+
+    internal static string? NormalizeActivityStatus(string? status) =>
+        status?.Trim().ToLowerInvariant();
+
+    internal static bool IsPublishedActivityStatus(string? status) =>
+        string.Equals(
+            NormalizeActivityStatus(status),
+            ActivityStatusPublished,
+            StringComparison.Ordinal);
+
+    private static bool IsCheckinEnabledActivityStatus(string? status) =>
+        NormalizeActivityStatus(status) is "published" or "ongoing";
 
     private void LogInvalidActivityStatus(int activityId, string? status)
     {
