@@ -134,6 +134,41 @@ public sealed class ActivityResponseModelTests
     }
 
     [Fact]
+    public async Task ActivityListIncludesNormalizedStatusInPaginationCount()
+    {
+        await using var factory = new ClubHubWebApplicationFactory();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+            db.Clubs.Add(new Club
+            {
+                ClubId = 1,
+                ClubName = "数据库社",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.Activities.Add(new Activity
+            {
+                ActivityId = 119,
+                ClubId = 1,
+                Title = "状态归一化活动",
+                ActivityStatus = " PUBLISHED ",
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/activities?page=1&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("1", response.Headers.GetValues("X-Total-Count").Single());
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal(119, item.GetProperty("id").GetInt32());
+        Assert.Equal("published", item.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task ActivityListSkipsNullAndUnknownStatuses()
     {
         await using var baseFactory = new ClubHubWebApplicationFactory();

@@ -64,7 +64,8 @@ public class ActivitiesController : ControllerBase
 
         var query = _db.Activities
             .AsNoTracking()
-            .Where(a => a.ActivityStatus != null && ApiActivityStatuses.Contains(a.ActivityStatus))
+            .Where(a => ApiActivityStatuses.Contains(
+                (a.ActivityStatus ?? string.Empty).Trim().ToLower()))
             .OrderBy(a => a.ActivityId)
             .Select(a => new
             {
