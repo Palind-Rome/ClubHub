@@ -15,7 +15,7 @@ namespace ClubHub.Api.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("api/v1/clubs/{clubId:int}/forum-posts")]
+[Route("api/clubs/{clubId:int}/forum-posts")]
 public sealed class ForumPostsController : ControllerBase
 {
     private const string Published = "published";
