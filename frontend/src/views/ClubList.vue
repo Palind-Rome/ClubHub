@@ -4420,11 +4420,14 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="材料地址" prop="materialUrl">
+        <el-form-item label="申请材料" prop="materialUrl">
           <el-input
             v-model="applicationForm.materialUrl"
-            placeholder="线上材料链接或校内存档地址"
+            placeholder="社团章程、成员名单等材料的 OSS 链接或校内归档编号"
           />
+          <div class="form-tip">
+            用于审核社团章程、成员名单与指导老师同意材料，不是社团主页地址。
+          </div>
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="applicationForm.contactPhone" maxlength="30" />

@@ -799,16 +799,16 @@ onUnmounted(() => {
 
     <div class="process-strip">
       <div>
-        <span>1. 批量生成</span>
-        <strong>汇总活动、项目任务、学习记录和已公示奖项</strong>
+        <span>1. 生成考核草稿</span>
+        <strong>系统按活动、任务、学习与奖项记录计算四项得分</strong>
       </div>
       <div>
-        <span>2. 微调确认</span>
-        <strong>负责人或指导老师上下微调每一项分数</strong>
+        <span>2. 负责人确认</span>
+        <strong>负责人或指导老师核对记录并调整分数</strong>
       </div>
       <div>
-        <span>3. 公示查看</span>
-        <strong>确认后的结果按范围公开查看</strong>
+        <span>3. 发布结果</span>
+        <strong>确认后的考核结果向社团成员公示</strong>
       </div>
     </div>
 

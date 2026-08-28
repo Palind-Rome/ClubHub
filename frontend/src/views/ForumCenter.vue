@@ -190,6 +190,7 @@ onUnmounted(() => stopSessionListener?.());
       type="info"
       :closable="false"
       show-icon
+      class="membership-notice"
     />
     <el-card v-if="canPostToSelectedClub" class="composer" shadow="never">
       <template #header>发布话题</template>
@@ -323,6 +324,14 @@ onUnmounted(() => stopSessionListener?.());
 }
 .composer {
   margin: 16px 0;
+}
+.membership-notice {
+  --el-alert-bg-color: color-mix(in srgb, var(--club-primary-soft) 78%, var(--club-bg-elevated));
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--club-primary) 30%, var(--club-border));
+}
+.membership-notice :deep(.el-alert__title) {
+  color: var(--club-text);
 }
 .topic {
   border: 1px solid var(--el-border-color-light);

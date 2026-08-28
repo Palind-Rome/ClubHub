@@ -126,6 +126,21 @@ const creatableClubs = computed<ClubOption[]>(() => {
   }));
 });
 const canCreateActivity = computed(() => hasPermission("activity:create"));
+const actionColumnWidth = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  if (
+    permissions.includes("*") ||
+    [
+      "activity:create",
+      "activity:review",
+      "activity:checkin:manage",
+      ...MATERIAL_ACCESS_PERMISSIONS,
+    ].some((permission) => permissions.includes(permission))
+  ) {
+    return 300;
+  }
+  return currentRoles.value.some((role) => role.clubIds.length > 0) ? 184 : 112;
+});
 const pageTitle = computed(() =>
   canCreateActivity.value ||
   hasPermission("activity:review") ||
@@ -426,6 +441,7 @@ function canRegister(activity: Activity) {
   return (
     Boolean(currentUserId.value) &&
     activity.status === "published" &&
+    hasScopedPermission("activity:checkin", activity.clubId) &&
     !activity.isRegistered &&
     !deadlinePassed &&
     (activity.maxParticipants == null || activity.currentParticipants < activity.maxParticipants)
@@ -434,6 +450,7 @@ function canRegister(activity: Activity) {
 
 function registerButtonText(activity: Activity) {
   if (activity.isRegistered) return "已报名";
+  if (!hasScopedPermission("activity:checkin", activity.clubId)) return "仅限本社团成员";
   return canRegister(activity) ? "报名" : "不可报名";
 }
 
@@ -763,7 +780,7 @@ async function openParticipations(activity: Activity) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="280" align="center">
+      <el-table-column label="操作" :width="actionColumnWidth" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
@@ -1036,6 +1053,8 @@ async function openParticipations(activity: Activity) {
         v-loading="participationLoading"
         :data="participations"
         stripe
+        border
+        class="participation-table"
         empty-text="暂无参与记录"
       >
         <el-table-column label="参与者" min-width="150">
@@ -1124,7 +1143,6 @@ async function openParticipations(activity: Activity) {
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  min-width: 240px;
   min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {
@@ -1150,5 +1168,17 @@ async function openParticipations(activity: Activity) {
 }
 .code-field .el-input {
   flex: 1;
+}
+.participation-table {
+  border-radius: var(--club-radius-md);
+  overflow: hidden;
+}
+.participation-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  color: var(--club-text);
+  background: color-mix(in srgb, var(--club-primary-soft) 72%, var(--club-bg-elevated));
+}
+.participation-table :deep(td.el-table__cell),
+.participation-table :deep(th.el-table__cell) {
+  border-color: color-mix(in srgb, var(--club-primary) 20%, var(--club-border));
 }
 </style>

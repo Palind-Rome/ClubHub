@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { Refresh } from "@element-plus/icons-vue";
+import { Bell, DataBoard, Grid, Refresh } from "@element-plus/icons-vue";
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth } from "../authSession";
-import BusinessFlow from "../components/ui/BusinessFlow.vue";
 
 type Metric = { label: string; value: number | null; note: string; path: string };
 
@@ -45,24 +44,6 @@ const metrics = computed<Metric[]>(() => [
   { label: "纳新计划", value: recruitments.value, note: "当前可见纳新总数", path: "/recruitments" },
 ]);
 
-const flows = [
-  {
-    title: "活动业务闭环",
-    description: "从活动发起到参与数据沉淀，可沿同一条记录逐步推进。",
-    steps: ["创建活动", "报名审核", "签到签退", "活动归档"],
-  },
-  {
-    title: "项目协作闭环",
-    description: "把立项、人员、任务和成果审核串成完整的协作过程。",
-    steps: ["提交立项", "立项审核", "任务推进", "成果验收"],
-  },
-  {
-    title: "评奖评优闭环",
-    description: "考核结果进入奖项申请，再经过多级审核与公示归档。",
-    steps: ["成员考核", "奖项申请", "分级审核", "公示归档"],
-  },
-] as const;
-
 async function loadDashboard() {
   loading.value = true;
   const userId = auth.value?.user?.id;
@@ -99,27 +80,32 @@ onUnmounted(() => stopSessionListener?.());
 <template>
   <section class="dashboard-page">
     <header class="app-page-header dashboard-head">
-      <div>
+      <div class="dashboard-title">
+        <el-icon class="dashboard-title-icon"><DataBoard /></el-icon>
         <h2>运营工作台</h2>
-        <p>用实时业务数据概览系统状态，并快速进入需要处理的核心流程。</p>
       </div>
-      <el-button :icon="Refresh" :loading="loading" @click="loadDashboard">刷新真实数据</el-button>
+      <el-button :icon="Refresh" :loading="loading" @click="loadDashboard">刷新数据</el-button>
     </header>
 
     <section class="identity-card">
-      <div>
+      <div class="identity-primary">
         <span class="identity-kicker">CURRENT IDENTITY</span>
         <h3>{{ auth?.user.realName || "当前用户" }}</h3>
         <p>{{ roleSummary }}</p>
       </div>
-      <div class="permission-summary">
-        <span>权限范围</span>
-        <strong>{{
-          (auth?.permissions ?? []).includes("*")
-            ? "系统全部权限"
-            : `${auth?.permissions.length ?? 0} 项业务权限`
-        }}</strong>
-        <small>页面按钮会继续按当前身份和社团范围显示</small>
+      <div class="identity-details" aria-label="账号基本信息">
+        <div>
+          <span>学号</span><strong>{{ auth?.user.studentNo || "未填写" }}</strong>
+        </div>
+        <div>
+          <span>身份</span><strong>{{ roleSummary }}</strong>
+        </div>
+        <div>
+          <span>学院</span><strong>{{ auth?.user.college || "未填写" }}</strong>
+        </div>
+        <div>
+          <span>专业</span><strong>{{ auth?.user.major || "未填写" }}</strong>
+        </div>
       </div>
     </section>
 
@@ -138,15 +124,19 @@ onUnmounted(() => stopSessionListener?.());
 
     <section class="briefing-grid">
       <article class="briefing-card">
-        <span class="card-kicker">OPERATION CHECKLIST</span>
-        <h2>运营提示</h2>
+        <span class="card-kicker">REMINDERS</span>
+        <h2>
+          <el-icon><Bell /></el-icon>提醒
+        </h2>
         <ul>
           <li v-for="item in attentionItems" :key="item">{{ item }}</li>
         </ul>
       </article>
       <article class="briefing-card">
-        <span class="card-kicker">QUICK ROUTES</span>
-        <h2>核心业务入口</h2>
+        <span class="card-kicker">COMMON TOOLS</span>
+        <h2>
+          <el-icon><Grid /></el-icon>常用工具入口
+        </h2>
         <div class="quick-routes">
           <router-link to="/activities">活动报名与签到</router-link>
           <router-link to="/projects">项目立项与任务</router-link>
@@ -154,16 +144,6 @@ onUnmounted(() => stopSessionListener?.());
           <router-link to="/forum">现场发布讨论</router-link>
         </div>
       </article>
-    </section>
-
-    <div class="section-heading">
-      <div>
-        <h2>核心业务闭环</h2>
-        <p>从业务目标出发，沿状态变化推进流程，并在关键节点保留可追溯记录。</p>
-      </div>
-    </div>
-    <section class="flow-grid">
-      <BusinessFlow v-for="flow in flows" :key="flow.title" v-bind="flow" />
     </section>
   </section>
 </template>
@@ -173,10 +153,24 @@ onUnmounted(() => stopSessionListener?.());
   display: grid;
   gap: var(--club-space-6);
 }
-.dashboard-head p,
-.section-heading p {
-  margin: 6px 0 0;
-  color: var(--club-text-secondary);
+.dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--club-space-4);
+}
+.dashboard-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dashboard-title-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: var(--club-primary-strong);
+  background: linear-gradient(135deg, var(--club-primary-soft), var(--club-accent-soft));
+  font-size: 23px;
 }
 .identity-card {
   display: grid;
@@ -209,21 +203,32 @@ onUnmounted(() => stopSessionListener?.());
   font-weight: 800;
   letter-spacing: 0.13em;
 }
-.permission-summary {
+.identity-details {
   display: grid;
-  min-width: 210px;
-  gap: 4px;
-  padding: 16px 18px;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  min-width: min(520px, 52%);
   border: 1px solid var(--club-border);
   border-radius: var(--club-radius-md);
   background: var(--club-surface);
 }
-.permission-summary span,
-.permission-summary small {
-  color: var(--club-text-muted);
+.identity-details > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
 }
-.permission-summary strong {
-  font-size: 17px;
+.identity-details > div:nth-child(odd) {
+  border-right: 1px solid var(--club-border);
+}
+.identity-details > div:nth-child(-n + 2) {
+  border-bottom: 1px solid var(--club-border);
+}
+.identity-details span {
+  color: var(--club-text-muted);
+  font-size: 12px;
+}
+.identity-details strong {
+  font-size: 14px;
+  line-height: 1.4;
 }
 .metric-grid {
   display: grid;
@@ -269,6 +274,9 @@ onUnmounted(() => stopSessionListener?.());
   box-shadow: var(--club-shadow-sm);
 }
 .briefing-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin: 5px 0 14px;
   font-size: 18px;
 }
@@ -301,28 +309,19 @@ onUnmounted(() => stopSessionListener?.());
   text-align: center;
   text-decoration: none;
 }
-.section-heading h2 {
-  margin: 0;
-  font-size: 20px;
-}
-.flow-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--club-space-4);
-}
 @media (max-width: 1050px) {
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .flow-grid {
-    grid-template-columns: 1fr;
+  .identity-details {
+    min-width: min(480px, 58%);
   }
 }
 @media (max-width: 640px) {
   .identity-card {
     grid-template-columns: 1fr;
   }
-  .permission-summary {
+  .identity-details {
     min-width: 0;
   }
   .metric-grid {
