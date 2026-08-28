@@ -1054,7 +1054,7 @@ async function openParticipations(activity: Activity) {
         :data="participations"
         stripe
         border
-        class="participation-table"
+        class="participation-table business-data-table"
         empty-text="暂无参与记录"
       >
         <el-table-column label="参与者" min-width="150">

@@ -218,12 +218,15 @@ onUnmounted(() => stopSessionListener?.());
       :class="{ hidden: topic.postStatus === 'hidden' }"
     >
       <header>
-        <div>
-          <el-icon v-if="topic.isTop"><Star /></el-icon><strong>{{ topic.title }}</strong
-          ><el-tag v-if="topic.isTop" type="warning" size="small">置顶</el-tag
-          ><el-tag v-if="topic.postStatus === 'hidden'" type="info" size="small">已隐藏</el-tag>
+        <div class="topic-title-row">
+          <el-icon v-if="topic.isTop" class="pinned-icon"><Star /></el-icon>
+          <strong>{{ topic.title }}</strong>
+          <el-tag v-if="topic.isTop" class="pinned-tag" type="warning" size="small">置顶</el-tag>
+          <el-tag v-if="topic.postStatus === 'hidden'" type="info" size="small">已隐藏</el-tag>
         </div>
-        <small>{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small>
+        <small
+          >发布人：{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small
+        >
       </header>
       <p>{{ topic.content }}</p>
       <div class="actions">
@@ -261,7 +264,9 @@ onUnmounted(() => stopSessionListener?.());
         class="reply"
         :class="{ hidden: reply.postStatus === 'hidden' }"
       >
-        <small>{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small>
+        <small
+          >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
+        >
         <p>{{ reply.content }}</p>
         <el-button
           v-if="canModerate"
@@ -334,10 +339,12 @@ onUnmounted(() => stopSessionListener?.());
   color: var(--club-text);
 }
 .topic {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-  padding: 16px;
-  margin-top: 12px;
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--club-primary) 18%, var(--club-border));
+  border-radius: var(--club-radius-lg);
+  padding: 18px 20px;
+  background: color-mix(in srgb, var(--club-surface-solid) 92%, var(--club-primary-soft));
+  box-shadow: var(--club-shadow-sm);
 }
 .topic.hidden,
 .reply.hidden {
@@ -348,6 +355,28 @@ onUnmounted(() => stopSessionListener?.());
   justify-content: space-between;
   gap: 12px;
 }
+.topic-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+.topic-title-row strong {
+  font-size: 16px;
+  line-height: 24px;
+}
+.pinned-icon {
+  flex: 0 0 auto;
+  color: var(--club-warning);
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+.pinned-tag {
+  margin-left: 8px;
+  border-color: color-mix(in srgb, var(--club-warning) 48%, var(--club-border));
+  background: color-mix(in srgb, var(--club-warning) 14%, var(--club-surface-solid));
+  color: var(--club-warning);
+}
 .topic p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -356,7 +385,10 @@ onUnmounted(() => stopSessionListener?.());
 .reply {
   margin-top: 12px;
   padding: 12px;
-  border-left: 3px solid var(--el-border-color);
+  border: 1px solid var(--club-border);
+  border-left: 3px solid color-mix(in srgb, var(--club-primary) 54%, var(--club-border));
+  border-radius: 0 var(--club-radius-sm) var(--club-radius-sm) 0;
+  background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
 }
 small {
   color: var(--el-text-color-secondary);

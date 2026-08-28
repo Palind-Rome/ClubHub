@@ -571,6 +571,19 @@ function isCurrentPreviewRequest(requestId: number, itemId: number) {
   return requestId === previewRequestId && previewItem.value?.id === itemId;
 }
 
+async function readApiError(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as {
+      message?: string;
+      detail?: string;
+      title?: string;
+    };
+    return payload.detail || payload.message || payload.title || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** 建立短时预览会话；内容请求只携带 HttpOnly Cookie，不暴露登录令牌或 OSS 地址。 */
 async function openPreview(item: LearningItem) {
   if (isCourseItem(item)) {
@@ -594,7 +607,7 @@ async function openPreview(item: LearningItem) {
     });
     if (!isCurrentPreviewRequest(requestId, item.id)) return;
     if (!response.ok) {
-      const message = (await response.text()).replace(/^"|"$/g, "");
+      const message = await readApiError(response, `在线预览准备失败：HTTP ${response.status}`);
       if (!isCurrentPreviewRequest(requestId, item.id)) return;
       throw new Error(message || `在线预览准备失败：HTTP ${response.status}`);
     }

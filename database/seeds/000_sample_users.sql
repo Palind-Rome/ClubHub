@@ -5,7 +5,7 @@ MERGE INTO USERS target
 USING (
   SELECT 1 AS user_id, 'student_chen' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '陈同学' AS real_name, '2350001' AS student_no,
+         '林黛玉' AS real_name, '2350001' AS student_no,
          '计算机科学与技术学院' AS college, '软件工程' AS major,
          '2023' AS grade, 'active' AS account_status
   FROM dual
@@ -29,7 +29,7 @@ MERGE INTO USERS target
 USING (
   SELECT 2 AS user_id, 'admin_li' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '李老师' AS real_name, '06002' AS student_no,
+         '贾政' AS real_name, '06002' AS student_no,
          '学生社团管理中心' AS college, '社团管理' AS major,
          '教师' AS grade, 'active' AS account_status
   FROM dual
@@ -53,7 +53,7 @@ MERGE INTO USERS target
 USING (
   SELECT 3 AS user_id, 'president_wang' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '王会长' AS real_name, '2250003' AS student_no,
+         '王熙凤' AS real_name, '2250003' AS student_no,
          '电子与信息工程学院' AS college, '人工智能' AS major,
          '2022' AS grade, 'active' AS account_status
   FROM dual
@@ -77,7 +77,7 @@ MERGE INTO USERS target
 USING (
   SELECT 4 AS user_id, 'member_liu' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '刘同学' AS real_name, '2450004' AS student_no,
+         '贾宝玉' AS real_name, '2450004' AS student_no,
          '设计创意学院' AS college, '工业设计' AS major,
          '2024' AS grade, 'active' AS account_status
   FROM dual
@@ -101,7 +101,7 @@ MERGE INTO USERS target
 USING (
   SELECT 5 AS user_id, 'advisor_zhang' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '张老师' AS real_name, '06005' AS student_no,
+         '贾雨村' AS real_name, '06005' AS student_no,
          '电子与信息工程学院' AS college, '指导教师' AS major,
          '教师' AS grade, 'active' AS account_status
   FROM dual
@@ -125,7 +125,7 @@ MERGE INTO USERS target
 USING (
   SELECT 6 AS user_id, 'officer_sun' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '孙干部' AS real_name, '2350006' AS student_no,
+         '薛宝钗' AS real_name, '2350006' AS student_no,
          '计算机科学与技术学院' AS college, '软件工程' AS major,
          '2023' AS grade, 'active' AS account_status
   FROM dual
@@ -147,9 +147,9 @@ WHEN NOT MATCHED THEN
 
 MERGE INTO USERS target
 USING (
-  SELECT 7 AS user_id, 'zhang_guoxiong' AS username,
+  SELECT 7 AS user_id, 'xue_pan' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '张国雄' AS real_name, '2350007' AS student_no,
+         '薛蟠' AS real_name, '2350007' AS student_no,
          '经济与管理学院' AS college, '信息管理与信息系统' AS major,
          '2023' AS grade, 'active' AS account_status
   FROM dual

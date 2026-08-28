@@ -1386,6 +1386,20 @@ function publicityItemResultText(result: string) {
   return result || "-";
 }
 
+function reviewResultText(value?: string | null) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  const labels: Record<string, string> = {
+    submit: "提交申请",
+    approve: "审核通过",
+    return: "退回修改",
+    reject: "审核驳回",
+    publish: "发布公示",
+    archive: "完成归档",
+    withdraw: "撤回申请",
+  };
+  return labels[normalized] || value || "处理";
+}
+
 async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
   const cachedApplication = applications.value.find(
     (application) => application.awardApplicationId === item.awardApplicationId,
@@ -1683,7 +1697,7 @@ onUnmounted(() => {
     <div class="page-head app-page-header">
       <div>
         <h2>评奖评优</h2>
-        <div class="subtitle">申请、审核、公示与成员考核奖项分联动</div>
+        <p class="subtitle">奖项申请、审核、公示与归档</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -1845,6 +1859,7 @@ onUnmounted(() => {
         :data="filteredRuleDocuments"
         empty-text="暂无评定细则"
         row-key="ruleDocumentId"
+        class="business-data-table"
       >
         <el-table-column type="expand">
           <template #default="{ row }">
@@ -1906,7 +1921,7 @@ onUnmounted(() => {
         <el-table-column label="发布时间" width="170">
           <template #default="{ row }">{{ formatDate(row.publishedAt || row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="220">
           <template #default="{ row }">
             <el-button :icon="View" @click="openRuleDetail(row)">查看</el-button>
             <el-button
@@ -1933,6 +1948,7 @@ onUnmounted(() => {
         :data="filteredApplications"
         empty-text="暂无评奖评优申请"
         row-key="awardApplicationId"
+        class="business-data-table"
       >
         <el-table-column label="申请人" min-width="150">
           <template #default="{ row }">
@@ -1967,7 +1983,7 @@ onUnmounted(() => {
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDate(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="240">
           <template #default="{ row }">
             <el-button :icon="View" @click="openDetail(row)">查看</el-button>
             <el-button
@@ -2007,6 +2023,7 @@ onUnmounted(() => {
         :data="filteredSchemes"
         empty-text="暂无奖项项目"
         row-key="awardSchemeId"
+        class="business-data-table"
       >
         <el-table-column label="奖项项目" min-width="220">
           <template #default="{ row }">
@@ -2043,7 +2060,7 @@ onUnmounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120" fixed="right">
+        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120">
           <template #default="{ row }">
             <el-button :icon="Edit" @click="openEditSchemeDialog(row)">编辑</el-button>
           </template>
@@ -2065,6 +2082,7 @@ onUnmounted(() => {
           :data="filteredPublicityBatches"
           empty-text="暂无公示批次"
           row-key="publicityBatchId"
+          class="business-data-table"
         >
           <el-table-column label="公示标题" min-width="220">
             <template #default="{ row }">
@@ -2087,7 +2105,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" min-width="220">
             <template #default="{ row }">
               <el-button :icon="View" @click="openPublicityBatchDetail(row)">查看名单</el-button>
               <el-button
@@ -2596,7 +2614,7 @@ onUnmounted(() => {
           </el-descriptions-item>
         </el-descriptions>
         <el-table
-          class="publicity-detail-table"
+          class="publicity-detail-table business-data-table"
           :data="publicityDetailTarget.items"
           border
           empty-text="暂无公示名单"
@@ -2617,7 +2635,7 @@ onUnmounted(() => {
               <el-tag effect="plain">{{ publicityItemResultText(row.publicityResult) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right">
+          <el-table-column label="操作" width="140">
             <template #default="{ row }">
               <el-button size="small" :icon="View" @click="openPublicityItemDetail(row)">
                 查看申请
@@ -2728,7 +2746,7 @@ onUnmounted(() => {
             :timestamp="formatDate(record.reviewedAt)"
           >
             <strong>{{ record.reviewerName || "系统" }}</strong>
-            <span> {{ record.reviewResult }} </span>
+            <span> · {{ reviewResultText(record.reviewResult) }}</span>
             <div class="muted">{{ record.reviewComment || "无审核意见" }}</div>
           </el-timeline-item>
         </el-timeline>
@@ -2768,6 +2786,10 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
 }
 
 .summary-strip {

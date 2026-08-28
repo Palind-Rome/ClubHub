@@ -6,91 +6,91 @@ MERGE INTO USERS target
 USING (
   SELECT 20 AS user_id, 'zhao_rui' AS username,
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=' AS password_hash,
-         '赵睿' AS real_name, '2450020' AS student_no,
+         '贾探春' AS real_name, '2450020' AS student_no,
          '计算机科学与技术学院' AS college, '计算机科学与技术' AS major,
          '2024' AS grade, 'active' AS account_status
   FROM dual
   UNION ALL
   SELECT 21, 'he_yuqing',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '何雨晴', '2350021',
+         '妙玉', '2350021',
          '电子与信息工程学院', '数据科学与大数据技术',
          '2023', 'active'
   FROM dual
   UNION ALL
   SELECT 22, 'zhou_zihan',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '周子涵', '2450022',
+         '李纨', '2450022',
          '软件学院', '软件工程',
          '2024', 'active'
   FROM dual
   UNION ALL
   SELECT 23, 'lin_kexin',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '林可欣', '2250023',
+         '平儿', '2250023',
          '设计创意学院', '视觉传达设计',
          '2022', 'active'
   FROM dual
   UNION ALL
   SELECT 24, 'chen_moyang',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '陈墨阳', '2350024',
+         '贾琏', '2350024',
          '艺术与传媒学院', '摄影',
          '2023', 'active'
   FROM dual
   UNION ALL
   SELECT 25, 'xu_mengyao',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '许梦瑶', '2450025',
+         '紫鹃', '2450025',
          '设计创意学院', '数字媒体艺术',
          '2024', 'active'
   FROM dual
   UNION ALL
   SELECT 26, 'wang_yichen',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '王奕辰', '2450026',
+         '鸳鸯', '2450026',
          '建筑与城市规划学院', '建筑学',
          '2024', 'active'
   FROM dual
   UNION ALL
   SELECT 27, 'ma_siyuan',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '马思远', '2250027',
+         '晴雯', '2250027',
          '艺术与传媒学院', '广播电视学',
          '2022', 'active'
   FROM dual
   UNION ALL
   SELECT 28, 'shen_yiming',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '沈一鸣', '2350028',
+         '袭人', '2350028',
          '体育教学部', '运动训练',
          '2023', 'active'
   FROM dual
   UNION ALL
   SELECT 29, 'ye_qingyang',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '叶清扬', '2450029',
+         '柳湘莲', '2450029',
          '经济与管理学院', '工商管理',
          '2024', 'active'
   FROM dual
   UNION ALL
   SELECT 30, 'wu_yutong',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '吴雨桐', '2350030',
+         '蒋玉菡', '2350030',
          '人文学院', '新闻传播学',
          '2023', 'active'
   FROM dual
   UNION ALL
   SELECT 31, 'zheng_jiayi',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '郑佳怡', '2450031',
+         '秦钟', '2450031',
          '环境科学与工程学院', '环境工程',
          '2024', 'active'
   FROM dual
   UNION ALL
   SELECT 32, 'jiang_haoran',
          'PBKDF2$600000$vOt5+JaeNdv2ry0AHIV23w==$Ve30fLOAPdDTf8qVoASxJTttCq+gsT9bw5oybCN6e/8=',
-         '蒋浩然', '2250032',
+         '贾兰', '2250032',
          '机械与能源工程学院', '机械设计制造及其自动化',
          '2022', 'active'
   FROM dual

@@ -66,6 +66,10 @@
     不启用 Redis，因此共享 Oracle 有意不执行本迁移。只有未来正式恢复 Redis 幂等
     能力时，才在维护窗口重新评估；执行迁移并通过 `verify.sql` 前必须保持
     `Redis:Features:Idempotency` 关闭。
+12. `20260828_align_primary_key_sequences.sql`：仅在导入显式主键数据后、只读审计
+    发现某个现有 Sequence 未超过对应表最大主键时执行。脚本不创建表、不删除或
+    更新业务数据，也明确排除当前未部署的幂等台账 Sequence。当前共享库的 39 个
+    在用 Sequence 已全部通过审计，无需执行本脚本。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
@@ -81,7 +85,7 @@
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新样例信息。
-8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
+8. `007_sample_award_workflow.sql`：围绕 `xue_pan` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
 9. `009_data_quality_audit.sql`：只读巡检占位标题、过期状态、空关联、
    异常社团、虚假附件和明显不合理数值；各查询应返回 0 行，发现结果后由小组
    人工确认再清理。
@@ -140,7 +144,8 @@
 12. 执行 `migrations/20260720_add_budget_management_closed_loop.sql`，新增社团年度经费账户、经费申请、审批记录和经费流水表。执行前先备份并暂停经费申请/审核写入。
 13. 停止仍使用 `MAX(id) + 1` 的旧后端，执行 `migrations/20260723_add_remaining_id_sequences.sql`，确认 17 个新增 Sequence 和主键默认值均已生效。
 14. 当前 production Redis 关闭，因此不要执行 `migrations/20260726_add_idempotency_records.sql`；只有未来正式恢复 Redis 幂等能力时，才在维护窗口重新评估并迁移。
-15. 当前共享库执行 `009_data_quality_audit.sql` 做业务数据巡检，各查询应返回 0 行。`verify.sql` 面向包含幂等台账的 41 表完整结构；在本迁移仍被跳过时，不要将其中缺失 `IDEMPOTENCY_RECORDS` 的结果误判为其他结构故障。
+15. 导入显式主键数据后先只读比较 39 个在用 Sequence 与对应表最大主键；仅在发现落后时执行 `migrations/20260828_align_primary_key_sequences.sql`。截至 2026-08-28，当前共享库全部正常，无需执行。
+16. 当前共享库执行 `009_data_quality_audit.sql` 做业务数据巡检，各查询应返回 0 行。`verify.sql` 面向包含幂等台账的 41 表完整结构；在本迁移仍被跳过时，不要将其中缺失 `IDEMPOTENCY_RECORDS` 的结果误判为其他结构故障。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 

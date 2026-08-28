@@ -239,7 +239,7 @@ function normalizeRoleText(value?: string | null) {
 }
 
 function memberDisplayName(member: ProjectMember) {
-  const name = member.realName?.trim() || `用户 #${member.userId}`;
+  const name = member.realName?.trim() || "成员信息暂不可见";
   return member.studentNo ? `${name}（${member.studentNo}）` : name;
 }
 
@@ -350,7 +350,7 @@ onUnmounted(() => {
         <el-table-column label="成员" min-width="180" fixed="left">
           <template #default="{ row }">
             <div class="member-identity">
-              <strong>{{ row.realName || `用户 #${row.userId}` }}</strong>
+              <strong>{{ row.realName || "成员信息暂不可见" }}</strong>
               <span>{{ row.studentNo || "暂无学工号" }}</span>
             </div>
           </template>

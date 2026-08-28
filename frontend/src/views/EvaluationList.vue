@@ -750,7 +750,7 @@ onUnmounted(() => {
     <div class="page-head app-page-header">
       <div>
         <h2>成员考核</h2>
-        <div class="subtitle">四项分数由系统生成，负责人和指导老师确认后公示。</div>
+        <p class="subtitle">成员考核记录生成、确认与公示</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -837,7 +837,7 @@ onUnmounted(() => {
         class="keyword"
         :prefix-icon="Search"
         clearable
-        placeholder="请输入成员姓名、学号、部门或等级"
+        placeholder="搜索成员、学号或部门"
       />
       <el-radio-group v-model="filters.publicStatus">
         <el-radio-button label="">全部</el-radio-button>
@@ -1152,7 +1152,7 @@ onUnmounted(() => {
 }
 
 .subtitle {
-  margin-top: 6px;
+  margin: 6px 0 0;
   color: var(--el-text-color-secondary);
 }
 

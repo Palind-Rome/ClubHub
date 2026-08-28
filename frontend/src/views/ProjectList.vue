@@ -9,6 +9,7 @@ import {
   ReviewProjectRequestProjectStatusEnum,
   type CancelProjectRequest,
   type Club,
+  type ClubMemberRecord,
   type Project,
   type ProjectTask as ProjectTaskDto,
   type UserSummary,
@@ -94,6 +95,7 @@ const projects = ref<ProjectWithTaskAccess[]>([]);
 const projectTasks = ref<ProjectTask[]>([]);
 const leaderCandidates = ref<UserSummary[]>([]);
 const leaderCandidatesByClub = ref<Record<number, UserSummary[]>>({});
+const memberNamesByClub = ref<Record<number, Record<number, string>>>({});
 const auth = ref(readAuth());
 const loading = ref(false);
 const saving = ref(false);
@@ -236,6 +238,9 @@ const publicLeaderNameMap = computed(() => {
       map.set(club.presidentUserId, club.presidentName.trim());
     }
   });
+  Object.values(memberNamesByClub.value).forEach((names) => {
+    Object.entries(names).forEach(([userId, name]) => map.set(Number(userId), name));
+  });
   return map;
 });
 
@@ -375,7 +380,32 @@ async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
     ),
   );
 
-  await Promise.all(clubIds.map((clubId) => loadLeaderCandidates(clubId, { silent: true })));
+  await Promise.all(
+    clubIds.map(async (clubId) => {
+      await loadLeaderCandidates(clubId, { silent: true });
+      const unresolved = projectList.some(
+        (project) =>
+          project.clubId === clubId &&
+          project.leaderUserId &&
+          !leaderUserMap.value.has(project.leaderUserId) &&
+          !publicLeaderNameMap.value.has(project.leaderUserId),
+      );
+      if (!unresolved) return;
+      try {
+        const members = await projectApiRequest<ClubMemberRecord[]>(
+          `/api/v1/clubs/${clubId}/members?includeHistory=true`,
+        );
+        memberNamesByClub.value = {
+          ...memberNamesByClub.value,
+          [clubId]: Object.fromEntries(
+            members.map((member) => [member.userId, member.userName]).filter(([, name]) => name),
+          ),
+        };
+      } catch {
+        /* 非成员只能看到项目公开字段；此时沿用社团负责人名称或中性占位。 */
+      }
+    }),
+  );
 }
 
 async function loadLeaderCandidates(clubId?: number | null, options: { silent?: boolean } = {}) {
@@ -862,7 +892,7 @@ function leaderDisplayName(leaderUserId?: number | null) {
 
   const user = leaderUserMap.value.get(leaderUserId);
   if (user) return leaderCandidateLabel(user);
-  return publicLeaderNameMap.value.get(leaderUserId) || `用户 #${leaderUserId}`;
+  return publicLeaderNameMap.value.get(leaderUserId) || "负责人信息暂不可见";
 }
 
 function taskUserLabel(task: ProjectTask) {

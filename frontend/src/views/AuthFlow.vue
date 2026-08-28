@@ -533,6 +533,7 @@ loadPermissionCatalog();
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 420px);
   gap: 28px;
   align-items: center;
+  padding-top: 24px;
 }
 
 .register-shell {
@@ -636,7 +637,7 @@ loadPermissionCatalog();
 }
 
 .permission-title {
-  margin-top: 18px;
+  margin-top: 30px !important;
 }
 
 .permission-help {

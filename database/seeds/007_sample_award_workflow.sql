@@ -1,7 +1,7 @@
 -- 评奖评优流程样例：依赖 000_sample_users.sql、001_sample_clubs.sql、
 -- 005_sample_member_terms.sql、006_sample_club_organizations.sql 与
 -- migrations/20260717_add_award_application_workflow.sql。
--- 围绕 zhang_guoxiong（张国雄）账号准备本人申请、负责人审核、公示归档和考核奖项分来源数据。
+-- 围绕 xue_pan（薛蟠）账号准备本人申请、负责人审核、公示归档和考核奖项分来源数据。
 
 -- Requires migrations/20260717_add_award_rule_documents.sql.
 -- Requires migrations/20260718_harden_evaluation_award_sources.sql.
@@ -14,10 +14,10 @@ BEGIN
   SELECT COUNT(*)
   INTO v_zhang_count
   FROM USERS
-  WHERE username = 'zhang_guoxiong';
+  WHERE username = 'xue_pan';
 
   IF v_zhang_count = 0 THEN
-    RAISE_APPLICATION_ERROR(-20140, 'Sample award workflow seed requires user zhang_guoxiong.');
+    RAISE_APPLICATION_ERROR(-20140, 'Sample award workflow seed requires user xue_pan.');
   END IF;
 END;
 /
@@ -132,7 +132,7 @@ INSERT ALL
     DATE '2026-06-21',
     'archived', zhang_id, SYSDATE, SYSDATE
   )
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 2) AS photo_president_id
 FROM dual;
@@ -202,7 +202,7 @@ INSERT ALL
     '1.0', 'published', DATE '2026-06-01', DATE '2026-07-31',
     zhang_id, DATE '2026-06-03', SYSDATE, SYSDATE
   )
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 2) AS photo_president_id,
        COALESCE((SELECT MAX(user_id) FROM USERS WHERE username = 'admin_li'), 2) AS school_reviewer_id
@@ -243,7 +243,7 @@ INSERT ALL
   )
   VALUES (
     137101, 1, 137001, 137011, zhang_id,
-    NULL, zhang_id, 'self', '张国雄在算法部训练组承担题单维护和周赛讲解，协助完成新成员训练营和校赛志愿服务。',
+    NULL, zhang_id, 'self', '薛蟠在算法部训练组承担题单维护和周赛讲解，协助完成新成员训练营和校赛志愿服务。',
     NULL, 'archived', 'archived', 'publicized', 1,
     18, 600, DATE '2026-03-04',
     DATE '2026-03-16',
@@ -260,7 +260,7 @@ INSERT ALL
   )
   VALUES (
     137102, 1, 137001, 137012, 20,
-    comp_president_id, comp_president_id, 'recommendation', '赵睿参与后端工具维护和数据库脚本整理，春季训练营中负责答疑值班。',
+    comp_president_id, comp_president_id, 'recommendation', '贾探春参与后端工具维护和资料整理，春季训练营中负责答疑值班。',
     NULL, 'archived', 'archived', 'publicized', 1,
     12, 300, DATE '2026-03-05',
     DATE '2026-03-16',
@@ -277,7 +277,7 @@ INSERT ALL
   )
   VALUES (
     137103, 2, 137002, 137021, zhang_id,
-    NULL, zhang_id, 'self', '张国雄作为摄影社活动部部长，负责暑期校园影像征集排期、作品初筛和影展现场协调。',
+    NULL, zhang_id, 'self', '薛蟠作为摄影社活动部部长，负责暑期校园影像征集排期、作品初筛和影展现场协调。',
     NULL, 'advisor_review', 'advisor_review', 'none', 1,
     NULL, NULL, DATE '2026-07-12',
     NULL, NULL, NULL, DATE '2026-07-12', SYSDATE
@@ -291,7 +291,7 @@ INSERT ALL
   )
   VALUES (
     137104, 3, 137003, 137031, 28,
-    zhang_id, zhang_id, 'recommendation', '沈一鸣负责校队训练组日常训练、对抗赛复盘和新人陪练，建议授予卓越贡献。',
+    zhang_id, zhang_id, 'recommendation', '袭人负责校队训练组日常训练、对抗赛复盘和新人陪练，建议授予卓越贡献。',
     NULL, 'club_review', 'club_review', 'none', 1,
     NULL, NULL, DATE '2026-07-13',
     NULL, NULL, NULL, DATE '2026-07-13', SYSDATE
@@ -320,7 +320,7 @@ INSERT ALL
   )
   VALUES (
     137106, 3, 137004, 137041, zhang_id,
-    NULL, zhang_id, 'self', '张国雄上一学年担任校队训练组队长，组织周训、队内赛和新老成员交接，任期评价优秀。',
+    NULL, zhang_id, 'self', '薛蟠上一学年担任校队训练组队长，组织周训、队内赛和新老成员交接，任期评价优秀。',
     NULL, 'archived', 'archived', 'publicized', 1,
     15, NULL, DATE '2026-06-04',
     DATE '2026-06-16',
@@ -328,7 +328,7 @@ INSERT ALL
     DATE '2026-06-25',
     DATE '2026-06-04', SYSDATE
   )
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id
 FROM dual;
 
@@ -346,7 +346,7 @@ INSERT ALL
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137206, 137101, 1, 'archive', 'archive', comp_president_id, '归档并同步为成员考核奖项分。', 'publicized', 'archived', DATE '2026-03-25')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
-  VALUES (137207, 137102, 1, 'student_submit', 'submit', comp_president_id, '负责人推荐赵睿参评。', 'draft', 'club_review', DATE '2026-03-05')
+  VALUES (137207, 137102, 1, 'student_submit', 'submit', comp_president_id, '负责人推荐贾探春参评。', 'draft', 'club_review', DATE '2026-03-05')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137208, 137102, 1, 'club_review', 'approve', comp_president_id, '后端组贡献稳定，同意推荐二等奖。', 'club_review', 'advisor_review', DATE '2026-03-10')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
@@ -362,7 +362,7 @@ INSERT ALL
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137213, 137103, 1, 'club_review', 'approve', photo_president_id, '作品集完整，活动部排期贡献明显，提交指导老师审核。', 'club_review', 'advisor_review', DATE '2026-07-15')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
-  VALUES (137214, 137104, 1, 'student_submit', 'submit', zhang_id, '张国雄以负责人身份推荐沈一鸣参评。', 'draft', 'club_review', DATE '2026-07-13')
+  VALUES (137214, 137104, 1, 'student_submit', 'submit', zhang_id, '薛蟠以负责人身份推荐袭人参评。', 'draft', 'club_review', DATE '2026-07-13')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137215, 137105, 1, 'student_submit', 'submit', zhang_id, '推荐叶清扬参评训练标兵。', 'draft', 'club_review', DATE '2026-07-03')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
@@ -381,7 +381,7 @@ INSERT ALL
   VALUES (137222, 137106, 1, 'publicity', 'publish', zhang_id, '优秀干部名单公示无异议。', 'approved', 'publicized', DATE '2026-06-22')
   INTO AWARD_REVIEW_RECORDS (review_id, award_application_id, review_round, review_step, review_result, reviewer_user_id, review_comment, from_status, to_status, reviewed_at)
   VALUES (137223, 137106, 1, 'archive', 'archive', zhang_id, '归档并同步至学年考核奖项分。', 'publicized', 'archived', DATE '2026-06-25')
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 2) AS photo_president_id,
        COALESCE(
@@ -398,7 +398,7 @@ INSERT ALL
   )
   VALUES (
     137301, 1, '计算机协会2025-2026春季优秀社员公示',
-    '公示张国雄、赵睿等成员春季优秀社员评选结果。',
+    '公示薛蟠、贾探春等成员春季优秀社员评选结果。',
     DATE '2026-03-18',
     DATE '2026-03-21',
     'archived', comp_president_id, SYSDATE, SYSDATE
@@ -409,7 +409,7 @@ INSERT ALL
   )
   VALUES (
     137302, 3, '羽毛球协会2025-2026优秀干部公示',
-    '公示张国雄上一学年优秀干部评定结果。',
+    '公示薛蟠上一学年优秀干部评定结果。',
     DATE '2026-06-18',
     DATE '2026-06-21',
     'archived', zhang_id, SYSDATE, SYSDATE
@@ -425,7 +425,7 @@ INSERT ALL
     DATE '2026-07-20',
     'publicizing', zhang_id, SYSDATE, SYSDATE
   )
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id
 FROM dual;
 
@@ -461,7 +461,7 @@ INSERT ALL
     NULL, NULL, NULL, 93, 95, 90, 15, 293, '优秀', 'published',
     '奖项分来自羽毛球协会优秀干部评定优秀负责人。', DATE '2026-06-26'
   )
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id,
        COALESCE((SELECT MAX(user_id) FROM USERS WHERE username = 'admin_li'), 2) AS school_reviewer_id
 FROM dual;
@@ -471,7 +471,7 @@ INSERT ALL
   VALUES (1, zhang_id, 137501, 137101, 18, SYSDATE)
   INTO EVALUATION_AWARD_SOURCES (club_id, user_id, evaluation_id, award_application_id, award_score, created_at)
   VALUES (3, zhang_id, 137502, 137106, 15, SYSDATE)
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id
+SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id
 FROM dual;
 
 DECLARE

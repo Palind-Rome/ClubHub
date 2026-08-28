@@ -725,9 +725,7 @@ onUnmounted(() => {
       <div>
         <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
         <p>
-          {{
-            isApplicationWorkbench ? "查看申请并录入筛选结果" : "发布纳新、提交入社申请、筛选录取"
-          }}
+          {{ isApplicationWorkbench ? "查看申请并录入筛选结果" : "纳新发布、申请与录取管理" }}
         </p>
       </div>
       <div class="header-actions">
@@ -933,6 +931,7 @@ onUnmounted(() => {
           :data="applications"
           stripe
           empty-text="暂无申请数据"
+          class="business-data-table"
         >
           <el-table-column prop="applicantName" label="学生" min-width="130" />
           <el-table-column prop="studentNo" label="学号" width="110" />
@@ -959,7 +958,7 @@ onUnmounted(() => {
               {{ formatDateTime(row.submittedAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="150">
             <template #default="{ row }">
               <el-button
                 type="success"

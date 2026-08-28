@@ -1172,7 +1172,7 @@ function buildClubContextOption(club: Club): ClubContextOption {
 
   const canManage = canManageClub(club);
   const roleText = Array.from(labels).join(" / ") || (canManage ? "可维护" : "可查看");
-  const statusText = canManage ? "可维护档案与任期" : "查看成员任期";
+  const statusText = canManage ? "可维护社团与成员任期" : "可查看当前及历史任期";
 
   return {
     clubId: club.id,
@@ -3105,6 +3105,7 @@ onUnmounted(() => {
             class="context-select"
             placeholder="选择社团身份"
             filterable
+            popper-class="club-context-popper"
           >
             <el-option
               v-for="option in clubContextOptions"
@@ -3142,10 +3143,10 @@ onUnmounted(() => {
             可维护社团档案
           </el-tag>
           <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
-            可查看成员任期
+            成员任期：可查看
           </el-tag>
           <el-tag v-if="isOrganizationWorkspace && memberViewClubs.length > 0" effect="plain">
-            可查看社团架构
+            社团架构：可查看
           </el-tag>
           <el-tag v-if="isClubWorkspace && identityRows.length > 0" effect="plain">
             我的社团身份
@@ -3241,6 +3242,7 @@ onUnmounted(() => {
           stripe
           empty-text="暂无社团注册申请"
           row-key="id"
+          class="business-data-table"
         >
           <el-table-column type="expand">
             <template #default="{ row }">
@@ -3318,12 +3320,7 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column
-            v-if="isReviewer || canSubmitApplication"
-            label="操作"
-            width="180"
-            fixed="right"
-          >
+          <el-table-column v-if="isReviewer || canSubmitApplication" label="操作" width="180">
             <template #default="{ row }">
               <el-button
                 v-if="isReviewer && row.auditStatus === 'pending'"
@@ -3378,6 +3375,7 @@ onUnmounted(() => {
           stripe
           empty-text="暂无可见社团"
           row-key="id"
+          class="business-data-table"
         >
           <el-table-column type="expand">
             <template #default="{ row }">
@@ -3424,7 +3422,7 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="220">
             <template #default="{ row }">
               <div class="row-actions">
                 <el-button
@@ -3602,11 +3600,12 @@ onUnmounted(() => {
               stripe
               row-key="departmentId"
               empty-text="暂无部门"
+              class="business-data-table"
             >
               <el-table-column type="expand">
                 <template #default="{ row }">
                   <el-table
-                    class="nested-table"
+                    class="nested-table business-data-table"
                     :data="row.groups"
                     border
                     stripe
@@ -3627,6 +3626,7 @@ onUnmounted(() => {
                             size="small"
                             empty-text="暂无当前成员"
                             row-key="memberId"
+                            class="business-data-table"
                           >
                             <el-table-column prop="userName" label="成员" min-width="140" />
                             <el-table-column prop="studentNo" label="学号/工号" width="130" />
@@ -4159,6 +4159,7 @@ onUnmounted(() => {
               : '暂无历史任期记录'
           "
           row-key="memberId"
+          class="business-data-table"
           @selection-change="handleMemberSelectionChange"
         >
           <el-table-column
@@ -4213,12 +4214,7 @@ onUnmounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
-          <el-table-column
-            v-if="canShowMemberOperationColumn"
-            label="操作"
-            width="220"
-            fixed="right"
-          >
+          <el-table-column v-if="canShowMemberOperationColumn" label="操作" width="150">
             <template #default="{ row }">
               <div class="row-actions member-row-actions">
                 <el-button
@@ -4296,6 +4292,7 @@ onUnmounted(() => {
             stripe
             empty-text="暂无到期待换届成员"
             row-key="memberId"
+            class="business-data-table"
           >
             <el-table-column prop="userName" label="成员" min-width="150" />
             <el-table-column prop="departmentName" label="当前部门" width="150" />
@@ -4307,12 +4304,7 @@ onUnmounted(() => {
                 {{ formatDateOnly(row.termStart) }} 至 {{ formatDateOnly(row.termEnd) }}
               </template>
             </el-table-column>
-            <el-table-column
-              v-if="canManageSelectedClub"
-              label="换届操作"
-              width="150"
-              fixed="right"
-            >
+            <el-table-column v-if="canManageSelectedClub" label="换届操作" width="150">
               <template #default="{ row }">
                 <el-button
                   type="primary"
@@ -4333,7 +4325,13 @@ onUnmounted(() => {
         label="我的社团身份"
         name="identity"
       >
-        <el-table :data="visibleIdentityRows" border stripe empty-text="暂无社团成员身份">
+        <el-table
+          :data="visibleIdentityRows"
+          border
+          stripe
+          empty-text="暂无社团成员身份"
+          class="business-data-table"
+        >
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
           <el-table-column prop="groupName" label="小组" width="120" />
@@ -4346,21 +4344,23 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right">
+          <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
-              <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
-                查看
-              </el-button>
-              <el-button
-                v-if="canExitIdentity(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingClubId === row.clubId"
-                @click="exitCurrentClub(row)"
-              >
-                退出社团
-              </el-button>
+              <div class="identity-row-actions">
+                <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
+                  查看
+                </el-button>
+                <el-button
+                  v-if="canExitIdentity(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingClubId === row.clubId"
+                  @click="exitCurrentClub(row)"
+                >
+                  退出社团
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -5028,6 +5028,10 @@ onUnmounted(() => {
   width: 280px;
 }
 
+.context-select :deep(.el-select__wrapper) {
+  background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
+}
+
 .context-option {
   display: grid;
   gap: 2px;
@@ -5119,6 +5123,20 @@ onUnmounted(() => {
 
 .row-actions {
   align-items: center;
+}
+
+.identity-row-actions,
+.member-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.identity-row-actions :deep(.el-button),
+.member-row-actions :deep(.el-button) {
+  width: 100%;
+  margin-left: 0;
 }
 
 .member-head {
@@ -5315,7 +5333,8 @@ onUnmounted(() => {
 
 .organization-tree {
   overflow-x: auto;
-  padding: 6px 2px 10px;
+  max-width: 100%;
+  padding: 6px 18px 10px 2px;
 }
 
 .tree-root-line,
@@ -5490,6 +5509,14 @@ onUnmounted(() => {
   gap: 6px;
 }
 
+.tree-node-meta :deep(.el-tag) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  line-height: 1;
+}
+
 .tree-node-root {
   min-width: 230px;
   padding: 12px 16px;
@@ -5510,13 +5537,15 @@ onUnmounted(() => {
 }
 
 .tree-node-member {
-  min-width: 200px;
+  width: 220px;
+  min-width: 0;
+  max-width: min(220px, calc(100vw - 540px));
   min-height: 38px;
   justify-content: flex-start;
   display: block;
   padding: 8px 12px;
-  border-color: var(--el-border-color-light);
-  background: var(--el-fill-color-light);
+  border-color: color-mix(in srgb, var(--club-accent) 28%, var(--club-border));
+  background: color-mix(in srgb, var(--club-accent-soft) 54%, var(--club-surface-solid));
   box-shadow: none;
 }
 

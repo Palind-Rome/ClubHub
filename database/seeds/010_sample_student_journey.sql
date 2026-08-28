@@ -43,6 +43,83 @@ SET real_name = '贾雨村',
     updated_at = SYSDATE
 WHERE student_no = '06026';
 
+-- 展示账号统一采用《红楼梦》人物名，避免临时姓名和“用户 #ID”出现在界面中。
+UPDATE USERS
+SET real_name = CASE user_id
+      WHEN 1 THEN '薛宝琴'
+      WHEN 2 THEN '贾雨村'
+      WHEN 3 THEN '林黛玉'
+      WHEN 4 THEN '贾宝玉'
+      WHEN 5 THEN '薛宝钗'
+      WHEN 6 THEN '王熙凤'
+      WHEN 7 THEN '贾政'
+      WHEN 8 THEN '王夫人'
+      WHEN 9 THEN '贾母'
+      WHEN 10 THEN '秦可卿'
+      WHEN 11 THEN '史湘云'
+      WHEN 12 THEN '薛蟠'
+      WHEN 20 THEN '贾探春'
+      WHEN 21 THEN '妙玉'
+      WHEN 22 THEN '李纨'
+      WHEN 23 THEN '平儿'
+      WHEN 24 THEN '贾琏'
+      WHEN 25 THEN '紫鹃'
+      WHEN 26 THEN '鸳鸯'
+      WHEN 27 THEN '晴雯'
+      WHEN 28 THEN '袭人'
+      WHEN 29 THEN '柳湘莲'
+      WHEN 30 THEN '蒋玉菡'
+      WHEN 31 THEN '秦钟'
+      WHEN 32 THEN '贾兰'
+      WHEN 1000001 THEN '贾环'
+      WHEN 1000002 THEN '邢岫烟'
+      ELSE real_name
+    END,
+    username = CASE WHEN user_id = 12 THEN 'xue_pan' ELSE username END,
+    updated_at = SYSDATE
+WHERE user_id IN (1,2,3,4,5,6,7,8,9,10,11,12,20,21,22,23,24,25,26,27,28,29,30,31,32,1000001,1000002);
+
+UPDATE LEARNING_ITEMS
+SET title = CASE item_id
+      WHEN 9 THEN '秋季迎新活动视觉素材'
+      WHEN 10 THEN '计算机协会资料归档规范.pdf'
+      ELSE title
+    END
+WHERE item_id IN (9, 10);
+
+UPDATE FORUM_POSTS
+SET user_id = CASE post_id
+      WHEN 1000130 THEN 6
+      WHEN 1000133 THEN 3
+      WHEN 1000135 THEN 4
+      WHEN 1000136 THEN 5
+      WHEN 1000137 THEN 4
+      WHEN 1000138 THEN 20
+      WHEN 1000141 THEN 3
+      ELSE user_id
+    END,
+    parent_post_id = CASE
+      WHEN post_id IN (1000133, 1000135, 1000136) THEN 1000130
+      WHEN post_id IN (1000138, 1000141) THEN 1000137
+      ELSE parent_post_id
+    END,
+    title = CASE post_id
+      WHEN 1000130 THEN '秋季迎新志愿者排班确认'
+      WHEN 1000137 THEN '本周技术分享选题征集'
+      ELSE title
+    END,
+    content = CASE post_id
+      WHEN 1000130 THEN '迎新摊位安排在大学生活动中心一楼，请已报名的同学在周五中午前确认可值班时段。物料清单和岗位说明已放在通知区。'
+      WHEN 1000133 THEN '我可以负责周六上午的签到和新生引导，也会提前半小时到场布置。'
+      WHEN 1000135 THEN '周六下午的设备体验区我可以值班，需要我提前测试投影和展示电脑吗？'
+      WHEN 1000136 THEN '投影已经预约，建议再带一根 HDMI 转接线。我会在活动开始前一起检查设备。'
+      WHEN 1000137 THEN '下周例会预留二十分钟做技术分享，欢迎大家从前端组件设计、Git 协作和数据可视化中选择一个方向，也可以提出新题目。'
+      WHEN 1000138 THEN '想听 Git 分支协作和代码评审，最好能结合社团项目的日常开发流程。'
+      WHEN 1000141 THEN '我可以准备一个前端组件设计的小分享，重点讲表格和表单的可复用写法。'
+    END,
+    updated_at = SYSDATE
+WHERE post_id IN (1000130,1000133,1000135,1000136,1000137,1000138,1000141);
+
 MERGE INTO CLUB_MEMBERS target
 USING (
   SELECT 138001 AS member_id,
