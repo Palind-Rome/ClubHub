@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
+  Configuration,
+  DefaultApi,
   ProjectProjectStatusEnum,
   ReviewProjectRequestProjectStatusEnum,
   type CancelProjectRequest,
@@ -14,6 +16,9 @@ import {
 import { apiClient as api } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
 
+const publicApi = new DefaultApi(
+  new Configuration({ basePath: import.meta.env.VITE_API_BASE_URL ?? "" }),
+);
 const projectReviewPermission = "project:review";
 const projectTaskManagePermission = "project:task:manage";
 const apiBasePath = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
@@ -224,6 +229,15 @@ const leaderUserMap = computed(() => {
   });
   return map;
 });
+const publicLeaderNameMap = computed(() => {
+  const map = new Map<number, string>();
+  clubs.value.forEach((club) => {
+    if (club.presidentUserId && club.presidentName?.trim()) {
+      map.set(club.presidentUserId, club.presidentName.trim());
+    }
+  });
+  return map;
+});
 
 const createRules: FormRules<ProjectForm> = {
   clubId: [{ required: true, message: "请选择立项社团", trigger: "change" }],
@@ -328,7 +342,7 @@ async function validateForm(form?: FormInstance) {
 
 async function loadClubs() {
   try {
-    clubs.value = await api.getClubs();
+    clubs.value = await publicApi.getClubs();
   } catch (error) {
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
   }
@@ -847,7 +861,8 @@ function leaderDisplayName(leaderUserId?: number | null) {
   if (!leaderUserId) return "未分配";
 
   const user = leaderUserMap.value.get(leaderUserId);
-  return user ? leaderCandidateLabel(user) : "未知负责人";
+  if (user) return leaderCandidateLabel(user);
+  return publicLeaderNameMap.value.get(leaderUserId) || `用户 #${leaderUserId}`;
 }
 
 function taskUserLabel(task: ProjectTask) {
