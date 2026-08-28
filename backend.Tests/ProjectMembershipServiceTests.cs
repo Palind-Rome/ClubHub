@@ -36,7 +36,7 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
             Username = $"user-{baseId}",
             PasswordHash = "unused",
             RealName = "Test User",
-            AccountStatus = accountStatus ?? "active",
+            AccountStatus = accountStatus,
             CreatedAt = now
         });
         await db.SaveChangesAsync();
