@@ -8,8 +8,10 @@ import {
   type UploadUserFile,
 } from "element-plus";
 import {
+  Configuration,
   CreateLearningItemRequestDownloadPermissionEnum,
   CreateLearningItemRequestItemStatusEnum,
+  DefaultApi,
   LearningItemItemStatusEnum,
   UpdateLearningItemRequestDownloadPermissionEnum,
   UpdateLearningItemRequestItemStatusEnum,
@@ -24,6 +26,9 @@ import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSessi
 import { prepareLearningDownload } from "../learningDownload";
 
 const api = apiClient;
+const publicApi = new DefaultApi(
+  new Configuration({ basePath: import.meta.env.VITE_API_BASE_URL ?? "" }),
+);
 
 const itemTypeOptions = [
   { label: "课程", value: "course" },
@@ -790,7 +795,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await api.getClubs();
+    clubs.value = await publicApi.getClubs();
   } catch (error) {
     clubs.value = [];
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
@@ -1365,7 +1370,7 @@ onUnmounted(() => {
       v-loading="loading"
       :data="filteredItems"
       :empty-text="learningSection === 'course' ? '暂无符合条件的课程' : '暂无符合条件的资源'"
-      class="defense-data-table"
+      class="business-data-table"
     >
       <el-table-column label="标题" min-width="180">
         <template #default="{ row }">
@@ -1376,7 +1381,7 @@ onUnmounted(() => {
       </el-table-column>
       <el-table-column label="发布社团" min-width="130">
         <template #default="{ row }">
-          {{ clubNameMap.get(row.clubId) ?? `社团 ${row.clubId}` }}
+          {{ clubNameMap.get(row.clubId) || "未知社团" }}
         </template>
       </el-table-column>
       <el-table-column label="类型" width="90">
@@ -1528,7 +1533,7 @@ onUnmounted(() => {
         <p class="detail-description">{{ detailItem.description || "暂无说明" }}</p>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="所属社团">
-            {{ clubNameMap.get(detailItem.clubId) ?? `社团 ${detailItem.clubId}` }}
+            {{ clubNameMap.get(detailItem.clubId) || "未知社团" }}
           </el-descriptions-item>
           <el-descriptions-item label="类型">
             {{ itemTypeLabel(detailItem.itemType) }}

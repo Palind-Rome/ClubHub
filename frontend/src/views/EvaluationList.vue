@@ -885,7 +885,7 @@ onUnmounted(() => {
       stripe
       empty-text="暂无成员考核记录"
       row-key="evaluationId"
-      class="defense-data-table"
+      class="business-data-table"
     >
       <el-table-column prop="userName" label="成员" min-width="140" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />

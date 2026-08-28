@@ -1,4 +1,4 @@
--- 答辩前只读数据巡检。每个查询都应返回 0 行；本脚本不会修改任何数据。
+-- 共享数据只读质量巡检。每个查询都应返回 0 行；本脚本不会修改任何数据。
 
 SELECT activity_id, title, location
 FROM activities
@@ -58,8 +58,8 @@ WHERE compensation_amount > 100000
 
 SELECT attachment_id, attachment_name, attachment_url
 FROM award_attachments
-WHERE attachment_url LIKE '/demo/%';
+WHERE attachment_url LIKE '/%';
 
 SELECT rule_document_id, rule_title, material_url
 FROM award_rule_documents
-WHERE material_url LIKE '/demo/%';
+WHERE material_url LIKE '/%';

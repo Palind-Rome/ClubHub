@@ -26,7 +26,7 @@ const router = createRouter({
     {
       path: "/dashboard",
       component: DashboardHome,
-      meta: { title: "答辩工作台", eyebrow: "Defense Dashboard" },
+      meta: { title: "运营工作台", eyebrow: "Operations Dashboard" },
     },
     {
       path: "/auth",

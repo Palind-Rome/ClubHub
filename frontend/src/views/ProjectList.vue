@@ -977,7 +977,7 @@ onUnmounted(() => {
     <div class="toolbar app-page-header">
       <div>
         <h2>项目管理</h2>
-        <p class="subtitle">演示社团项目立项申请、负责人分配和立项审核流程。</p>
+        <p class="subtitle">管理社团项目立项申请、负责人分配和立项审核流程。</p>
       </div>
       <el-tooltip
         :disabled="Boolean(currentUserId && creatableClubs.length)"
@@ -1031,7 +1031,7 @@ onUnmounted(() => {
       :data="projects"
       stripe
       empty-text="暂无项目数据"
-      class="defense-data-table"
+      class="business-data-table"
     >
       <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
       <el-table-column label="所属社团" min-width="140">

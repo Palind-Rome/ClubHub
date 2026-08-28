@@ -632,7 +632,7 @@ onUnmounted(() => {
       stripe
       row-key="id"
       empty-text="暂无通知"
-      class="defense-data-table"
+      class="business-data-table"
     >
       <el-table-column label="状态" width="110">
         <template #default="{ row }">

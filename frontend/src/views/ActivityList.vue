@@ -739,7 +739,7 @@ async function openParticipations(activity: Activity) {
       stripe
       border
       empty-text="暂无活动数据"
-      class="activity-table defense-data-table"
+      class="activity-table business-data-table"
     >
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column prop="clubName" label="主办社团" width="120" />

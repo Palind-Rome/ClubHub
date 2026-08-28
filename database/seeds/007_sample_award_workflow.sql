@@ -149,8 +149,8 @@ INSERT ALL
     '学生社团管理部门',
     '适用于各学生社团开展荣誉评优、服务贡献奖和专项奖学金类项目的申报、审核、公示与归档。',
     '一、评定坚持公开、公平、公正原则。二、社团应先发布奖项项目和评定细则，再组织成员申请或负责人推荐。三、申请材料经负责人初审、指导老师审核、校级终审后进入公示。四、公示期结束且无异议后归档，归档结果作为成员考核奖项分来源。',
-    '/demo/awards/tongji-club-award-rule-2026.pdf',
-    '同济大学学生社团评奖评优工作细则（2026版）.pdf',
+    NULL,
+    NULL,
     '1.0', 'published', DATE '2026-01-01', DATE '2026-12-31',
     school_reviewer_id, DATE '2026-01-10', SYSDATE, SYSDATE
   )
@@ -165,8 +165,8 @@ INSERT ALL
     '摄影社评奖评优工作组',
     '面向参与校园影像记录、影展策划、后期整理和活动跟拍的成员，重点考察作品质量与服务时长。',
     '金镜头侧重连续跟拍、影像叙事和社团公共素材沉淀；银镜头侧重活动支持和后期交付；入围作品要求完成作品授权和材料归档。申请人需提交作品集链接、服务排班记录和个人总结。',
-    '/demo/awards/photo-club-rule-2026.pdf',
-    '摄影社校园影像贡献奖评定细则.pdf',
+    NULL,
+    NULL,
     '1.0', 'published', DATE '2026-07-01', DATE '2026-08-31',
     photo_president_id, DATE '2026-07-06', SYSDATE, SYSDATE
   )
@@ -181,8 +181,8 @@ INSERT ALL
     '计算机协会技术部',
     '用于春季训练营、算法周赛、项目协作和新成员帮扶等场景下的优秀社员评定。',
     '优秀社员评定综合技术贡献、活动服务、项目协作和学习分享表现。一等奖要求承担核心任务且有可验证成果，二等奖要求稳定参与并完成服务记录，优秀社员称号要求参与度和互助表现达到部门推荐标准。',
-    '/demo/awards/computer-club-excellent-member-rule.pdf',
-    '计算机协会优秀社员评定细则.pdf',
+    NULL,
+    NULL,
     '1.1', 'published', DATE '2026-02-20', DATE '2026-03-31',
     comp_president_id, DATE '2026-02-22', SYSDATE, SYSDATE
   )
@@ -197,8 +197,8 @@ INSERT ALL
     '羽毛球社竞训组',
     '用于春季训练、校内联赛服务、新人带训和裁判计分等贡献场景。',
     '训练贡献奖按出勤、训练组织、赛事服务、带训反馈和材料归档综合评定。卓越贡献要求持续承担训练或赛事核心职责，训练标兵侧重训练质量和出勤，服务之星侧重裁判、计分、场地协调等公共服务。',
-    '/demo/awards/badminton-training-rule-2026.pdf',
-    '羽毛球社训练贡献奖评定细则.pdf',
+    NULL,
+    NULL,
     '1.0', 'published', DATE '2026-06-01', DATE '2026-07-31',
     zhang_id, DATE '2026-06-03', SYSDATE, SYSDATE
   )
@@ -244,7 +244,7 @@ INSERT ALL
   VALUES (
     137101, 1, 137001, 137011, zhang_id,
     NULL, zhang_id, 'self', '张国雄在算法部训练组承担题单维护和周赛讲解，协助完成新成员训练营和校赛志愿服务。',
-    '/demo/awards/zhang-guoxiong-computer-2026.pdf', 'archived', 'archived', 'publicized', 1,
+    NULL, 'archived', 'archived', 'publicized', 1,
     18, 600, DATE '2026-03-04',
     DATE '2026-03-16',
     DATE '2026-03-22',
@@ -261,7 +261,7 @@ INSERT ALL
   VALUES (
     137102, 1, 137001, 137012, 20,
     comp_president_id, comp_president_id, 'recommendation', '赵睿参与后端工具维护和数据库脚本整理，春季训练营中负责答疑值班。',
-    '/demo/awards/zhao-rui-computer-2026.pdf', 'archived', 'archived', 'publicized', 1,
+    NULL, 'archived', 'archived', 'publicized', 1,
     12, 300, DATE '2026-03-05',
     DATE '2026-03-16',
     DATE '2026-03-22',
@@ -278,7 +278,7 @@ INSERT ALL
   VALUES (
     137103, 2, 137002, 137021, zhang_id,
     NULL, zhang_id, 'self', '张国雄作为摄影社活动部部长，负责暑期校园影像征集排期、作品初筛和影展现场协调。',
-    '/demo/awards/zhang-guoxiong-photo-portfolio.txt', 'advisor_review', 'advisor_review', 'none', 1,
+    NULL, 'advisor_review', 'advisor_review', 'none', 1,
     NULL, NULL, DATE '2026-07-12',
     NULL, NULL, NULL, DATE '2026-07-12', SYSDATE
   )
@@ -292,7 +292,7 @@ INSERT ALL
   VALUES (
     137104, 3, 137003, 137031, 28,
     zhang_id, zhang_id, 'recommendation', '沈一鸣负责校队训练组日常训练、对抗赛复盘和新人陪练，建议授予卓越贡献。',
-    '/demo/awards/shen-yiming-training.xlsx', 'club_review', 'club_review', 'none', 1,
+    NULL, 'club_review', 'club_review', 'none', 1,
     NULL, NULL, DATE '2026-07-13',
     NULL, NULL, NULL, DATE '2026-07-13', SYSDATE
   )
@@ -306,7 +306,7 @@ INSERT ALL
   VALUES (
     137105, 3, 137003, 137032, 29,
     zhang_id, zhang_id, 'recommendation', '叶清扬在春季联赛中承担裁判和计分工作，协助整理赛程与申诉记录。',
-    '/demo/awards/ye-qingyang-referee.pdf', 'publicity', 'publicizing', 'publicizing', 1,
+    NULL, 'publicity', 'publicizing', 'publicizing', 1,
     10, NULL, DATE '2026-07-03',
     DATE '2026-07-14',
     NULL, NULL, DATE '2026-07-03', SYSDATE
@@ -321,7 +321,7 @@ INSERT ALL
   VALUES (
     137106, 3, 137004, 137041, zhang_id,
     NULL, zhang_id, 'self', '张国雄上一学年担任校队训练组队长，组织周训、队内赛和新老成员交接，任期评价优秀。',
-    '/demo/awards/zhang-guoxiong-badminton-leader.pdf', 'archived', 'archived', 'publicized', 1,
+    NULL, 'archived', 'archived', 'publicized', 1,
     15, NULL, DATE '2026-06-04',
     DATE '2026-06-16',
     DATE '2026-06-22',
@@ -330,18 +330,6 @@ INSERT ALL
   )
 SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id,
        (SELECT president_user_id FROM CLUBS WHERE club_id = 1) AS comp_president_id
-FROM dual;
-
-INSERT ALL
-  INTO AWARD_ATTACHMENTS (attachment_id, award_application_id, attachment_name, attachment_url, attachment_type, uploaded_by_user_id, uploaded_at)
-  VALUES (137151, 137101, '计算机协会服务与竞赛证明.pdf', '/demo/awards/zhang-guoxiong-computer-2026.pdf', 'proof', zhang_id, DATE '2026-03-04')
-  INTO AWARD_ATTACHMENTS (attachment_id, award_application_id, attachment_name, attachment_url, attachment_type, uploaded_by_user_id, uploaded_at)
-  VALUES (137152, 137103, '摄影作品集与影展排期.txt', '/demo/awards/zhang-guoxiong-photo-portfolio.txt', 'portfolio', zhang_id, DATE '2026-07-12')
-  INTO AWARD_ATTACHMENTS (attachment_id, award_application_id, attachment_name, attachment_url, attachment_type, uploaded_by_user_id, uploaded_at)
-  VALUES (137153, 137104, '春季训练出勤统计.xlsx', '/demo/awards/shen-yiming-training.xlsx', 'statistic', zhang_id, DATE '2026-07-13')
-  INTO AWARD_ATTACHMENTS (attachment_id, award_application_id, attachment_name, attachment_url, attachment_type, uploaded_by_user_id, uploaded_at)
-  VALUES (137154, 137106, '羽协干部任期总结.pdf', '/demo/awards/zhang-guoxiong-badminton-leader.pdf', 'summary', zhang_id, DATE '2026-06-04')
-SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'zhang_guoxiong') AS zhang_id
 FROM dual;
 
 INSERT ALL

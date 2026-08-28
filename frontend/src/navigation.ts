@@ -55,7 +55,7 @@ export function buildNavigationGroups(permissions: string[]): NavigationGroup[] 
     {
       label: "个人空间",
       items: [
-        { label: "答辩工作台", path: "/dashboard", icon: "dashboard" },
+        { label: "运营工作台", path: "/dashboard", icon: "dashboard" },
         { label: "账号与权限", path: "/auth", icon: "account" },
       ],
     },

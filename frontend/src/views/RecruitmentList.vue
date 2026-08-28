@@ -796,7 +796,7 @@ onUnmounted(() => {
         :data="displayedRecruitments"
         stripe
         empty-text="暂无纳新数据"
-        class="defense-data-table"
+        class="business-data-table"
       >
         <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">

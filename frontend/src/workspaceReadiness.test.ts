@@ -8,7 +8,7 @@ const viewSources = import.meta.glob("./views/*.vue", {
   query: "?raw",
 }) as Record<string, string>;
 
-const defenseTableViews = [
+const businessTableViews = [
   "RecruitmentList.vue",
   "EvaluationList.vue",
   "ActivityList.vue",
@@ -17,10 +17,11 @@ const defenseTableViews = [
   "LearningCenter.vue",
 ];
 
-describe("答辩演示就绪约束", () => {
-  it("默认进入答辩工作台", () => {
+describe("运营工作台就绪约束", () => {
+  it("默认进入运营工作台", () => {
     expect(routerSource).toContain('path: "/dashboard"');
     expect(routerSource).toContain('redirect: "/dashboard"');
+    expect(routerSource).toContain('title: "运营工作台"');
   });
 
   it("页面眉标由路由语义提供，不再硬编码通用 Workspace", () => {
@@ -35,13 +36,13 @@ describe("答辩演示就绪约束", () => {
     expect(appShellSource).toContain("gap: 10px");
   });
 
-  it.each(defenseTableViews)("%s 的主数据表使用答辩表格表面", (fileName) => {
-    expect(viewSources[`./views/${fileName}`]).toContain("defense-data-table");
+  it.each(businessTableViews)("%s 的主数据表使用统一业务表格表面", (fileName) => {
+    expect(viewSources[`./views/${fileName}`]).toContain("business-data-table");
   });
 
-  it.each(defenseTableViews)("%s 的答辩主表不使用固定右侧列", (fileName) => {
+  it.each(businessTableViews)("%s 的主表不使用固定右侧列", (fileName) => {
     const source = viewSources[`./views/${fileName}`];
-    const classOffset = source.indexOf("defense-data-table");
+    const classOffset = source.indexOf("business-data-table");
     const tableStart = source.lastIndexOf("<el-table", classOffset);
     const tableEnd = source.indexOf("</el-table>", classOffset);
 

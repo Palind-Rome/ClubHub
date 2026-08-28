@@ -169,8 +169,8 @@ a {
   border-radius: var(--club-radius-md);
 }
 
-/* 核心答辩页面统一使用与蓝粉应用壳一致的表格表面。 */
-.defense-data-table.el-table {
+/* 核心业务页面统一使用与蓝粉应用壳一致的数据表表面。 */
+.business-data-table.el-table {
   --el-table-border-color: var(--club-border);
   --el-table-header-bg-color: color-mix(
     in srgb,
@@ -190,12 +190,12 @@ a {
   box-shadow: var(--club-shadow-sm);
 }
 
-.defense-data-table.el-table::before,
-.defense-data-table.el-table .el-table__inner-wrapper::before {
+.business-data-table.el-table::before,
+.business-data-table.el-table .el-table__inner-wrapper::before {
   display: none;
 }
 
-.defense-data-table.el-table th.el-table__cell {
+.business-data-table.el-table th.el-table__cell {
   color: var(--club-text-secondary);
   background: var(--el-table-header-bg-color);
   font-size: 12px;
@@ -203,16 +203,16 @@ a {
   letter-spacing: 0.025em;
 }
 
-.defense-data-table.el-table td.el-table__cell {
+.business-data-table.el-table td.el-table__cell {
   border-bottom-color: var(--club-border);
   background: color-mix(in srgb, var(--club-surface-solid) 78%, transparent);
 }
 
-.defense-data-table.el-table .cell {
+.business-data-table.el-table .cell {
   line-height: 1.55;
 }
 
-.defense-data-table.el-table .el-button + .el-button {
+.business-data-table.el-table .el-button + .el-button {
   margin-left: 6px;
 }
 

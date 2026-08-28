@@ -31,9 +31,9 @@ const attentionItems = computed(() => {
     (role) => role.scope === "club" && (Boolean(role.clubId) || role.clubIds.length > 0),
   );
   if (!hasClubScope) {
-    items.push("当前身份没有有效社团范围角色；演示新增、审核时请切换负责人账号。");
+    items.push("当前身份没有有效社团范围角色；新增、审核等操作需要切换负责人账号。");
   } else {
-    items.push("当前身份具备社团业务范围，可按页面按钮继续演示写操作。");
+    items.push("当前身份具备社团业务范围，可按页面按钮继续处理写操作。");
   }
   return items;
 });
@@ -48,7 +48,7 @@ const metrics = computed<Metric[]>(() => [
 const flows = [
   {
     title: "活动业务闭环",
-    description: "从活动发起到参与数据沉淀，现场可沿同一条记录逐步演示。",
+    description: "从活动发起到参与数据沉淀，可沿同一条记录逐步推进。",
     steps: ["创建活动", "报名审核", "签到签退", "活动归档"],
   },
   {
@@ -100,15 +100,15 @@ onUnmounted(() => stopSessionListener?.());
   <section class="dashboard-page">
     <header class="app-page-header dashboard-head">
       <div>
-        <h2>答辩工作台</h2>
-        <p>用真实业务数据概览系统状态，并快速进入适合现场演示的核心流程。</p>
+        <h2>运营工作台</h2>
+        <p>用实时业务数据概览系统状态，并快速进入需要处理的核心流程。</p>
       </div>
       <el-button :icon="Refresh" :loading="loading" @click="loadDashboard">刷新真实数据</el-button>
     </header>
 
     <section class="identity-card">
       <div>
-        <span class="identity-kicker">CURRENT DEMO IDENTITY</span>
+        <span class="identity-kicker">CURRENT IDENTITY</span>
         <h3>{{ auth?.user.realName || "当前用户" }}</h3>
         <p>{{ roleSummary }}</p>
       </div>
@@ -138,8 +138,8 @@ onUnmounted(() => stopSessionListener?.());
 
     <section class="briefing-grid">
       <article class="briefing-card">
-        <span class="card-kicker">DEMO CHECKLIST</span>
-        <h2>演示待办</h2>
+        <span class="card-kicker">OPERATION CHECKLIST</span>
+        <h2>运营提示</h2>
         <ul>
           <li v-for="item in attentionItems" :key="item">{{ item }}</li>
         </ul>
@@ -159,7 +159,7 @@ onUnmounted(() => stopSessionListener?.());
     <div class="section-heading">
       <div>
         <h2>核心业务闭环</h2>
-        <p>答辩时先讲业务目标，再顺着状态变化演示，而不是逐页展示基础增删改查。</p>
+        <p>从业务目标出发，沿状态变化推进流程，并在关键节点保留可追溯记录。</p>
       </div>
     </div>
     <section class="flow-grid">
