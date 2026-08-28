@@ -3,7 +3,12 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import type { CaptchaChallenge, PermissionDefinition, RegisterRequest, UserSummary } from "../api/models";
+import type {
+  CaptchaChallenge,
+  PermissionDefinition,
+  RegisterRequest,
+  UserSummary,
+} from "../api/models";
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";

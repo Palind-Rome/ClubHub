@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using ClubHub.Api.Infrastructure.Rest;
 
@@ -30,19 +31,51 @@ public sealed class AuthCaptchaEndpointTests : IClassFixture<ClubHubWebApplicati
     [Fact]
     public async Task LoginRejectsInvalidCaptchaBeforeCredentialLookup()
     {
+        var captchaToken = await CreateCaptchaTokenAsync();
+
         using var response = await _client.PostAsJsonAsync(
             "/api/v1/auth/login",
             new
             {
                 username = "does-not-matter",
                 password = "wrong-password",
-                captchaToken = "invalid-captcha-token",
-                captchaCode = "23456"
+                captchaToken,
+                captchaCode = "99999"
             });
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(ApiErrorCodes.ValidationError, body.RootElement.GetProperty("code").GetString());
         Assert.Equal("验证码无效或已过期，请刷新后重试。", body.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task RegisterRejectsInvalidCaptchaBeforeDatabaseLookup()
+    {
+        var captchaToken = await CreateCaptchaTokenAsync();
+
+        using var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new
+            {
+                username = "captcha-test-user",
+                password = "correct-password",
+                realName = "验证码测试",
+                studentNo = "2450001",
+                captchaToken,
+                captchaCode = "99999"
+            });
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(ApiErrorCodes.ValidationError, body.RootElement.GetProperty("code").GetString());
+        Assert.Equal("验证码无效或已过期，请刷新后重试。", body.RootElement.GetProperty("message").GetString());
+    }
+
+    private async Task<string?> CreateCaptchaTokenAsync()
+    {
+        using var response = await _client.GetAsync("/api/v1/auth/captcha");
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        return body.RootElement.GetProperty("captchaToken").GetString();
     }
 }

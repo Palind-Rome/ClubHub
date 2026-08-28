@@ -59,7 +59,7 @@ public sealed class CaptchaService
         {
             CaptchaToken = token,
             Image = RenderImage(code),
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt.UtcDateTime
         };
     }
 
@@ -75,7 +75,7 @@ public sealed class CaptchaService
             return false;
         }
 
-        if (_timeProvider.GetUtcNow() > challenge.ExpiresAt)
+        if (_timeProvider.GetUtcNow() >= challenge.ExpiresAt)
         {
             return false;
         }
@@ -114,7 +114,7 @@ public sealed class CaptchaService
     private static bool IsValidCode(string? code) =>
         code is not null &&
         code.Length == CodeLength &&
-        code.All(character => CodeAlphabet.Contains(character, StringComparison.Ordinal));
+        code.All(character => CodeAlphabet.Contains(character));
 
     private static string RenderImage(string code)
     {
