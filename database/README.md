@@ -62,8 +62,10 @@
 11. `20260726_add_idempotency_records.sql`：新增 `IDEMPOTENCY_RECORDS` 和
     `SEQ_IDEMPOTENCY_RECORDS`，保存声明为幂等写接口的请求摘要、状态和可复用结果，
     并为过期清理建立索引；脚本头部列出关闭功能后的人工回滚步骤。
-    执行迁移并通过 `verify.sql` 前必须保持 `Redis:Features:Idempotency` 关闭；
-    生产或演示库只能在人工确认后的维护窗口执行。
+    截至 2026-08-28，production Redis 已由 PR #184、#185、#186 暂停，答辩版本
+    不启用 Redis，因此共享 Oracle 有意不执行本迁移。只有未来正式恢复 Redis 幂等
+    能力时，才在维护窗口重新评估；执行迁移并通过 `verify.sql` 前必须保持
+    `Redis:Features:Idempotency` 关闭。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
@@ -80,12 +82,12 @@
 6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新演示信息。
 8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
-9. `008_defense_demo.sql`：规范化可明确识别的占位文本、空项目关联和过期活动状态，并补充相对执行时间始终有效的活动、项目、学习资源、通知和讨论话题；使用 8101 号保留记录并通过 `MERGE` 幂等刷新，不会删除现场新增数据。
-10. `009_defense_data_audit.sql`：答辩前只读巡检占位标题、空关联和缺失说明；各查询应返回 0 行，发现结果后由小组人工确认再清理。
+9. `009_defense_data_audit.sql`：答辩前只读巡检占位标题、过期状态、空关联、
+   异常社团、虚假附件和明显不合理数值；各查询应返回 0 行，发现结果后由小组
+   人工确认再清理。
 
-仅限隔离的答辩演示库（即明确的测试库）在基础样例全部执行后再执行
-`008_defense_demo.sql`，最后执行
-`009_defense_data_audit.sql`。不要在共享库或生产库直接执行 seeds，也不要为了“看起来干净”
+基础样例只用于隔离的演示库；共享库或生产库不要直接执行写入型 seeds。
+答辩前可执行 `009_defense_data_audit.sql` 做只读巡检，但不要为了“看起来干净”
 批量删除未知记录；巡检命中项应先核对外键和业务含义。
 
 答辩现场建议重点准备三类身份，均来自上述样例并与实际权限保持一致：

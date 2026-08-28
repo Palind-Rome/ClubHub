@@ -28,3 +28,38 @@ SELECT post_id, title, content
 FROM forum_posts
 WHERE parent_post_id IS NULL
   AND (TRIM(LOWER(title)) IN ('1', 'aaa', 'test', '测试') OR title IS NULL);
+
+SELECT club_id, club_name, category, audit_status, club_status
+FROM clubs
+WHERE TRIM(LOWER(club_name)) IN ('1', '11', 'aaa', 'test', '测试')
+   OR TRIM(LOWER(category)) IN ('1', 'aaa', 'test', '测试')
+   OR logo_url = '1'
+   OR material_url = '1';
+
+SELECT recruit_id, title, club_id, recruit_status, start_at, end_at
+FROM recruitments
+WHERE TRIM(LOWER(title)) IN ('1', '2', '4', '5', 'aaa', 'test', '测试')
+   OR (recruit_status = 'published' AND end_at < SYSDATE);
+
+SELECT task_id, project_id, title, content
+FROM project_tasks
+WHERE TRIM(LOWER(title)) IN ('1', 'aaa', 'aaaaaa', 'test', 'test2', 'test3', '测试')
+   OR content IS NULL;
+
+SELECT application_id, title, purpose, review_comment
+FROM budget_applications
+WHERE TRIM(LOWER(title)) IN ('nnnn', 'aaa', 'test', '测试')
+   OR TRIM(LOWER(purpose)) IN ('1', '111', 'aaa', 'test', '测试');
+
+SELECT borrow_id, damage_desc, compensation_amount
+FROM material_borrows
+WHERE compensation_amount > 100000
+   OR TRIM(LOWER(damage_desc)) IN ('坏了', 'test', '测试');
+
+SELECT attachment_id, attachment_name, attachment_url
+FROM award_attachments
+WHERE attachment_url LIKE '/demo/%';
+
+SELECT rule_document_id, rule_title, material_url
+FROM award_rule_documents
+WHERE material_url LIKE '/demo/%';
