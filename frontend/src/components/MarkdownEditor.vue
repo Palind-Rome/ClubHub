@@ -49,10 +49,14 @@ async function handleImageUpload(event: Event) {
     formData.append("image", file);
 
     const response = ForumImageUploadResponseFromJSON(
-      (await requestJson(`/api/v1/clubs/${props.clubId}/forum-posts/upload-image`, {
-        method: "POST",
-        body: formData,
-      })) as unknown,
+      await requestJson<unknown>(
+        `/api/v1/clubs/${props.clubId}/forum-posts/upload-image`,
+        {
+          method: "POST",
+          body: formData,
+        },
+        60_000,
+      ),
     );
 
     const markdownImage = `![${response.fileName}](${response.imageUrl})`;
