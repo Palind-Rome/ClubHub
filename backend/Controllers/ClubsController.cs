@@ -2839,7 +2839,7 @@ public class ClubsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Name)) return "社团名称不能为空。";
         if (string.IsNullOrWhiteSpace(req.Category)) return "社团类别不能为空。";
         if (string.IsNullOrWhiteSpace(req.ApplyReason)) return "申请理由不能为空。";
-        if (string.IsNullOrWhiteSpace(req.MaterialUrl)) return "材料地址不能为空。";
+        if (string.IsNullOrWhiteSpace(req.MaterialUrl)) return "材料链接或归档编号不能为空。";
         return null;
     }
 

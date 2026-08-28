@@ -429,7 +429,7 @@ const applicationRules: FormRules = {
   name: [{ required: true, message: "请填写社团名称", trigger: "blur" }],
   category: [{ required: true, message: "请填写社团类别", trigger: "blur" }],
   applyReason: [{ required: true, message: "请填写申请理由", trigger: "blur" }],
-  materialUrl: [{ required: true, message: "请填写材料地址", trigger: "blur" }],
+  materialUrl: [{ required: true, message: "请填写材料链接或归档编号", trigger: "blur" }],
 };
 
 const reviewRules: FormRules = {
@@ -3274,7 +3274,7 @@ onUnmounted(() => {
                   <el-descriptions-item label="拟选指导老师">
                     {{ row.advisorName || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="材料地址">
+                  <el-descriptions-item label="材料链接或归档编号">
                     {{ row.materialUrl }}
                   </el-descriptions-item>
                   <el-descriptions-item label="联系电话">
@@ -4420,7 +4420,7 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="申请材料" prop="materialUrl">
+        <el-form-item label="材料链接或归档编号" prop="materialUrl">
           <el-input
             v-model="applicationForm.materialUrl"
             placeholder="社团章程、成员名单等材料的 OSS 链接或校内归档编号"

@@ -641,6 +641,9 @@ async function openPreview(item: LearningItem) {
     }
     previewObjectUrl = objectUrl;
     previewUrl.value = objectUrl;
+    // Chromium 的内置 PDF 查看器不会在所有环境中向父页面稳定派发 iframe load。
+    // 此时完整 PDF 已经成功读取为 Blob，可安全结束加载遮罩，让查看器自行渲染。
+    previewLoading.value = false;
   } catch (error) {
     if (!isCurrentPreviewRequest(requestId, item.id)) return;
     previewLoading.value = false;
