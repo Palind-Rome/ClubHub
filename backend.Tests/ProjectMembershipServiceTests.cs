@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
-using ClubHub.Api.Infrastructure.Identity;
 using ClubHub.Api.Services;
 using Microsoft.Extensions.DependencyInjection;
 
