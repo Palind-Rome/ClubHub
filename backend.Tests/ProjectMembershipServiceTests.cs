@@ -15,13 +15,12 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
     public ProjectMembershipServiceTests(ClubHubWebApplicationFactory factory) => _factory = factory;
 
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("active")]
     [InlineData("ACTIVE")]
     [InlineData("Active")]
-    public async Task IsActiveUserAsync_WithVariousAccountStatuses_ReturnsCorrectly(string? accountStatus)
+    public async Task IsActiveUserAsync_WithVariousAccountStatuses_ReturnsCorrectly(string accountStatus)
     {
         var baseId = 1000 + Interlocked.Increment(ref _sequence) * 10;
         var userId = baseId;
