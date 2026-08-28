@@ -89,6 +89,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/v1/auth/captcha:
+    get:
+      summary: 获取登录与注册验证码
+      description: 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+      operationId: createCaptchaChallenge
+      responses:
+        "200":
+          description: 验证码挑战
+          headers:
+            Cache-Control:
+              description: 禁止客户端和中间代理缓存验证码图片。
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptchaChallenge"
+        "429":
+          description: 验证码请求过于频繁
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/v1/auth/login:
     post:
       summary: 用户登录
@@ -6433,11 +6457,27 @@ components:
           nullable: true
           maxLength: 20
           example: "2024"
+        captchaToken:
+          type: string
+          description: 由验证码接口签发的短时一次性挑战令牌。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        captchaCode:
+          type: string
+          description: 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+          minLength: 5
+          maxLength: 5
+          pattern: "^[0-9]{5}$"
+          example: "52843"
       required:
         - username
         - password
         - realName
         - studentNo
+        - captchaToken
+        - captchaCode
 
     LoginRequest:
       type: object
@@ -6455,9 +6495,53 @@ components:
           minLength: 1
           maxLength: 128
           example: ClubHub123
+        captchaToken:
+          type: string
+          description: 由验证码接口签发的短时一次性挑战令牌。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        captchaCode:
+          type: string
+          description: 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+          minLength: 5
+          maxLength: 5
+          pattern: "^[0-9]{5}$"
+          example: "52843"
       required:
         - username
         - password
+        - captchaToken
+        - captchaCode
+
+    CaptchaChallenge:
+      type: object
+      description: 短时有效、仅可使用一次的图形验证码挑战。
+      properties:
+        captchaToken:
+          type: string
+          description: 服务端生成的不可伪造挑战令牌；仅用于提交验证码答案。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        image:
+          type: string
+          description: 可直接用于 img src 的 SVG data URL；图片中不包含可复制的明文答案。
+          minLength: 100
+          maxLength: 20000
+          pattern: "^data:image/svg\\+xml;base64,[A-Za-z0-9+/=]+$"
+          example: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==
+        expiresAt:
+          type: string
+          format: date-time
+          description: 验证码挑战过期时间。
+          example: "2026-08-29T12:00:00Z"
+      required:
+        - captchaToken
+        - image
+        - expiresAt
 
     AssignRoleRequest:
       type: object
