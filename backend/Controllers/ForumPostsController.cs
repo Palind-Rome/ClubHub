@@ -139,25 +139,21 @@ public sealed class ForumPostsController : ControllerBase
         var descendantsToDelete = new List<ForumPost>();
         if (isTopicDelete)
         {
+            var allForumPosts = await _db.ForumPosts
+                .Where(item => item.ClubId == clubId)
+                .ToListAsync();
+            var repliesByParent = allForumPosts.ToLookup(item => item.ParentPostId);
+
             var toProcess = new Queue<int>();
             toProcess.Enqueue(postId);
             while (toProcess.Count > 0)
             {
                 var currentId = toProcess.Dequeue();
-                var repliesByParent = (await _db.ForumPosts
-                        .Where(item => item.ClubId == clubId)
-                        .ToListAsync())
-                    .ToLookup(item => item.ParentPostId);
-
-                while (toProcess.Count > 0)
+                var children = repliesByParent[currentId];
+                foreach (var child in children)
                 {
-                    var currentId = toProcess.Dequeue();
-                    var children = repliesByParent[currentId];
-                    foreach (var child in children)
-                    {
-                        descendantsToDelete.Add(child);
-                        toProcess.Enqueue(child.PostId);
-                    }
+                    descendantsToDelete.Add(child);
+                    toProcess.Enqueue(child.PostId);
                 }
             }
         }
