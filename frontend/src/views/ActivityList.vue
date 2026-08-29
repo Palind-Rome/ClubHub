@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { activityRegistrationButtonText } from "../defenseBusinessRules";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 
 interface Activity {
@@ -449,9 +450,11 @@ function canRegister(activity: Activity) {
 }
 
 function registerButtonText(activity: Activity) {
-  if (activity.isRegistered) return "已报名";
-  if (!hasScopedPermission("activity:checkin", activity.clubId)) return "仅限本社团成员";
-  return canRegister(activity) ? "报名" : "不可报名";
+  return activityRegistrationButtonText({
+    isRegistered: activity.isRegistered,
+    hasMemberPermission: hasScopedPermission("activity:checkin", activity.clubId),
+    canRegister: canRegister(activity),
+  });
 }
 
 function openCreate() {

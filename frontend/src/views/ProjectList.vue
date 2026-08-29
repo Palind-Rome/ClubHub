@@ -9,7 +9,6 @@ import {
   ReviewProjectRequestProjectStatusEnum,
   type CancelProjectRequest,
   type Club,
-  type ClubMemberRecord,
   type Project,
   type ProjectTask as ProjectTaskDto,
   type UserSummary,
@@ -120,6 +119,7 @@ const selectedProject = ref<ProjectWithTaskAccess | null>(null);
 const activeTask = ref<ProjectTask | null>(null);
 let stopSessionChange: (() => void) | undefined;
 let leaderCandidateClubId: number | null = null;
+let sessionVersion = 0;
 
 const filters = reactive({
   clubId: undefined as number | undefined,
@@ -346,31 +346,41 @@ async function validateForm(form?: FormInstance) {
 }
 
 async function loadClubs() {
+  const requestVersion = sessionVersion;
   try {
-    clubs.value = await publicApi.getClubs();
+    const nextClubs = await publicApi.getClubs();
+    if (requestVersion === sessionVersion) clubs.value = nextClubs;
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
   }
 }
 
 async function loadProjects() {
+  const requestVersion = sessionVersion;
   loading.value = true;
   try {
-    projects.value = await api.getProjects({
+    const nextProjects = await api.getProjects({
       clubId: filters.clubId,
       page: filters.page,
       pageSize: filters.pageSize,
     });
-    await loadProjectLeaderNames(projects.value);
+    if (requestVersion !== sessionVersion) return;
+    projects.value = nextProjects;
+    await loadProjectLeaderNames(nextProjects, requestVersion);
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     ElMessage.error(toErrorMessage(error, "项目列表加载失败"));
   } finally {
-    loading.value = false;
+    if (requestVersion === sessionVersion) loading.value = false;
   }
 }
 
-async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
-  if (!currentUserId.value) return;
+async function loadProjectLeaderNames(
+  projectList: ProjectWithTaskAccess[],
+  requestVersion = sessionVersion,
+) {
+  if (!currentUserId.value || requestVersion !== sessionVersion) return;
 
   const clubIds = Array.from(
     new Set(
@@ -382,7 +392,8 @@ async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
 
   await Promise.all(
     clubIds.map(async (clubId) => {
-      await loadLeaderCandidates(clubId, { silent: true });
+      await loadLeaderCandidates(clubId, { silent: true }, requestVersion);
+      if (requestVersion !== sessionVersion) return;
       const unresolved = projectList.some(
         (project) =>
           project.clubId === clubId &&
@@ -392,9 +403,8 @@ async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
       );
       if (!unresolved) return;
       try {
-        const members = await projectApiRequest<ClubMemberRecord[]>(
-          `/api/v1/clubs/${clubId}/members?includeHistory=true`,
-        );
+        const members = await api.getClubMembers({ clubId, includeHistory: true });
+        if (requestVersion !== sessionVersion) return;
         memberNamesByClub.value = {
           ...memberNamesByClub.value,
           [clubId]: Object.fromEntries(
@@ -408,7 +418,12 @@ async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
   );
 }
 
-async function loadLeaderCandidates(clubId?: number | null, options: { silent?: boolean } = {}) {
+async function loadLeaderCandidates(
+  clubId?: number | null,
+  options: { silent?: boolean } = {},
+  requestVersion = sessionVersion,
+) {
+  if (requestVersion !== sessionVersion) return;
   if (!clubId || !currentUserId.value) {
     leaderCandidates.value = [];
     leaderCandidateClubId = null;
@@ -419,22 +434,25 @@ async function loadLeaderCandidates(clubId?: number | null, options: { silent?: 
 
   leaderCandidateLoading.value = true;
   try {
-    leaderCandidates.value = await projectApiRequest<UserSummary[]>(
+    const candidates = await projectApiRequest<UserSummary[]>(
       `/api/v1/users?clubId=${encodeURIComponent(String(clubId))}`,
     );
+    if (requestVersion !== sessionVersion) return;
+    leaderCandidates.value = candidates;
     leaderCandidatesByClub.value = {
       ...leaderCandidatesByClub.value,
-      [clubId]: leaderCandidates.value,
+      [clubId]: candidates,
     };
     leaderCandidateClubId = clubId;
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     leaderCandidates.value = [];
     leaderCandidateClubId = null;
     if (!options.silent) {
       ElMessage.error(toErrorMessage(error, "负责人候选人加载失败"));
     }
   } finally {
-    leaderCandidateLoading.value = false;
+    if (requestVersion === sessionVersion) leaderCandidateLoading.value = false;
   }
 }
 
@@ -1006,7 +1024,18 @@ function toErrorMessage(error: unknown, fallback: string) {
 
 onMounted(async () => {
   stopSessionChange = onSessionChange(() => {
+    sessionVersion += 1;
     auth.value = readAuth();
+    clubs.value = [];
+    projects.value = [];
+    projectTasks.value = [];
+    leaderCandidates.value = [];
+    leaderCandidatesByClub.value = {};
+    memberNamesByClub.value = {};
+    selectedProject.value = null;
+    activeTask.value = null;
+    leaderCandidateClubId = null;
+    void Promise.all([loadClubs(), loadProjects()]);
   });
   await loadClubs();
   await loadProjects();
@@ -1015,6 +1044,8 @@ onMounted(async () => {
 onUnmounted(() => {
   stopSessionChange?.();
 });
+
+defineExpose({ projects });
 </script>
 
 <template>

@@ -24,6 +24,7 @@ import {
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
 import { prepareLearningDownload } from "../learningDownload";
+import { prepareLearningPreview } from "../learningPreview";
 
 const api = apiClient;
 const publicApi = new DefaultApi(
@@ -571,19 +572,6 @@ function isCurrentPreviewRequest(requestId: number, itemId: number) {
   return requestId === previewRequestId && previewItem.value?.id === itemId;
 }
 
-async function readApiError(response: Response, fallback: string) {
-  try {
-    const payload = (await response.json()) as {
-      message?: string;
-      detail?: string;
-      title?: string;
-    };
-    return payload.detail || payload.message || payload.title || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /** 建立短时预览会话；内容请求只携带 HttpOnly Cookie，不暴露登录令牌或 OSS 地址。 */
 async function openPreview(item: LearningItem) {
   if (isCourseItem(item)) {
@@ -600,47 +588,16 @@ async function openPreview(item: LearningItem) {
   previewLoading.value = true;
   previewDialogVisible.value = true;
   try {
-    const response = await fetch(`/api/v1/learning/items/${item.id}/preview-session`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
-    });
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (!response.ok) {
-      const message = await readApiError(response, `在线预览准备失败：HTTP ${response.status}`);
-      if (!isCurrentPreviewRequest(requestId, item.id)) return;
-      throw new Error(message || `在线预览准备失败：HTTP ${response.status}`);
-    }
-
-    const kind = response.headers.get("X-ClubHub-Preview-Kind");
-    const resolvedKind = kind === "image" || kind === "video" ? kind : "pdf";
-    previewKind.value = resolvedKind;
-    previewConverted.value = response.headers.get("X-ClubHub-Preview-Converted") === "true";
-    const contentUrl = `/api/v1/learning/items/${item.id}/preview?v=${Date.now()}`;
-    if (resolvedKind !== "pdf") {
-      previewUrl.value = contentUrl;
-      return;
-    }
-
-    const previewResponse = await fetch(contentUrl, { credentials: "same-origin" });
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (!previewResponse.ok) {
-      throw new Error(`预览内容加载失败：HTTP ${previewResponse.status}`);
-    }
-
-    const previewBlob = await previewResponse.blob();
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (previewBlob.type && previewBlob.type !== "application/pdf") {
-      throw new Error("预览服务返回了非 PDF 内容");
-    }
-
-    const objectUrl = URL.createObjectURL(previewBlob);
+    const result = await prepareLearningPreview(item.id, auth.value?.token ?? "");
     if (!isCurrentPreviewRequest(requestId, item.id)) {
-      URL.revokeObjectURL(objectUrl);
+      if (result.objectUrl) URL.revokeObjectURL(result.url);
       return;
     }
-    previewObjectUrl = objectUrl;
-    previewUrl.value = objectUrl;
+    previewKind.value = result.kind;
+    previewConverted.value = result.converted;
+    previewUrl.value = result.url;
+    if (!result.objectUrl) return;
+    previewObjectUrl = result.url;
     // Chromium 的内置 PDF 查看器不会在所有环境中向父页面稳定派发 iframe load。
     // 此时完整 PDF 已经成功读取为 Blob，可安全结束加载遮罩，让查看器自行渲染。
     previewLoading.value = false;

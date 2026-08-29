@@ -37,7 +37,8 @@ describe("运营工作台就绪约束", () => {
   });
 
   it.each(businessTableViews)("%s 的主数据表使用统一业务表格表面", (fileName) => {
-    expect(viewSources[`./views/${fileName}`]).toContain("business-data-table");
+    const source = viewSources[`./views/${fileName}`];
+    expect(source).toMatch(/<el-table\b[^>]*\bbusiness-data-table\b[^>]*>/);
   });
 
   it.each(businessTableViews)("%s 的主表不使用固定右侧列", (fileName) => {
@@ -53,8 +54,14 @@ describe("运营工作台就绪约束", () => {
   });
 
   it("无适用业务范围时，项目、奖项和讨论发布入口会预先解释", () => {
-    expect(viewSources["./views/ProjectList.vue"]).toContain("creatableClubs.length === 0");
-    expect(viewSources["./views/AwardList.vue"]).toContain("applicantOptions.length === 0");
-    expect(viewSources["./views/ForumCenter.vue"]).toContain("canPostToSelectedClub");
+    const projectSource = viewSources["./views/ProjectList.vue"];
+    const awardSource = viewSources["./views/AwardList.vue"];
+    const forumSource = viewSources["./views/ForumCenter.vue"];
+    expect(projectSource).toContain(':disabled="!currentUserId || creatableClubs.length === 0"');
+    expect(projectSource).toContain("当前账号没有可提交立项申请的社团");
+    expect(awardSource).toContain(':disabled="applicationEntry.disabled"');
+    expect(awardSource).toContain(':content="applicationEntry.reason"');
+    expect(forumSource).toContain('<el-card v-if="canPostToSelectedClub"');
+    expect(forumSource).toContain("只有当前有效成员才能发布或回复");
   });
 });

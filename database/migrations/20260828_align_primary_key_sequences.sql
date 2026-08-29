@@ -8,6 +8,15 @@
 -- 应由 CLUBHUB schema 所有者在维护窗口执行；脚本末尾会输出关键序列的校验结果。
 -- PR #167 对应的 IDEMPOTENCY_RECORDS 已明确不在当前部署范围，本脚本不创建也不
 -- 校正 SEQ_IDEMPOTENCY_RECORDS。
+--
+-- 影响范围：仅限下方 sequence_names 中与业务主键对应的 sequence。执行前必须从
+-- USER_SEQUENCES 记录每条目标 sequence 的 LAST_NUMBER、INCREMENT_BY、CACHE_SIZE、
+-- MIN_VALUE、MAX_VALUE、CYCLE_FLAG 和 ORDER_FLAG，作为人工回退依据。若迁移后尚未发生
+-- 任何业务写入，可依据记录恢复原配置和位置；一旦已有新写入，禁止把 sequence 向下调整，
+-- 只能恢复 INCREMENT/CACHE/CYCLE/ORDER 等非位置属性，并从不与现有主键冲突的位置继续。
+-- 本脚本对被推进的 sequence 最终使用 INCREMENT BY 1 NOCACHE NOCYCLE；NOCACHE 是
+-- 当前目标配置，不应被监控或审计误判为迁移失败。由于 DDL 隐式提交，SQL ROLLBACK
+-- 不能撤销 sequence 变更。
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
 

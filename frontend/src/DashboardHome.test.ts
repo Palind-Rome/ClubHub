@@ -129,6 +129,35 @@ describe("DashboardHome", () => {
     mountedApp = undefined;
     expect(stopSessionListener).toHaveBeenCalledOnce();
   });
+
+  it("keeps the newer session metrics when an older request resolves last", async () => {
+    const oldActivities = deferred<unknown[]>();
+    const oldProjects = deferred<unknown[]>();
+    const oldNotices = deferred<unknown[]>();
+    const oldRecruitments = deferred<unknown[]>();
+    mocks.getActivities.mockReturnValueOnce(oldActivities.promise);
+    mocks.getProjects.mockReturnValueOnce(oldProjects.promise);
+    mocks.getNotices.mockReturnValueOnce(oldNotices.promise);
+    mocks.getRecruitments.mockReturnValueOnce(oldRecruitments.promise);
+    mountDashboard();
+
+    mocks.readAuth.mockReturnValue(presidentAuth);
+    resolveMetrics(6, 7, 8, 9);
+    sessionListener?.();
+    await flushDashboard();
+
+    oldActivities.resolve([{}, {}]);
+    oldProjects.resolve([{}, {}, {}]);
+    oldNotices.resolve([{}, {}, {}, {}]);
+    oldRecruitments.resolve([{}, {}, {}, {}, {}]);
+    await flushDashboard();
+
+    expect(host.textContent).toContain("王会长");
+    expect(host.textContent).toContain("可见活动6");
+    expect(host.textContent).toContain("协作项目7");
+    expect(host.textContent).toContain("未读通知8");
+    expect(host.textContent).toContain("纳新计划9");
+  });
 });
 
 function resolveMetrics(
@@ -168,4 +197,12 @@ async function flushDashboard() {
   await Promise.resolve();
   await Promise.resolve();
   await nextTick();
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }

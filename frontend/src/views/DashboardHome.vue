@@ -12,6 +12,7 @@ const activities = ref<number | null>(null);
 const projects = ref<number | null>(null);
 const notices = ref<number | null>(null);
 const recruitments = ref<number | null>(null);
+let dashboardRequestId = 0;
 
 const roleSummary = computed(() => {
   const roles = auth.value?.roles ?? [];
@@ -45,6 +46,7 @@ const metrics = computed<Metric[]>(() => [
 ]);
 
 async function loadDashboard() {
+  const requestId = ++dashboardRequestId;
   loading.value = true;
   const userId = auth.value?.user?.id;
   const [activityResult, projectResult, noticeResult, recruitmentResult] = await Promise.allSettled(
@@ -55,6 +57,8 @@ async function loadDashboard() {
       apiClient.getRecruitments(),
     ],
   );
+
+  if (requestId !== dashboardRequestId) return;
 
   activities.value = activityResult.status === "fulfilled" ? activityResult.value.length : null;
   projects.value = projectResult.status === "fulfilled" ? projectResult.value.length : null;
@@ -322,7 +326,17 @@ onUnmounted(() => stopSessionListener?.());
     grid-template-columns: 1fr;
   }
   .identity-details {
+    grid-template-columns: 1fr;
     min-width: 0;
+  }
+  .identity-details > div:nth-child(odd) {
+    border-right: 0;
+  }
+  .identity-details > div:nth-child(-n + 2) {
+    border-bottom: 0;
+  }
+  .identity-details > div:not(:last-child) {
+    border-bottom: 1px solid var(--club-border);
   }
   .metric-grid {
     grid-template-columns: 1fr;

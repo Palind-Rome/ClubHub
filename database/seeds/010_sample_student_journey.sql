@@ -13,6 +13,8 @@ BEGIN
   FROM (
     SELECT 1 FROM USERS WHERE student_no = '2450001'
     UNION ALL SELECT 1 FROM USERS WHERE student_no = '06026'
+    UNION ALL SELECT 1 FROM USERS WHERE student_no = '2450020'
+    UNION ALL SELECT 1 FROM USERS WHERE student_no = '2350021'
     UNION ALL SELECT 1 FROM CLUBS WHERE club_id = 1
     UNION ALL SELECT 1 FROM ROLES WHERE role_code = 'CLUB_MEMBER'
     UNION ALL SELECT 1 FROM LEARNING_ITEMS WHERE item_id IN (1, 3, 10) HAVING COUNT(*) = 3
@@ -22,7 +24,7 @@ BEGIN
     UNION ALL SELECT 1 FROM AWARD_PUBLICITY_BATCHES WHERE publicity_batch_id = 137301 AND club_id = 1
   );
 
-  IF v_required_count <> 9 THEN
+  IF v_required_count <> 11 THEN
     RAISE_APPLICATION_ERROR(-20190, 'Student journey seed prerequisites are incomplete.');
   END IF;
 END;
@@ -75,7 +77,6 @@ SET real_name = CASE user_id
       WHEN 1000002 THEN '邢岫烟'
       ELSE real_name
     END,
-    username = CASE WHEN user_id = 12 THEN 'xue_pan' ELSE username END,
     updated_at = SYSDATE
 WHERE user_id IN (1,2,3,4,5,6,7,8,9,10,11,12,20,21,22,23,24,25,26,27,28,29,30,31,32,1000001,1000002);
 

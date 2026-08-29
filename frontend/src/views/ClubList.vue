@@ -3387,7 +3387,7 @@ onUnmounted(() => {
                   <el-descriptions-item label="Logo 地址">
                     {{ row.logoUrl || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="申请材料">
+                  <el-descriptions-item label="材料链接或归档编号">
                     {{ row.materialUrl || "-" }}
                   </el-descriptions-item>
                   <el-descriptions-item label="申请人">
@@ -3518,7 +3518,7 @@ onUnmounted(() => {
                 <el-descriptions-item label="申请人">
                   {{ selectedClub.applicantName || "-" }}
                 </el-descriptions-item>
-                <el-descriptions-item label="申请材料">
+                <el-descriptions-item label="材料链接或归档编号">
                   {{ selectedClub.materialUrl || "-" }}
                 </el-descriptions-item>
                 <el-descriptions-item label="审核人">

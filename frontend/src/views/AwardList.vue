@@ -20,6 +20,7 @@ import {
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { awardApplicationEntryState, awardReviewResultText } from "../defenseBusinessRules";
 import {
   canMaintainScopedMember,
   collectCadreScopesFromMembers,
@@ -478,6 +479,13 @@ const creatableAwardSchemes = computed(() =>
       scheme.clubId === selectedClubId.value &&
       isAwardSchemeAvailableForApplication(scheme) &&
       scheme.levels.some((level) => level.levelStatus === "active"),
+  ),
+);
+const applicationEntry = computed(() =>
+  awardApplicationEntryState(
+    selectedClubId.value,
+    creatableAwardSchemes.value.length,
+    applicantOptions.value.length,
   ),
 );
 const applicationSchemeOptions = computed(() => {
@@ -1024,9 +1032,8 @@ function resetApplicationForm() {
 }
 
 function openCreateApplicationDialog() {
-  if (!selectedClubId.value) return;
-  if (creatableAwardSchemes.value.length === 0) {
-    ElMessage.warning("当前社团暂无在申请期内的奖项项目。");
+  if (applicationEntry.value.disabled) {
+    ElMessage.warning(applicationEntry.value.reason);
     return;
   }
   applicationTarget.value = null;
@@ -1387,17 +1394,7 @@ function publicityItemResultText(result: string) {
 }
 
 function reviewResultText(value?: string | null) {
-  const normalized = (value ?? "").trim().toLowerCase();
-  const labels: Record<string, string> = {
-    submit: "提交申请",
-    approve: "审核通过",
-    return: "退回修改",
-    reject: "审核驳回",
-    publish: "发布公示",
-    archive: "完成归档",
-    withdraw: "撤回申请",
-  };
-  return labels[normalized] || value || "处理";
+  return awardReviewResultText(value);
 }
 
 async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
@@ -1717,32 +1714,15 @@ onUnmounted(() => {
         >
           新增奖项
         </el-button>
-        <el-tooltip
-          :disabled="
-            Boolean(selectedClubId && creatableAwardSchemes.length && applicantOptions.length)
-          "
-          content="当前社团没有可申请奖项，或当前身份不在有效申请成员范围内。"
-        >
+        <el-tooltip :disabled="!applicationEntry.disabled" :content="applicationEntry.reason">
           <span
-            :tabindex="
-              !selectedClubId || creatableAwardSchemes.length === 0 || applicantOptions.length === 0
-                ? 0
-                : -1
-            "
-            :aria-label="
-              !selectedClubId || creatableAwardSchemes.length === 0 || applicantOptions.length === 0
-                ? '当前社团没有可申请奖项，或当前身份不在有效申请成员范围内。'
-                : undefined
-            "
+            :tabindex="applicationEntry.disabled ? 0 : -1"
+            :aria-label="applicationEntry.disabled ? applicationEntry.reason : undefined"
           >
             <el-button
               type="success"
               :icon="Plus"
-              :disabled="
-                !selectedClubId ||
-                creatableAwardSchemes.length === 0 ||
-                applicantOptions.length === 0
-              "
+              :disabled="applicationEntry.disabled"
               @click="openCreateApplicationDialog"
             >
               发起申请
