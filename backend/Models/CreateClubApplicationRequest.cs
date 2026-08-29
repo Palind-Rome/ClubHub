@@ -63,12 +63,11 @@ namespace Org.OpenAPITools.Models
         public string ApplyReason { get; set; }
 
         /// <summary>
-        /// Gets or Sets MaterialUrl
+        /// 历史兼容字段；新申请流程不再要求填写材料链接。
         /// </summary>
-        [Required]
-        [MinLength(1)]
-        [DataMember(Name="materialUrl", EmitDefaultValue=false)]
-        public string MaterialUrl { get; set; }
+        /// <value>历史兼容字段；新申请流程不再要求填写材料链接。</value>
+        [DataMember(Name="materialUrl", EmitDefaultValue=true)]
+        public string? MaterialUrl { get; set; }
 
         /// <summary>
         /// 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。

@@ -42,9 +42,10 @@ export interface CreateClubApplicationRequest {
    */
   applyReason: string;
   /**
-   *
+   * 历史兼容字段；新申请流程不再要求填写材料链接。
+   * @deprecated
    */
-  materialUrl: string;
+  materialUrl?: string | null;
   /**
    * 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
    */
@@ -69,7 +70,6 @@ export function instanceOfCreateClubApplicationRequest(
   if (!("name" in value) || value["name"] === undefined) return false;
   if (!("category" in value) || value["category"] === undefined) return false;
   if (!("applyReason" in value) || value["applyReason"] === undefined) return false;
-  if (!("materialUrl" in value) || value["materialUrl"] === undefined) return false;
   return true;
 }
 
@@ -95,7 +95,12 @@ export function CreateClubApplicationRequestFromJSONTyped(
           ? null
           : json["description"],
     applyReason: json["applyReason"],
-    materialUrl: json["materialUrl"],
+    materialUrl:
+      json["materialUrl"] === undefined
+        ? undefined
+        : json["materialUrl"] === null
+          ? null
+          : json["materialUrl"],
     advisorUserId:
       json["advisorUserId"] === undefined
         ? undefined
