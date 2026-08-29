@@ -82,7 +82,7 @@ public sealed class ForumPostsController : ControllerBase
 
         // 5. 加载顶级话题及其所有后代
         var allRelatedPosts = await _db.ForumPosts.AsNoTracking().Include(p => p.User)
-            .Where(p => p.ClubId == clubId && (topicIds.Contains(p.PostId) || topicIds.Contains(p.ParentPostId!.Value)))
+            .Where(p => p.ClubId == clubId && (topicIds.Contains(p.PostId) || (p.ParentPostId.HasValue && topicIds.Contains(p.ParentPostId.Value))))
             .ToListAsync();
 
         // 递归加载嵌套的后代
