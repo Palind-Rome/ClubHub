@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { activityRegistrationButtonText } from "../defenseBusinessRules";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 
 interface Activity {
@@ -126,6 +127,21 @@ const creatableClubs = computed<ClubOption[]>(() => {
   }));
 });
 const canCreateActivity = computed(() => hasPermission("activity:create"));
+const actionColumnWidth = computed(() => {
+  const permissions = auth.value?.permissions ?? [];
+  if (
+    permissions.includes("*") ||
+    [
+      "activity:create",
+      "activity:review",
+      "activity:checkin:manage",
+      ...MATERIAL_ACCESS_PERMISSIONS,
+    ].some((permission) => permissions.includes(permission))
+  ) {
+    return 300;
+  }
+  return currentRoles.value.some((role) => role.clubIds.length > 0) ? 184 : 112;
+});
 const pageTitle = computed(() =>
   canCreateActivity.value ||
   hasPermission("activity:review") ||
@@ -426,6 +442,7 @@ function canRegister(activity: Activity) {
   return (
     Boolean(currentUserId.value) &&
     activity.status === "published" &&
+    hasScopedPermission("activity:checkin", activity.clubId) &&
     !activity.isRegistered &&
     !deadlinePassed &&
     (activity.maxParticipants == null || activity.currentParticipants < activity.maxParticipants)
@@ -433,8 +450,11 @@ function canRegister(activity: Activity) {
 }
 
 function registerButtonText(activity: Activity) {
-  if (activity.isRegistered) return "已报名";
-  return canRegister(activity) ? "报名" : "不可报名";
+  return activityRegistrationButtonText({
+    isRegistered: activity.isRegistered,
+    hasMemberPermission: hasScopedPermission("activity:checkin", activity.clubId),
+    canRegister: canRegister(activity),
+  });
 }
 
 function openCreate() {
@@ -739,7 +759,7 @@ async function openParticipations(activity: Activity) {
       stripe
       border
       empty-text="暂无活动数据"
-      class="activity-table"
+      class="activity-table business-data-table"
     >
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
       <el-table-column prop="clubName" label="主办社团" width="120" />
@@ -763,7 +783,7 @@ async function openParticipations(activity: Activity) {
           >
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="420" width="420" align="center" fixed="right">
+      <el-table-column label="操作" :width="actionColumnWidth" align="center">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-dropdown trigger="click">
@@ -1036,6 +1056,8 @@ async function openParticipations(activity: Activity) {
         v-loading="participationLoading"
         :data="participations"
         stripe
+        border
+        class="participation-table business-data-table"
         empty-text="暂无参与记录"
       >
         <el-table-column label="参与者" min-width="150">
@@ -1120,11 +1142,10 @@ async function openParticipations(activity: Activity) {
 }
 .action-buttons {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: flex-start;
   align-items: center;
   gap: 6px;
-  min-width: 400px;
   min-height: 32px;
 }
 .action-buttons :deep(.el-dropdown) {
@@ -1150,5 +1171,17 @@ async function openParticipations(activity: Activity) {
 }
 .code-field .el-input {
   flex: 1;
+}
+.participation-table {
+  border-radius: var(--club-radius-md);
+  overflow: hidden;
+}
+.participation-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  color: var(--club-text);
+  background: color-mix(in srgb, var(--club-primary-soft) 72%, var(--club-bg-elevated));
+}
+.participation-table :deep(td.el-table__cell),
+.participation-table :deep(th.el-table__cell) {
+  border-color: color-mix(in srgb, var(--club-primary) 20%, var(--club-border));
 }
 </style>

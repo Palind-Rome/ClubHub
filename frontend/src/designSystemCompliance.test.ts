@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import appNavigationSource from "./components/shell/AppNavigation.vue?raw";
 import appShellSource from "./components/shell/AppShell.vue?raw";
 
 const viewSources = import.meta.glob("./views/*.vue", {
@@ -11,6 +12,7 @@ const darkModeCriticalViews = [
   "AuthFlow.vue",
   "AwardList.vue",
   "ClubList.vue",
+  "DashboardHome.vue",
   "EvaluationList.vue",
   "MaterialBorrow.vue",
   "NoticeCenter.vue",
@@ -69,5 +71,15 @@ describe("设计系统样式约束", () => {
     expect(appShellSource.match(/src="\/favicon\.svg"/g)).toHaveLength(2);
     expect(appShellSource).toContain("background: transparent");
     expect(appShellSource).toContain("object-fit: contain");
+  });
+
+  it("激活菜单使用蓝粉背景且不叠加内嵌阴影", () => {
+    const activeRule = appNavigationSource.match(
+      /\.navigation-menu :deep\(\.el-menu-item\.is-active\) \{([\s\S]*?)\}/,
+    )?.[1];
+
+    expect(activeRule).toContain("var(--club-primary-soft)");
+    expect(activeRule).toContain("var(--club-accent-soft)");
+    expect(activeRule).not.toContain("box-shadow");
   });
 });

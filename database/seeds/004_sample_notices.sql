@@ -1,4 +1,4 @@
--- 公告通知与已读记录演示数据
+-- 公告通知与已读记录样例数据
 -- 依赖 000_sample_users.sql 与 001_sample_clubs.sql 中的示例用户、社团和成员任期。
 
 MERGE INTO NOTICES target

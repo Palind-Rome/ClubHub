@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
+  Configuration,
+  DefaultApi,
   ProjectProjectStatusEnum,
   ReviewProjectRequestProjectStatusEnum,
   type CancelProjectRequest,
@@ -14,6 +16,9 @@ import {
 import { apiClient as api } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
 
+const publicApi = new DefaultApi(
+  new Configuration({ basePath: import.meta.env.VITE_API_BASE_URL ?? "" }),
+);
 const projectReviewPermission = "project:review";
 const projectTaskManagePermission = "project:task:manage";
 const apiBasePath = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
@@ -89,6 +94,7 @@ const projects = ref<ProjectWithTaskAccess[]>([]);
 const projectTasks = ref<ProjectTask[]>([]);
 const leaderCandidates = ref<UserSummary[]>([]);
 const leaderCandidatesByClub = ref<Record<number, UserSummary[]>>({});
+const memberNamesByClub = ref<Record<number, Record<number, string>>>({});
 const auth = ref(readAuth());
 const loading = ref(false);
 const saving = ref(false);
@@ -113,6 +119,7 @@ const selectedProject = ref<ProjectWithTaskAccess | null>(null);
 const activeTask = ref<ProjectTask | null>(null);
 let stopSessionChange: (() => void) | undefined;
 let leaderCandidateClubId: number | null = null;
+let sessionVersion = 0;
 
 const filters = reactive({
   clubId: undefined as number | undefined,
@@ -224,6 +231,18 @@ const leaderUserMap = computed(() => {
   });
   return map;
 });
+const publicLeaderNameMap = computed(() => {
+  const map = new Map<number, string>();
+  clubs.value.forEach((club) => {
+    if (club.presidentUserId && club.presidentName?.trim()) {
+      map.set(club.presidentUserId, club.presidentName.trim());
+    }
+  });
+  Object.values(memberNamesByClub.value).forEach((names) => {
+    Object.entries(names).forEach(([userId, name]) => map.set(Number(userId), name));
+  });
+  return map;
+});
 
 const createRules: FormRules<ProjectForm> = {
   clubId: [{ required: true, message: "请选择立项社团", trigger: "change" }],
@@ -327,31 +346,41 @@ async function validateForm(form?: FormInstance) {
 }
 
 async function loadClubs() {
+  const requestVersion = sessionVersion;
   try {
-    clubs.value = await api.getClubs();
+    const nextClubs = await publicApi.getClubs();
+    if (requestVersion === sessionVersion) clubs.value = nextClubs;
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
   }
 }
 
 async function loadProjects() {
+  const requestVersion = sessionVersion;
   loading.value = true;
   try {
-    projects.value = await api.getProjects({
+    const nextProjects = await api.getProjects({
       clubId: filters.clubId,
       page: filters.page,
       pageSize: filters.pageSize,
     });
-    await loadProjectLeaderNames(projects.value);
+    if (requestVersion !== sessionVersion) return;
+    projects.value = nextProjects;
+    await loadProjectLeaderNames(nextProjects, requestVersion);
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     ElMessage.error(toErrorMessage(error, "项目列表加载失败"));
   } finally {
-    loading.value = false;
+    if (requestVersion === sessionVersion) loading.value = false;
   }
 }
 
-async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
-  if (!currentUserId.value) return;
+async function loadProjectLeaderNames(
+  projectList: ProjectWithTaskAccess[],
+  requestVersion = sessionVersion,
+) {
+  if (!currentUserId.value || requestVersion !== sessionVersion) return;
 
   const clubIds = Array.from(
     new Set(
@@ -361,10 +390,40 @@ async function loadProjectLeaderNames(projectList: ProjectWithTaskAccess[]) {
     ),
   );
 
-  await Promise.all(clubIds.map((clubId) => loadLeaderCandidates(clubId, { silent: true })));
+  await Promise.all(
+    clubIds.map(async (clubId) => {
+      await loadLeaderCandidates(clubId, { silent: true }, requestVersion);
+      if (requestVersion !== sessionVersion) return;
+      const unresolved = projectList.some(
+        (project) =>
+          project.clubId === clubId &&
+          project.leaderUserId &&
+          !leaderUserMap.value.has(project.leaderUserId) &&
+          !publicLeaderNameMap.value.has(project.leaderUserId),
+      );
+      if (!unresolved) return;
+      try {
+        const members = await api.getClubMembers({ clubId, includeHistory: true });
+        if (requestVersion !== sessionVersion) return;
+        memberNamesByClub.value = {
+          ...memberNamesByClub.value,
+          [clubId]: Object.fromEntries(
+            members.map((member) => [member.userId, member.userName]).filter(([, name]) => name),
+          ),
+        };
+      } catch {
+        /* 非成员只能看到项目公开字段；此时沿用社团负责人名称或中性占位。 */
+      }
+    }),
+  );
 }
 
-async function loadLeaderCandidates(clubId?: number | null, options: { silent?: boolean } = {}) {
+async function loadLeaderCandidates(
+  clubId?: number | null,
+  options: { silent?: boolean } = {},
+  requestVersion = sessionVersion,
+) {
+  if (requestVersion !== sessionVersion) return;
   if (!clubId || !currentUserId.value) {
     leaderCandidates.value = [];
     leaderCandidateClubId = null;
@@ -375,22 +434,25 @@ async function loadLeaderCandidates(clubId?: number | null, options: { silent?: 
 
   leaderCandidateLoading.value = true;
   try {
-    leaderCandidates.value = await projectApiRequest<UserSummary[]>(
+    const candidates = await projectApiRequest<UserSummary[]>(
       `/api/v1/users?clubId=${encodeURIComponent(String(clubId))}`,
     );
+    if (requestVersion !== sessionVersion) return;
+    leaderCandidates.value = candidates;
     leaderCandidatesByClub.value = {
       ...leaderCandidatesByClub.value,
-      [clubId]: leaderCandidates.value,
+      [clubId]: candidates,
     };
     leaderCandidateClubId = clubId;
   } catch (error) {
+    if (requestVersion !== sessionVersion) return;
     leaderCandidates.value = [];
     leaderCandidateClubId = null;
     if (!options.silent) {
       ElMessage.error(toErrorMessage(error, "负责人候选人加载失败"));
     }
   } finally {
-    leaderCandidateLoading.value = false;
+    if (requestVersion === sessionVersion) leaderCandidateLoading.value = false;
   }
 }
 
@@ -847,7 +909,8 @@ function leaderDisplayName(leaderUserId?: number | null) {
   if (!leaderUserId) return "未分配";
 
   const user = leaderUserMap.value.get(leaderUserId);
-  return user ? leaderCandidateLabel(user) : "未知负责人";
+  if (user) return leaderCandidateLabel(user);
+  return publicLeaderNameMap.value.get(leaderUserId) || "负责人信息暂不可见";
 }
 
 function taskUserLabel(task: ProjectTask) {
@@ -961,7 +1024,18 @@ function toErrorMessage(error: unknown, fallback: string) {
 
 onMounted(async () => {
   stopSessionChange = onSessionChange(() => {
+    sessionVersion += 1;
     auth.value = readAuth();
+    clubs.value = [];
+    projects.value = [];
+    projectTasks.value = [];
+    leaderCandidates.value = [];
+    leaderCandidatesByClub.value = {};
+    memberNamesByClub.value = {};
+    selectedProject.value = null;
+    activeTask.value = null;
+    leaderCandidateClubId = null;
+    void Promise.all([loadClubs(), loadProjects()]);
   });
   await loadClubs();
   await loadProjects();
@@ -970,6 +1044,8 @@ onMounted(async () => {
 onUnmounted(() => {
   stopSessionChange?.();
 });
+
+defineExpose({ projects });
 </script>
 
 <template>
@@ -977,11 +1053,29 @@ onUnmounted(() => {
     <div class="toolbar app-page-header">
       <div>
         <h2>项目管理</h2>
-        <p class="subtitle">演示社团项目立项申请、负责人分配和立项审核流程。</p>
+        <p class="subtitle">管理社团项目立项申请、负责人分配和立项审核流程。</p>
       </div>
-      <el-button type="primary" :disabled="!currentUserId" @click="openCreateDialog">
-        提交立项申请
-      </el-button>
+      <el-tooltip
+        :disabled="Boolean(currentUserId && creatableClubs.length)"
+        content="当前账号没有可提交立项申请的社团，请切换为有效社团负责人身份。"
+      >
+        <span
+          :tabindex="!currentUserId || creatableClubs.length === 0 ? 0 : -1"
+          :aria-label="
+            !currentUserId || creatableClubs.length === 0
+              ? '当前账号没有可提交立项申请的社团，请切换为有效社团负责人身份。'
+              : undefined
+          "
+        >
+          <el-button
+            type="primary"
+            :disabled="!currentUserId || creatableClubs.length === 0"
+            @click="openCreateDialog"
+          >
+            提交立项申请
+          </el-button>
+        </span>
+      </el-tooltip>
     </div>
 
     <el-card class="filter-card" shadow="never">
@@ -1008,7 +1102,13 @@ onUnmounted(() => {
       </el-form>
     </el-card>
 
-    <el-table v-loading="loading" :data="projects" stripe empty-text="暂无项目数据">
+    <el-table
+      v-loading="loading"
+      :data="projects"
+      stripe
+      empty-text="暂无项目数据"
+      class="business-data-table"
+    >
       <el-table-column prop="projectName" label="项目名称" min-width="180" show-overflow-tooltip />
       <el-table-column label="所属社团" min-width="140">
         <template #default="{ row }">
@@ -1044,7 +1144,7 @@ onUnmounted(() => {
         min-width="160"
         show-overflow-tooltip
       />
-      <el-table-column label="操作" width="340" fixed="right">
+      <el-table-column label="操作" min-width="270">
         <template #default="{ row }">
           <div v-if="hasProjectActions(row)" class="project-action-groups">
             <div class="project-action-group">

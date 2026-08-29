@@ -498,7 +498,7 @@ public class ProjectsController : ControllerBase
 
     private async Task<bool> IsNamedClubAdvisorAsync(User user, int clubId)
     {
-        // New club profile flow stores advisors as scoped ADVISOR roles. Older seed/demo data may
+        // New club profile flow stores advisors as scoped ADVISOR roles. Older fixture data may
         // only carry a display name on CLUBS, so allow a teacher account whose name matches it.
         if (!IsTeacherAccount(user)) return false;
 

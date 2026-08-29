@@ -20,6 +20,7 @@ import {
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { awardApplicationEntryState, awardReviewResultText } from "../defenseBusinessRules";
 import {
   canMaintainScopedMember,
   collectCadreScopesFromMembers,
@@ -478,6 +479,13 @@ const creatableAwardSchemes = computed(() =>
       scheme.clubId === selectedClubId.value &&
       isAwardSchemeAvailableForApplication(scheme) &&
       scheme.levels.some((level) => level.levelStatus === "active"),
+  ),
+);
+const applicationEntry = computed(() =>
+  awardApplicationEntryState(
+    selectedClubId.value,
+    creatableAwardSchemes.value.length,
+    applicantOptions.value.length,
   ),
 );
 const applicationSchemeOptions = computed(() => {
@@ -1024,9 +1032,8 @@ function resetApplicationForm() {
 }
 
 function openCreateApplicationDialog() {
-  if (!selectedClubId.value) return;
-  if (creatableAwardSchemes.value.length === 0) {
-    ElMessage.warning("当前社团暂无在申请期内的奖项项目。");
+  if (applicationEntry.value.disabled) {
+    ElMessage.warning(applicationEntry.value.reason);
     return;
   }
   applicationTarget.value = null;
@@ -1386,6 +1393,10 @@ function publicityItemResultText(result: string) {
   return result || "-";
 }
 
+function reviewResultText(value?: string | null) {
+  return awardReviewResultText(value);
+}
+
 async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
   const cachedApplication = applications.value.find(
     (application) => application.awardApplicationId === item.awardApplicationId,
@@ -1683,7 +1694,7 @@ onUnmounted(() => {
     <div class="page-head app-page-header">
       <div>
         <h2>评奖评优</h2>
-        <div class="subtitle">申请、审核、公示与成员考核奖项分联动</div>
+        <p class="subtitle">奖项申请、审核、公示与归档</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -1703,9 +1714,21 @@ onUnmounted(() => {
         >
           新增奖项
         </el-button>
-        <el-button type="success" :icon="Plus" @click="openCreateApplicationDialog">
-          发起申请
-        </el-button>
+        <el-tooltip :disabled="!applicationEntry.disabled" :content="applicationEntry.reason">
+          <span
+            :tabindex="applicationEntry.disabled ? 0 : -1"
+            :aria-label="applicationEntry.disabled ? applicationEntry.reason : undefined"
+          >
+            <el-button
+              type="success"
+              :icon="Plus"
+              :disabled="applicationEntry.disabled"
+              @click="openCreateApplicationDialog"
+            >
+              发起申请
+            </el-button>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 
@@ -1816,6 +1839,7 @@ onUnmounted(() => {
         :data="filteredRuleDocuments"
         empty-text="暂无评定细则"
         row-key="ruleDocumentId"
+        class="business-data-table"
       >
         <el-table-column type="expand">
           <template #default="{ row }">
@@ -1877,7 +1901,7 @@ onUnmounted(() => {
         <el-table-column label="发布时间" width="170">
           <template #default="{ row }">{{ formatDate(row.publishedAt || row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="220">
           <template #default="{ row }">
             <el-button :icon="View" @click="openRuleDetail(row)">查看</el-button>
             <el-button
@@ -1904,6 +1928,7 @@ onUnmounted(() => {
         :data="filteredApplications"
         empty-text="暂无评奖评优申请"
         row-key="awardApplicationId"
+        class="business-data-table"
       >
         <el-table-column label="申请人" min-width="150">
           <template #default="{ row }">
@@ -1938,7 +1963,7 @@ onUnmounted(() => {
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDate(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="240">
           <template #default="{ row }">
             <el-button :icon="View" @click="openDetail(row)">查看</el-button>
             <el-button
@@ -1978,6 +2003,7 @@ onUnmounted(() => {
         :data="filteredSchemes"
         empty-text="暂无奖项项目"
         row-key="awardSchemeId"
+        class="business-data-table"
       >
         <el-table-column label="奖项项目" min-width="220">
           <template #default="{ row }">
@@ -2014,7 +2040,7 @@ onUnmounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120" fixed="right">
+        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120">
           <template #default="{ row }">
             <el-button :icon="Edit" @click="openEditSchemeDialog(row)">编辑</el-button>
           </template>
@@ -2036,6 +2062,7 @@ onUnmounted(() => {
           :data="filteredPublicityBatches"
           empty-text="暂无公示批次"
           row-key="publicityBatchId"
+          class="business-data-table"
         >
           <el-table-column label="公示标题" min-width="220">
             <template #default="{ row }">
@@ -2058,7 +2085,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" min-width="220">
             <template #default="{ row }">
               <el-button :icon="View" @click="openPublicityBatchDetail(row)">查看名单</el-button>
               <el-button
@@ -2567,7 +2594,7 @@ onUnmounted(() => {
           </el-descriptions-item>
         </el-descriptions>
         <el-table
-          class="publicity-detail-table"
+          class="publicity-detail-table business-data-table"
           :data="publicityDetailTarget.items"
           border
           empty-text="暂无公示名单"
@@ -2588,7 +2615,7 @@ onUnmounted(() => {
               <el-tag effect="plain">{{ publicityItemResultText(row.publicityResult) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right">
+          <el-table-column label="操作" width="140">
             <template #default="{ row }">
               <el-button size="small" :icon="View" @click="openPublicityItemDetail(row)">
                 查看申请
@@ -2699,7 +2726,7 @@ onUnmounted(() => {
             :timestamp="formatDate(record.reviewedAt)"
           >
             <strong>{{ record.reviewerName || "系统" }}</strong>
-            <span> {{ record.reviewResult }} </span>
+            <span> · {{ reviewResultText(record.reviewResult) }}</span>
             <div class="muted">{{ record.reviewComment || "无审核意见" }}</div>
           </el-timeline-item>
         </el-timeline>
@@ -2739,6 +2766,10 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
 }
 
 .summary-strip {

@@ -18,6 +18,25 @@ describe("prepareLearningDownload", () => {
     expect(confirmDownload).not.toHaveBeenCalled();
   });
 
+  it("surfaces the API problem detail when private storage is unavailable", async () => {
+    const confirmDownload = vi.fn();
+    const fetchFile = vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ detail: "无法从私有 OSS 读取文件，请稍后重试。" }),
+    });
+
+    await expect(
+      prepareLearningDownload({
+        itemId: 12,
+        token: "token",
+        confirmDownload,
+        fetchFile: fetchFile as unknown as typeof fetch,
+      }),
+    ).rejects.toThrow("无法从私有 OSS 读取文件，请稍后重试。");
+
+    expect(confirmDownload).not.toHaveBeenCalled();
+  });
+
   it("does not confirm a download when reading the response body fails", async () => {
     const confirmDownload = vi.fn();
     const fetchFile = vi.fn().mockResolvedValue({

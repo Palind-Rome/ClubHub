@@ -7,6 +7,7 @@ import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";
+import { authRedirectPath } from "../authRedirect";
 
 const router = useRouter();
 const route = useRoute();
@@ -125,7 +126,7 @@ async function login() {
     });
     applyAuth(result);
     ElMessage.success("登录成功");
-    router.push(authRedirectPath());
+    router.push(authRedirectPath(route.query.redirect));
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "登录失败");
   } finally {
@@ -146,7 +147,7 @@ async function register() {
     });
     applyAuth(result);
     ElMessage.success("注册成功");
-    router.push(authRedirectPath());
+    router.push(authRedirectPath(route.query.redirect));
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "注册失败");
   } finally {
@@ -186,11 +187,6 @@ function buildRegisterPayload(): RegisterRequest {
 function optionalText(value: string) {
   const normalized = value.trim();
   return normalized ? normalized : undefined;
-}
-
-function authRedirectPath() {
-  const redirect = route.query.redirect;
-  return typeof redirect === "string" && redirect.startsWith("/") ? redirect : "/clubs";
 }
 
 function applyAuth(nextAuth: AuthResponse) {
@@ -448,7 +444,7 @@ loadPermissionCatalog();
         </div>
 
         <div class="info-panel">
-          <h3>当前角色</h3>
+          <h3>当前角色权限</h3>
           <el-empty
             v-if="auth.roles.length === 0"
             description="当前账号暂无可用角色，请联系管理员分配角色"
@@ -472,7 +468,8 @@ loadPermissionCatalog();
             </div>
           </div>
 
-          <h3 class="permission-title">权限并集</h3>
+          <h3 class="permission-title">本账号全部权限</h3>
+          <p class="permission-help">由当前账号的全部角色合并而成，重复权限只显示一次。</p>
           <div class="permission-tags">
             <el-tag
               v-for="permission in auth.permissions"
@@ -536,15 +533,25 @@ loadPermissionCatalog();
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 420px);
   gap: 28px;
   align-items: center;
+  padding-top: 24px;
 }
 
 .register-shell {
   grid-template-columns: minmax(240px, 0.8fr) minmax(520px, 1.2fr);
+  padding-block: 28px;
 }
 
 .intro h1 {
   margin: 0 0 10px;
   font-size: 36px;
+  font-family: "STSong", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.auth-panel h2 {
+  font-family: "STSong", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+  font-weight: 700;
 }
 
 .intro p,
@@ -568,6 +575,10 @@ loadPermissionCatalog();
 .info-panel h3,
 .page-title h2 {
   margin: 0 0 16px;
+}
+
+.register-panel {
+  padding: 28px;
 }
 
 .full-button {
@@ -626,7 +637,13 @@ loadPermissionCatalog();
 }
 
 .permission-title {
-  margin-top: 18px;
+  margin-top: 30px !important;
+}
+
+.permission-help {
+  margin: -8px 0 0;
+  color: var(--club-text-secondary);
+  font-size: 13px;
 }
 
 .account-grid {

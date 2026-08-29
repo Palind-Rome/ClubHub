@@ -625,7 +625,15 @@ onUnmounted(() => {
       <el-button :icon="Search" @click="loadNotices">查询</el-button>
     </section>
 
-    <el-table v-loading="loading" :data="notices" border stripe row-key="id" empty-text="暂无通知">
+    <el-table
+      v-loading="loading"
+      :data="notices"
+      border
+      stripe
+      row-key="id"
+      empty-text="暂无通知"
+      class="business-data-table"
+    >
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-tag
@@ -678,7 +686,7 @@ onUnmounted(() => {
           {{ row.readCount ?? "-" }} / {{ row.audienceCount ?? "-" }}
         </template>
       </el-table-column>
-      <el-table-column label="内容 / 管理" min-width="250" fixed="right">
+      <el-table-column label="内容 / 管理" min-width="230">
         <template #default="{ row }">
           <el-button
             type="primary"

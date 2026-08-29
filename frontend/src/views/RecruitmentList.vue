@@ -725,9 +725,7 @@ onUnmounted(() => {
       <div>
         <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
         <p>
-          {{
-            isApplicationWorkbench ? "查看申请并录入筛选结果" : "发布纳新、提交入社申请、筛选录取"
-          }}
+          {{ isApplicationWorkbench ? "查看申请并录入筛选结果" : "纳新发布、申请与录取管理" }}
         </p>
       </div>
       <div class="header-actions">
@@ -791,7 +789,13 @@ onUnmounted(() => {
         <el-tab-pane :label="`其他社团 ${otherRecruitments.length}`" name="other" />
       </el-tabs>
 
-      <el-table v-loading="loading" :data="displayedRecruitments" stripe empty-text="暂无纳新数据">
+      <el-table
+        v-loading="loading"
+        :data="displayedRecruitments"
+        stripe
+        empty-text="暂无纳新数据"
+        class="business-data-table"
+      >
         <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">
             <div class="title-line">{{ row.title }}</div>
@@ -830,7 +834,7 @@ onUnmounted(() => {
             <span v-else class="muted">未申请</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" min-width="280">
           <template #default="{ row }">
             <template v-if="shouldShowApplyAction(row)">
               <el-button
@@ -927,6 +931,7 @@ onUnmounted(() => {
           :data="applications"
           stripe
           empty-text="暂无申请数据"
+          class="business-data-table"
         >
           <el-table-column prop="applicantName" label="学生" min-width="130" />
           <el-table-column prop="studentNo" label="学号" width="110" />
@@ -953,7 +958,7 @@ onUnmounted(() => {
               {{ formatDateTime(row.submittedAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="150">
             <template #default="{ row }">
               <el-button
                 type="success"

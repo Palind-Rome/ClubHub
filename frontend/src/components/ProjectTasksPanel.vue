@@ -481,8 +481,8 @@ function assigneeNames(task: ProjectTaskWithDeliverable) {
 }
 function memberText(member: ProjectMember) {
   return member.studentNo
-    ? `${member.realName || `用户 #${member.userId}`}（${member.studentNo}）`
-    : member.realName || `用户 #${member.userId}`;
+    ? `${member.realName || "成员信息暂不可见"}（${member.studentNo}）`
+    : member.realName || "成员信息暂不可见";
 }
 function formatDate(value?: Date | null) {
   return value
