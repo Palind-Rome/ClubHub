@@ -3,12 +3,14 @@ using System.Data;
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Extensions;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ApiActivity = Org.OpenAPITools.Models.Activity;
 using ActivityRegistrationResult = Org.OpenAPITools.Models.ActivityRegistrationResult;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using ApplyActivityBudgetRequest = Org.OpenAPITools.Models.ApplyActivityBudgetRequest;
@@ -30,21 +32,28 @@ public class ActivitiesController : ControllerBase
     private const string ActivityReviewPermission = "activity:review";
     private const string ActivityCheckinManagePermission = "activity:checkin:manage";
     private const string ActivityCheckinPermission = "activity:checkin";
+    private static readonly string[] ApiActivityStatuses =
+    [
+        "draft", "pending_review", "published", "rejected", "ongoing", "finished", "cancelled"
+    ];
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
     private readonly PublicQueryCacheService _publicQueryCache;
     private readonly IDistributedRateLimiter _rateLimiter;
+    private readonly ILogger<ActivitiesController> _logger;
 
     public ActivitiesController(
         ClubHubDbContext db,
         AuthService authService,
         PublicQueryCacheService publicQueryCache,
-        IDistributedRateLimiter rateLimiter)
+        IDistributedRateLimiter rateLimiter,
+        ILogger<ActivitiesController> logger)
     {
         _db = db;
         _authService = authService;
         _publicQueryCache = publicQueryCache;
         _rateLimiter = rateLimiter;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -53,51 +62,52 @@ public class ActivitiesController : ControllerBase
         var shouldCheckRegistration = currentUserId is > 0;
         var viewerUserId = currentUserId.GetValueOrDefault();
 
-        var activities = await _db.Activities
+        var query = _db.Activities
+            .AsNoTracking()
+            .Where(a => ApiActivityStatuses.Contains(
+                (a.ActivityStatus ?? string.Empty).Trim().ToLower()))
             .OrderBy(a => a.ActivityId)
-            .Select(a => new ActivityDto(
-                a.ActivityId,
-                a.Title,
-                a.ActivityType,
-                a.Description,
-                a.Club != null ? a.Club.ClubName : "",
-                a.ClubId,
-                a.CreatorUserId,
-                a.StartAt,
-                a.EndAt,
-                a.Location,
-                a.ActivityStatus,
-                a.Capacity,
-                a.RegistrationDeadline,
-                a.ReviewerUserId,
-                a.ReviewComment,
-                a.BudgetAmount,
-                a.BudgetPurpose,
-                a.BudgetDetail,
-                a.BudgetStatus,
-                a.BudgetReviewerId,
-                a.BudgetComment,
-                a.PublishedAt,
-                a.CheckinStartAt,
-                a.CheckinEndAt,
-                a.CheckoutStartAt,
-                a.CheckoutEndAt,
-                _db.ActivityParticipations.Count(p =>
+            .Select(a => new
+            {
+                Entity = a,
+                ClubName = a.Club != null ? a.Club.ClubName : "",
+                CurrentParticipants = _db.ActivityParticipations.Count(p =>
                     p.ActivityId == a.ActivityId &&
                     (p.RegisterStatus == RegisterStatusPending ||
                      p.RegisterStatus == RegisterStatusAccepted ||
                      p.RegisterStatus == RegisterStatusOnsite)),
-                shouldCheckRegistration &&
+                IsRegistered = shouldCheckRegistration &&
                 _db.ActivityParticipations.Any(p =>
                     p.ActivityId == a.ActivityId &&
                     p.UserId == viewerUserId &&
                     (p.RegisterStatus == RegisterStatusPending ||
                      p.RegisterStatus == RegisterStatusAccepted ||
                      p.RegisterStatus == RegisterStatusOnsite))
-            ))
-            .ToListAsync();
+            });
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query,
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(activities);
+        var response = new List<ApiActivity>(page.Items.Count);
+        foreach (var item in page.Items)
+        {
+            if (!TryToApiModel(
+                    item.Entity,
+                    item.ClubName,
+                    item.CurrentParticipants,
+                    item.IsRegistered,
+                    out var apiActivity))
+            {
+                LogInvalidActivityStatus(item.Entity.ActivityId, item.Entity.ActivityStatus);
+                continue;
+            }
+
+            response.Add(apiActivity);
+        }
+
+        return Ok(response);
     }
 
     [HttpPost]
@@ -165,7 +175,15 @@ public class ActivitiesController : ControllerBase
             activity.ActivityId,
             CancellationToken.None);
 
-        return CreatedAtAction(nameof(GetById), new { activityId = activity.ActivityId }, ToDto(activity, 0));
+        if (!TryToApiModel(activity, 0, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { activityId = activity.ActivityId },
+            response);
     }
 
     [HttpGet("{activityId:int}")]
@@ -195,10 +213,16 @@ public class ActivitiesController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        return Ok(ToDto(
-            activity,
-            registrationStats?.CurrentParticipants ?? 0,
-            registrationStats?.IsRegistered ?? false));
+        if (!TryToApiModel(
+                activity,
+                registrationStats?.CurrentParticipants ?? 0,
+                registrationStats?.IsRegistered ?? false,
+                out var response))
+        {
+            return InvalidActivityStatus(activity.Id, activity.Status);
+        }
+
+        return Ok(response);
     }
 
     [HttpPost("{activityId:int}/registrations")]
@@ -222,7 +246,7 @@ public class ActivitiesController : ControllerBase
                 return Error(StatusCodes.Status404NotFound, "ACTIVITY_NOT_FOUND", "活动不存在");
             }
 
-            if (!string.Equals(activity.ActivityStatus, ActivityStatusPublished, StringComparison.OrdinalIgnoreCase))
+            if (!IsPublishedActivityStatus(activity.ActivityStatus))
             {
                 return Error(StatusCodes.Status400BadRequest, "ACTIVITY_NOT_PUBLISHED", "活动未发布，暂不能报名");
             }
@@ -308,6 +332,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/review")]
+    [HttpPost("{activityId:int}/reviews")]
     [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("reviewActivity")]
     [Authorize]
     public async Task<IActionResult> Review(int activityId, [FromBody] ReviewActivityRequest req)
@@ -328,7 +353,8 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "必须提供审核结果 approved。" });
         }
 
-        if (activity.ActivityStatus is "published" or "ongoing" or "finished" or "cancelled")
+        if (NormalizeActivityStatus(activity.ActivityStatus)
+            is "published" or "ongoing" or "finished" or "cancelled")
         {
             return BadRequest(new { message = "已发布或已结束的活动不能重复审核。" });
         }
@@ -353,7 +379,12 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        if (!TryToApiModel(activity, currentParticipants, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
+        return Ok(response);
     }
 
     [HttpPut("{activityId:int}/budget")]
@@ -371,6 +402,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/budget/review")]
+    [HttpPost("{activityId:int}/budget-reviews")]
     [Authorize]
     public IActionResult ReviewBudget(int activityId, [FromBody] ReviewActivityBudgetRequest req)
     {
@@ -410,7 +442,7 @@ public class ActivitiesController : ControllerBase
             return permissionError;
         }
 
-        if (activity.ActivityStatus is not "published" and not "ongoing")
+        if (!IsCheckinEnabledActivityStatus(activity.ActivityStatus))
         {
             return BadRequest(new { message = "只有已发布或进行中的活动才能设置签到签退规则。" });
         }
@@ -462,7 +494,12 @@ public class ActivitiesController : ControllerBase
             activityId,
             CancellationToken.None);
         var currentParticipants = await CountActiveParticipants(activityId);
-        return Ok(ToDto(activity, currentParticipants));
+        if (!TryToApiModel(activity, currentParticipants, false, out var response))
+        {
+            return InvalidActivityStatus(activity.ActivityId, activity.ActivityStatus);
+        }
+
+        return Ok(response);
     }
 
     [HttpGet("{activityId:int}/participations")]
@@ -498,7 +535,7 @@ public class ActivitiesController : ControllerBase
             query = query.Where(row => row.participation.UserId == currentUserId.Value);
         }
 
-        var participations = await query
+        var page = await ApiPaginationQuery.MaterializeAsync(query
             .OrderBy(row => row.participation.ParticipationId)
             .Select(row => new ActivityParticipationDto(
                 row.participation.ParticipationId,
@@ -512,13 +549,14 @@ public class ActivitiesController : ControllerBase
                 row.participation.CheckoutAt,
                 row.participation.SignStatus,
                 row.participation.Remark
-            ))
-            .ToListAsync();
+            )), HttpContext, HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(participations);
+        return Ok(page.Items);
     }
 
     [HttpPost("{activityId:int}/checkin")]
+    [HttpPost("{activityId:int}/checkins")]
     [Authorize]
     public async Task<IActionResult> Checkin(int activityId, [FromBody] ActivitySignRequest req)
     {
@@ -526,6 +564,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPost("{activityId:int}/checkout")]
+    [HttpPost("{activityId:int}/checkouts")]
     [Authorize]
     public async Task<IActionResult> Checkout(int activityId, [FromBody] ActivitySignRequest req)
     {
@@ -561,7 +600,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = isCheckin ? "签到码不能为空。" : "签退码不能为空。" });
         }
 
-        if (activity.ActivityStatus is not "published" and not "ongoing")
+        if (!IsCheckinEnabledActivityStatus(activity.ActivityStatus))
         {
             return BadRequest(new { message = "只有已发布或进行中的活动可以签到或签退。" });
         }
@@ -739,74 +778,185 @@ public class ActivitiesController : ControllerBase
              p.RegisterStatus == RegisterStatusOnsite));
     }
 
-    private static ActivityDto ToDto(Activity activity, int currentParticipants, bool isRegistered = false)
+    internal static bool TryToApiModel(
+        Activity activity,
+        int currentParticipants,
+        bool isRegistered,
+        out ApiActivity apiActivity)
     {
-        return new ActivityDto(
-            activity.ActivityId,
-            activity.Title,
-            activity.ActivityType,
-            activity.Description,
+        return TryToApiModel(
+            activity,
             activity.Club?.ClubName ?? "",
-            activity.ClubId,
-            activity.CreatorUserId,
-            activity.StartAt,
-            activity.EndAt,
-            activity.Location,
-            activity.ActivityStatus,
-            activity.Capacity,
-            activity.RegistrationDeadline,
-            activity.ReviewerUserId,
-            activity.ReviewComment,
-            activity.BudgetAmount,
-            activity.BudgetPurpose,
-            activity.BudgetDetail,
-            activity.BudgetStatus,
-            activity.BudgetReviewerId,
-            activity.BudgetComment,
-            activity.PublishedAt,
-            activity.CheckinStartAt,
-            activity.CheckinEndAt,
-            activity.CheckoutStartAt,
-            activity.CheckoutEndAt,
             currentParticipants,
-            isRegistered
-        );
+            isRegistered,
+            out apiActivity);
     }
 
-    private static ActivityDto ToDto(
-        ActivityPublicCacheEntry activity,
+    private static bool TryToApiModel(
+        Activity activity,
+        string clubName,
+        int currentParticipants,
+        bool isRegistered,
+        out ApiActivity apiActivity)
+    {
+        if (!TryParseActivityStatus(activity.ActivityStatus, out var status))
+        {
+            apiActivity = null!;
+            return false;
+        }
+
+        apiActivity = BuildApiActivity(
+            activity,
+            clubName,
+            status,
+            currentParticipants,
+            isRegistered);
+        return true;
+    }
+
+    private static ApiActivity BuildApiActivity(
+        Activity activity,
+        string clubName,
+        ApiActivity.StatusEnum status,
         int currentParticipants,
         bool isRegistered)
     {
-        return new ActivityDto(
-            activity.Id,
-            activity.Title,
-            activity.ActivityType,
-            activity.Description,
+        return new ApiActivity
+        {
+            Id = activity.ActivityId,
+            Title = activity.Title,
+            ActivityType = activity.ActivityType,
+            Description = activity.Description,
+            ClubName = clubName,
+            ClubId = activity.ClubId,
+            CreatorUserId = activity.CreatorUserId,
+            StartTime = activity.StartAt,
+            EndTime = activity.EndAt,
+            Location = activity.Location,
+            Status = status,
+            MaxParticipants = activity.Capacity,
+            RegistrationDeadline = activity.RegistrationDeadline,
+            ReviewerUserId = activity.ReviewerUserId,
+            ReviewComment = activity.ReviewComment,
+            BudgetAmount = activity.BudgetAmount is { } amount ? decimal.ToDouble(amount) : null,
+            BudgetPurpose = activity.BudgetPurpose,
+            BudgetDetail = activity.BudgetDetail,
+            BudgetStatus = activity.BudgetStatus,
+            BudgetReviewerId = activity.BudgetReviewerId,
+            BudgetComment = activity.BudgetComment,
+            PublishedAt = activity.PublishedAt,
+            CheckinStartAt = activity.CheckinStartAt,
+            CheckinEndAt = activity.CheckinEndAt,
+            CheckoutStartAt = activity.CheckoutStartAt,
+            CheckoutEndAt = activity.CheckoutEndAt,
+            CurrentParticipants = currentParticipants,
+            IsRegistered = isRegistered
+        };
+    }
+
+    internal static bool TryToApiModel(
+        ActivityPublicCacheEntry activity,
+        int currentParticipants,
+        bool isRegistered,
+        out ApiActivity apiActivity)
+    {
+        var entity = new Activity
+        {
+            ActivityId = activity.Id,
+            Title = activity.Title,
+            ActivityType = activity.ActivityType,
+            Description = activity.Description,
+            ClubId = activity.ClubId,
+            CreatorUserId = activity.CreatorUserId,
+            StartAt = activity.StartTime,
+            EndAt = activity.EndTime,
+            Location = activity.Location,
+            ActivityStatus = activity.Status,
+            Capacity = activity.MaxParticipants,
+            RegistrationDeadline = activity.RegistrationDeadline,
+            ReviewerUserId = activity.ReviewerUserId,
+            ReviewComment = activity.ReviewComment,
+            BudgetAmount = activity.BudgetAmount,
+            BudgetPurpose = activity.BudgetPurpose,
+            BudgetDetail = activity.BudgetDetail,
+            BudgetStatus = activity.BudgetStatus,
+            BudgetReviewerId = activity.BudgetReviewerId,
+            BudgetComment = activity.BudgetComment,
+            PublishedAt = activity.PublishedAt,
+            CheckinStartAt = activity.CheckinStartAt,
+            CheckinEndAt = activity.CheckinEndAt,
+            CheckoutStartAt = activity.CheckoutStartAt,
+            CheckoutEndAt = activity.CheckoutEndAt
+        };
+
+        return TryToApiModel(
+            entity,
             activity.ClubName,
-            activity.ClubId,
-            activity.CreatorUserId,
-            activity.StartTime,
-            activity.EndTime,
-            activity.Location,
-            activity.Status,
-            activity.MaxParticipants,
-            activity.RegistrationDeadline,
-            activity.ReviewerUserId,
-            activity.ReviewComment,
-            activity.BudgetAmount,
-            activity.BudgetPurpose,
-            activity.BudgetDetail,
-            activity.BudgetStatus,
-            activity.BudgetReviewerId,
-            activity.BudgetComment,
-            activity.PublishedAt,
-            activity.CheckinStartAt,
-            activity.CheckinEndAt,
-            activity.CheckoutStartAt,
-            activity.CheckoutEndAt,
             currentParticipants,
-            isRegistered);
+            isRegistered,
+            out apiActivity);
+    }
+
+    internal static bool TryParseActivityStatus(
+        string? status,
+        out ApiActivity.StatusEnum parsedStatus)
+    {
+        switch (NormalizeActivityStatus(status))
+        {
+            case "draft":
+                parsedStatus = ApiActivity.StatusEnum.DraftEnum;
+                return true;
+            case "pending_review":
+                parsedStatus = ApiActivity.StatusEnum.PendingReviewEnum;
+                return true;
+            case "published":
+                parsedStatus = ApiActivity.StatusEnum.PublishedEnum;
+                return true;
+            case "rejected":
+                parsedStatus = ApiActivity.StatusEnum.RejectedEnum;
+                return true;
+            case "ongoing":
+                parsedStatus = ApiActivity.StatusEnum.OngoingEnum;
+                return true;
+            case "finished":
+                parsedStatus = ApiActivity.StatusEnum.FinishedEnum;
+                return true;
+            case "cancelled":
+                parsedStatus = ApiActivity.StatusEnum.CancelledEnum;
+                return true;
+            default:
+                parsedStatus = default;
+                return false;
+        }
+    }
+
+    internal static string? NormalizeActivityStatus(string? status) =>
+        status?.Trim().ToLowerInvariant();
+
+    internal static bool IsPublishedActivityStatus(string? status) =>
+        string.Equals(
+            NormalizeActivityStatus(status),
+            ActivityStatusPublished,
+            StringComparison.Ordinal);
+
+    private static bool IsCheckinEnabledActivityStatus(string? status) =>
+        NormalizeActivityStatus(status) is "published" or "ongoing";
+
+    private void LogInvalidActivityStatus(int activityId, string? status)
+    {
+        _logger.LogError(
+            "活动 {ActivityId} 包含未知状态 {Status}",
+            activityId,
+            status);
+    }
+
+    private IActionResult InvalidActivityStatus(int activityId, string? status)
+    {
+        LogInvalidActivityStatus(activityId, status);
+        return Error(
+            StatusCodes.Status503ServiceUnavailable,
+            ApiErrorCodes.ServiceUnavailable,
+            "活动状态数据异常，请稍后重试。");
     }
 
     private static ObjectResult Error(int statusCode, string code, string message)
@@ -821,37 +971,6 @@ public class ActivitiesController : ControllerBase
         };
     }
 }
-
-public record ActivityDto(
-    int Id,
-    string Title,
-    string? ActivityType,
-    string? Description,
-    string ClubName,
-    int ClubId,
-    int? CreatorUserId,
-    DateTime? StartTime,
-    DateTime? EndTime,
-    string? Location,
-    string? Status,
-    int? MaxParticipants,
-    DateTime? RegistrationDeadline,
-    int? ReviewerUserId,
-    string? ReviewComment,
-    decimal? BudgetAmount,
-    string? BudgetPurpose,
-    string? BudgetDetail,
-    string? BudgetStatus,
-    int? BudgetReviewerId,
-    string? BudgetComment,
-    DateTime? PublishedAt,
-    DateTime? CheckinStartAt,
-    DateTime? CheckinEndAt,
-    DateTime? CheckoutStartAt,
-    DateTime? CheckoutEndAt,
-    int CurrentParticipants,
-    bool IsRegistered
-);
 
 public class CreateActivityRequest
 {

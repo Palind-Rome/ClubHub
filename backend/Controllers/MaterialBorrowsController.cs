@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Claims;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -98,13 +99,16 @@ public class MaterialBorrowsController : ControllerBase
             query = query.Where(m => m.MaterialStatus == normalizedStatus);
         }
 
-        var materials = await query
-            .OrderBy(m => m.ClubId)
-            .ThenBy(m => m.MaterialName)
-            .ThenBy(m => m.MaterialId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderBy(m => m.ClubId)
+                .ThenBy(m => m.MaterialName)
+                .ThenBy(m => m.MaterialId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(materials.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     [HttpPost("materials")]
@@ -285,12 +289,15 @@ public class MaterialBorrowsController : ControllerBase
             query = query.Where(b => b.BorrowStatus == normalizedStatus);
         }
 
-        var borrows = await query
-            .OrderByDescending(b => b.BorrowAt)
-            .ThenByDescending(b => b.BorrowId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(b => b.BorrowAt)
+                .ThenByDescending(b => b.BorrowId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(borrows.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     [HttpPost("material-borrows")]

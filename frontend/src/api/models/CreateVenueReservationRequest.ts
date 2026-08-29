@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface CreateVenueReservationRequest {
   /**
    *
-   * @type {number}
-   * @memberof CreateVenueReservationRequest
    */
   venueId: number;
   /**
    *
-   * @type {number}
-   * @memberof CreateVenueReservationRequest
    */
   clubId: number;
   /**
    *
-   * @type {number}
-   * @memberof CreateVenueReservationRequest
    */
   activityId?: number | null;
   /**
    * 预约开始时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
-   * @type {Date}
-   * @memberof CreateVenueReservationRequest
    */
   startTime: Date;
   /**
    * 预约结束时间。带时区时按对应瞬时转换；无时区时按北京时间解析。
-   * @type {Date}
-   * @memberof CreateVenueReservationRequest
    */
   endTime: Date;
   /**
    *
-   * @type {string}
-   * @memberof CreateVenueReservationRequest
    */
   purpose: string;
 }
@@ -92,8 +80,8 @@ export function CreateVenueReservationRequestFromJSONTyped(
         : json["activityId"] === null
           ? null
           : json["activityId"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    startTime: json["startTime"] == null ? json["startTime"] : parseDateTime(json["startTime"]),
+    endTime: json["endTime"] == null ? json["endTime"] : parseDateTime(json["endTime"]),
     purpose: json["purpose"],
   };
 }
@@ -114,8 +102,9 @@ export function CreateVenueReservationRequestToJSONTyped(
     venueId: value["venueId"],
     clubId: value["clubId"],
     activityId: value["activityId"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    startTime:
+      value["startTime"] == null ? value["startTime"] : serializeDateTime(value["startTime"]),
+    endTime: value["endTime"] == null ? value["endTime"] : serializeDateTime(value["endTime"]),
     purpose: value["purpose"],
   };
 }

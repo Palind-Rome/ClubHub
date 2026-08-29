@@ -4,13 +4,13 @@
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
 - `verify.sql`：验证当前用户、41 张核心表、40 个核心主键 Sequence 及其列默认值和推进位置，并检查项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示细则、经费闭环和幂等台账约束。
-- `seeds/`：后续放演示数据。
+- `seeds/`：隔离开发或测试环境使用的样例数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
 
-### 结构迁移
+## 结构迁移
 
-生产或演示库禁止用 `schema.sql` 全量重建。已有数据库需要按时间顺序人工执行
+共享开发库和生产库禁止用 `schema.sql` 全量重建。已有数据库需要按时间顺序人工执行
 `migrations/` 中的脚本，并在执行前备份：
 
 1. `20260710_add_core_id_sequences.sql`：为 `USERS`、`USER_ROLES`、`CLUBS`、
@@ -62,13 +62,19 @@
 11. `20260726_add_idempotency_records.sql`：新增 `IDEMPOTENCY_RECORDS` 和
     `SEQ_IDEMPOTENCY_RECORDS`，保存声明为幂等写接口的请求摘要、状态和可复用结果，
     并为过期清理建立索引；脚本头部列出关闭功能后的人工回滚步骤。
-    执行迁移并通过 `verify.sql` 前必须保持 `Redis:Features:Idempotency` 关闭；
-    生产或演示库只能在人工确认后的维护窗口执行。
+    截至 2026-08-28，production Redis 已由 PR #184、#185、#186 暂停，当前部署
+    不启用 Redis，因此共享 Oracle 有意不执行本迁移。只有未来正式恢复 Redis 幂等
+    能力时，才在维护窗口重新评估；执行迁移并通过 `verify.sql` 前必须保持
+    `Redis:Features:Idempotency` 关闭。
+12. `20260828_align_primary_key_sequences.sql`：仅在导入显式主键数据后、只读审计
+    发现某个现有 Sequence 未超过对应表最大主键时执行。脚本不创建表、不删除或
+    更新业务数据，也明确排除当前未部署的幂等台账 Sequence。当前共享库的 39 个
+    在用 Sequence 已全部通过审计，无需执行本脚本。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
 
-### 演示数据脚本
+### 样例数据脚本
 
 `seeds/` 下的脚本只用于本地开发库或明确的测试库，不会由 CI 自动执行。当前建议顺序：
 
@@ -78,8 +84,29 @@
 4. `003_sample_club_applications.sql`：社团注册申请样例，依赖 `000_sample_users.sql`。
 5. `004_sample_recruitments.sql`：成员招募与报名筛选样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
 6. `005_sample_member_terms.sql`：计算机协会、摄影社、羽毛球协会的真实感成员与历史任期样例，依赖 `000_sample_users.sql` 和 `001_sample_clubs.sql`。
-7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新演示信息。
-8. `007_sample_award_workflow.sql`：围绕 `zhang_guoxiong` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
+7. `006_sample_club_organizations.sql`：将上述成员任期中出现的部门和小组写入 `CLUB_DEPARTMENTS`、`CLUB_GROUPS`，并回填成员任期的 `department_id`、`group_id`；已迁移过的库会按社团、部门名和小组名更新样例信息。
+8. `007_sample_award_workflow.sql`：围绕 `xue_pan` 补充评奖评优申请、审批、公示归档、评定细则和考核奖项分来源样例，依赖评奖评优流程迁移、评定细则迁移和前述社团、成员、组织架构样例。
+9. `009_data_quality_audit.sql`：只读巡检占位标题、过期状态、空关联、
+   异常社团、虚假附件和明显不合理数值；各查询应返回 0 行，发现结果后由小组
+   人工确认再清理。
+10. `010_sample_student_journey.sql`：按自然键补齐一个普通学生从当前成员任期、
+    活动与学习记录到评奖归档和成员考核的完整业务旅程；脚本不会重置密码或删除
+    未知记录，依赖前述组织架构、学习中心和评奖评优样例。
+
+基础样例只用于隔离的开发或测试库；共享库或生产库不要直接执行写入型 seeds。
+维护共享数据前可执行 `009_data_quality_audit.sql` 做只读巡检，但不要为了“看起来干净”
+批量删除未知记录；巡检命中项应先核对外键和业务含义。
+
+完整业务验收建议准备三类身份，均来自上述样例并与实际权限保持一致：
+
+| 验收身份 | 推荐账号 | 适合验证的业务 |
+| -------- | -------- | ------------ |
+| 普通学生 | `student_chen` | 浏览公开业务、提交申请、验证本人数据隔离 |
+| 社团负责人 | `president_wang` | 发布活动与通知、维护成员、推进项目和社团内审核 |
+| 社团管理员 | `admin_li` | 审核社团注册、处理平台级流程、说明跨社团权限边界 |
+
+先用负责人账号完成一条写入闭环，再切换普通学生账号验证可见范围，最后用管理员账号
+完成平台审核；无社团范围的普通学生账号不应出现负责人操作入口。
 
 样例账号统一密码为 `123456`：
 
@@ -90,7 +117,7 @@
 | `president_wang` | `2250003` | 计算机协会负责人，维护社团档案和成员任期         |
 | `officer_sun`    | `2350006` | 计算机协会干部，查看本社团成员任期               |
 | `member_liu`     | `2450004` | 计算机协会成员，查看本人社团身份                 |
-| `zhang_guoxiong` | `2350007` | 多社团学生，在不同社团分别担任成员、干部、负责人 |
+| `xue_pan`        | `2350007` | 多社团学生，在不同社团分别担任成员、干部、负责人 |
 | `advisor_zhang`  | `06005`   | 计算机协会指导老师，查看社团成员任期             |
 | `zhao_rui`       | `2450020` | 计算机协会技术部部长，有上一学年干事任期         |
 | `he_yuqing`      | `2350021` | 计算机协会宣传部部长，有上一学年社员任期         |
@@ -103,7 +130,7 @@
 
 已有数据库禁止重新执行全量 `schema.sql`。新增项目成员关系时按以下顺序操作：
 
-1. 确认当前连接用户和目标 schema 是共享开发库或明确测试库，不是生产/演示库。
+1. 确认当前连接用户和目标 schema 是共享开发库或明确测试库，不是生产库。
 2. 确认 `PROJECTS`、`USERS` 已存在且 `PROJECT_MEMBERS` 尚不存在；若目标表已经存在，立即停止并检查当前结构。
 3. 使用 SQL*Plus、SQLcl 或 SQL Developer 执行 `migrations/001_add_project_members.sql`。脚本会创建关系表，并将现有项目负责人回填为 active leader。
 4. 再执行 `migrations/002_harden_project_members_constraints.sql`。脚本将备注列改为 255 个字符语义，并在确认无重复有效负责人后创建唯一函数索引。
@@ -116,8 +143,9 @@
 11. 执行 `migrations/20260718_harden_evaluation_award_sources.sql`，确认成员考核奖项分来源表已带上社团和成员范围，并替换为组合外键。
 12. 执行 `migrations/20260720_add_budget_management_closed_loop.sql`，新增社团年度经费账户、经费申请、审批记录和经费流水表。执行前先备份并暂停经费申请/审核写入。
 13. 停止仍使用 `MAX(id) + 1` 的旧后端，执行 `migrations/20260723_add_remaining_id_sequences.sql`，确认 17 个新增 Sequence 和主键默认值均已生效。
-14. 执行 `migrations/20260726_add_idempotency_records.sql`，确认幂等台账、Sequence、过期索引、唯一约束、状态检查和用户外键均已创建。
-15. 执行 `verify.sql`；41 张核心表计数应为 41，Sequence 缺失或落后、重复关系、非法角色/状态、缺失负责人关系、多有效负责人、部门/小组未回填、非法组织架构引用、评奖评优跨社团引用、评奖评优申请复合外键列定义、评定细则范围/外键、考核奖项分来源错挂、经费闭环和幂等台账校验查询均应返回预期结果。
+14. 当前 production Redis 关闭，因此不要执行 `migrations/20260726_add_idempotency_records.sql`；只有未来正式恢复 Redis 幂等能力时，才在维护窗口重新评估并迁移。
+15. 导入显式主键数据后先只读比较 39 个在用 Sequence 与对应表最大主键；仅在发现落后时执行 `migrations/20260828_align_primary_key_sequences.sql`。截至 2026-08-28，当前共享库全部正常，无需执行。
+16. 当前共享库执行 `009_data_quality_audit.sql` 做业务数据巡检，各查询应返回 0 行。`verify.sql` 面向包含幂等台账的 41 表完整结构；在本迁移仍被跳过时，不要将其中缺失 `IDEMPOTENCY_RECORDS` 的结果误判为其他结构故障。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
@@ -150,5 +178,5 @@ ASP.NET Core 后端通过 EF Core + Oracle 驱动连接远程 Oracle，**不需�
 - 使用 Oracle 语法。
 - 表结构变更必须同步 `schema.sql` 和数据库设计文档。
 - 新增种子数据、视图、迁移脚本时放入对应子目录。
-- `schema.sql` 中核心 sequence 从 `1000000` 起步，用于避开 seeds 保留的显式演示 ID；
+- `schema.sql` 中核心 sequence 从 `1000000` 起步，用于避开 seeds 保留的显式样例 ID；
   已有数据库的迁移脚本使用 `GREATEST(实时最大主键 + 1, 1000000)` 作为安全下限。

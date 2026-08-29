@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 经费申请记录，覆盖活动预算、采购和报销等基础类型。
  * @export
@@ -22,116 +22,78 @@ import { mapValues } from "../runtime";
 export interface BudgetApplication {
   /**
    * 经费申请 ID。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   id: number;
   /**
    * 关联经费账户 ID。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   accountId: number;
   /**
    * 申请所属社团 ID。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   clubId: number;
   /**
    * 申请所属社团名称。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   clubName: string;
   /**
    * 关联活动 ID；采购、报销等非活动场景可为空。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   activityId?: number | null;
   /**
    * 关联活动标题。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   activityTitle?: string | null;
   /**
    * 申请人用户 ID，由服务端根据登录态写入。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   applicantUserId: number;
   /**
    * 申请人展示名称。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   applicantName: string;
   /**
    * 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
-   * @type {BudgetApplicationTypeEnum}
-   * @memberof BudgetApplication
    */
   type: BudgetApplicationTypeEnum;
   /**
    * 经费申请标题。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   title: string;
   /**
    * 申请金额。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   amount: number;
   /**
    * 经费用途。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   purpose: string;
   /**
    * 经费明细说明，可包含预算条目、数量、单价或报销说明。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   detail?: string | null;
   /**
    * 申请状态；pending 待审核，approved 已通过，rejected 已驳回，cancelled 已撤销。
-   * @type {BudgetApplicationStatusEnum}
-   * @memberof BudgetApplication
    */
   status: BudgetApplicationStatusEnum;
   /**
    * 申请提交时间。
-   * @type {Date}
-   * @memberof BudgetApplication
    */
   submittedAt: Date;
   /**
    * 审核完成时间；待审核或已撤销时可为空。
-   * @type {Date}
-   * @memberof BudgetApplication
    */
   reviewedAt?: Date | null;
   /**
    * 审核人用户 ID；待审核或已撤销时可为空。
-   * @type {number}
-   * @memberof BudgetApplication
    */
   reviewerUserId?: number | null;
   /**
    * 审核人展示名称。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   reviewerName?: string | null;
   /**
    * 审核意见或撤销说明。
-   * @type {string}
-   * @memberof BudgetApplication
    */
   reviewComment?: string | null;
 }
@@ -215,13 +177,14 @@ export function BudgetApplicationFromJSONTyped(
     detail:
       json["detail"] === undefined ? undefined : json["detail"] === null ? null : json["detail"],
     status: json["status"],
-    submittedAt: new Date(json["submittedAt"]),
+    submittedAt:
+      json["submittedAt"] == null ? json["submittedAt"] : parseDateTime(json["submittedAt"]),
     reviewedAt:
       json["reviewedAt"] === undefined
         ? undefined
         : json["reviewedAt"] === null
           ? null
-          : new Date(json["reviewedAt"]),
+          : parseDateTime(json["reviewedAt"]),
     reviewerUserId:
       json["reviewerUserId"] === undefined
         ? undefined
@@ -270,9 +233,10 @@ export function BudgetApplicationToJSONTyped(
     purpose: value["purpose"],
     detail: value["detail"],
     status: value["status"],
-    submittedAt: value["submittedAt"].toISOString(),
+    submittedAt:
+      value["submittedAt"] == null ? value["submittedAt"] : serializeDateTime(value["submittedAt"]),
     reviewedAt:
-      value["reviewedAt"] == null ? value["reviewedAt"] : value["reviewedAt"].toISOString(),
+      value["reviewedAt"] == null ? value["reviewedAt"] : serializeDateTime(value["reviewedAt"]),
     reviewerUserId: value["reviewerUserId"],
     reviewerName: value["reviewerName"],
     reviewComment: value["reviewComment"],

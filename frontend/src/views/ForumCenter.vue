@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ChatDotRound, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
-import type { Club } from "../api/models";
+import type { Club, UserSummary } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 
@@ -26,6 +26,7 @@ const showHidden = ref(false);
 const replyingTo = ref<Post | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
+const currentMemberClubIds = ref(new Set<number>());
 const topicFormRef = ref<FormInstance>();
 const replyFormRef = ref<FormInstance>();
 const topicForm = reactive({ title: "", content: "" });
@@ -40,6 +41,11 @@ const canPost = computed(() =>
 const canModerate = computed(() =>
   (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:moderate"),
 );
+const canPostToSelectedClub = computed(
+  () =>
+    canPost.value &&
+    Boolean(selectedClubId.value && currentMemberClubIds.value.has(selectedClubId.value)),
+);
 const topicRules: FormRules = {
   title: [{ required: true, message: "请输入话题标题", trigger: "blur" }],
   content: [{ required: true, message: "请输入话题内容", trigger: "blur" }],
@@ -50,7 +56,22 @@ const replyRules: FormRules = {
 
 async function loadClubs() {
   try {
-    clubs.value = await requestJson<Club[]>("/api/clubs");
+    const [clubResult, userResult] = await Promise.allSettled([
+      requestJson<Club[]>("/api/v1/clubs"),
+      requestJson<UserSummary[]>("/api/v1/users"),
+    ]);
+    if (clubResult.status === "rejected") throw clubResult.reason;
+    clubs.value = clubResult.value;
+    const users = userResult.status === "fulfilled" ? userResult.value : [];
+    const currentUser = users.find((user) => user.id === auth.value?.user.id);
+    currentMemberClubIds.value = new Set(
+      (currentUser?.memberships ?? [])
+        .filter((membership) => {
+          const status = (membership.memberStatus ?? "active").trim().toLowerCase();
+          return ["active", "normal", "enabled", "在任", "正常"].includes(status);
+        })
+        .map((membership) => membership.clubId),
+    );
     selectedClubId.value ??= clubs.value[0]?.id;
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
@@ -65,7 +86,7 @@ async function loadPosts() {
   loading.value = true;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const posts = await requestJson<Post[]>(`/api/clubs/${clubId}/forum-posts${query}`);
+    const posts = await requestJson<Post[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     if (requestVersion === postsRequestVersion) topics.value = posts;
   } catch (error) {
     if (requestVersion === postsRequestVersion) {
@@ -83,7 +104,7 @@ async function createPost(parentPostId?: number) {
   if (!selectedClubId.value || !valid) return;
   saving.value = true;
   try {
-    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parentPostId ? { parentPostId, content: replyForm.content } : topicForm),
@@ -106,7 +127,7 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
   if (moderatingPostIds.value.has(post.id)) return;
   moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
   try {
-    await requestJson(`/api/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -163,7 +184,15 @@ onUnmounted(() => stopSessionListener?.());
       :closable="false"
       show-icon
     />
-    <el-card v-if="canPost && selectedClubId" class="composer" shadow="never">
+    <el-alert
+      v-else-if="canPost && selectedClubId && !canPostToSelectedClub"
+      title="你可以浏览该社团讨论，但只有当前有效成员才能发布或回复。"
+      type="info"
+      :closable="false"
+      show-icon
+      class="membership-notice"
+    />
+    <el-card v-if="canPostToSelectedClub" class="composer" shadow="never">
       <template #header>发布话题</template>
       <el-form ref="topicFormRef" :model="topicForm" :rules="topicRules" label-position="top">
         <el-form-item label="标题" prop="title"
@@ -189,17 +218,20 @@ onUnmounted(() => stopSessionListener?.());
       :class="{ hidden: topic.postStatus === 'hidden' }"
     >
       <header>
-        <div>
-          <el-icon v-if="topic.isTop"><Star /></el-icon><strong>{{ topic.title }}</strong
-          ><el-tag v-if="topic.isTop" type="warning" size="small">置顶</el-tag
-          ><el-tag v-if="topic.postStatus === 'hidden'" type="info" size="small">已隐藏</el-tag>
+        <div class="topic-title-row">
+          <el-icon v-if="topic.isTop" class="pinned-icon"><Star /></el-icon>
+          <strong>{{ topic.title }}</strong>
+          <el-tag v-if="topic.isTop" class="pinned-tag" type="warning" size="small">置顶</el-tag>
+          <el-tag v-if="topic.postStatus === 'hidden'" type="info" size="small">已隐藏</el-tag>
         </div>
-        <small>{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small>
+        <small
+          >发布人：{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small
+        >
       </header>
       <p>{{ topic.content }}</p>
       <div class="actions">
         <el-button
-          v-if="canPost"
+          v-if="canPostToSelectedClub"
           link
           :icon="ChatDotRound"
           :disabled="topic.postStatus === 'hidden'"
@@ -232,7 +264,9 @@ onUnmounted(() => stopSessionListener?.());
         class="reply"
         :class="{ hidden: reply.postStatus === 'hidden' }"
       >
-        <small>{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small>
+        <small
+          >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
+        >
         <p>{{ reply.content }}</p>
         <el-button
           v-if="canModerate"
@@ -296,11 +330,21 @@ onUnmounted(() => stopSessionListener?.());
 .composer {
   margin: 16px 0;
 }
+.membership-notice {
+  --el-alert-bg-color: color-mix(in srgb, var(--club-primary-soft) 78%, var(--club-bg-elevated));
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--club-primary) 30%, var(--club-border));
+}
+.membership-notice :deep(.el-alert__title) {
+  color: var(--club-text);
+}
 .topic {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-  padding: 16px;
-  margin-top: 12px;
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--club-primary) 18%, var(--club-border));
+  border-radius: var(--club-radius-lg);
+  padding: 18px 20px;
+  background: color-mix(in srgb, var(--club-surface-solid) 92%, var(--club-primary-soft));
+  box-shadow: var(--club-shadow-sm);
 }
 .topic.hidden,
 .reply.hidden {
@@ -311,6 +355,28 @@ onUnmounted(() => stopSessionListener?.());
   justify-content: space-between;
   gap: 12px;
 }
+.topic-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+.topic-title-row strong {
+  font-size: 16px;
+  line-height: 24px;
+}
+.pinned-icon {
+  flex: 0 0 auto;
+  color: var(--club-warning);
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+.pinned-tag {
+  margin-left: 8px;
+  border-color: color-mix(in srgb, var(--club-warning) 48%, var(--club-border));
+  background: color-mix(in srgb, var(--club-warning) 14%, var(--club-surface-solid));
+  color: var(--club-warning);
+}
 .topic p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -319,7 +385,10 @@ onUnmounted(() => stopSessionListener?.());
 .reply {
   margin-top: 12px;
   padding: 12px;
-  border-left: 3px solid var(--el-border-color);
+  border: 1px solid var(--club-border);
+  border-left: 3px solid color-mix(in srgb, var(--club-primary) 54%, var(--club-border));
+  border-radius: 0 var(--club-radius-sm) var(--club-radius-sm) 0;
+  background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
 }
 small {
   color: var(--el-text-color-secondary);

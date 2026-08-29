@@ -22,50 +22,34 @@ import { mapValues } from "../runtime";
 export interface LearningItemStatistics {
   /**
    * 学习资源 ID。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   itemId: number;
   /**
    * 资源标题。
-   * @type {string}
-   * @memberof LearningItemStatistics
    */
   title: string;
   /**
    * 非取消状态的学习人数。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   learnerCount: number;
   /**
    * 已完成学习人数。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   completedCount: number;
   /**
    * 发生过下载行为的人数。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   downloadCount: number;
   /**
    * 学习记录平均进度。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   averageProgress: number;
   /**
    * 平均累计学习时长（秒）。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   averageDurationSeconds: number;
   /**
    * 累计学习时长（秒）。
-   * @type {number}
-   * @memberof LearningItemStatistics
    */
   totalDurationSeconds: number;
 }

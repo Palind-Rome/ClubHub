@@ -22,68 +22,46 @@ import { mapValues } from "../runtime";
 export interface AuthUser {
   /**
    * 用户 ID。
-   * @type {number}
-   * @memberof AuthUser
    */
   id: number;
   /**
    * 登录用户名。
-   * @type {string}
-   * @memberof AuthUser
    */
   username: string;
   /**
    * 用户真实姓名。
-   * @type {string}
-   * @memberof AuthUser
    */
   realName: string;
   /**
    * 学工号；学生 7 位，教师 5 位。
-   * @type {string}
-   * @memberof AuthUser
    */
   studentNo?: string | null;
   /**
    * 性别。
-   * @type {string}
-   * @memberof AuthUser
    */
   gender?: string | null;
   /**
    * 联系电话。
-   * @type {string}
-   * @memberof AuthUser
    */
   phone?: string | null;
   /**
    * 邮箱地址。
-   * @type {string}
-   * @memberof AuthUser
    */
   email?: string | null;
   /**
    * 所属学院。
-   * @type {string}
-   * @memberof AuthUser
    */
   college?: string | null;
   /**
    * 所属专业。
-   * @type {string}
-   * @memberof AuthUser
    */
   major?: string | null;
   /**
    * 年级。
-   * @type {string}
-   * @memberof AuthUser
    */
   grade?: string | null;
   /**
    * 账号状态，例如 normal 或 disabled。
-   * @type {string}
-   * @memberof AuthUser
    */
   accountStatus: string;
 }

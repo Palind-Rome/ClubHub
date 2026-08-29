@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,17 +12,39 @@ namespace ClubHub.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly CaptchaService _captchaService;
     private readonly IDistributedRateLimiter _rateLimiter;
 
-    public AuthController(AuthService authService, IDistributedRateLimiter rateLimiter)
+    public AuthController(
+        AuthService authService,
+        CaptchaService captchaService,
+        IDistributedRateLimiter rateLimiter)
     {
         _authService = authService;
+        _captchaService = captchaService;
         _rateLimiter = rateLimiter;
+    }
+
+    [HttpGet("captcha")]
+    public async Task<IActionResult> GetCaptcha()
+    {
+        var rateLimit = await AcquireRateLimitAsync(
+            "captcha-ip",
+            ClientIp(),
+            30,
+            TimeSpan.FromMinutes(5));
+        if (rateLimit is not null) return rateLimit;
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(_captchaService.CreateChallenge());
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        var captchaError = ValidateCaptcha(request.CaptchaToken, request.CaptchaCode);
+        if (captchaError is not null) return captchaError;
+
         var rateLimit = await AcquireRateLimitAsync(
             "register-ip",
             ClientIp(),
@@ -36,6 +59,9 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        var captchaError = ValidateCaptcha(request.CaptchaToken, request.CaptchaCode);
+        if (captchaError is not null) return captchaError;
+
         var accountSubject = (request.Username ?? string.Empty).Trim().ToLowerInvariant();
         var accountLimit = await AcquireRateLimitAsync(
             "login-account",
@@ -129,13 +155,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("permissions")]
-    public IActionResult GetPermissions()
-    {
-        return Ok(_authService.GetPermissionCatalog());
-    }
+    public IActionResult GetPermissions() => Ok(_authService.GetPermissionCatalog());
 
     [Authorize]
     [HttpGet("permissions/check")]
+    [HttpGet("~/api/v1/users/me/permissions")]
     public async Task<IActionResult> CheckPermission(
         [FromQuery] string permission,
         [FromQuery] int? clubId)
@@ -151,11 +175,28 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("roles/assign")]
-    public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
+    [HttpPost("~/api/v1/users/{userId:int}/roles")]
+    public async Task<IActionResult> AssignRole(
+        [FromBody] AssignRoleRequest request,
+        [FromRoute] int? userId = null)
     {
         if (!TryGetCurrentUserId(out var operatorUserId))
         {
             return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
+        }
+
+        if (userId is not null && request.TargetUserId > 0 && request.TargetUserId != userId.Value)
+        {
+            return BadRequest(new ApiError
+            {
+                Code = ApiErrorCodes.ValidationError,
+                Message = "路径用户 ID 与请求体目标用户 ID 不一致。"
+            });
+        }
+
+        if (userId is not null)
+        {
+            request.TargetUserId = userId.Value;
         }
 
         var result = await _authService.AssignRoleAsync(request, operatorUserId);
@@ -206,6 +247,17 @@ public class AuthController : ControllerBase
 
     private string ClientIp() =>
         HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    private IActionResult? ValidateCaptcha(string? token, string? code)
+    {
+        if (_captchaService.TryConsume(token, code)) return null;
+
+        return BadRequest(new ApiError
+        {
+            Code = ApiErrorCodes.ValidationError,
+            Message = "验证码无效或已过期，请刷新后重试。"
+        });
+    }
 
     private IActionResult ToActionResult<T>(AuthServiceResult<T> result)
     {

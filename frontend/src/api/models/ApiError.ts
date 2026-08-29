@@ -21,21 +21,15 @@ import { mapValues } from "../runtime";
  */
 export interface ApiError {
   /**
-   *
-   * @type {string}
-   * @memberof ApiError
+   * 固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、 PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。
    */
-  code?: string | null;
+  code: string;
   /**
    *
-   * @type {string}
-   * @memberof ApiError
    */
   message: string;
   /**
    *
-   * @type {string}
-   * @memberof ApiError
    */
   detail?: string | null;
 }
@@ -44,6 +38,7 @@ export interface ApiError {
  * Check if a given object implements the ApiError interface.
  */
 export function instanceOfApiError(value: object): value is ApiError {
+  if (!("code" in value) || value["code"] === undefined) return false;
   if (!("message" in value) || value["message"] === undefined) return false;
   return true;
 }
@@ -57,7 +52,7 @@ export function ApiErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return json;
   }
   return {
-    code: json["code"] === undefined ? undefined : json["code"] === null ? null : json["code"],
+    code: json["code"],
     message: json["message"],
     detail:
       json["detail"] === undefined ? undefined : json["detail"] === null ? null : json["detail"],

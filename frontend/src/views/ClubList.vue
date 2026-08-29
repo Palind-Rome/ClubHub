@@ -429,7 +429,7 @@ const applicationRules: FormRules = {
   name: [{ required: true, message: "请填写社团名称", trigger: "blur" }],
   category: [{ required: true, message: "请填写社团类别", trigger: "blur" }],
   applyReason: [{ required: true, message: "请填写申请理由", trigger: "blur" }],
-  materialUrl: [{ required: true, message: "请填写材料地址", trigger: "blur" }],
+  materialUrl: [{ required: true, message: "请填写材料链接或归档编号", trigger: "blur" }],
 };
 
 const reviewRules: FormRules = {
@@ -872,7 +872,7 @@ const hasClubWorkspace = computed(() => visibleTabs.value.length > 0);
 async function refreshAuthSession() {
   if (!currentUserId.value) return;
 
-  const session = await requestJson<AuthResponse>("/api/auth/session");
+  const session = await requestJson<AuthResponse>("/api/v1/auth/session");
   saveAuth(session);
   auth.value = session;
 }
@@ -906,7 +906,7 @@ async function loadUsers() {
 
   usersLoading.value = true;
   try {
-    const data = await requestJson<UserSummary[]>(`/api/users`);
+    const data = await requestJson<UserSummary[]>(`/api/v1/users`);
     if (requestId === usersRequestId) users.value = data;
   } catch (e) {
     if (requestId === usersRequestId) {
@@ -929,7 +929,7 @@ async function loadDialogUsers(clubId?: number) {
   dialogUsersLoading.value = true;
   try {
     const query = clubId ? `?clubId=${clubId}` : "";
-    const data = await requestJson<UserSummary[]>(`/api/users${query}`);
+    const data = await requestJson<UserSummary[]>(`/api/v1/users${query}`);
     if (requestId === dialogUsersRequestId) dialogUsers.value = data;
   } catch (e) {
     if (requestId === dialogUsersRequestId) {
@@ -950,7 +950,7 @@ async function loadApplicationAdvisorCandidates() {
   applicationAdvisorLoading.value = true;
   try {
     applicationAdvisorCandidates.value = await requestJson<LearningTeacherCandidate[]>(
-      "/api/clubs/advisor-candidates",
+      "/api/v1/clubs/advisor-candidates",
     );
   } catch (e) {
     applicationAdvisorCandidates.value = [];
@@ -990,9 +990,9 @@ async function loadData() {
 
     const [applicationData, clubData] = await Promise.all([
       shouldLoadApplications
-        ? requestJson<ClubApplication[]>(`/api/clubs/applications?${query.toString()}`)
+        ? requestJson<ClubApplication[]>(`/api/v1/clubs/applications?${query.toString()}`)
         : Promise.resolve([]),
-      shouldLoadClubs ? requestJson<Club[]>(`/api/clubs`) : Promise.resolve([]),
+      shouldLoadClubs ? requestJson<Club[]>(`/api/v1/clubs`) : Promise.resolve([]),
     ]);
     if (requestId !== dataRequestId) return;
     applications.value = applicationData;
@@ -1044,7 +1044,7 @@ async function loadMembers() {
       query.set("groupId", String(memberFilters.groupId));
     }
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === membersRequestId) clubMembers.value = data;
   } catch (e) {
@@ -1069,7 +1069,7 @@ async function loadDepartments() {
   organizationLoading.value = true;
   try {
     const data = await requestJson<ClubDepartmentRecord[]>(
-      `/api/clubs/${clubId}/departments?includeInactive=true`,
+      `/api/v1/clubs/${clubId}/departments?includeInactive=true`,
     );
     if (requestId === organizationRequestId) clubDepartments.value = data;
   } catch (e) {
@@ -1172,7 +1172,7 @@ function buildClubContextOption(club: Club): ClubContextOption {
 
   const canManage = canManageClub(club);
   const roleText = Array.from(labels).join(" / ") || (canManage ? "可维护" : "可查看");
-  const statusText = canManage ? "可维护档案与任期" : "查看成员任期";
+  const statusText = canManage ? "可维护社团与成员任期" : "可查看当前及历史任期";
 
   return {
     clubId: club.id,
@@ -1312,7 +1312,7 @@ async function submitApplication() {
   saving.value = true;
   try {
     await requestJson<ClubApplication>(
-      `/api/clubs/applications${isResubmit ? `/${targetId}` : ""}`,
+      `/api/v1/clubs/applications${isResubmit ? `/${targetId}` : ""}`,
       {
         method: isResubmit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -1368,13 +1368,16 @@ async function submitReview() {
 
   reviewing.value = true;
   try {
-    await requestJson<ClubApplication>(`/api/clubs/applications/${reviewTarget.value.id}/review`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...reviewForm,
-      }),
-    });
+    await requestJson<ClubApplication>(
+      `/api/v1/clubs/applications/${reviewTarget.value.id}/reviews`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...reviewForm,
+        }),
+      },
+    );
     ElMessage.success(`申请已${actionText}`);
     reviewDialogVisible.value = false;
     await Promise.all([loadUsers(), loadData()]);
@@ -1411,7 +1414,7 @@ async function submitProfile() {
 
   profileSaving.value = true;
   try {
-    await requestJson<Club>(`/api/clubs/${profileTarget.value.id}/profile`, {
+    await requestJson<Club>(`/api/v1/clubs/${profileTarget.value.id}/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1456,10 +1459,8 @@ async function dissolveClub(row: Club) {
 
   dissolvingClubId.value = row.id;
   try {
-    await requestJson<void>(`/api/clubs/${row.id}/dissolve`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.id}`, {
+      method: "DELETE",
     });
     ElMessage.success("社团已解散");
     await Promise.all([loadUsers(), loadData()]);
@@ -1492,10 +1493,8 @@ async function exitCurrentClub(row: IdentityRow) {
 
   exitingClubId.value = row.clubId;
   try {
-    await requestJson<void>(`/api/clubs/${row.clubId}/members/self/exit`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.clubId}/members/self`, {
+      method: "DELETE",
     });
     ElMessage.success("已退出社团");
     await refreshAuthSessionQuietly();
@@ -1529,10 +1528,8 @@ async function removeClubMember(row: ClubMemberRecord) {
 
   exitingMemberId.value = row.memberId;
   try {
-    await requestJson<void>(`/api/clubs/${row.clubId}/members/${row.memberId}/exit`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+    await requestJson<void>(`/api/v1/clubs/${row.clubId}/members/${row.memberId}`, {
+      method: "DELETE",
     });
     ElMessage.success("成员已移出");
     await Promise.all([loadUsers(), loadData()]);
@@ -1804,7 +1801,7 @@ async function submitMemberGrouping() {
   groupingSaving.value = true;
   try {
     await requestJson<ClubMemberRecord>(
-      `/api/clubs/${selectedClubId.value}/members/${memberGroupingTarget.value.memberId}/grouping`,
+      `/api/v1/clubs/${selectedClubId.value}/members/${memberGroupingTarget.value.memberId}/grouping`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1848,7 +1845,7 @@ async function submitMemberBatchGrouping() {
     const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
-          `/api/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
+          `/api/v1/clubs/${selectedClubId.value}/members/${row.memberId}/grouping`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -1905,7 +1902,7 @@ async function submitMemberBatchPosition() {
     const results = await Promise.allSettled(
       rows.map((row) =>
         requestJson<ClubMemberRecord>(
-          `/api/clubs/${selectedClubId.value}/members/${row.memberId}`,
+          `/api/v1/clubs/${selectedClubId.value}/members/${row.memberId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -1962,14 +1959,14 @@ async function submitMemberTerm() {
     };
 
     if (memberTermMode.value === "create") {
-      await requestJson<ClubMemberRecord>(`/api/clubs/${selectedClubId.value}/members/terms`, {
+      await requestJson<ClubMemberRecord>(`/api/v1/clubs/${selectedClubId.value}/members/terms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else if (memberTermTarget.value) {
       await requestJson<ClubMemberRecord>(
-        `/api/clubs/${selectedClubId.value}/members/${memberTermTarget.value.memberId}`,
+        `/api/v1/clubs/${selectedClubId.value}/members/${memberTermTarget.value.memberId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -2199,7 +2196,7 @@ async function persistDepartmentOrder(reordered: ClubDepartmentRecord[]) {
     await Promise.all(
       reordered.map((department, index) =>
         requestJson<ClubDepartmentRecord>(
-          `/api/clubs/${selectedClubId.value}/departments/${department.departmentId}`,
+          `/api/v1/clubs/${selectedClubId.value}/departments/${department.departmentId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -2289,11 +2286,14 @@ async function persistGroupOrder(reordered: ClubGroupRecord[]) {
   try {
     await Promise.all(
       reordered.map((group, index) =>
-        requestJson<ClubGroupRecord>(`/api/clubs/${selectedClubId.value}/groups/${group.groupId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(groupPayloadFromRecord(group, (index + 1) * 10)),
-        }),
+        requestJson<ClubGroupRecord>(
+          `/api/v1/clubs/${selectedClubId.value}/groups/${group.groupId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(groupPayloadFromRecord(group, (index + 1) * 10)),
+          },
+        ),
       ),
     );
     ElMessage.success("排序已更新");
@@ -2353,8 +2353,8 @@ async function submitDepartmentForm() {
     const target = departmentEditTarget.value;
     await requestJson<ClubDepartmentRecord>(
       target
-        ? `/api/clubs/${selectedClubId.value}/departments/${target.departmentId}`
-        : `/api/clubs/${selectedClubId.value}/departments`,
+        ? `/api/v1/clubs/${selectedClubId.value}/departments/${target.departmentId}`
+        : `/api/v1/clubs/${selectedClubId.value}/departments`,
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -2424,8 +2424,8 @@ async function submitGroupForm() {
     const target = groupEditTarget.value;
     await requestJson<ClubGroupRecord>(
       target
-        ? `/api/clubs/${selectedClubId.value}/groups/${target.groupId}`
-        : `/api/clubs/${selectedClubId.value}/departments/${departmentId}/groups`,
+        ? `/api/v1/clubs/${selectedClubId.value}/groups/${target.groupId}`
+        : `/api/v1/clubs/${selectedClubId.value}/departments/${departmentId}/groups`,
       {
         method: target ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -3105,6 +3105,7 @@ onUnmounted(() => {
             class="context-select"
             placeholder="选择社团身份"
             filterable
+            popper-class="club-context-popper"
           >
             <el-option
               v-for="option in clubContextOptions"
@@ -3142,10 +3143,10 @@ onUnmounted(() => {
             可维护社团档案
           </el-tag>
           <el-tag v-if="isMemberWorkspace && memberViewClubs.length > 0" effect="plain">
-            可查看成员任期
+            成员任期：可查看
           </el-tag>
           <el-tag v-if="isOrganizationWorkspace && memberViewClubs.length > 0" effect="plain">
-            可查看社团架构
+            社团架构：可查看
           </el-tag>
           <el-tag v-if="isClubWorkspace && identityRows.length > 0" effect="plain">
             我的社团身份
@@ -3241,6 +3242,7 @@ onUnmounted(() => {
           stripe
           empty-text="暂无社团注册申请"
           row-key="id"
+          class="business-data-table"
         >
           <el-table-column type="expand">
             <template #default="{ row }">
@@ -3272,7 +3274,7 @@ onUnmounted(() => {
                   <el-descriptions-item label="拟选指导老师">
                     {{ row.advisorName || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="材料地址">
+                  <el-descriptions-item label="材料链接或归档编号">
                     {{ row.materialUrl }}
                   </el-descriptions-item>
                   <el-descriptions-item label="联系电话">
@@ -3318,12 +3320,7 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column
-            v-if="isReviewer || canSubmitApplication"
-            label="操作"
-            width="180"
-            fixed="right"
-          >
+          <el-table-column v-if="isReviewer || canSubmitApplication" label="操作" width="180">
             <template #default="{ row }">
               <el-button
                 v-if="isReviewer && row.auditStatus === 'pending'"
@@ -3378,6 +3375,7 @@ onUnmounted(() => {
           stripe
           empty-text="暂无可见社团"
           row-key="id"
+          class="business-data-table"
         >
           <el-table-column type="expand">
             <template #default="{ row }">
@@ -3389,7 +3387,7 @@ onUnmounted(() => {
                   <el-descriptions-item label="Logo 地址">
                     {{ row.logoUrl || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="申请材料">
+                  <el-descriptions-item label="材料链接或归档编号">
                     {{ row.materialUrl || "-" }}
                   </el-descriptions-item>
                   <el-descriptions-item label="申请人">
@@ -3424,7 +3422,7 @@ onUnmounted(() => {
           <el-table-column label="更新时间" width="170">
             <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="220">
             <template #default="{ row }">
               <div class="row-actions">
                 <el-button
@@ -3520,7 +3518,7 @@ onUnmounted(() => {
                 <el-descriptions-item label="申请人">
                   {{ selectedClub.applicantName || "-" }}
                 </el-descriptions-item>
-                <el-descriptions-item label="申请材料">
+                <el-descriptions-item label="材料链接或归档编号">
                   {{ selectedClub.materialUrl || "-" }}
                 </el-descriptions-item>
                 <el-descriptions-item label="审核人">
@@ -3602,11 +3600,12 @@ onUnmounted(() => {
               stripe
               row-key="departmentId"
               empty-text="暂无部门"
+              class="business-data-table"
             >
               <el-table-column type="expand">
                 <template #default="{ row }">
                   <el-table
-                    class="nested-table"
+                    class="nested-table business-data-table"
                     :data="row.groups"
                     border
                     stripe
@@ -3627,6 +3626,7 @@ onUnmounted(() => {
                             size="small"
                             empty-text="暂无当前成员"
                             row-key="memberId"
+                            class="business-data-table"
                           >
                             <el-table-column prop="userName" label="成员" min-width="140" />
                             <el-table-column prop="studentNo" label="学号/工号" width="130" />
@@ -4159,6 +4159,7 @@ onUnmounted(() => {
               : '暂无历史任期记录'
           "
           row-key="memberId"
+          class="business-data-table"
           @selection-change="handleMemberSelectionChange"
         >
           <el-table-column
@@ -4213,12 +4214,7 @@ onUnmounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
-          <el-table-column
-            v-if="canShowMemberOperationColumn"
-            label="操作"
-            width="220"
-            fixed="right"
-          >
+          <el-table-column v-if="canShowMemberOperationColumn" label="操作" width="150">
             <template #default="{ row }">
               <div class="row-actions member-row-actions">
                 <el-button
@@ -4296,6 +4292,7 @@ onUnmounted(() => {
             stripe
             empty-text="暂无到期待换届成员"
             row-key="memberId"
+            class="business-data-table"
           >
             <el-table-column prop="userName" label="成员" min-width="150" />
             <el-table-column prop="departmentName" label="当前部门" width="150" />
@@ -4307,12 +4304,7 @@ onUnmounted(() => {
                 {{ formatDateOnly(row.termStart) }} 至 {{ formatDateOnly(row.termEnd) }}
               </template>
             </el-table-column>
-            <el-table-column
-              v-if="canManageSelectedClub"
-              label="换届操作"
-              width="150"
-              fixed="right"
-            >
+            <el-table-column v-if="canManageSelectedClub" label="换届操作" width="150">
               <template #default="{ row }">
                 <el-button
                   type="primary"
@@ -4333,7 +4325,13 @@ onUnmounted(() => {
         label="我的社团身份"
         name="identity"
       >
-        <el-table :data="visibleIdentityRows" border stripe empty-text="暂无社团成员身份">
+        <el-table
+          :data="visibleIdentityRows"
+          border
+          stripe
+          empty-text="暂无社团成员身份"
+          class="business-data-table"
+        >
           <el-table-column prop="clubName" label="社团" min-width="160" />
           <el-table-column prop="departmentName" label="部门" width="130" />
           <el-table-column prop="groupName" label="小组" width="120" />
@@ -4346,21 +4344,23 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="210" fixed="right">
+          <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
-              <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
-                查看
-              </el-button>
-              <el-button
-                v-if="canExitIdentity(row)"
-                type="danger"
-                plain
-                :icon="DeleteIcon"
-                :loading="exitingClubId === row.clubId"
-                @click="exitCurrentClub(row)"
-              >
-                退出社团
-              </el-button>
+              <div class="identity-row-actions">
+                <el-button type="primary" plain :icon="Search" @click="openClubMembers(row.clubId)">
+                  查看
+                </el-button>
+                <el-button
+                  v-if="canExitIdentity(row)"
+                  type="danger"
+                  plain
+                  :icon="DeleteIcon"
+                  :loading="exitingClubId === row.clubId"
+                  @click="exitCurrentClub(row)"
+                >
+                  退出社团
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -4420,11 +4420,14 @@ onUnmounted(() => {
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="材料地址" prop="materialUrl">
+        <el-form-item label="材料链接或归档编号" prop="materialUrl">
           <el-input
             v-model="applicationForm.materialUrl"
-            placeholder="线上材料链接或校内存档地址"
+            placeholder="社团章程、成员名单等材料的 OSS 链接或校内归档编号"
           />
+          <div class="form-tip">
+            用于审核社团章程、成员名单与指导老师同意材料，不是社团主页地址。
+          </div>
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="applicationForm.contactPhone" maxlength="30" />
@@ -5025,6 +5028,10 @@ onUnmounted(() => {
   width: 280px;
 }
 
+.context-select :deep(.el-select__wrapper) {
+  background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
+}
+
 .context-option {
   display: grid;
   gap: 2px;
@@ -5116,6 +5123,20 @@ onUnmounted(() => {
 
 .row-actions {
   align-items: center;
+}
+
+.identity-row-actions,
+.member-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.identity-row-actions :deep(.el-button),
+.member-row-actions :deep(.el-button) {
+  width: 100%;
+  margin-left: 0;
 }
 
 .member-head {
@@ -5312,7 +5333,8 @@ onUnmounted(() => {
 
 .organization-tree {
   overflow-x: auto;
-  padding: 6px 2px 10px;
+  max-width: 100%;
+  padding: 6px 18px 10px 2px;
 }
 
 .tree-root-line,
@@ -5487,6 +5509,14 @@ onUnmounted(() => {
   gap: 6px;
 }
 
+.tree-node-meta :deep(.el-tag) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  line-height: 1;
+}
+
 .tree-node-root {
   min-width: 230px;
   padding: 12px 16px;
@@ -5507,13 +5537,15 @@ onUnmounted(() => {
 }
 
 .tree-node-member {
-  min-width: 200px;
+  width: 220px;
+  min-width: 0;
+  max-width: min(220px, calc(100vw - 540px));
   min-height: 38px;
   justify-content: flex-start;
   display: block;
   padding: 8px 12px;
-  border-color: var(--el-border-color-light);
-  background: var(--el-fill-color-light);
+  border-color: color-mix(in srgb, var(--club-accent) 28%, var(--club-border));
+  background: color-mix(in srgb, var(--club-accent-soft) 54%, var(--club-surface-solid));
   box-shadow: none;
 }
 

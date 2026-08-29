@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,140 +22,94 @@ import { mapValues } from "../runtime";
 export interface Recruitment {
   /**
    * 招募记录 ID。
-   * @type {number}
-   * @memberof Recruitment
    */
   id: number;
   /**
    * 发布该纳新的社团 ID。
-   * @type {number}
-   * @memberof Recruitment
    */
   clubId: number;
   /**
    * 发布该纳新的社团名称。
-   * @type {string}
-   * @memberof Recruitment
    */
   clubName: string;
   /**
    * 纳新标题。
-   * @type {string}
-   * @memberof Recruitment
    */
   title: string;
   /**
    * 纳新的补充说明，可为空。
-   * @type {string}
-   * @memberof Recruitment
    */
   description?: string | null;
   /**
    * 纳新开始时间；审核通过后用于计算“未开始/申请中/已结束”。
-   * @type {Date}
-   * @memberof Recruitment
    */
   startAt?: Date | null;
   /**
    * 纳新结束时间；到期后自动展示为已结束。
-   * @type {Date}
-   * @memberof Recruitment
    */
   endAt?: Date | null;
   /**
    * 计划录取人数上限。
-   * @type {number}
-   * @memberof Recruitment
    */
   quota?: number | null;
   /**
    * 报名要求或筛选标准。
-   * @type {string}
-   * @memberof Recruitment
    */
   requirements?: string | null;
   /**
    * 当前展示状态；draft 和 pending_review 为流程状态，not_started/accepting/ended 由已通过纳新的时间窗口计算得到。
-   * @type {RecruitmentRecruitStatusEnum}
-   * @memberof Recruitment
    */
   recruitStatus: RecruitmentRecruitStatusEnum;
   /**
    * 当前展示状态的中文文案。
-   * @type {string}
-   * @memberof Recruitment
    */
   recruitStatusText: string;
   /**
    * 招募创建时间。
-   * @type {Date}
-   * @memberof Recruitment
    */
   createdAt: Date;
   /**
    * 当前报名申请总数。
-   * @type {number}
-   * @memberof Recruitment
    */
   applicationCount: number;
   /**
    * 当前已录取申请数。
-   * @type {number}
-   * @memberof Recruitment
    */
   acceptedCount: number;
   /**
    * 当前查看用户在该纳新下的申请 ID；未申请时为空。
-   * @type {number}
-   * @memberof Recruitment
    */
   currentUserApplicationId?: number | null;
   /**
    * 当前查看用户的申请状态；未申请时为空。
-   * @type {string}
-   * @memberof Recruitment
    */
   currentUserApplicationStatus?: string | null;
   /**
    * 当前查看用户申请状态的中文文案；未申请时为空。
-   * @type {string}
-   * @memberof Recruitment
    */
   currentUserApplicationStatusText?: string | null;
   /**
    * 当前查看用户是否已经是该社团成员；干部和负责人也按成员处理。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   currentUserIsMember: boolean;
   /**
    * 当前查看用户是否应将该纳新归入本社团提出的纳新；同社团干部、负责人共享该视角。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   isOwnProposal: boolean;
   /**
    * 当前查看用户是否可以管理该纳新和其报名。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   canManage: boolean;
   /**
    * 当前查看用户是否可以编辑该纳新草稿。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   canEdit: boolean;
   /**
    * 当前查看用户是否可以删除该纳新草稿。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   canDelete: boolean;
   /**
    * 当前查看用户是否可以审核该纳新。
-   * @type {boolean}
-   * @memberof Recruitment
    */
   canReview: boolean;
 }
@@ -219,13 +173,13 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
         ? undefined
         : json["startAt"] === null
           ? null
-          : new Date(json["startAt"]),
+          : parseDateTime(json["startAt"]),
     endAt:
       json["endAt"] === undefined
         ? undefined
         : json["endAt"] === null
           ? null
-          : new Date(json["endAt"]),
+          : parseDateTime(json["endAt"]),
     quota: json["quota"] === undefined ? undefined : json["quota"] === null ? null : json["quota"],
     requirements:
       json["requirements"] === undefined
@@ -235,7 +189,7 @@ export function RecruitmentFromJSONTyped(json: any, ignoreDiscriminator: boolean
           : json["requirements"],
     recruitStatus: json["recruitStatus"],
     recruitStatusText: json["recruitStatusText"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
     applicationCount: json["applicationCount"],
     acceptedCount: json["acceptedCount"],
     currentUserApplicationId:
@@ -283,13 +237,14 @@ export function RecruitmentToJSONTyped(
     clubName: value["clubName"],
     title: value["title"],
     description: value["description"],
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
-    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     quota: value["quota"],
     requirements: value["requirements"],
     recruitStatus: value["recruitStatus"],
     recruitStatusText: value["recruitStatusText"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
     applicationCount: value["applicationCount"],
     acceptedCount: value["acceptedCount"],
     currentUserApplicationId: value["currentUserApplicationId"],

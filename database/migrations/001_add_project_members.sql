@@ -2,7 +2,8 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 SET DEFINE OFF
 
 -- 仅用于已有开发/测试 schema 的一次性迁移。
--- 执行前必须确认当前用户与目标 schema；生产和演示库禁止直接运行。
+-- 执行前必须确认当前用户与目标 schema；仅可在已确认的共享开发库或明确测试库执行，
+-- 禁止直接用于生产库、演示库及其他未授权环境。
 DECLARE
   project_members_count NUMBER;
   projects_count NUMBER;

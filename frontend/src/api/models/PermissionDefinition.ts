@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface PermissionDefinition {
   /**
    * 权限编码。
-   * @type {string}
-   * @memberof PermissionDefinition
    */
   code: string;
   /**
    * 权限展示名称。
-   * @type {string}
-   * @memberof PermissionDefinition
    */
   name: string;
   /**
    * 权限说明。
-   * @type {string}
-   * @memberof PermissionDefinition
    */
   description: string;
 }

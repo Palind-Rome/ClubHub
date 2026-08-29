@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,110 +22,74 @@ import { mapValues } from "../runtime";
 export interface ClubMemberRecord {
   /**
    *
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   memberId: number;
   /**
    *
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   clubId: number;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   clubName: string;
   /**
    *
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   userId: number;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   userName: string;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   studentNo?: string | null;
   /**
    * 成员当前归属部门 ID；为空表示未归属部门。
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   departmentId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   departmentName?: string | null;
   /**
    * 成员当前归属小组 ID；为空表示未归属小组。
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   groupId?: number | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   groupName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   positionName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   termName?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof ClubMemberRecord
    */
   termStart?: Date | null;
   /**
    *
-   * @type {Date}
-   * @memberof ClubMemberRecord
    */
   termEnd?: Date | null;
   /**
    *
-   * @type {string}
-   * @memberof ClubMemberRecord
    */
   memberStatus?: string | null;
   /**
    *
-   * @type {Date}
-   * @memberof ClubMemberRecord
    */
   joinAt?: Date | null;
   /**
    *
-   * @type {number}
-   * @memberof ClubMemberRecord
    */
   contributionScore?: number | null;
   /**
    *
-   * @type {boolean}
-   * @memberof ClubMemberRecord
    */
   isCurrent: boolean;
 }
@@ -203,13 +167,13 @@ export function ClubMemberRecordFromJSONTyped(
         ? undefined
         : json["termStart"] === null
           ? null
-          : new Date(json["termStart"]),
+          : parseDateTime(json["termStart"]),
     termEnd:
       json["termEnd"] === undefined
         ? undefined
         : json["termEnd"] === null
           ? null
-          : new Date(json["termEnd"]),
+          : parseDateTime(json["termEnd"]),
     memberStatus:
       json["memberStatus"] === undefined
         ? undefined
@@ -221,7 +185,7 @@ export function ClubMemberRecordFromJSONTyped(
         ? undefined
         : json["joinAt"] === null
           ? null
-          : new Date(json["joinAt"]),
+          : parseDateTime(json["joinAt"]),
     contributionScore:
       json["contributionScore"] === undefined
         ? undefined
@@ -257,10 +221,11 @@ export function ClubMemberRecordToJSONTyped(
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],
-    termStart: value["termStart"] == null ? value["termStart"] : value["termStart"].toISOString(),
-    termEnd: value["termEnd"] == null ? value["termEnd"] : value["termEnd"].toISOString(),
+    termStart:
+      value["termStart"] == null ? value["termStart"] : serializeDateTime(value["termStart"]),
+    termEnd: value["termEnd"] == null ? value["termEnd"] : serializeDateTime(value["termEnd"]),
     memberStatus: value["memberStatus"],
-    joinAt: value["joinAt"] == null ? value["joinAt"] : value["joinAt"].toISOString(),
+    joinAt: value["joinAt"] == null ? value["joinAt"] : serializeDateTime(value["joinAt"]),
     contributionScore: value["contributionScore"],
     isCurrent: value["isCurrent"],
   };

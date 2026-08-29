@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,81 +22,55 @@ import { mapValues } from "../runtime";
 export interface CreateClubMemberTermRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof CreateClubMemberTermRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    *
-   * @type {number}
-   * @memberof CreateClubMemberTermRequest
    */
   userId: number;
   /**
    * 新成员任期归属部门 ID；传 null 表示不归属任何部门。
-   * @type {number}
-   * @memberof CreateClubMemberTermRequest
    */
   departmentId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 departmentId。
-   * @type {string}
-   * @memberof CreateClubMemberTermRequest
    */
   departmentName?: string | null;
   /**
    * 新成员任期归属小组 ID；传 null 表示不归属任何小组。
-   * @type {number}
-   * @memberof CreateClubMemberTermRequest
    */
   groupId?: number | null;
   /**
    * 历史兼容字段；新流程优先使用 groupId。
-   * @type {string}
-   * @memberof CreateClubMemberTermRequest
    */
   groupName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubMemberTermRequest
    */
   positionName: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubMemberTermRequest
    */
   termName: string;
   /**
    *
-   * @type {Date}
-   * @memberof CreateClubMemberTermRequest
    */
   termStart: Date;
   /**
    *
-   * @type {Date}
-   * @memberof CreateClubMemberTermRequest
    */
   termEnd?: Date | null;
   /**
    *
-   * @type {CreateClubMemberTermRequestMemberStatusEnum}
-   * @memberof CreateClubMemberTermRequest
    */
   memberStatus?: CreateClubMemberTermRequestMemberStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof CreateClubMemberTermRequest
    */
   contributionScore?: number | null;
   /**
    *
-   * @type {boolean}
-   * @memberof CreateClubMemberTermRequest
    */
   closeCurrentTerm?: boolean;
 }
@@ -161,13 +135,13 @@ export function CreateClubMemberTermRequestFromJSONTyped(
           : json["groupName"],
     positionName: json["positionName"],
     termName: json["termName"],
-    termStart: new Date(json["termStart"]),
+    termStart: json["termStart"] == null ? json["termStart"] : parseDateTime(json["termStart"]),
     termEnd:
       json["termEnd"] === undefined
         ? undefined
         : json["termEnd"] === null
           ? null
-          : new Date(json["termEnd"]),
+          : parseDateTime(json["termEnd"]),
     memberStatus: json["memberStatus"] == null ? undefined : json["memberStatus"],
     contributionScore:
       json["contributionScore"] === undefined
@@ -200,8 +174,9 @@ export function CreateClubMemberTermRequestToJSONTyped(
     groupName: value["groupName"],
     positionName: value["positionName"],
     termName: value["termName"],
-    termStart: value["termStart"].toISOString(),
-    termEnd: value["termEnd"] == null ? value["termEnd"] : value["termEnd"].toISOString(),
+    termStart:
+      value["termStart"] == null ? value["termStart"] : serializeDateTime(value["termStart"]),
+    termEnd: value["termEnd"] == null ? value["termEnd"] : serializeDateTime(value["termEnd"]),
     memberStatus: value["memberStatus"],
     contributionScore: value["contributionScore"],
     closeCurrentTerm: value["closeCurrentTerm"],

@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface CancelProjectRequest {
   /**
    * Optional applicant cancellation reason.
-   * @type {string}
-   * @memberof CancelProjectRequest
    */
   cancelReason?: string | null;
 }

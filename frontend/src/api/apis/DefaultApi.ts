@@ -106,6 +106,11 @@ import {
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
 } from "../models/CancelProjectRequest";
+import {
+  type CaptchaChallenge,
+  CaptchaChallengeFromJSON,
+  CaptchaChallengeToJSON,
+} from "../models/CaptchaChallenge";
 import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
 import {
   type ClubApplication,
@@ -253,25 +258,10 @@ import {
   CreateVenueReservationRequestToJSON,
 } from "../models/CreateVenueReservationRequest";
 import {
-  type DeleteVenueRequest,
-  DeleteVenueRequestFromJSON,
-  DeleteVenueRequestToJSON,
-} from "../models/DeleteVenueRequest";
-import {
   type DependencyHealthReport,
   DependencyHealthReportFromJSON,
   DependencyHealthReportToJSON,
 } from "../models/DependencyHealthReport";
-import {
-  type DissolveClubRequest,
-  DissolveClubRequestFromJSON,
-  DissolveClubRequestToJSON,
-} from "../models/DissolveClubRequest";
-import {
-  type ExitClubMemberRequest,
-  ExitClubMemberRequestFromJSON,
-  ExitClubMemberRequestToJSON,
-} from "../models/ExitClubMemberRequest";
 import { type ForumPost, ForumPostFromJSON, ForumPostToJSON } from "../models/ForumPost";
 import {
   type GenerateClubEvaluationsRequest,
@@ -562,740 +552,1900 @@ import {
 } from "../models/VenueReservation";
 
 export interface AddProjectMemberOperationRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   addProjectMemberRequest: AddProjectMemberRequest;
 }
 
 export interface ApplyActivityBudgetOperationRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   applyActivityBudgetRequest: ApplyActivityBudgetRequest;
 }
 
 export interface ArchiveClubAwardPublicityBatchRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   publicityBatchId: number;
 }
 
 export interface AssignProjectLeaderOperationRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   assignProjectLeaderRequest: AssignProjectLeaderRequest;
 }
 
 export interface AssignUserRoleRequest {
+  /**
+   * 被分配角色的目标用户 ID。
+   */
+  userId: number;
+  /**
+   *
+   */
   assignRoleRequest: AssignRoleRequest;
 }
 
 export interface BorrowMaterialOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   borrowMaterialRequest: BorrowMaterialRequest;
 }
 
 export interface CancelBudgetApplicationOperationRequest {
+  /**
+   *
+   */
   applicationId: number;
+  /**
+   *
+   */
   cancelBudgetApplicationRequest?: CancelBudgetApplicationRequest;
 }
 
 export interface CancelLearningEnrollmentRequest {
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface CancelProjectOperationRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   cancelProjectRequest: CancelProjectRequest;
 }
 
-export interface CheckPermissionRequest {
+export interface CheckCurrentUserPermissionRequest {
+  /**
+   *
+   */
   permission: string;
+  /**
+   * 可选的社团作用域。
+   */
   clubId?: number;
 }
 
 export interface CheckinActivityRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   activitySignRequest: ActivitySignRequest;
 }
 
 export interface CheckoutActivityRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   activitySignRequest: ActivitySignRequest;
 }
 
 export interface CreateActivityOperationRequest {
+  /**
+   *
+   */
   createActivityRequest: CreateActivityRequest;
 }
 
 export interface CreateBudgetAccountOperationRequest {
+  /**
+   *
+   */
   createBudgetAccountRequest: CreateBudgetAccountRequest;
 }
 
 export interface CreateBudgetApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   createBudgetApplicationRequest: CreateBudgetApplicationRequest;
 }
 
 export interface CreateClubOperationRequest {
+  /**
+   *
+   */
   createClubRequest: CreateClubRequest;
 }
 
 export interface CreateClubApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
 export interface CreateClubAwardApplicationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createAwardApplicationRequest: CreateAwardApplicationRequest;
 }
 
 export interface CreateClubAwardPublicityBatchRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createAwardPublicityBatchRequest: CreateAwardPublicityBatchRequest;
 }
 
 export interface CreateClubAwardRuleDocumentRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createAwardRuleDocumentRequest: CreateAwardRuleDocumentRequest;
 }
 
 export interface CreateClubAwardSchemeRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createAwardSchemeRequest: CreateAwardSchemeRequest;
 }
 
 export interface CreateClubDepartmentOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createClubDepartmentRequest: CreateClubDepartmentRequest;
 }
 
 export interface CreateClubEvaluationOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createClubEvaluationRequest: CreateClubEvaluationRequest;
 }
 
 export interface CreateClubForumPostRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createForumPostRequest: CreateForumPostRequest;
 }
 
 export interface CreateClubGroupOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   departmentId: number;
+  /**
+   *
+   */
   createClubGroupRequest: CreateClubGroupRequest;
 }
 
 export interface CreateClubMemberTermOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createClubMemberTermRequest: CreateClubMemberTermRequest;
 }
 
+export interface CreateLearningDownloadRequest {
+  /**
+   *
+   */
+  itemId: number;
+}
+
 export interface CreateLearningItemOperationRequest {
+  /**
+   *
+   */
   createLearningItemRequest: CreateLearningItemRequest;
 }
 
 export interface CreateLearningPreviewSessionRequest {
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface CreateMaterialOperationRequest {
+  /**
+   *
+   */
   createMaterialRequest: CreateMaterialRequest;
 }
 
 export interface CreateNoticeOperationRequest {
+  /**
+   *
+   */
   createNoticeRequest: CreateNoticeRequest;
 }
 
 export interface CreateProjectOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   createProjectRequest: CreateProjectRequest;
 }
 
 export interface CreateProjectTaskOperationRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   createProjectTaskRequest: CreateProjectTaskRequest;
 }
 
 export interface CreateRecruitmentOperationRequest {
+  /**
+   *
+   */
   createRecruitmentRequest: CreateRecruitmentRequest;
 }
 
 export interface CreateRecruitmentApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   recruitId: number;
+  /**
+   *
+   */
   createRecruitmentApplicationRequest: CreateRecruitmentApplicationRequest;
 }
 
 export interface CreateVenueOperationRequest {
+  /**
+   *
+   */
   createVenueRequest: CreateVenueRequest;
 }
 
 export interface CreateVenueReservationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   createVenueReservationRequest: CreateVenueReservationRequest;
 }
 
 export interface DamageMaterialBorrowRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   borrowId: number;
+  /**
+   *
+   */
   registerMaterialDamageRequest: RegisterMaterialDamageRequest;
 }
 
 export interface DeleteLearningResourceRequest {
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface DeleteNoticeDraftRequest {
+  /**
+   * 待删除的通知草稿 ID。
+   */
   noticeId: number;
+  /**
+   * 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+   */
   ifUnmodifiedSince: string;
 }
 
 export interface DeleteProjectTaskRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   taskId: number;
 }
 
 export interface DeleteRecruitmentRequest {
-  currentUserId: number;
+  /**
+   *
+   */
   recruitId: number;
 }
 
-export interface DeleteVenueOperationRequest {
+export interface DeleteVenueRequest {
+  /**
+   *
+   */
   venueId: number;
-  deleteVenueRequest: DeleteVenueRequest;
 }
 
 export interface DeleteVenueReservationRequest {
+  /**
+   *
+   */
   reservationId: number;
 }
 
-export interface DissolveClubOperationRequest {
+export interface DissolveClubRequest {
+  /**
+   *
+   */
   clubId: number;
-  dissolveClubRequest: DissolveClubRequest;
-}
-
-export interface DownloadLearningItemRequest {
-  itemId: number;
 }
 
 export interface EnrollLearningItemRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface ExitCurrentClubMemberRequest {
+  /**
+   *
+   */
   clubId: number;
-  exitClubMemberRequest: ExitClubMemberRequest;
 }
 
 export interface GenerateClubEvaluationsOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   generateClubEvaluationsRequest: GenerateClubEvaluationsRequest;
 }
 
 export interface GetActivitiesRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 当前登录用户 ID，用于返回该用户是否已报名
+   */
   currentUserId?: number;
 }
 
 export interface GetActivityByIdRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   * 当前登录用户 ID，用于返回该用户是否已报名
+   */
   currentUserId?: number;
 }
 
 export interface GetActivityParticipationsRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
 }
 
 export interface GetBudgetAccountsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   fiscalYear?: string;
 }
 
 export interface GetBudgetApplicationsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   accountId?: number;
+  /**
+   *
+   */
   status?: GetBudgetApplicationsStatusEnum;
+  /**
+   *
+   */
   type?: GetBudgetApplicationsTypeEnum;
 }
 
 export interface GetBudgetTransactionsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   accountId?: number;
 }
 
 export interface GetClubApplicationsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   auditStatus?: GetClubApplicationsAuditStatusEnum;
+  /**
+   * 按社团名称、申请人姓名、用户名或学号模糊搜索。
+   */
   keyword?: string;
+  /**
+   * 申请提交开始日期，按业务时区当天 00:00 起过滤。
+   */
   startDate?: Date;
+  /**
+   * 申请提交结束日期，按业务时区包含当天。
+   */
   endDate?: Date;
 }
 
 export interface GetClubAwardApplicationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
 }
 
 export interface GetClubAwardApplicationAttachmentFileRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
+  /**
+   *
+   */
   attachmentId: number;
 }
 
 export interface GetClubAwardApplicationsRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按奖项配置筛选。
+   */
   awardSchemeId?: number;
+  /**
+   * 按申请成员筛选；普通成员只能传本人。
+   */
   applicantUserId?: number;
+  /**
+   * 按申请状态筛选。
+   */
   status?: GetClubAwardApplicationsStatusEnum;
+  /**
+   * 按当前审核步骤筛选。
+   */
   currentStep?: GetClubAwardApplicationsCurrentStepEnum;
 }
 
 export interface GetClubAwardPublicityBatchesRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   status?: GetClubAwardPublicityBatchesStatusEnum;
 }
 
 export interface GetClubAwardRuleDocumentFileRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   ruleDocumentId: number;
 }
 
 export interface GetClubAwardRuleDocumentsRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按细则状态筛选。
+   */
   status?: GetClubAwardRuleDocumentsStatusEnum;
+  /**
+   * 按标题、发布单位、摘要或正文搜索。
+   */
   keyword?: string;
 }
 
 export interface GetClubAwardSchemesRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按奖项配置状态筛选。
+   */
   status?: GetClubAwardSchemesStatusEnum;
+  /**
+   * 按奖项名称、等级名称或设立单位搜索。
+   */
   keyword?: string;
 }
 
 export interface GetClubByIdRequest {
+  /**
+   *
+   */
   clubId: number;
 }
 
 export interface GetClubDepartmentsRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 是否包含已停用的部门和小组。
+   */
   includeInactive?: boolean;
 }
 
 export interface GetClubEvaluationsRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按 EVALUATIONS.term_name 精确筛选。
+   */
   termName?: string;
+  /**
+   * semester 表示学期考核，award 表示评优评奖结果。
+   */
   evaluationType?: GetClubEvaluationsEvaluationTypeEnum;
 }
 
 export interface GetClubForumPostsRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   includeHidden?: boolean;
 }
 
 export interface GetClubMembersRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   includeHistory?: boolean;
+  /**
+   * 按 CLUB_MEMBERS.department_id 精确筛选；新流程优先使用该字段。
+   */
   departmentId?: number;
+  /**
+   * 按 CLUB_MEMBERS.group_id 精确筛选；需要与 departmentId 对应的小组。
+   */
   groupId?: number;
+  /**
+   * 按 CLUB_MEMBERS.department_name 精确筛选；保留用于历史兼容。
+   */
   departmentName?: string;
+  /**
+   * 按 CLUB_MEMBERS.group_name 精确筛选；保留用于历史兼容。
+   */
   groupName?: string;
+  /**
+   * 按 CLUB_MEMBERS.term_name 精确筛选，例如 2026-2027学年。
+   */
   termName?: string;
 }
 
+export interface GetClubsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+}
+
 export interface GetLearningInstructorByUserNumberRequest {
+  /**
+   * 需要发布或维护课程的社团 ID。
+   */
   clubId: number;
+  /**
+   * 要查询的学号或工号。
+   */
   userNumber: string;
 }
 
 export interface GetLearningItemStatisticsRequest {
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface GetLearningItemsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 可选的社团 ID 筛选条件。
+   */
   clubId?: number;
 }
 
 export interface GetLearningPreviewRequest {
+  /**
+   *
+   */
   itemId: number;
+  /**
+   * 单段字节范围，例如 bytes=0-1048575。
+   */
   range?: string;
 }
 
 export interface GetLearningRecordsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   itemId?: number;
 }
 
 export interface GetLearningResourceFileRequest {
+  /**
+   *
+   */
   itemId: number;
+  /**
+   * 设为 true 时明确请求下载文件；默认仍按受保护文件响应处理。
+   */
+  download?: boolean;
 }
 
 export interface GetMaterialBorrowsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   materialId?: number;
+  /**
+   *
+   */
   borrowerUserId?: number;
+  /**
+   *
+   */
   status?: GetMaterialBorrowsStatusEnum;
 }
 
 export interface GetMaterialsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   status?: GetMaterialsStatusEnum;
 }
 
 export interface GetNoticesRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 公告状态筛选；默认返回 published。
+   */
   noticeStatus?: GetNoticesNoticeStatusEnum;
+  /**
+   * 定向类型筛选。
+   */
   targetType?: GetNoticesTargetTypeEnum;
+  /**
+   * 社团上下文筛选。
+   */
   clubId?: number;
+  /**
+   * 是否仅返回未读通知。
+   */
   unreadOnly?: boolean;
 }
 
 export interface GetProjectByIdRequest {
+  /**
+   *
+   */
   projectId: number;
 }
 
 export interface GetProjectMemberCandidatesRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
 }
 
 export interface GetProjectMembersRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   * 是否包含已移除或已退出成员，仅项目负责人或本社团负责人、干部可设为 true。
+   */
   includeInactive?: boolean;
 }
 
 export interface GetProjectTaskProgressReportsRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   taskId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
 }
 
 export interface GetProjectTasksRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 是否仅返回已完成任务，默认 false。
+   */
   completedOnly?: boolean;
 }
 
 export interface GetProjectsRequest {
+  /**
+   * 按社团 ID 过滤项目列表。
+   */
   clubId?: number;
+  /**
+   * 页码，从 1 开始。
+   */
   page?: number;
+  /**
+   * 每页项目数量，最大 100。
+   */
   pageSize?: number;
 }
 
 export interface GetRecruitmentApplicationsRequest {
-  viewerUserId: number;
+  /**
+   *
+   */
   recruitId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
 }
 
 export interface GetRecruitmentsRequest {
-  viewerUserId: number;
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   *
+   */
   clubId?: number;
+  /**
+   *
+   */
   status?: GetRecruitmentsStatusEnum;
 }
 
 export interface GetUsersRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人、干部或指导老师可获取该社团有效成员。
+   */
   clubId?: number;
 }
 
 export interface GetVenueByIdRequest {
+  /**
+   *
+   */
   venueId: number;
 }
 
 export interface GetVenueOccupiedSlotsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按场地筛选。
+   */
   venueId?: number;
 }
 
 export interface GetVenueReservationByIdRequest {
+  /**
+   *
+   */
   reservationId: number;
 }
 
 export interface GetVenueReservationsRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按预约审批状态筛选。
+   */
   status?: GetVenueReservationsStatusEnum;
+  /**
+   * 按场地筛选。
+   */
   venueId?: number;
+  /**
+   * 按申请社团筛选。
+   */
   clubId?: number;
+  /**
+   * 按申请人用户筛选。
+   */
   applicantUserId?: number;
+  /**
+   * 按审批人用户筛选。
+   */
   reviewerUserId?: number;
 }
 
 export interface GetVenuesRequest {
+  /**
+   * 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+   */
+  page?: number;
+  /**
+   * 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+   */
+  pageSize?: number;
+  /**
+   * 按场地状态筛选。
+   */
   status?: GetVenuesStatusEnum;
 }
 
 export interface LoginUserRequest {
+  /**
+   *
+   */
   loginRequest: LoginRequest;
 }
 
 export interface MarkNoticeReadRequest {
+  /**
+   * 待读取并标记为已读的通知 ID。
+   */
   noticeId: number;
 }
 
 export interface ModerateClubForumPostRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   postId: number;
+  /**
+   *
+   */
   moderateForumPostRequest: ModerateForumPostRequest;
 }
 
 export interface PreviewClubEvaluationScoresRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   * 被考核成员用户 ID。
+   */
   userId: number;
+  /**
+   * 考核学期；后端会解析为时间窗口并匹配活动、任务、学习和评优记录，支持 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间须为相邻学年，无法解析会返回 400。
+   */
   termName: string;
 }
 
 export interface PublishClubAwardPublicityBatchRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   publicityBatchId: number;
 }
 
 export interface PublishClubAwardRuleDocumentRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   ruleDocumentId: number;
 }
 
 export interface RegisterActivityRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   activityId: number;
 }
 
 export interface RegisterUserRequest {
+  /**
+   *
+   */
   registerRequest: RegisterRequest;
 }
 
 export interface RemoveClubMemberRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   memberId: number;
-  exitClubMemberRequest: ExitClubMemberRequest;
 }
 
 export interface RemoveProjectMemberRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   projectMemberId: number;
 }
 
 export interface ResubmitClubApplicationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   createClubApplicationRequest: CreateClubApplicationRequest;
 }
 
 export interface ReturnMaterialBorrowRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   borrowId: number;
 }
 
 export interface ReviewActivityOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   reviewActivityRequest: ReviewActivityRequest;
 }
 
 export interface ReviewActivityBudgetOperationRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   reviewActivityBudgetRequest: ReviewActivityBudgetRequest;
 }
 
 export interface ReviewBudgetApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   applicationId: number;
+  /**
+   *
+   */
   reviewBudgetApplicationRequest: ReviewBudgetApplicationRequest;
 }
 
 export interface ReviewClubApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   reviewClubApplicationRequest: ReviewClubApplicationRequest;
 }
 
 export interface ReviewClubAwardApplicationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
+  /**
+   *
+   */
   reviewAwardApplicationRequest: ReviewAwardApplicationRequest;
 }
 
 export interface ReviewLearningItemOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   itemId: number;
+  /**
+   *
+   */
   reviewLearningItemRequest: ReviewLearningItemRequest;
 }
 
 export interface ReviewProjectOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   reviewProjectRequest: ReviewProjectRequest;
 }
 
 export interface ReviewProjectTaskDeliverableOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   taskId: number;
+  /**
+   *
+   */
   reviewProjectTaskDeliverableRequest: ReviewProjectTaskDeliverableRequest;
 }
 
 export interface ReviewRecruitmentOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   recruitId: number;
+  /**
+   *
+   */
   reviewRecruitmentRequest: ReviewRecruitmentRequest;
 }
 
 export interface ReviewRecruitmentApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   applicationId: number;
+  /**
+   *
+   */
   reviewRecruitmentApplicationRequest: ReviewRecruitmentApplicationRequest;
 }
 
 export interface ReviewVenueReservationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   reservationId: number;
+  /**
+   *
+   */
   reviewVenueReservationRequest: ReviewVenueReservationRequest;
 }
 
 export interface RevokeUserSessionsRequest {
+  /**
+   *
+   */
   userId: number;
 }
 
 export interface StartLearningItemRequest {
+  /**
+   *
+   */
   itemId: number;
 }
 
 export interface SubmitClubAwardApplicationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
 }
 
 export interface SubmitProjectTaskDeliverableOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
   idempotencyKey: string;
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   taskId: number;
+  /**
+   *
+   */
   submitProjectTaskDeliverableRequest: SubmitProjectTaskDeliverableRequest;
 }
 
 export interface UpdateActivityCheckinSettingsRequest {
+  /**
+   *
+   */
   activityId: number;
+  /**
+   *
+   */
   updateCheckinSettingsRequest: UpdateCheckinSettingsRequest;
 }
 
 export interface UpdateBudgetAccountOperationRequest {
+  /**
+   *
+   */
   accountId: number;
+  /**
+   *
+   */
   updateBudgetAccountRequest: UpdateBudgetAccountRequest;
 }
 
 export interface UpdateClubOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   updateClubRequest: UpdateClubRequest;
 }
 
 export interface UpdateClubAwardApplicationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
+  /**
+   *
+   */
   updateAwardApplicationRequest: UpdateAwardApplicationRequest;
 }
 
 export interface UpdateClubAwardRuleDocumentRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   ruleDocumentId: number;
+  /**
+   *
+   */
   updateAwardRuleDocumentRequest: UpdateAwardRuleDocumentRequest;
 }
 
 export interface UpdateClubAwardSchemeRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardSchemeId: number;
+  /**
+   *
+   */
   updateAwardSchemeRequest: UpdateAwardSchemeRequest;
 }
 
 export interface UpdateClubDepartmentOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   departmentId: number;
+  /**
+   *
+   */
   updateClubDepartmentRequest: UpdateClubDepartmentRequest;
 }
 
 export interface UpdateClubEvaluationOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   evaluationId: number;
+  /**
+   *
+   */
   updateClubEvaluationRequest: UpdateClubEvaluationRequest;
 }
 
 export interface UpdateClubGroupOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   groupId: number;
+  /**
+   *
+   */
   updateClubGroupRequest: UpdateClubGroupRequest;
 }
 
 export interface UpdateClubMemberGroupingOperationRequest {
+  /**
+   * 社团 ID。
+   */
   clubId: number;
+  /**
+   * 成员任期记录 ID。
+   */
   memberId: number;
+  /**
+   *
+   */
   updateClubMemberGroupingRequest: UpdateClubMemberGroupingRequest;
 }
 
 export interface UpdateClubMemberTermOperationRequest {
+  /**
+   * 社团 ID。
+   */
   clubId: number;
+  /**
+   * 成员任期记录 ID。
+   */
   memberId: number;
+  /**
+   *
+   */
   updateClubMemberTermRequest: UpdateClubMemberTermRequest;
 }
 
 export interface UpdateClubProfileOperationRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   updateClubProfileRequest: UpdateClubProfileRequest;
 }
 
 export interface UpdateLearningItemOperationRequest {
+  /**
+   *
+   */
   itemId: number;
+  /**
+   *
+   */
   updateLearningItemRequest: UpdateLearningItemRequest;
 }
 
 export interface UpdateLearningProgressOperationRequest {
+  /**
+   *
+   */
   recordId: number;
+  /**
+   *
+   */
   updateLearningProgressRequest: UpdateLearningProgressRequest;
 }
 
 export interface UpdateMaterialOperationRequest {
+  /**
+   *
+   */
   materialId: number;
+  /**
+   *
+   */
   updateMaterialRequest: UpdateMaterialRequest;
 }
 
 export interface UpdateNoticeDraftRequest {
+  /**
+   * 待编辑或发布的通知草稿 ID。
+   */
   noticeId: number;
+  /**
+   * 打开草稿时返回的 publishAt，作为乐观并发版本；版本已变化时返回 409。
+   */
   ifUnmodifiedSince: string;
+  /**
+   *
+   */
   createNoticeRequest: CreateNoticeRequest;
 }
 
 export interface UpdateProjectTaskProgressOperationRequest {
+  /**
+   *
+   */
   projectId: number;
+  /**
+   *
+   */
   taskId: number;
+  /**
+   *
+   */
   updateProjectTaskProgressRequest: UpdateProjectTaskProgressRequest;
 }
 
 export interface UpdateRecruitmentOperationRequest {
+  /**
+   *
+   */
   recruitId: number;
+  /**
+   *
+   */
   updateRecruitmentRequest: UpdateRecruitmentRequest;
 }
 
 export interface UpdateUserAccountStatusOperationRequest {
+  /**
+   *
+   */
   userId: number;
+  /**
+   *
+   */
   updateUserAccountStatusRequest: UpdateUserAccountStatusRequest;
 }
 
 export interface UpdateVenueOperationRequest {
+  /**
+   *
+   */
   venueId: number;
+  /**
+   *
+   */
   updateVenueRequest: UpdateVenueRequest;
 }
 
 export interface UpdateVenueStatusOperationRequest {
+  /**
+   *
+   */
   venueId: number;
+  /**
+   *
+   */
   updateVenueStatusRequest: UpdateVenueStatusRequest;
 }
 
 export interface UploadClubAwardApplicationAttachmentRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   awardApplicationId: number;
+  /**
+   * 最大 50 MB 的申请材料文件。
+   */
   file: Blob;
+  /**
+   * 材料类型，例如个人总结、获奖证明、作品集。
+   */
   attachmentType?: string | null;
 }
 
 export interface UploadClubAwardRuleDocumentFileRequest {
+  /**
+   *
+   */
   clubId: number;
+  /**
+   *
+   */
   ruleDocumentId: number;
+  /**
+   * 最大 50 MB 的评定细则附件。
+   */
   file: Blob;
 }
 
 export interface UploadLearningResourceRequest {
+  /**
+   * 文件所属社团。
+   */
   clubId: number;
+  /**
+   * 最大 50 MB 的资源文件。
+   */
   file: Blob;
+  /**
+   * 资源可见范围。
+   */
   visibility: UploadLearningResourceVisibilityEnum;
+  /**
+   * 资源下载设置。
+   */
   downloadPermission: UploadLearningResourceDownloadPermissionEnum;
+  /**
+   * 可选的资源标题；未填写时使用原文件名。
+   */
   title?: string | null;
+  /**
+   * 可选的资源分类。
+   */
   categoryName?: string | null;
+  /**
+   * 可选的资源内容摘要、用途、版本或注意事项。
+   */
   description?: string | null;
 }
 
@@ -1338,7 +2488,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/members`;
+    let urlPath = `/api/v1/projects/{projectId}/members`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -1406,7 +2556,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/activities/{activityId}/budget`;
+    let urlPath = `/api/v1/activities/{activityId}/budget`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -1473,7 +2623,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-publicity/{publicityBatchId}/archive`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-publicity/{publicityBatchId}/archive`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{publicityBatchId}",
@@ -1551,7 +2701,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/leader`;
+    let urlPath = `/api/v1/projects/{projectId}/leader`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -1596,6 +2746,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async assignUserRoleRequestOpts(
     requestParameters: AssignUserRoleRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["userId"] == null) {
+      throw new runtime.RequiredError(
+        "userId",
+        'Required parameter "userId" was null or undefined when calling assignUserRole().',
+      );
+    }
+
     if (requestParameters["assignRoleRequest"] == null) {
       throw new runtime.RequiredError(
         "assignRoleRequest",
@@ -1618,7 +2775,8 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/auth/roles/assign`;
+    let urlPath = `/api/v1/users/{userId}/roles`;
+    urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
 
     return {
       path: urlPath,
@@ -1694,7 +2852,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/material-borrows`;
+    let urlPath = `/api/v1/material-borrows`;
 
     return {
       path: urlPath,
@@ -1757,7 +2915,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications/{applicationId}/cancel`;
+    let urlPath = `/api/v1/budget/applications/{applicationId}/cancel`;
     urlPath = urlPath.replace(
       "{applicationId}",
       encodeURIComponent(String(requestParameters["applicationId"])),
@@ -1828,7 +2986,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    let urlPath = `/api/v1/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -1900,7 +3058,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/cancel`;
+    let urlPath = `/api/v1/projects/{projectId}`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -1908,7 +3066,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     return {
       path: urlPath,
-      method: "POST",
+      method: "PATCH",
       headers: headerParameters,
       query: queryParameters,
       body: CancelProjectRequestToJSON(requestParameters["cancelProjectRequest"]),
@@ -1916,7 +3074,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 将项目 status 更新为 closed；系统管理员可撤销待审核或进行中项目，本社团负责人仅可撤销待审核申请，校级社团管理员仅可撤销进行中项目。
    * 撤销待审核或进行中的项目
    */
   async cancelProjectRaw(
@@ -1930,7 +3088,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
+   * 将项目 status 更新为 closed；系统管理员可撤销待审核或进行中项目，本社团负责人仅可撤销待审核申请，校级社团管理员仅可撤销进行中项目。
    * 撤销待审核或进行中的项目
    */
   async cancelProject(
@@ -1942,15 +3100,15 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * Creates request options for checkPermission without sending the request
+   * Creates request options for checkCurrentUserPermission without sending the request
    */
-  async checkPermissionRequestOpts(
-    requestParameters: CheckPermissionRequest,
+  async checkCurrentUserPermissionRequestOpts(
+    requestParameters: CheckCurrentUserPermissionRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["permission"] == null) {
       throw new runtime.RequiredError(
         "permission",
-        'Required parameter "permission" was null or undefined when calling checkPermission().',
+        'Required parameter "permission" was null or undefined when calling checkCurrentUserPermission().',
       );
     }
 
@@ -1975,7 +3133,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/auth/permissions/check`;
+    let urlPath = `/api/v1/users/me/permissions`;
 
     return {
       path: urlPath,
@@ -1986,13 +3144,14 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查当前用户是否拥有指定权限
+   * 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+   * 检查当前用户权限
    */
-  async checkPermissionRaw(
-    requestParameters: CheckPermissionRequest,
+  async checkCurrentUserPermissionRaw(
+    requestParameters: CheckCurrentUserPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<PermissionCheckResult>> {
-    const requestOptions = await this.checkPermissionRequestOpts(requestParameters);
+    const requestOptions = await this.checkCurrentUserPermissionRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
@@ -2001,13 +3160,14 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 检查当前用户是否拥有指定权限
+   * 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+   * 检查当前用户权限
    */
-  async checkPermission(
-    requestParameters: CheckPermissionRequest,
+  async checkCurrentUserPermission(
+    requestParameters: CheckCurrentUserPermissionRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<PermissionCheckResult> {
-    const response = await this.checkPermissionRaw(requestParameters, initOverrides);
+    const response = await this.checkCurrentUserPermissionRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -2046,7 +3206,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/checkin`;
+    let urlPath = `/api/v1/activities/{activityId}/checkins`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -2124,7 +3284,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/checkout`;
+    let urlPath = `/api/v1/activities/{activityId}/checkouts`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -2195,7 +3355,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities`;
+    let urlPath = `/api/v1/activities`;
 
     return {
       path: urlPath,
@@ -2260,7 +3420,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/accounts`;
+    let urlPath = `/api/v1/budget/accounts`;
 
     return {
       path: urlPath,
@@ -2336,7 +3496,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications`;
+    let urlPath = `/api/v1/budget/applications`;
 
     return {
       path: urlPath,
@@ -2378,6 +3538,50 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createCaptchaChallenge without sending the request
+   */
+  async createCaptchaChallengeRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/v1/auth/captcha`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+   * 获取登录与注册验证码
+   */
+  async createCaptchaChallengeRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<CaptchaChallenge>> {
+    const requestOptions = await this.createCaptchaChallengeRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      CaptchaChallengeFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+   * 获取登录与注册验证码
+   */
+  async createCaptchaChallenge(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<CaptchaChallenge> {
+    const response = await this.createCaptchaChallengeRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createClub without sending the request
    */
   async createClubRequestOpts(
@@ -2396,7 +3600,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs`;
+    let urlPath = `/api/v1/clubs`;
 
     return {
       path: urlPath,
@@ -2470,7 +3674,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/applications`;
+    let urlPath = `/api/v1/clubs/applications`;
 
     return {
       path: urlPath,
@@ -2553,7 +3757,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/award-applications`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2619,7 +3823,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-publicity`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-publicity`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2687,7 +3891,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2755,7 +3959,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-schemes`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-schemes`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2821,7 +4025,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/departments`;
+    let urlPath = `/api/v1/clubs/{clubId}/departments`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2887,7 +4091,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    let urlPath = `/api/v1/clubs/{clubId}/evaluations`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -2962,7 +4166,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -3031,7 +4235,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}/groups`;
+    let urlPath = `/api/v1/clubs/{clubId}/departments/{departmentId}/groups`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{departmentId}",
@@ -3099,7 +4303,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/members/terms`;
+    let urlPath = `/api/v1/clubs/{clubId}/members/terms`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -3140,6 +4344,71 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for createLearningDownload without sending the request
+   */
+  async createLearningDownloadRequestOpts(
+    requestParameters: CreateLearningDownloadRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["itemId"] == null) {
+      throw new runtime.RequiredError(
+        "itemId",
+        'Required parameter "itemId" was null or undefined when calling createLearningDownload().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/learning/items/{itemId}/downloads`;
+    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 客户端完整读取受保护文件后调用；服务端重新校验资源可见范围和下载权限并追加成功交付日志，不创建、恢复或修改学习记录。文件读取失败时不得调用本接口。
+   * 确认学习资源已成功下载
+   */
+  async createLearningDownloadRaw(
+    requestParameters: CreateLearningDownloadRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<LearningDownloadResult>> {
+    const requestOptions = await this.createLearningDownloadRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      LearningDownloadResultFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 客户端完整读取受保护文件后调用；服务端重新校验资源可见范围和下载权限并追加成功交付日志，不创建、恢复或修改学习记录。文件读取失败时不得调用本接口。
+   * 确认学习资源已成功下载
+   */
+  async createLearningDownload(
+    requestParameters: CreateLearningDownloadRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<LearningDownloadResult> {
+    const response = await this.createLearningDownloadRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for createLearningItem without sending the request
    */
   async createLearningItemRequestOpts(
@@ -3167,7 +4436,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items`;
+    let urlPath = `/api/v1/learning/items`;
 
     return {
       path: urlPath,
@@ -3230,7 +4499,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/preview-session`;
+    let urlPath = `/api/v1/learning/items/{itemId}/preview-session`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -3294,7 +4563,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/materials`;
+    let urlPath = `/api/v1/materials`;
 
     return {
       path: urlPath,
@@ -3357,7 +4626,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/notices`;
+    let urlPath = `/api/v1/notices`;
 
     return {
       path: urlPath,
@@ -3433,7 +4702,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects`;
+    let urlPath = `/api/v1/projects`;
 
     return {
       path: urlPath,
@@ -3503,7 +4772,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -3563,7 +4832,16 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/recruitments`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/recruitments`;
 
     return {
       path: urlPath,
@@ -3646,7 +4924,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    let urlPath = `/api/v1/recruitments/{recruitId}/applications`;
     urlPath = urlPath.replace(
       "{recruitId}",
       encodeURIComponent(String(requestParameters["recruitId"])),
@@ -3710,7 +4988,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/venues`;
+    let urlPath = `/api/v1/venues`;
 
     return {
       path: urlPath,
@@ -3784,7 +5062,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations`;
+    let urlPath = `/api/v1/venue-reservations`;
 
     return {
       path: urlPath,
@@ -3867,7 +5145,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/material-borrows/{borrowId}/damage`;
+    let urlPath = `/api/v1/material-borrows/{borrowId}/damage`;
     urlPath = urlPath.replace(
       "{borrowId}",
       encodeURIComponent(String(requestParameters["borrowId"])),
@@ -3932,7 +5210,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}`;
+    let urlPath = `/api/v1/learning/items/{itemId}`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -4005,7 +5283,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/notices/{noticeId}`;
+    let urlPath = `/api/v1/notices/{noticeId}`;
     urlPath = urlPath.replace(
       "{noticeId}",
       encodeURIComponent(String(requestParameters["noticeId"])),
@@ -4077,7 +5355,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks/{taskId}`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks/{taskId}`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -4123,13 +5401,6 @@ export class DefaultApi extends runtime.BaseAPI {
   async deleteRecruitmentRequestOpts(
     requestParameters: DeleteRecruitmentRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["currentUserId"] == null) {
-      throw new runtime.RequiredError(
-        "currentUserId",
-        'Required parameter "currentUserId" was null or undefined when calling deleteRecruitment().',
-      );
-    }
-
     if (requestParameters["recruitId"] == null) {
       throw new runtime.RequiredError(
         "recruitId",
@@ -4139,13 +5410,18 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
-    if (requestParameters["currentUserId"] != null) {
-      queryParameters["currentUserId"] = requestParameters["currentUserId"];
-    }
-
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/recruitments/{recruitId}`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/recruitments/{recruitId}`;
     urlPath = urlPath.replace(
       "{recruitId}",
       encodeURIComponent(String(requestParameters["recruitId"])),
@@ -4188,7 +5464,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for deleteVenue without sending the request
    */
   async deleteVenueRequestOpts(
-    requestParameters: DeleteVenueOperationRequest,
+    requestParameters: DeleteVenueRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["venueId"] == null) {
       throw new runtime.RequiredError(
@@ -4197,20 +5473,20 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["deleteVenueRequest"] == null) {
-      throw new runtime.RequiredError(
-        "deleteVenueRequest",
-        'Required parameter "deleteVenueRequest" was null or undefined when calling deleteVenue().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
 
-    let urlPath = `/api/venues/{venueId}`;
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/venues/{venueId}`;
     urlPath = urlPath.replace(
       "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
@@ -4221,7 +5497,6 @@ export class DefaultApi extends runtime.BaseAPI {
       method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: DeleteVenueRequestToJSON(requestParameters["deleteVenueRequest"]),
     };
   }
 
@@ -4229,7 +5504,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地
    */
   async deleteVenueRaw(
-    requestParameters: DeleteVenueOperationRequest,
+    requestParameters: DeleteVenueRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<void>> {
     const requestOptions = await this.deleteVenueRequestOpts(requestParameters);
@@ -4242,7 +5517,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 删除场地
    */
   async deleteVenue(
-    requestParameters: DeleteVenueOperationRequest,
+    requestParameters: DeleteVenueRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteVenueRaw(requestParameters, initOverrides);
@@ -4274,7 +5549,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations/{reservationId}`;
+    let urlPath = `/api/v1/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
       "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
@@ -4315,75 +5590,12 @@ export class DefaultApi extends runtime.BaseAPI {
    * Creates request options for dissolveClub without sending the request
    */
   async dissolveClubRequestOpts(
-    requestParameters: DissolveClubOperationRequest,
+    requestParameters: DissolveClubRequest,
   ): Promise<runtime.RequestOpts> {
     if (requestParameters["clubId"] == null) {
       throw new runtime.RequiredError(
         "clubId",
         'Required parameter "clubId" was null or undefined when calling dissolveClub().',
-      );
-    }
-
-    if (requestParameters["dissolveClubRequest"] == null) {
-      throw new runtime.RequiredError(
-        "dissolveClubRequest",
-        'Required parameter "dissolveClubRequest" was null or undefined when calling dissolveClub().',
-      );
-    }
-
-    const queryParameters: any = {};
-
-    const headerParameters: runtime.HTTPHeaders = {};
-
-    headerParameters["Content-Type"] = "application/json";
-
-    let urlPath = `/api/clubs/{clubId}/dissolve`;
-    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
-
-    return {
-      path: urlPath,
-      method: "PATCH",
-      headers: headerParameters,
-      query: queryParameters,
-      body: DissolveClubRequestToJSON(requestParameters["dissolveClubRequest"]),
-    };
-  }
-
-  /**
-   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
-   * 解散社团
-   */
-  async dissolveClubRaw(
-    requestParameters: DissolveClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<void>> {
-    const requestOptions = await this.dissolveClubRequestOpts(requestParameters);
-    const response = await this.request(requestOptions, initOverrides);
-
-    return new runtime.VoidApiResponse(response);
-  }
-
-  /**
-   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
-   * 解散社团
-   */
-  async dissolveClub(
-    requestParameters: DissolveClubOperationRequest,
-    initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<void> {
-    await this.dissolveClubRaw(requestParameters, initOverrides);
-  }
-
-  /**
-   * Creates request options for downloadLearningItem without sending the request
-   */
-  async downloadLearningItemRequestOpts(
-    requestParameters: DownloadLearningItemRequest,
-  ): Promise<runtime.RequestOpts> {
-    if (requestParameters["itemId"] == null) {
-      throw new runtime.RequiredError(
-        "itemId",
-        'Required parameter "itemId" was null or undefined when calling downloadLearningItem().',
       );
     }
 
@@ -4400,43 +5612,40 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/download`;
-    urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
+    let urlPath = `/api/v1/clubs/{clubId}`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
       path: urlPath,
-      method: "POST",
+      method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
     };
   }
 
   /**
-   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
-   * 校验权限并记录学习资源下载
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
-  async downloadLearningItemRaw(
-    requestParameters: DownloadLearningItemRequest,
+  async dissolveClubRaw(
+    requestParameters: DissolveClubRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<LearningDownloadResult>> {
-    const requestOptions = await this.downloadLearningItemRequestOpts(requestParameters);
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.dissolveClubRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
-    return new runtime.JSONApiResponse(response, (jsonValue) =>
-      LearningDownloadResultFromJSON(jsonValue),
-    );
+    return new runtime.VoidApiResponse(response);
   }
 
   /**
-   * 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
-   * 校验权限并记录学习资源下载
+   * 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
+   * 解散社团
    */
-  async downloadLearningItem(
-    requestParameters: DownloadLearningItemRequest,
+  async dissolveClub(
+    requestParameters: DissolveClubRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<LearningDownloadResult> {
-    const response = await this.downloadLearningItemRaw(requestParameters, initOverrides);
-    return await response.value();
+  ): Promise<void> {
+    await this.dissolveClubRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -4476,7 +5685,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/enrollments`;
+    let urlPath = `/api/v1/learning/items/{itemId}/enrollments`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -4526,28 +5735,27 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["exitClubMemberRequest"] == null) {
-      throw new runtime.RequiredError(
-        "exitClubMemberRequest",
-        'Required parameter "exitClubMemberRequest" was null or undefined when calling exitCurrentClubMember().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
 
-    let urlPath = `/api/clubs/{clubId}/members/self/exit`;
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/clubs/{clubId}/members/self`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
       path: urlPath,
-      method: "PATCH",
+      method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
     };
   }
 
@@ -4602,7 +5810,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/evaluations/generate`;
+    let urlPath = `/api/v1/clubs/{clubId}/evaluations/generate`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -4652,13 +5860,21 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["currentUserId"] != null) {
       queryParameters["currentUserId"] = requestParameters["currentUserId"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/activities`;
+    let urlPath = `/api/v1/activities`;
 
     return {
       path: urlPath,
@@ -4713,7 +5929,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/activities/{activityId}`;
+    let urlPath = `/api/v1/activities/{activityId}`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -4766,6 +5982,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     if (this.configuration && this.configuration.accessToken) {
@@ -4777,7 +6001,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/participations`;
+    let urlPath = `/api/v1/activities/{activityId}/participations`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -4827,6 +6051,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -4846,7 +6078,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/accounts`;
+    let urlPath = `/api/v1/budget/accounts`;
 
     return {
       path: urlPath,
@@ -4892,6 +6124,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -4919,7 +6159,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications`;
+    let urlPath = `/api/v1/budget/applications`;
 
     return {
       path: urlPath,
@@ -4965,6 +6205,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -4984,7 +6232,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/transactions`;
+    let urlPath = `/api/v1/budget/transactions`;
 
     return {
       path: urlPath,
@@ -5030,7 +6278,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/advisor-candidates`;
+    let urlPath = `/api/v1/clubs/advisor-candidates`;
 
     return {
       path: urlPath,
@@ -5074,6 +6322,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["auditStatus"] != null) {
       queryParameters["auditStatus"] = requestParameters["auditStatus"];
     }
@@ -5083,20 +6339,16 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     if (requestParameters["startDate"] != null) {
-      queryParameters["startDate"] = (requestParameters["startDate"] as any)
-        .toISOString()
-        .substring(0, 10);
+      queryParameters["startDate"] = runtime.serializeDate(requestParameters["startDate"] as any);
     }
 
     if (requestParameters["endDate"] != null) {
-      queryParameters["endDate"] = (requestParameters["endDate"] as any)
-        .toISOString()
-        .substring(0, 10);
+      queryParameters["endDate"] = runtime.serializeDate(requestParameters["endDate"] as any);
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/applications`;
+    let urlPath = `/api/v1/clubs/applications`;
 
     return {
       path: urlPath,
@@ -5156,7 +6408,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -5230,7 +6482,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -5294,6 +6546,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["awardSchemeId"] != null) {
       queryParameters["awardSchemeId"] = requestParameters["awardSchemeId"];
     }
@@ -5312,7 +6572,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-applications`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5366,13 +6626,21 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["status"] != null) {
       queryParameters["status"] = requestParameters["status"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-publicity`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-publicity`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5435,7 +6703,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{ruleDocumentId}",
@@ -5491,6 +6759,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["status"] != null) {
       queryParameters["status"] = requestParameters["status"];
     }
@@ -5501,7 +6777,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5555,6 +6831,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["status"] != null) {
       queryParameters["status"] = requestParameters["status"];
     }
@@ -5565,7 +6849,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-schemes`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-schemes`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5621,7 +6905,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}`;
+    let urlPath = `/api/v1/clubs/{clubId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5671,13 +6955,21 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["includeInactive"] != null) {
       queryParameters["includeInactive"] = requestParameters["includeInactive"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/departments`;
+    let urlPath = `/api/v1/clubs/{clubId}/departments`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5731,6 +7023,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["termName"] != null) {
       queryParameters["termName"] = requestParameters["termName"];
     }
@@ -5741,7 +7041,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/evaluations`;
+    let urlPath = `/api/v1/clubs/{clubId}/evaluations`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5795,6 +7095,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["includeHidden"] != null) {
       queryParameters["includeHidden"] = requestParameters["includeHidden"];
     }
@@ -5810,7 +7118,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/forum-posts`;
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5860,6 +7168,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["includeHistory"] != null) {
       queryParameters["includeHistory"] = requestParameters["includeHistory"];
     }
@@ -5886,7 +7202,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/members`;
+    let urlPath = `/api/v1/clubs/{clubId}/members`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -5928,12 +7244,20 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * Creates request options for getClubs without sending the request
    */
-  async getClubsRequestOpts(): Promise<runtime.RequestOpts> {
+  async getClubsRequestOpts(requestParameters: GetClubsRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
+
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs`;
+    let urlPath = `/api/v1/clubs`;
 
     return {
       path: urlPath,
@@ -5947,9 +7271,10 @@ export class DefaultApi extends runtime.BaseAPI {
    * 获取社团列表
    */
   async getClubsRaw(
+    requestParameters: GetClubsRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<runtime.ApiResponse<Array<Club>>> {
-    const requestOptions = await this.getClubsRequestOpts();
+    const requestOptions = await this.getClubsRequestOpts(requestParameters);
     const response = await this.request(requestOptions, initOverrides);
 
     return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ClubFromJSON));
@@ -5958,8 +7283,11 @@ export class DefaultApi extends runtime.BaseAPI {
   /**
    * 获取社团列表
    */
-  async getClubs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Club>> {
-    const response = await this.getClubsRaw(initOverrides);
+  async getClubs(
+    requestParameters: GetClubsRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<Club>> {
+    const response = await this.getClubsRaw(requestParameters, initOverrides);
     return await response.value();
   }
 
@@ -6004,7 +7332,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/instructor-lookup`;
+    let urlPath = `/api/v1/learning/instructors`;
 
     return {
       path: urlPath,
@@ -6072,7 +7400,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/statistics`;
+    let urlPath = `/api/v1/learning/items/{itemId}/statistics`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -6119,6 +7447,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -6134,7 +7470,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items`;
+    let urlPath = `/api/v1/learning/items`;
 
     return {
       path: urlPath,
@@ -6193,7 +7529,7 @@ export class DefaultApi extends runtime.BaseAPI {
       headerParameters["Range"] = String(requestParameters["range"]);
     }
 
-    let urlPath = `/api/learning/items/{itemId}/preview`;
+    let urlPath = `/api/v1/learning/items/{itemId}/preview`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -6238,6 +7574,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["itemId"] != null) {
       queryParameters["itemId"] = requestParameters["itemId"];
     }
@@ -6253,7 +7597,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/records`;
+    let urlPath = `/api/v1/learning/records`;
 
     return {
       path: urlPath,
@@ -6306,6 +7650,10 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["download"] != null) {
+      queryParameters["download"] = requestParameters["download"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     if (this.configuration && this.configuration.accessToken) {
@@ -6317,7 +7665,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/file`;
+    let urlPath = `/api/v1/learning/items/{itemId}/file`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -6362,6 +7710,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -6389,7 +7745,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/material-borrows`;
+    let urlPath = `/api/v1/material-borrows`;
 
     return {
       path: urlPath,
@@ -6433,6 +7789,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -6452,7 +7816,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/materials`;
+    let urlPath = `/api/v1/materials`;
 
     return {
       path: urlPath,
@@ -6492,6 +7856,14 @@ export class DefaultApi extends runtime.BaseAPI {
   async getNoticesRequestOpts(requestParameters: GetNoticesRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["noticeStatus"] != null) {
       queryParameters["noticeStatus"] = requestParameters["noticeStatus"];
     }
@@ -6519,7 +7891,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/notices`;
+    let urlPath = `/api/v1/notices`;
 
     return {
       path: urlPath,
@@ -6563,7 +7935,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/auth/permissions`;
+    let urlPath = `/api/v1/auth/permissions`;
 
     return {
       path: urlPath,
@@ -6574,7 +7946,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取权限目录
+   * 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
+   * 获取完整权限目录
    */
   async getPermissionCatalogRaw(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -6588,7 +7961,8 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 获取权限目录
+   * 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
+   * 获取完整权限目录
    */
   async getPermissionCatalog(
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
@@ -6614,7 +7988,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/projects/{projectId}`;
+    let urlPath = `/api/v1/projects/{projectId}`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -6667,6 +8041,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     if (this.configuration && this.configuration.accessToken) {
@@ -6678,7 +8060,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/member-candidates`;
+    let urlPath = `/api/v1/projects/{projectId}/member-candidates`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -6750,7 +8132,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/members`;
+    let urlPath = `/api/v1/projects/{projectId}/members`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -6814,6 +8196,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     const headerParameters: runtime.HTTPHeaders = {};
 
     if (this.configuration && this.configuration.accessToken) {
@@ -6825,7 +8215,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/progress-reports`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks/{taskId}/progress-reports`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -6883,6 +8273,14 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["completedOnly"] != null) {
       queryParameters["completedOnly"] = requestParameters["completedOnly"];
     }
@@ -6898,7 +8296,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -6960,7 +8358,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/projects`;
+    let urlPath = `/api/v1/projects`;
 
     return {
       path: urlPath,
@@ -7000,13 +8398,6 @@ export class DefaultApi extends runtime.BaseAPI {
   async getRecruitmentApplicationsRequestOpts(
     requestParameters: GetRecruitmentApplicationsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getRecruitmentApplications().',
-      );
-    }
-
     if (requestParameters["recruitId"] == null) {
       throw new runtime.RequiredError(
         "recruitId",
@@ -7016,13 +8407,26 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const queryParameters: any = {};
 
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/recruitments/{recruitId}/applications`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/recruitments/{recruitId}/applications`;
     urlPath = urlPath.replace(
       "{recruitId}",
       encodeURIComponent(String(requestParameters["recruitId"])),
@@ -7070,17 +8474,14 @@ export class DefaultApi extends runtime.BaseAPI {
   async getRecruitmentsRequestOpts(
     requestParameters: GetRecruitmentsRequest,
   ): Promise<runtime.RequestOpts> {
-    if (requestParameters["viewerUserId"] == null) {
-      throw new runtime.RequiredError(
-        "viewerUserId",
-        'Required parameter "viewerUserId" was null or undefined when calling getRecruitments().',
-      );
-    }
-
     const queryParameters: any = {};
 
-    if (requestParameters["viewerUserId"] != null) {
-      queryParameters["viewerUserId"] = requestParameters["viewerUserId"];
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
     }
 
     if (requestParameters["clubId"] != null) {
@@ -7093,7 +8494,16 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/recruitments`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/recruitments`;
 
     return {
       path: urlPath,
@@ -7122,7 +8532,7 @@ export class DefaultApi extends runtime.BaseAPI {
    * 查询社团招募列表
    */
   async getRecruitments(
-    requestParameters: GetRecruitmentsRequest,
+    requestParameters: GetRecruitmentsRequest = {},
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<Array<Recruitment>> {
     const response = await this.getRecruitmentsRaw(requestParameters, initOverrides);
@@ -7137,7 +8547,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/auth/roles`;
+    let urlPath = `/api/v1/auth/roles`;
 
     return {
       path: urlPath,
@@ -7177,6 +8587,14 @@ export class DefaultApi extends runtime.BaseAPI {
   async getUsersRequestOpts(requestParameters: GetUsersRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["clubId"] != null) {
       queryParameters["clubId"] = requestParameters["clubId"];
     }
@@ -7192,7 +8610,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/users`;
+    let urlPath = `/api/v1/users`;
 
     return {
       path: urlPath,
@@ -7243,7 +8661,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/venues/{venueId}`;
+    let urlPath = `/api/v1/venues/{venueId}`;
     urlPath = urlPath.replace(
       "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
@@ -7289,6 +8707,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["venueId"] != null) {
       queryParameters["venueId"] = requestParameters["venueId"];
     }
@@ -7304,7 +8730,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations/occupied-slots`;
+    let urlPath = `/api/v1/venue-reservations/occupied-slots`;
 
     return {
       path: urlPath,
@@ -7368,7 +8794,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations/{reservationId}`;
+    let urlPath = `/api/v1/venue-reservations/{reservationId}`;
     urlPath = urlPath.replace(
       "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
@@ -7416,6 +8842,14 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["status"] != null) {
       queryParameters["status"] = requestParameters["status"];
     }
@@ -7447,7 +8881,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations`;
+    let urlPath = `/api/v1/venue-reservations`;
 
     return {
       path: urlPath,
@@ -7489,13 +8923,21 @@ export class DefaultApi extends runtime.BaseAPI {
   async getVenuesRequestOpts(requestParameters: GetVenuesRequest): Promise<runtime.RequestOpts> {
     const queryParameters: any = {};
 
+    if (requestParameters["page"] != null) {
+      queryParameters["page"] = requestParameters["page"];
+    }
+
+    if (requestParameters["pageSize"] != null) {
+      queryParameters["pageSize"] = requestParameters["pageSize"];
+    }
+
     if (requestParameters["status"] != null) {
       queryParameters["status"] = requestParameters["status"];
     }
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/venues`;
+    let urlPath = `/api/v1/venues`;
 
     return {
       path: urlPath,
@@ -7538,7 +8980,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/health`;
+    let urlPath = `/api/v1/health`;
 
     return {
       path: urlPath,
@@ -7679,7 +9121,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/auth/login`;
+    let urlPath = `/api/v1/auth/login`;
 
     return {
       path: urlPath,
@@ -7731,7 +9173,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/auth/logout`;
+    let urlPath = `/api/v1/auth/logout`;
 
     return {
       path: urlPath,
@@ -7790,7 +9232,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/notices/{noticeId}/reads`;
+    let urlPath = `/api/v1/notices/{noticeId}/reads`;
     urlPath = urlPath.replace(
       "{noticeId}",
       encodeURIComponent(String(requestParameters["noticeId"])),
@@ -7874,7 +9316,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/forum-posts/{postId}/moderation`;
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/{postId}/moderation`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace("{postId}", encodeURIComponent(String(requestParameters["postId"])));
 
@@ -7950,7 +9392,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/evaluations/score-preview`;
+    let urlPath = `/api/v1/clubs/{clubId}/evaluations/score-preview`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -8013,7 +9455,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-publicity/{publicityBatchId}/publish`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-publicity/{publicityBatchId}/publish`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{publicityBatchId}",
@@ -8080,7 +9522,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{ruleDocumentId}",
@@ -8140,7 +9582,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/auth/session`;
+    let urlPath = `/api/v1/auth/session`;
 
     return {
       path: urlPath,
@@ -8211,7 +9653,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/registrations`;
+    let urlPath = `/api/v1/activities/{activityId}/registrations`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -8272,7 +9714,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/auth/register`;
+    let urlPath = `/api/v1/auth/register`;
 
     return {
       path: urlPath,
@@ -8327,20 +9769,20 @@ export class DefaultApi extends runtime.BaseAPI {
       );
     }
 
-    if (requestParameters["exitClubMemberRequest"] == null) {
-      throw new runtime.RequiredError(
-        "exitClubMemberRequest",
-        'Required parameter "exitClubMemberRequest" was null or undefined when calling removeClubMember().',
-      );
-    }
-
     const queryParameters: any = {};
 
     const headerParameters: runtime.HTTPHeaders = {};
 
-    headerParameters["Content-Type"] = "application/json";
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
 
-    let urlPath = `/api/clubs/{clubId}/members/{memberId}/exit`;
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/clubs/{clubId}/members/{memberId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{memberId}",
@@ -8349,10 +9791,9 @@ export class DefaultApi extends runtime.BaseAPI {
 
     return {
       path: urlPath,
-      method: "PATCH",
+      method: "DELETE",
       headers: headerParameters,
       query: queryParameters,
-      body: ExitClubMemberRequestToJSON(requestParameters["exitClubMemberRequest"]),
     };
   }
 
@@ -8414,7 +9855,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/members/{projectMemberId}`;
+    let urlPath = `/api/v1/projects/{projectId}/members/{projectMemberId}`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -8503,7 +9944,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/applications/{clubId}`;
+    let urlPath = `/api/v1/clubs/applications/{clubId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -8578,7 +10019,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/material-borrows/{borrowId}/return`;
+    let urlPath = `/api/v1/material-borrows/{borrowId}/return`;
     urlPath = urlPath.replace(
       "{borrowId}",
       encodeURIComponent(String(requestParameters["borrowId"])),
@@ -8662,7 +10103,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/review`;
+    let urlPath = `/api/v1/activities/{activityId}/reviews`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -8730,7 +10171,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/activities/{activityId}/budget/review`;
+    let urlPath = `/api/v1/activities/{activityId}/budget-reviews`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -8819,7 +10260,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications/{applicationId}/review`;
+    let urlPath = `/api/v1/budget/applications/{applicationId}/review`;
     urlPath = urlPath.replace(
       "{applicationId}",
       encodeURIComponent(String(requestParameters["applicationId"])),
@@ -8910,12 +10351,12 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/applications/{clubId}/review`;
+    let urlPath = `/api/v1/clubs/applications/{clubId}/reviews`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
       path: urlPath,
-      method: "PATCH",
+      method: "POST",
       headers: headerParameters,
       query: queryParameters,
       body: ReviewClubApplicationRequestToJSON(requestParameters["reviewClubApplicationRequest"]),
@@ -8999,7 +10440,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/review`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/review`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -9089,7 +10530,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/review`;
+    let urlPath = `/api/v1/learning/items/{itemId}/reviews`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -9173,7 +10614,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/review`;
+    let urlPath = `/api/v1/projects/{projectId}/reviews`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -9267,7 +10708,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable/review`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks/{taskId}/deliverable/review`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -9357,7 +10798,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/recruitments/{recruitId}/review`;
+    let urlPath = `/api/v1/recruitments/{recruitId}/reviews`;
     urlPath = urlPath.replace(
       "{recruitId}",
       encodeURIComponent(String(requestParameters["recruitId"])),
@@ -9365,7 +10806,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     return {
       path: urlPath,
-      method: "PATCH",
+      method: "POST",
       headers: headerParameters,
       query: queryParameters,
       body: ReviewRecruitmentRequestToJSON(requestParameters["reviewRecruitmentRequest"]),
@@ -9444,7 +10885,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/recruitments/applications/{applicationId}/review`;
+    let urlPath = `/api/v1/applications/{applicationId}/reviews`;
     urlPath = urlPath.replace(
       "{applicationId}",
       encodeURIComponent(String(requestParameters["applicationId"])),
@@ -9452,7 +10893,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     return {
       path: urlPath,
-      method: "PATCH",
+      method: "POST",
       headers: headerParameters,
       query: queryParameters,
       body: ReviewRecruitmentApplicationRequestToJSON(
@@ -9535,7 +10976,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/venue-reservations/{reservationId}/review`;
+    let urlPath = `/api/v1/venue-reservations/{reservationId}/reviews`;
     urlPath = urlPath.replace(
       "{reservationId}",
       encodeURIComponent(String(requestParameters["reservationId"])),
@@ -9602,7 +11043,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/users/{userId}/sessions/revoke`;
+    let urlPath = `/api/v1/users/{userId}/sessions/revoke`;
     urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
 
     return {
@@ -9662,7 +11103,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}/learning`;
+    let urlPath = `/api/v1/learning/items/{itemId}/learning-records`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -9743,7 +11184,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/submit`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/submit`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -9839,7 +11280,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/deliverable`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks/{taskId}/deliverable`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -9918,7 +11359,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/activities/{activityId}/checkin-settings`;
+    let urlPath = `/api/v1/activities/{activityId}/checkin-settings`;
     urlPath = urlPath.replace(
       "{activityId}",
       encodeURIComponent(String(requestParameters["activityId"])),
@@ -9994,7 +11435,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/accounts/{accountId}`;
+    let urlPath = `/api/v1/budget/accounts/{accountId}`;
     urlPath = urlPath.replace(
       "{accountId}",
       encodeURIComponent(String(requestParameters["accountId"])),
@@ -10061,7 +11502,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}`;
+    let urlPath = `/api/v1/clubs/{clubId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -10130,7 +11571,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -10207,7 +11648,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{ruleDocumentId}",
@@ -10286,7 +11727,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/award-schemes/{awardSchemeId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-schemes/{awardSchemeId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardSchemeId}",
@@ -10363,7 +11804,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/departments/{departmentId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/departments/{departmentId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{departmentId}",
@@ -10440,7 +11881,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/evaluations/{evaluationId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/evaluations/{evaluationId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{evaluationId}",
@@ -10517,7 +11958,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/groups/{groupId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/groups/{groupId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{groupId}",
@@ -10592,7 +12033,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/members/{memberId}/grouping`;
+    let urlPath = `/api/v1/clubs/{clubId}/members/{memberId}/grouping`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{memberId}",
@@ -10671,7 +12112,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/members/{memberId}`;
+    let urlPath = `/api/v1/clubs/{clubId}/members/{memberId}`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{memberId}",
@@ -10741,7 +12182,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/clubs/{clubId}/profile`;
+    let urlPath = `/api/v1/clubs/{clubId}/profile`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
 
     return {
@@ -10814,7 +12255,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/items/{itemId}`;
+    let urlPath = `/api/v1/learning/items/{itemId}`;
     urlPath = urlPath.replace("{itemId}", encodeURIComponent(String(requestParameters["itemId"])));
 
     return {
@@ -10887,7 +12328,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/learning/records/{recordId}/progress`;
+    let urlPath = `/api/v1/learning/records/{recordId}/progress`;
     urlPath = urlPath.replace(
       "{recordId}",
       encodeURIComponent(String(requestParameters["recordId"])),
@@ -10963,7 +12404,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/materials/{materialId}`;
+    let urlPath = `/api/v1/materials/{materialId}`;
     urlPath = urlPath.replace(
       "{materialId}",
       encodeURIComponent(String(requestParameters["materialId"])),
@@ -11048,7 +12489,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/notices/{noticeId}`;
+    let urlPath = `/api/v1/notices/{noticeId}`;
     urlPath = urlPath.replace(
       "{noticeId}",
       encodeURIComponent(String(requestParameters["noticeId"])),
@@ -11131,7 +12572,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/projects/{projectId}/tasks/{taskId}/progress`;
+    let urlPath = `/api/v1/projects/{projectId}/tasks/{taskId}/progress`;
     urlPath = urlPath.replace(
       "{projectId}",
       encodeURIComponent(String(requestParameters["projectId"])),
@@ -11201,7 +12642,16 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/recruitments/{recruitId}`;
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/recruitments/{recruitId}`;
     urlPath = urlPath.replace(
       "{recruitId}",
       encodeURIComponent(String(requestParameters["recruitId"])),
@@ -11277,7 +12727,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/users/{userId}/status`;
+    let urlPath = `/api/v1/users/{userId}/status`;
     urlPath = urlPath.replace("{userId}", encodeURIComponent(String(requestParameters["userId"])));
 
     return {
@@ -11343,7 +12793,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/venues/{venueId}`;
+    let urlPath = `/api/v1/venues/{venueId}`;
     urlPath = urlPath.replace(
       "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
@@ -11408,7 +12858,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
-    let urlPath = `/api/venues/{venueId}/status`;
+    let urlPath = `/api/v1/venues/{venueId}/status`;
     urlPath = urlPath.replace(
       "{venueId}",
       encodeURIComponent(String(requestParameters["venueId"])),
@@ -11500,7 +12950,7 @@ export class DefaultApi extends runtime.BaseAPI {
       formParams.append("attachmentType", requestParameters["attachmentType"] as any);
     }
 
-    let urlPath = `/api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/attachments`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{awardApplicationId}",
@@ -11597,7 +13047,7 @@ export class DefaultApi extends runtime.BaseAPI {
       formParams.append("file", requestParameters["file"] as any);
     }
 
-    let urlPath = `/api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
+    let urlPath = `/api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file`;
     urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
     urlPath = urlPath.replace(
       "{ruleDocumentId}",
@@ -11732,7 +13182,7 @@ export class DefaultApi extends runtime.BaseAPI {
       formParams.append("downloadPermission", requestParameters["downloadPermission"] as any);
     }
 
-    let urlPath = `/api/learning/resources/upload`;
+    let urlPath = `/api/v1/learning/resources`;
 
     return {
       path: urlPath,

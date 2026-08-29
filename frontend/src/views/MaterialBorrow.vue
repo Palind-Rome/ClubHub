@@ -352,7 +352,7 @@ async function loadClubs() {
 
   clubsLoading.value = true;
   try {
-    clubs.value = await requestJson<ClubOption[]>(`/api/clubs?viewerUserId=${userId}`);
+    clubs.value = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
     ensureActiveClub();
     return true;
   } catch (e) {
@@ -378,7 +378,7 @@ async function loadMaterials() {
   try {
     const query =
       activeClubId.value && activeClubId.value !== 0 ? `?clubId=${activeClubId.value}` : "";
-    materials.value = await requestJson<Material[]>(`/api/materials${query}`);
+    materials.value = await requestJson<Material[]>(`/api/v1/materials${query}`);
   } catch (e) {
     materialsError.value = e instanceof Error ? e.message : "加载物资失败";
     ElMessage.error(materialsError.value);
@@ -401,7 +401,7 @@ async function loadBorrows() {
       params.set("clubId", String(activeClubId.value));
     if (borrowStatus.value) params.set("status", borrowStatus.value);
     const query = params.toString() ? `?${params.toString()}` : "";
-    borrows.value = await requestJson<MaterialBorrow[]>(`/api/material-borrows${query}`);
+    borrows.value = await requestJson<MaterialBorrow[]>(`/api/v1/material-borrows${query}`);
   } catch (e) {
     borrowError.value = e instanceof Error ? e.message : "加载借用记录失败";
     ElMessage.error(borrowError.value);
@@ -510,8 +510,8 @@ async function submitMaterial() {
       ? materialPayload
       : { clubId: materialForm.clubId, ...materialPayload };
     const requestUrl = editingMaterial.value
-      ? `/api/materials/${editingMaterial.value.id}`
-      : "/api/materials";
+      ? `/api/v1/materials/${editingMaterial.value.id}`
+      : "/api/v1/materials";
     await requestJson<Material>(requestUrl, {
       method: editingMaterial.value ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -539,7 +539,7 @@ async function submitBorrow() {
 
   submitting.value = true;
   try {
-    await requestJson<MaterialBorrow>("/api/material-borrows", {
+    await requestJson<MaterialBorrow>("/api/v1/material-borrows", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -584,7 +584,7 @@ async function returnBorrow(borrow: MaterialBorrow) {
   }
 
   try {
-    await requestJson<MaterialBorrow>(`/api/material-borrows/${borrow.id}/return`, {
+    await requestJson<MaterialBorrow>(`/api/v1/material-borrows/${borrow.id}/return`, {
       method: "POST",
     });
     ElMessage.success("归还已登记");
@@ -603,7 +603,7 @@ async function submitDamage() {
 
   submitting.value = true;
   try {
-    await requestJson<MaterialBorrow>(`/api/material-borrows/${currentBorrow.value.id}/damage`, {
+    await requestJson<MaterialBorrow>(`/api/v1/material-borrows/${currentBorrow.value.id}/damage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -22,64 +22,52 @@ import { mapValues } from "../runtime";
 export interface RegisterRequest {
   /**
    * 登录用户名，注册后必须唯一。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   username: string;
   /**
    * 登录密码，服务端仅保存密码摘要。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   password: string;
   /**
    * 用户真实姓名。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   realName: string;
   /**
    * 学工号；学生 7 位，教师 5 位。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   studentNo: string;
   /**
    * 性别，可为空；当前支持男、女。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   gender?: string | null;
   /**
    * 联系电话，可为空。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   phone?: string | null;
   /**
    * 邮箱地址，可为空。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   email?: string | null;
   /**
    * 所属学院，可为空。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   college?: string | null;
   /**
    * 所属专业，可为空。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   major?: string | null;
   /**
    * 年级，可为空。
-   * @type {string}
-   * @memberof RegisterRequest
    */
   grade?: string | null;
+  /**
+   * 由验证码接口签发的短时一次性挑战令牌。
+   */
+  captchaToken: string;
+  /**
+   * 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+   */
+  captchaCode: string;
 }
 
 /**
@@ -90,6 +78,8 @@ export function instanceOfRegisterRequest(value: object): value is RegisterReque
   if (!("password" in value) || value["password"] === undefined) return false;
   if (!("realName" in value) || value["realName"] === undefined) return false;
   if (!("studentNo" in value) || value["studentNo"] === undefined) return false;
+  if (!("captchaToken" in value) || value["captchaToken"] === undefined) return false;
+  if (!("captchaCode" in value) || value["captchaCode"] === undefined) return false;
   return true;
 }
 
@@ -117,6 +107,8 @@ export function RegisterRequestFromJSONTyped(
       json["college"] === undefined ? undefined : json["college"] === null ? null : json["college"],
     major: json["major"] === undefined ? undefined : json["major"] === null ? null : json["major"],
     grade: json["grade"] === undefined ? undefined : json["grade"] === null ? null : json["grade"],
+    captchaToken: json["captchaToken"],
+    captchaCode: json["captchaCode"],
   };
 }
 
@@ -143,5 +135,7 @@ export function RegisterRequestToJSONTyped(
     college: value["college"],
     major: value["major"],
     grade: value["grade"],
+    captchaToken: value["captchaToken"],
+    captchaCode: value["captchaCode"],
   };
 }

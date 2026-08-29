@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 已通过预约的脱敏占用时段，仅用于场地状态展示和前端冲突提示。
  * @export
@@ -22,32 +22,22 @@ import { mapValues } from "../runtime";
 export interface VenueOccupiedSlot {
   /**
    * 预约记录 ID。
-   * @type {number}
-   * @memberof VenueOccupiedSlot
    */
   reservationId: number;
   /**
    * 场地 ID。
-   * @type {number}
-   * @memberof VenueOccupiedSlot
    */
   venueId: number;
   /**
    * 场地名称。
-   * @type {string}
-   * @memberof VenueOccupiedSlot
    */
   venueName: string;
   /**
    * 占用开始时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
-   * @type {Date}
-   * @memberof VenueOccupiedSlot
    */
   startTime: Date;
   /**
    * 占用结束时间。响应统一返回 UTC 时间戳，前端按北京时间展示。
-   * @type {Date}
-   * @memberof VenueOccupiedSlot
    */
   endTime: Date;
 }
@@ -79,8 +69,8 @@ export function VenueOccupiedSlotFromJSONTyped(
     reservationId: json["reservationId"],
     venueId: json["venueId"],
     venueName: json["venueName"],
-    startTime: new Date(json["startTime"]),
-    endTime: new Date(json["endTime"]),
+    startTime: json["startTime"] == null ? json["startTime"] : parseDateTime(json["startTime"]),
+    endTime: json["endTime"] == null ? json["endTime"] : parseDateTime(json["endTime"]),
   };
 }
 
@@ -100,7 +90,8 @@ export function VenueOccupiedSlotToJSONTyped(
     reservationId: value["reservationId"],
     venueId: value["venueId"],
     venueName: value["venueName"],
-    startTime: value["startTime"].toISOString(),
-    endTime: value["endTime"].toISOString(),
+    startTime:
+      value["startTime"] == null ? value["startTime"] : serializeDateTime(value["startTime"]),
+    endTime: value["endTime"] == null ? value["endTime"] : serializeDateTime(value["endTime"]),
   };
 }

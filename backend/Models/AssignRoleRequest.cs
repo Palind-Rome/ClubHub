@@ -26,13 +26,12 @@ namespace Org.OpenAPITools.Models
     public partial class AssignRoleRequest 
     {
         /// <summary>
-        /// 被分配角色的用户 ID。
+        /// 旧版兼容字段；v1 资源路由以 path 中的 userId 为准。
         /// </summary>
-        /// <value>被分配角色的用户 ID。</value>
+        /// <value>旧版兼容字段；v1 资源路由以 path 中的 userId 为准。</value>
         /* <example>2</example> */
-        [Required]
         [DataMember(Name="targetUserId", EmitDefaultValue=true)]
-        public int TargetUserId { get; set; }
+        public int? TargetUserId { get; set; }
 
         /// <summary>
         /// 角色编码，例如 STUDENT、CLUB_MEMBER、VENUE_ADMIN、SYSTEM_ADMIN。

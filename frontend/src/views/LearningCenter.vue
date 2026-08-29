@@ -8,8 +8,10 @@ import {
   type UploadUserFile,
 } from "element-plus";
 import {
+  Configuration,
   CreateLearningItemRequestDownloadPermissionEnum,
   CreateLearningItemRequestItemStatusEnum,
+  DefaultApi,
   LearningItemItemStatusEnum,
   UpdateLearningItemRequestDownloadPermissionEnum,
   UpdateLearningItemRequestItemStatusEnum,
@@ -21,8 +23,13 @@ import {
 } from "../api";
 import { apiClient } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
+import { prepareLearningDownload } from "../learningDownload";
+import { prepareLearningPreview } from "../learningPreview";
 
 const api = apiClient;
+const publicApi = new DefaultApi(
+  new Configuration({ basePath: import.meta.env.VITE_API_BASE_URL ?? "" }),
+);
 
 const itemTypeOptions = [
   { label: "课程", value: "course" },
@@ -359,7 +366,7 @@ function validateFileUrl(_rule: unknown, value: string, callback: (error?: Error
     return;
   }
   const isInternalRef =
-    normalized.startsWith("/api/learning/items/") ||
+    normalized.startsWith("/api/v1/learning/items/") ||
     normalized.startsWith("clubs/") ||
     normalized.startsWith("oss://");
   if (normalized && !/^https?:\/\/\S+$/i.test(normalized) && !isInternalRef) {
@@ -521,7 +528,7 @@ async function uploadPendingResources() {
       formData.append("downloadPermission", uploadForm.downloadPermission);
 
       try {
-        const response = await fetch("/api/learning/resources/upload", {
+        const response = await fetch("/api/v1/learning/resources", {
           method: "POST",
           headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
           body: formData,
@@ -581,47 +588,19 @@ async function openPreview(item: LearningItem) {
   previewLoading.value = true;
   previewDialogVisible.value = true;
   try {
-    const response = await fetch(`/api/learning/items/${item.id}/preview-session`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
-    });
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (!response.ok) {
-      const message = (await response.text()).replace(/^"|"$/g, "");
-      if (!isCurrentPreviewRequest(requestId, item.id)) return;
-      throw new Error(message || `在线预览准备失败：HTTP ${response.status}`);
-    }
-
-    const kind = response.headers.get("X-ClubHub-Preview-Kind");
-    const resolvedKind = kind === "image" || kind === "video" ? kind : "pdf";
-    previewKind.value = resolvedKind;
-    previewConverted.value = response.headers.get("X-ClubHub-Preview-Converted") === "true";
-    const contentUrl = `/api/learning/items/${item.id}/preview?v=${Date.now()}`;
-    if (resolvedKind !== "pdf") {
-      previewUrl.value = contentUrl;
-      return;
-    }
-
-    const previewResponse = await fetch(contentUrl, { credentials: "same-origin" });
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (!previewResponse.ok) {
-      throw new Error(`预览内容加载失败：HTTP ${previewResponse.status}`);
-    }
-
-    const previewBlob = await previewResponse.blob();
-    if (!isCurrentPreviewRequest(requestId, item.id)) return;
-    if (previewBlob.type && previewBlob.type !== "application/pdf") {
-      throw new Error("预览服务返回了非 PDF 内容");
-    }
-
-    const objectUrl = URL.createObjectURL(previewBlob);
+    const result = await prepareLearningPreview(item.id, auth.value?.token ?? "");
     if (!isCurrentPreviewRequest(requestId, item.id)) {
-      URL.revokeObjectURL(objectUrl);
+      if (result.objectUrl) URL.revokeObjectURL(result.url);
       return;
     }
-    previewObjectUrl = objectUrl;
-    previewUrl.value = objectUrl;
+    previewKind.value = result.kind;
+    previewConverted.value = result.converted;
+    previewUrl.value = result.url;
+    if (!result.objectUrl) return;
+    previewObjectUrl = result.url;
+    // Chromium 的内置 PDF 查看器不会在所有环境中向父页面稳定派发 iframe load。
+    // 此时完整 PDF 已经成功读取为 Blob，可安全结束加载遮罩，让查看器自行渲染。
+    previewLoading.value = false;
   } catch (error) {
     if (!isCurrentPreviewRequest(requestId, item.id)) return;
     previewLoading.value = false;
@@ -668,7 +647,7 @@ async function deleteResource(item: LearningItem) {
 
   deletingId.value = item.id;
   try {
-    const response = await fetch(`/api/learning/items/${item.id}`, {
+    const response = await fetch(`/api/v1/learning/items/${item.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
     });
@@ -789,7 +768,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await api.getClubs();
+    clubs.value = await publicApi.getClubs();
   } catch (error) {
     clubs.value = [];
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
@@ -1102,7 +1081,7 @@ async function startLearning(item: LearningItem) {
   }
 }
 
-/** 通过权限校验后记录下载行为并打开文件地址。 */
+/** 完整读取受保护文件后确认成功下载并保存文件。 */
 async function downloadItem(item: LearningItem) {
   if (!item.canDownload) {
     ElMessage.warning(item.downloadUnavailableReason || "当前不能下载该资源");
@@ -1110,34 +1089,20 @@ async function downloadItem(item: LearningItem) {
   }
 
   downloadingId.value = item.id;
-  const opened = window.open("about:blank", "_blank");
-  if (opened) opened.opener = null;
   try {
-    const result = await api.downloadLearningItem({ itemId: item.id });
-    if (result.fileUrl.startsWith("/api/learning/items/") && result.fileUrl.endsWith("/file")) {
-      opened?.close();
-      const response = await fetch(result.fileUrl, {
-        headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
-      });
-      if (!response.ok) throw new Error("文件内容获取失败");
-      const objectUrl = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = item.title;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
-    } else if (opened) {
-      opened.location.replace(result.fileUrl);
-    } else {
-      const link = document.createElement("a");
-      link.href = result.fileUrl;
-      link.download = item.title;
-      link.click();
-    }
+    const objectUrl = await prepareLearningDownload({
+      itemId: item.id,
+      token: auth.value?.token ?? "",
+      confirmDownload: () => api.createLearningDownload({ itemId: item.id }),
+    });
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = item.title;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
     ElMessage.success("下载权限校验通过，已记录本次下载");
     await loadLearningItems();
   } catch (error) {
-    opened?.close();
     ElMessage.error(toErrorMessage(error, "资源下载失败"));
   } finally {
     downloadingId.value = null;
@@ -1378,6 +1343,7 @@ onUnmounted(() => {
       v-loading="loading"
       :data="filteredItems"
       :empty-text="learningSection === 'course' ? '暂无符合条件的课程' : '暂无符合条件的资源'"
+      class="business-data-table"
     >
       <el-table-column label="标题" min-width="180">
         <template #default="{ row }">
@@ -1388,7 +1354,7 @@ onUnmounted(() => {
       </el-table-column>
       <el-table-column label="发布社团" min-width="130">
         <template #default="{ row }">
-          {{ clubNameMap.get(row.clubId) ?? `社团 ${row.clubId}` }}
+          {{ clubNameMap.get(row.clubId) || "未知社团" }}
         </template>
       </el-table-column>
       <el-table-column label="类型" width="90">
@@ -1441,7 +1407,7 @@ onUnmounted(() => {
           {{ itemRecordStatusLabel(row) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="560" fixed="right">
+      <el-table-column label="操作" min-width="320">
         <template #default="{ row }">
           <el-button
             v-if="isCourseItem(row) && canEnrollCourses && row.instructorUserId !== currentUserId"
@@ -1540,7 +1506,7 @@ onUnmounted(() => {
         <p class="detail-description">{{ detailItem.description || "暂无说明" }}</p>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="所属社团">
-            {{ clubNameMap.get(detailItem.clubId) ?? `社团 ${detailItem.clubId}` }}
+            {{ clubNameMap.get(detailItem.clubId) || "未知社团" }}
           </el-descriptions-item>
           <el-descriptions-item label="类型">
             {{ itemTypeLabel(detailItem.itemType) }}

@@ -26,13 +26,6 @@ namespace Org.OpenAPITools.Models
     public partial class UpdateRecruitmentRequest 
     {
         /// <summary>
-        /// Gets or Sets CurrentUserId
-        /// </summary>
-        [Required]
-        [DataMember(Name="currentUserId", EmitDefaultValue=true)]
-        public int CurrentUserId { get; set; }
-
-        /// <summary>
         /// Gets or Sets Title
         /// </summary>
         [DataMember(Name="title", EmitDefaultValue=true)]

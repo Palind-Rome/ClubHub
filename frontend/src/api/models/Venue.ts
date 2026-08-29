@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,56 +22,38 @@ import { mapValues } from "../runtime";
 export interface Venue {
   /**
    *
-   * @type {number}
-   * @memberof Venue
    */
   id: number;
   /**
    *
-   * @type {string}
-   * @memberof Venue
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof Venue
    */
   building?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof Venue
    */
   roomNo?: string | null;
   /**
    *
-   * @type {number}
-   * @memberof Venue
    */
   capacity: number;
   /**
    *
-   * @type {VenueStatusEnum}
-   * @memberof Venue
    */
   status: VenueStatusEnum;
   /**
    *
-   * @type {number}
-   * @memberof Venue
    */
   managerUserId?: number | null;
   /**
    *
-   * @type {Date}
-   * @memberof Venue
    */
   createdAt: Date;
   /**
    * 维护结束时间。为空表示维护结束时间未知。
-   * @type {Date}
-   * @memberof Venue
    */
   maintenanceUntil?: Date | null;
 }
@@ -125,13 +107,13 @@ export function VenueFromJSONTyped(json: any, ignoreDiscriminator: boolean): Ven
         : json["managerUserId"] === null
           ? null
           : json["managerUserId"],
-    createdAt: new Date(json["createdAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
     maintenanceUntil:
       json["maintenanceUntil"] === undefined
         ? undefined
         : json["maintenanceUntil"] === null
           ? null
-          : new Date(json["maintenanceUntil"]),
+          : parseDateTime(json["maintenanceUntil"]),
   };
 }
 
@@ -152,10 +134,11 @@ export function VenueToJSONTyped(value?: Venue | null, ignoreDiscriminator: bool
     capacity: value["capacity"],
     status: value["status"],
     managerUserId: value["managerUserId"],
-    createdAt: value["createdAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
     maintenanceUntil:
       value["maintenanceUntil"] == null
         ? value["maintenanceUntil"]
-        : value["maintenanceUntil"].toISOString(),
+        : serializeDateTime(value["maintenanceUntil"]),
   };
 }

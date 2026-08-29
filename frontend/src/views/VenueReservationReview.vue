@@ -237,7 +237,7 @@ async function readErrorMessage(res: Response) {
 
 async function loadVenues() {
   try {
-    const res = await fetch("/api/venues");
+    const res = await fetch("/api/v1/venues");
     if (!res.ok) throw new Error(await readErrorMessage(res));
     venues.value = await res.json();
   } catch {
@@ -252,7 +252,7 @@ async function loadPendingReservations() {
   error.value = "";
   try {
     pendingReservations.value = await requestJson<VenueReservation[]>(
-      "/api/venue-reservations?status=pending",
+      "/api/v1/venue-reservations?status=pending",
     );
     syncSelectedVenue();
   } catch (e) {
@@ -282,7 +282,7 @@ async function loadHistoryReservations() {
 
 async function fetchReservationsByStatus(status: "approved" | "rejected") {
   const params = new URLSearchParams({ status });
-  return requestJson<VenueReservation[]>(`/api/venue-reservations?${params.toString()}`);
+  return requestJson<VenueReservation[]>(`/api/v1/venue-reservations?${params.toString()}`);
 }
 
 function syncSelectedVenue() {
@@ -320,7 +320,7 @@ async function submitReview() {
   reviewing.value = true;
   try {
     const reviewedReservation = await requestJson<VenueReservation>(
-      `/api/venue-reservations/${reviewTarget.value.id}/review`,
+      `/api/v1/venue-reservations/${reviewTarget.value.id}/reviews`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

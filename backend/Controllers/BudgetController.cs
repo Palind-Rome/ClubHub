@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -121,13 +122,16 @@ public class BudgetController : ControllerBase
             query = query.Where(account => account.FiscalYear == normalizedFiscalYear);
         }
 
-        var accounts = await query
-            .OrderByDescending(account => account.FiscalYear)
-            .ThenBy(account => account.ClubId)
-            .ThenBy(account => account.AccountId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(account => account.FiscalYear)
+                .ThenBy(account => account.ClubId)
+                .ThenBy(account => account.AccountId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(await ToAccountDtosAsync(accounts));
+        return Ok(await ToAccountDtosAsync(page.Items));
     }
 
     [HttpPost("accounts")]
@@ -284,12 +288,15 @@ public class BudgetController : ControllerBase
         if (normalizedStatus is not null) query = query.Where(application => application.ApplicationStatus == normalizedStatus);
         if (normalizedType is not null) query = query.Where(application => application.ApplicationType == normalizedType);
 
-        var applications = await query
-            .OrderByDescending(application => application.SubmittedAt)
-            .ThenByDescending(application => application.ApplicationId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(application => application.SubmittedAt)
+                .ThenByDescending(application => application.ApplicationId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(applications.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     [HttpPost("applications")]
@@ -560,12 +567,15 @@ public class BudgetController : ControllerBase
 
         if (accountId is not null) query = query.Where(transaction => transaction.AccountId == accountId.Value);
 
-        var transactions = await query
-            .OrderByDescending(transaction => transaction.OccurredAt)
-            .ThenByDescending(transaction => transaction.TransactionId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(transaction => transaction.OccurredAt)
+                .ThenByDescending(transaction => transaction.TransactionId),
+            HttpContext,
+            HttpContext.RequestAborted);
+        if (page.Error is not null) return BadRequest(page.Error);
 
-        return Ok(transactions.Select(ToDto));
+        return Ok(page.Items.Select(ToDto));
     }
 
     private IQueryable<BudgetAccount> AccountQuery() => _db.BudgetAccounts.Include(account => account.Club);

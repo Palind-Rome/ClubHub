@@ -30,38 +30,26 @@ import {
 export interface GenerateClubEvaluationsResult {
   /**
    * 本次生成的考核学期。
-   * @type {string}
-   * @memberof GenerateClubEvaluationsResult
    */
   termName: string;
   /**
    * 本次纳入生成范围的当前有效成员数。
-   * @type {number}
-   * @memberof GenerateClubEvaluationsResult
    */
   totalMembers: number;
   /**
    * 新创建的草稿记录数。
-   * @type {number}
-   * @memberof GenerateClubEvaluationsResult
    */
   createdCount: number;
   /**
    * 已存在草稿并被刷新系统生成分的记录数。
-   * @type {number}
-   * @memberof GenerateClubEvaluationsResult
    */
   refreshedCount: number;
   /**
    * 已公示而未覆盖的记录数。
-   * @type {number}
-   * @memberof GenerateClubEvaluationsResult
    */
   skippedPublishedCount: number;
   /**
    * 生成后该学期的考核记录。
-   * @type {Array<ClubEvaluationRecord>}
-   * @memberof GenerateClubEvaluationsResult
    */
   records: Array<ClubEvaluationRecord>;
 }

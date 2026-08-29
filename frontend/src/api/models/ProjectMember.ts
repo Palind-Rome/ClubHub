@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 项目与用户之间的成员关系及展示信息。
  * @export
@@ -22,74 +22,50 @@ import { mapValues } from "../runtime";
 export interface ProjectMember {
   /**
    * 项目成员关系 ID。
-   * @type {number}
-   * @memberof ProjectMember
    */
   projectMemberId: number;
   /**
    * 所属项目 ID。
-   * @type {number}
-   * @memberof ProjectMember
    */
   projectId: number;
   /**
    * 项目成员用户 ID。
-   * @type {number}
-   * @memberof ProjectMember
    */
   userId: number;
   /**
    * 成员真实姓名。
-   * @type {string}
-   * @memberof ProjectMember
    */
   realName?: string | null;
   /**
    * 成员学号或工号。
-   * @type {string}
-   * @memberof ProjectMember
    */
   studentNo?: string | null;
   /**
    * 项目内角色。
-   * @type {ProjectMemberMemberRoleEnum}
-   * @memberof ProjectMember
    */
   memberRole: ProjectMemberMemberRoleEnum;
   /**
    * 项目成员状态。
-   * @type {ProjectMemberMemberStatusEnum}
-   * @memberof ProjectMember
    */
   memberStatus: ProjectMemberMemberStatusEnum;
   /**
    * 本次加入或恢复为正在参与状态的时间。
-   * @type {Date}
-   * @memberof ProjectMember
    */
   joinedAt: Date;
   /**
    * 退出或移除时间；正在参与的成员为空。
-   * @type {Date}
-   * @memberof ProjectMember
    */
   leftAt?: Date | null;
   /**
    * 项目成员备注。
-   * @type {string}
-   * @memberof ProjectMember
    */
   remark?: string | null;
   /**
    * 成员关系首次创建时间。
-   * @type {Date}
-   * @memberof ProjectMember
    */
   createdAt: Date;
   /**
    * 成员关系最近更新时间。
-   * @type {Date}
-   * @memberof ProjectMember
    */
   updatedAt: Date;
 }
@@ -157,17 +133,17 @@ export function ProjectMemberFromJSONTyped(json: any, ignoreDiscriminator: boole
           : json["studentNo"],
     memberRole: json["memberRole"],
     memberStatus: json["memberStatus"],
-    joinedAt: new Date(json["joinedAt"]),
+    joinedAt: json["joinedAt"] == null ? json["joinedAt"] : parseDateTime(json["joinedAt"]),
     leftAt:
       json["leftAt"] === undefined
         ? undefined
         : json["leftAt"] === null
           ? null
-          : new Date(json["leftAt"]),
+          : parseDateTime(json["leftAt"]),
     remark:
       json["remark"] === undefined ? undefined : json["remark"] === null ? null : json["remark"],
-    createdAt: new Date(json["createdAt"]),
-    updatedAt: new Date(json["updatedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? json["updatedAt"] : parseDateTime(json["updatedAt"]),
   };
 }
 
@@ -191,10 +167,12 @@ export function ProjectMemberToJSONTyped(
     studentNo: value["studentNo"],
     memberRole: value["memberRole"],
     memberStatus: value["memberStatus"],
-    joinedAt: value["joinedAt"].toISOString(),
-    leftAt: value["leftAt"] == null ? value["leftAt"] : value["leftAt"].toISOString(),
+    joinedAt: value["joinedAt"] == null ? value["joinedAt"] : serializeDateTime(value["joinedAt"]),
+    leftAt: value["leftAt"] == null ? value["leftAt"] : serializeDateTime(value["leftAt"]),
     remark: value["remark"],
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"].toISOString(),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
   };
 }

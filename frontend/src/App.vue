@@ -33,6 +33,7 @@ const roleLabels = computed(() => {
 const navigationGroups = computed(() => buildNavigationGroups(auth.value?.permissions ?? []));
 const activeMenu = computed(() => resolveActiveNavigation(route.path));
 const pageTitle = computed(() => String(route.meta.title ?? "ClubHub"));
+const pageEyebrow = computed(() => String(route.meta.eyebrow ?? "ClubHub"));
 
 function refreshSession() {
   const nextAuth = readAuth();
@@ -51,7 +52,7 @@ function refreshSession() {
 async function checkHealth() {
   healthChecking.value = true;
   try {
-    const response = await fetch("/api/health");
+    const response = await fetch("/api/v1/health");
     healthOk.value = response.ok;
   } catch {
     healthOk.value = false;
@@ -89,6 +90,7 @@ onUnmounted(() => {
       :navigation-groups="navigationGroups"
       :active-menu="activeMenu"
       :page-title="pageTitle"
+      :page-eyebrow="pageEyebrow"
       :account-label="accountLabel"
       :role-labels="roleLabels"
       :health-ok="healthOk"

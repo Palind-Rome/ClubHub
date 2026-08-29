@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 课程报名、资源学习进度和下载行为记录。
  * @export
@@ -22,80 +22,54 @@ import { mapValues } from "../runtime";
 export interface LearningRecord {
   /**
    * Learning record id in LEARNING_RECORDS.RECORD_ID.
-   * @type {number}
-   * @memberof LearningRecord
    */
   id: number;
   /**
    * Related learning item id.
-   * @type {number}
-   * @memberof LearningRecord
    */
   itemId: number;
   /**
    * Learning user id.
-   * @type {number}
-   * @memberof LearningRecord
    */
   userId: number;
   /**
    * Learning user's display name.
-   * @type {string}
-   * @memberof LearningRecord
    */
   userDisplayName: string;
   /**
    * Learning user's student or staff number.
-   * @type {string}
-   * @memberof LearningRecord
    */
   userNumber?: string | null;
   /**
    * Enrollment and learning status.
-   * @type {LearningRecordEnrollStatusEnum}
-   * @memberof LearningRecord
    */
   enrollStatus: LearningRecordEnrollStatusEnum;
   /**
    * Enrollment time.
-   * @type {Date}
-   * @memberof LearningRecord
    */
   enrolledAt?: Date | null;
   /**
    * Learning progress percentage.
-   * @type {number}
-   * @memberof LearningRecord
    */
   progress?: number | null;
   /**
    * Accumulated learning duration in seconds.
-   * @type {number}
-   * @memberof LearningRecord
    */
   durationSeconds?: number | null;
   /**
    * Last learning time.
-   * @type {Date}
-   * @memberof LearningRecord
    */
   lastLearnAt?: Date | null;
   /**
    * 完成时间。
-   * @type {Date}
-   * @memberof LearningRecord
    */
   completedAt?: Date | null;
   /**
    * 最近一次下载时间。
-   * @type {Date}
-   * @memberof LearningRecord
    */
   downloadedAt?: Date | null;
   /**
    * 最近一次下载 IP。
-   * @type {string}
-   * @memberof LearningRecord
    */
   downloadIp?: string | null;
 }
@@ -152,7 +126,7 @@ export function LearningRecordFromJSONTyped(
         ? undefined
         : json["enrolledAt"] === null
           ? null
-          : new Date(json["enrolledAt"]),
+          : parseDateTime(json["enrolledAt"]),
     progress:
       json["progress"] === undefined
         ? undefined
@@ -170,19 +144,19 @@ export function LearningRecordFromJSONTyped(
         ? undefined
         : json["lastLearnAt"] === null
           ? null
-          : new Date(json["lastLearnAt"]),
+          : parseDateTime(json["lastLearnAt"]),
     completedAt:
       json["completedAt"] === undefined
         ? undefined
         : json["completedAt"] === null
           ? null
-          : new Date(json["completedAt"]),
+          : parseDateTime(json["completedAt"]),
     downloadedAt:
       json["downloadedAt"] === undefined
         ? undefined
         : json["downloadedAt"] === null
           ? null
-          : new Date(json["downloadedAt"]),
+          : parseDateTime(json["downloadedAt"]),
     downloadIp:
       json["downloadIp"] === undefined
         ? undefined
@@ -212,15 +186,17 @@ export function LearningRecordToJSONTyped(
     userNumber: value["userNumber"],
     enrollStatus: value["enrollStatus"],
     enrolledAt:
-      value["enrolledAt"] == null ? value["enrolledAt"] : value["enrolledAt"].toISOString(),
+      value["enrolledAt"] == null ? value["enrolledAt"] : serializeDateTime(value["enrolledAt"]),
     progress: value["progress"],
     durationSeconds: value["durationSeconds"],
     lastLearnAt:
-      value["lastLearnAt"] == null ? value["lastLearnAt"] : value["lastLearnAt"].toISOString(),
+      value["lastLearnAt"] == null ? value["lastLearnAt"] : serializeDateTime(value["lastLearnAt"]),
     completedAt:
-      value["completedAt"] == null ? value["completedAt"] : value["completedAt"].toISOString(),
+      value["completedAt"] == null ? value["completedAt"] : serializeDateTime(value["completedAt"]),
     downloadedAt:
-      value["downloadedAt"] == null ? value["downloadedAt"] : value["downloadedAt"].toISOString(),
+      value["downloadedAt"] == null
+        ? value["downloadedAt"]
+        : serializeDateTime(value["downloadedAt"]),
     downloadIp: value["downloadIp"],
   };
 }

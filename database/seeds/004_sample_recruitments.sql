@@ -1,5 +1,5 @@
 -- 招募与报名样例数据：依赖 000_sample_users.sql 和 001_sample_clubs.sql。
--- 可用于演示社团干部发布招募、学生报名、干部筛选录取流程。
+-- 可用于验证社团干部发布招募、学生报名、干部筛选录取流程。
 
 MERGE INTO RECRUITMENTS target
 USING (

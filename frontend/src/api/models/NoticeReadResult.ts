@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 通知已读记录结果；接口成功响应表示该用户已经完成已读标记。
  * @export
@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface NoticeReadResult {
   /**
    * 通知 ID。
-   * @type {number}
-   * @memberof NoticeReadResult
    */
   noticeId: number;
   /**
    * 阅读用户 ID。
-   * @type {number}
-   * @memberof NoticeReadResult
    */
   userId: number;
   /**
    * 是否已读；成功响应中始终为 true，不用于区分新写入或既有记录。
-   * @type {boolean}
-   * @memberof NoticeReadResult
    */
   isRead: boolean;
   /**
    * 已读时间。
-   * @type {Date}
-   * @memberof NoticeReadResult
    */
   readAt: Date;
 }
@@ -72,7 +64,7 @@ export function NoticeReadResultFromJSONTyped(
     noticeId: json["noticeId"],
     userId: json["userId"],
     isRead: json["isRead"],
-    readAt: new Date(json["readAt"]),
+    readAt: json["readAt"] == null ? json["readAt"] : parseDateTime(json["readAt"]),
   };
 }
 
@@ -92,6 +84,6 @@ export function NoticeReadResultToJSONTyped(
     noticeId: value["noticeId"],
     userId: value["userId"],
     isRead: value["isRead"],
-    readAt: value["readAt"].toISOString(),
+    readAt: value["readAt"] == null ? value["readAt"] : serializeDateTime(value["readAt"]),
   };
 }

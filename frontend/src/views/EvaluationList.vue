@@ -380,7 +380,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await requestJson<Club[]>(`/api/clubs`);
+    clubs.value = await requestJson<Club[]>(`/api/v1/clubs`);
     if (
       !selectedClubId.value ||
       !accessibleClubs.value.some((club) => club.id === selectedClubId.value)
@@ -409,7 +409,7 @@ async function loadEvaluations() {
     });
     if (filters.termName) query.set("termName", filters.termName);
     const data = await requestJson<ClubEvaluationRecord[]>(
-      `/api/clubs/${clubId}/evaluations?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/evaluations?${query.toString()}`,
     );
     if (requestId === evaluationRequestId) evaluations.value = data;
   } catch (error) {
@@ -436,7 +436,7 @@ async function loadMembers() {
       includeHistory: "false",
     });
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === memberRequestId) members.value = data;
   } catch {
@@ -467,7 +467,7 @@ async function loadScorePreview(options: { silent?: boolean } = {}) {
       termName,
     });
     const preview = await requestJson<ClubEvaluationScorePreview>(
-      `/api/clubs/${clubId}/evaluations/score-preview?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/evaluations/score-preview?${query.toString()}`,
     );
     if (requestId === scorePreviewRequestId) applyScorePreview(preview);
   } catch (error) {
@@ -536,7 +536,7 @@ async function submitGenerateEvaluations() {
   generateSaving.value = true;
   try {
     const result = await requestJson<GenerateClubEvaluationsResult>(
-      `/api/clubs/${clubId}/evaluations/generate`,
+      `/api/v1/clubs/${clubId}/evaluations/generate`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -612,14 +612,14 @@ async function submitEvaluation() {
     };
 
     if (evaluationFormMode.value === "create") {
-      await requestJson<ClubEvaluationRecord>(`/api/clubs/${selectedClubId.value}/evaluations`, {
+      await requestJson<ClubEvaluationRecord>(`/api/v1/clubs/${selectedClubId.value}/evaluations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } else if (evaluationTarget.value) {
       await requestJson<ClubEvaluationRecord>(
-        `/api/clubs/${selectedClubId.value}/evaluations/${evaluationTarget.value.evaluationId}`,
+        `/api/v1/clubs/${selectedClubId.value}/evaluations/${evaluationTarget.value.evaluationId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -750,7 +750,7 @@ onUnmounted(() => {
     <div class="page-head app-page-header">
       <div>
         <h2>成员考核</h2>
-        <div class="subtitle">四项分数由系统生成，负责人和指导老师确认后公示。</div>
+        <p class="subtitle">成员考核记录生成、确认与公示</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -799,16 +799,16 @@ onUnmounted(() => {
 
     <div class="process-strip">
       <div>
-        <span>1. 批量生成</span>
-        <strong>汇总活动、项目任务、学习记录和已公示奖项</strong>
+        <span>1. 生成考核草稿</span>
+        <strong>系统按活动、任务、学习与奖项记录计算四项得分</strong>
       </div>
       <div>
-        <span>2. 微调确认</span>
-        <strong>负责人或指导老师上下微调每一项分数</strong>
+        <span>2. 负责人确认</span>
+        <strong>负责人或指导老师核对记录并调整分数</strong>
       </div>
       <div>
-        <span>3. 公示查看</span>
-        <strong>确认后的结果按范围公开查看</strong>
+        <span>3. 发布结果</span>
+        <strong>确认后的考核结果向社团成员公示</strong>
       </div>
     </div>
 
@@ -837,7 +837,7 @@ onUnmounted(() => {
         class="keyword"
         :prefix-icon="Search"
         clearable
-        placeholder="请输入成员姓名、学号、部门或等级"
+        placeholder="搜索成员、学号或部门"
       />
       <el-radio-group v-model="filters.publicStatus">
         <el-radio-button label="">全部</el-radio-button>
@@ -885,6 +885,7 @@ onUnmounted(() => {
       stripe
       empty-text="暂无成员考核记录"
       row-key="evaluationId"
+      class="business-data-table"
     >
       <el-table-column prop="userName" label="成员" min-width="140" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />
@@ -908,7 +909,7 @@ onUnmounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="170" fixed="right">
+      <el-table-column label="操作" min-width="170">
         <template #default="{ row }">
           <el-button :icon="View" @click="openDetail(row)">查看</el-button>
           <el-button
@@ -1151,7 +1152,7 @@ onUnmounted(() => {
 }
 
 .subtitle {
-  margin-top: 6px;
+  margin: 6px 0 0;
   color: var(--el-text-color-secondary);
 }
 

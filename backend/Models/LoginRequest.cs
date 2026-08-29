@@ -45,5 +45,27 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="password", EmitDefaultValue=false)]
         public string Password { get; set; }
 
+        /// <summary>
+        /// 由验证码接口签发的短时一次性挑战令牌。
+        /// </summary>
+        /// <value>由验证码接口签发的短时一次性挑战令牌。</value>
+        /* <example>2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J</example> */
+        [Required]
+        [RegularExpression("^[A-Za-z0-9_-]+$")]
+        [StringLength(64, MinimumLength=40)]
+        [DataMember(Name="captchaToken", EmitDefaultValue=false)]
+        public string CaptchaToken { get; set; }
+
+        /// <summary>
+        /// 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+        /// </summary>
+        /// <value>用户从验证码图片中识别出的 5 位数字，不区分大小写。</value>
+        /* <example>52843</example> */
+        [Required]
+        [RegularExpression("^[0-9]{5}$")]
+        [StringLength(5, MinimumLength=5)]
+        [DataMember(Name="captchaCode", EmitDefaultValue=false)]
+        public string CaptchaCode { get; set; }
+
     }
 }

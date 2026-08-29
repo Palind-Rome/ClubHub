@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface ApplyActivityBudgetRequest {
   /**
    * 预算金额，必须大于 0。
-   * @type {number}
-   * @memberof ApplyActivityBudgetRequest
    */
   budgetAmount: number;
   /**
    * 经费用途，例如物料采购、场地布置或嘉宾交通。
-   * @type {string}
-   * @memberof ApplyActivityBudgetRequest
    */
   budgetPurpose: string;
   /**
    * 经费明细，可填写多项预算说明。
-   * @type {string}
-   * @memberof ApplyActivityBudgetRequest
    */
   budgetDetail?: string | null;
 }

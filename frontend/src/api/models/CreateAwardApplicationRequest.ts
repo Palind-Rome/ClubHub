@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface CreateAwardApplicationRequest {
   /**
    *
-   * @type {number}
-   * @memberof CreateAwardApplicationRequest
    */
   awardSchemeId: number;
   /**
    *
-   * @type {number}
-   * @memberof CreateAwardApplicationRequest
    */
   awardLevelId: number;
   /**
    * 被推荐或申请的社团成员用户 ID。
-   * @type {number}
-   * @memberof CreateAwardApplicationRequest
    */
   applicantUserId: number;
   /**
    *
-   * @type {CreateAwardApplicationRequestApplicationTypeEnum}
-   * @memberof CreateAwardApplicationRequest
    */
   applicationType: CreateAwardApplicationRequestApplicationTypeEnum;
   /**
    * 申请理由或推荐理由。
-   * @type {string}
-   * @memberof CreateAwardApplicationRequest
    */
   applicationReason: string;
   /**
    * 兼容字段，由申请材料上传接口维护内部文件引用；新前端不应让用户手填地址。
-   * @type {string}
-   * @memberof CreateAwardApplicationRequest
    */
   materialUrl?: string | null;
   /**
    * 是否创建后立即提交到负责人初审。
-   * @type {boolean}
-   * @memberof CreateAwardApplicationRequest
    */
   submitNow?: boolean;
 }

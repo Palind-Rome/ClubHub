@@ -22,26 +22,18 @@ import { mapValues } from "../runtime";
 export interface ReviewAwardApplicationRequest {
   /**
    * 审核动作。
-   * @type {ReviewAwardApplicationRequestReviewResultEnum}
-   * @memberof ReviewAwardApplicationRequest
    */
   reviewResult: ReviewAwardApplicationRequestReviewResultEnum;
   /**
    *
-   * @type {string}
-   * @memberof ReviewAwardApplicationRequest
    */
   reviewComment?: string | null;
   /**
    * 校级终审可确认最终奖项分；为空时使用等级配置分。
-   * @type {number}
-   * @memberof ReviewAwardApplicationRequest
    */
   finalAwardScore?: number | null;
   /**
    * 校级终审可确认最终金额；为空时使用等级配置金额。
-   * @type {number}
-   * @memberof ReviewAwardApplicationRequest
    */
   finalAmount?: number | null;
 }

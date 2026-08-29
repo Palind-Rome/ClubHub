@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface UpdateMaterialRequest {
   /**
    * Updated material name.
-   * @type {string}
-   * @memberof UpdateMaterialRequest
    */
   name: string;
   /**
    * Updated optional model or specification.
-   * @type {string}
-   * @memberof UpdateMaterialRequest
    */
   specification?: string | null;
   /**
    * Updated total inventory quantity.
-   * @type {number}
-   * @memberof UpdateMaterialRequest
    */
   totalQuantity: number;
   /**
    * Updated available quantity after accounting for checked-out items.
-   * @type {number}
-   * @memberof UpdateMaterialRequest
    */
   availableQuantity: number;
   /**
    * Updated optional physical storage location.
-   * @type {string}
-   * @memberof UpdateMaterialRequest
    */
   storageLocation?: string | null;
   /**
    * Updated material status.
-   * @type {UpdateMaterialRequestStatusEnum}
-   * @memberof UpdateMaterialRequest
    */
   status: UpdateMaterialRequestStatusEnum;
 }

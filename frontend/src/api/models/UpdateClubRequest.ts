@@ -22,20 +22,14 @@ import { mapValues } from "../runtime";
 export interface UpdateClubRequest {
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubRequest
    */
   name?: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubRequest
    */
   category?: string;
   /**
    *
-   * @type {string}
-   * @memberof UpdateClubRequest
    */
   description?: string | null;
 }

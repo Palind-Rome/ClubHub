@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface DeleteVenueRequest {
   /**
    * 执行删除操作的用户 ID，用于校验 venue:disable 权限。
-   * @type {number}
-   * @memberof DeleteVenueRequest
    */
   operatorUserId: number;
 }

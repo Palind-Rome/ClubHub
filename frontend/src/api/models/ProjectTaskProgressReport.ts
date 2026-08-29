@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 一次任务进度提交的可追溯记录。
  * @export
@@ -22,56 +22,38 @@ import { mapValues } from "../runtime";
 export interface ProjectTaskProgressReport {
   /**
    * 进度记录 ID。
-   * @type {number}
-   * @memberof ProjectTaskProgressReport
    */
   id: number;
   /**
    * 所属任务 ID。
-   * @type {number}
-   * @memberof ProjectTaskProgressReport
    */
   taskId: number;
   /**
    * 提交人用户 ID。
-   * @type {number}
-   * @memberof ProjectTaskProgressReport
    */
   reporterUserId: number;
   /**
    * 提交人姓名或账号展示名。
-   * @type {string}
-   * @memberof ProjectTaskProgressReport
    */
   reporterName: string;
   /**
    * 本次提交后的任务进度。
-   * @type {number}
-   * @memberof ProjectTaskProgressReport
    */
   progress: number;
   /**
    * 本次提交后的任务状态。
-   * @type {ProjectTaskProgressReportTaskStatusEnum}
-   * @memberof ProjectTaskProgressReport
    */
   taskStatus: ProjectTaskProgressReportTaskStatusEnum;
   /**
    * 本次进度汇报内容。
-   * @type {string}
-   * @memberof ProjectTaskProgressReport
    */
   reportContent?: string | null;
   /**
    * 本次提交的延期原因；仅延期时有值。
-   * @type {string}
-   * @memberof ProjectTaskProgressReport
    */
   delayReason?: string | null;
   /**
    * 服务端记录的提交时间；任务完成时也以此时间写入完成时间。
-   * @type {Date}
-   * @memberof ProjectTaskProgressReport
    */
   submittedAt: Date;
 }
@@ -134,7 +116,8 @@ export function ProjectTaskProgressReportFromJSONTyped(
         : json["delayReason"] === null
           ? null
           : json["delayReason"],
-    submittedAt: new Date(json["submittedAt"]),
+    submittedAt:
+      json["submittedAt"] == null ? json["submittedAt"] : parseDateTime(json["submittedAt"]),
   };
 }
 
@@ -159,6 +142,7 @@ export function ProjectTaskProgressReportToJSONTyped(
     taskStatus: value["taskStatus"],
     reportContent: value["reportContent"],
     delayReason: value["delayReason"],
-    submittedAt: value["submittedAt"].toISOString(),
+    submittedAt:
+      value["submittedAt"] == null ? value["submittedAt"] : serializeDateTime(value["submittedAt"]),
   };
 }

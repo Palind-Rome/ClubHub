@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 import type { AwardAttachmentRecord } from "./AwardAttachmentRecord";
 import {
   AwardAttachmentRecordFromJSON,
@@ -37,218 +37,146 @@ import {
 export interface AwardApplicationRecord {
   /**
    * 评奖评优申请 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   awardApplicationId: number;
   /**
    * 所属社团 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   clubId: number;
   /**
    * 所属社团名称。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   clubName: string;
   /**
    * 被申请的奖项配置 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   awardSchemeId: number;
   /**
    * 被申请的奖项名称。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   awardName: string;
   /**
    * 奖项分类。
-   * @type {AwardApplicationRecordAwardCategoryEnum}
-   * @memberof AwardApplicationRecord
    */
   awardCategory: AwardApplicationRecordAwardCategoryEnum;
   /**
    * 奖项所属学年或年度。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   academicYear: string;
   /**
    * 奖项所属学期。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   termName?: string | null;
   /**
    * 被申请的奖项等级 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   awardLevelId: number;
   /**
    * 被申请的奖项等级名称。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   levelName: string;
   /**
    * 申请人或被推荐人用户 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   applicantUserId: number;
   /**
    * 申请人或被推荐人展示名。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   applicantName: string;
   /**
    * 申请人或被推荐人学号。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   applicantStudentNo?: string | null;
   /**
    * 推荐人用户 ID；本人申请时为空。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   recommenderUserId?: number | null;
   /**
    * 推荐人展示名；本人申请时为空。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   recommenderName?: string | null;
   /**
    * 提交该申请的用户 ID。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   submitterUserId: number;
   /**
    * 提交人展示名。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   submitterName?: string | null;
   /**
    * 申请类型，self 为本人申请，recommendation 为负责人推荐。
-   * @type {AwardApplicationRecordApplicationTypeEnum}
-   * @memberof AwardApplicationRecord
    */
   applicationType: AwardApplicationRecordApplicationTypeEnum;
   /**
    * 申请理由或推荐理由。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   applicationReason?: string | null;
   /**
    * 申请主材料的内部文件引用；具体材料以 attachments 为准，客户端下载文件应调用申请材料下载接口。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   materialUrl?: string | null;
   /**
    * 当前所处流程节点。
-   * @type {AwardApplicationRecordCurrentStepEnum}
-   * @memberof AwardApplicationRecord
    */
   currentStep: AwardApplicationRecordCurrentStepEnum;
   /**
    * 当前流程节点中文文案。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   currentStepText: string;
   /**
    * 申请状态。
-   * @type {AwardApplicationRecordApplicationStatusEnum}
-   * @memberof AwardApplicationRecord
    */
   applicationStatus: AwardApplicationRecordApplicationStatusEnum;
   /**
    * 申请状态中文文案。
-   * @type {string}
-   * @memberof AwardApplicationRecord
    */
   applicationStatusText: string;
   /**
    * 公示状态。
-   * @type {AwardApplicationRecordPublicStatusEnum}
-   * @memberof AwardApplicationRecord
    */
   publicStatus: AwardApplicationRecordPublicStatusEnum;
   /**
    * 当前审批轮次。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   reviewRound: number;
   /**
    * 校级终审确认后的最终奖项分。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   finalAwardScore?: number | null;
   /**
    * 校级终审确认后的最终奖励金额。
-   * @type {number}
-   * @memberof AwardApplicationRecord
    */
   finalAmount?: number | null;
   /**
    * 首次提交审核时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   submittedAt?: Date | null;
   /**
    * 校级终审通过时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   approvedAt?: Date | null;
   /**
    * 进入公示时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   publicizedAt?: Date | null;
   /**
    * 归档时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   archivedAt?: Date | null;
   /**
    * 创建时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   createdAt: Date;
   /**
    * 最近更新时间。
-   * @type {Date}
-   * @memberof AwardApplicationRecord
    */
   updatedAt: Date;
   /**
    * 审批流转记录，按时间顺序返回。
-   * @type {Array<AwardReviewRecord>}
-   * @memberof AwardApplicationRecord
    */
   reviewRecords: Array<AwardReviewRecord>;
   /**
    * 申请材料附件列表。
-   * @type {Array<AwardAttachmentRecord>}
-   * @memberof AwardApplicationRecord
    */
   attachments: Array<AwardAttachmentRecord>;
 }
@@ -443,27 +371,27 @@ export function AwardApplicationRecordFromJSONTyped(
         ? undefined
         : json["submittedAt"] === null
           ? null
-          : new Date(json["submittedAt"]),
+          : parseDateTime(json["submittedAt"]),
     approvedAt:
       json["approvedAt"] === undefined
         ? undefined
         : json["approvedAt"] === null
           ? null
-          : new Date(json["approvedAt"]),
+          : parseDateTime(json["approvedAt"]),
     publicizedAt:
       json["publicizedAt"] === undefined
         ? undefined
         : json["publicizedAt"] === null
           ? null
-          : new Date(json["publicizedAt"]),
+          : parseDateTime(json["publicizedAt"]),
     archivedAt:
       json["archivedAt"] === undefined
         ? undefined
         : json["archivedAt"] === null
           ? null
-          : new Date(json["archivedAt"]),
-    createdAt: new Date(json["createdAt"]),
-    updatedAt: new Date(json["updatedAt"]),
+          : parseDateTime(json["archivedAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
+    updatedAt: json["updatedAt"] == null ? json["updatedAt"] : parseDateTime(json["updatedAt"]),
     reviewRecords: (json["reviewRecords"] as Array<any>).map(AwardReviewRecordFromJSON),
     attachments: (json["attachments"] as Array<any>).map(AwardAttachmentRecordFromJSON),
   };
@@ -511,15 +439,19 @@ export function AwardApplicationRecordToJSONTyped(
     finalAwardScore: value["finalAwardScore"],
     finalAmount: value["finalAmount"],
     submittedAt:
-      value["submittedAt"] == null ? value["submittedAt"] : value["submittedAt"].toISOString(),
+      value["submittedAt"] == null ? value["submittedAt"] : serializeDateTime(value["submittedAt"]),
     approvedAt:
-      value["approvedAt"] == null ? value["approvedAt"] : value["approvedAt"].toISOString(),
+      value["approvedAt"] == null ? value["approvedAt"] : serializeDateTime(value["approvedAt"]),
     publicizedAt:
-      value["publicizedAt"] == null ? value["publicizedAt"] : value["publicizedAt"].toISOString(),
+      value["publicizedAt"] == null
+        ? value["publicizedAt"]
+        : serializeDateTime(value["publicizedAt"]),
     archivedAt:
-      value["archivedAt"] == null ? value["archivedAt"] : value["archivedAt"].toISOString(),
-    createdAt: value["createdAt"].toISOString(),
-    updatedAt: value["updatedAt"].toISOString(),
+      value["archivedAt"] == null ? value["archivedAt"] : serializeDateTime(value["archivedAt"]),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
+    updatedAt:
+      value["updatedAt"] == null ? value["updatedAt"] : serializeDateTime(value["updatedAt"]),
     reviewRecords: (value["reviewRecords"] as Array<any>).map(AwardReviewRecordToJSON),
     attachments: (value["attachments"] as Array<any>).map(AwardAttachmentRecordToJSON),
   };

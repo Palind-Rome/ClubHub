@@ -22,8 +22,6 @@ import { mapValues } from "../runtime";
 export interface CancelBudgetApplicationRequest {
   /**
    * 撤销说明。
-   * @type {string}
-   * @memberof CancelBudgetApplicationRequest
    */
   comment?: string | null;
 }

@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface UserMembershipSummary {
   /**
    *
-   * @type {number}
-   * @memberof UserMembershipSummary
    */
   clubId: number;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   clubName: string;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   departmentName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   groupName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   positionName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   termName?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof UserMembershipSummary
    */
   memberStatus?: string | null;
 }

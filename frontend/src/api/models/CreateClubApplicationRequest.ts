@@ -22,58 +22,40 @@ import { mapValues } from "../runtime";
 export interface CreateClubApplicationRequest {
   /**
    * 已废弃，服务端从 JWT 读取身份。
-   * @type {number}
-   * @memberof CreateClubApplicationRequest
    * @deprecated
    */
   currentUserId?: number;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   name: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   category: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   description?: string | null;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   applyReason: string;
   /**
    *
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   materialUrl: string;
   /**
    * 拟邀请的指导老师用户 ID；后端会校验教师身份并维护 ADVISOR 角色关系。
-   * @type {number}
-   * @memberof CreateClubApplicationRequest
    */
   advisorUserId?: number | null;
   /**
    * 历史兼容字段；新流程请使用 advisorUserId。
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    * @deprecated
    */
   advisorName?: string | null;
   /**
    * 申请人提交的社团联系电话，审核通过后同步为社团对外联系电话。
-   * @type {string}
-   * @memberof CreateClubApplicationRequest
    */
   contactPhone?: string | null;
 }

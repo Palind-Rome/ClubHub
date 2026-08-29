@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  *
  * @export
@@ -22,38 +22,26 @@ import { mapValues } from "../runtime";
 export interface UpdateCheckinSettingsRequest {
   /**
    *
-   * @type {string}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkinCode: string;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkinStartAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkinEndAt: Date;
   /**
    *
-   * @type {string}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkoutCode: string;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkoutStartAt: Date;
   /**
    *
-   * @type {Date}
-   * @memberof UpdateCheckinSettingsRequest
    */
   checkoutEndAt: Date;
 }
@@ -86,11 +74,19 @@ export function UpdateCheckinSettingsRequestFromJSONTyped(
   }
   return {
     checkinCode: json["checkinCode"],
-    checkinStartAt: new Date(json["checkinStartAt"]),
-    checkinEndAt: new Date(json["checkinEndAt"]),
+    checkinStartAt:
+      json["checkinStartAt"] == null
+        ? json["checkinStartAt"]
+        : parseDateTime(json["checkinStartAt"]),
+    checkinEndAt:
+      json["checkinEndAt"] == null ? json["checkinEndAt"] : parseDateTime(json["checkinEndAt"]),
     checkoutCode: json["checkoutCode"],
-    checkoutStartAt: new Date(json["checkoutStartAt"]),
-    checkoutEndAt: new Date(json["checkoutEndAt"]),
+    checkoutStartAt:
+      json["checkoutStartAt"] == null
+        ? json["checkoutStartAt"]
+        : parseDateTime(json["checkoutStartAt"]),
+    checkoutEndAt:
+      json["checkoutEndAt"] == null ? json["checkoutEndAt"] : parseDateTime(json["checkoutEndAt"]),
   };
 }
 
@@ -108,10 +104,22 @@ export function UpdateCheckinSettingsRequestToJSONTyped(
 
   return {
     checkinCode: value["checkinCode"],
-    checkinStartAt: value["checkinStartAt"].toISOString(),
-    checkinEndAt: value["checkinEndAt"].toISOString(),
+    checkinStartAt:
+      value["checkinStartAt"] == null
+        ? value["checkinStartAt"]
+        : serializeDateTime(value["checkinStartAt"]),
+    checkinEndAt:
+      value["checkinEndAt"] == null
+        ? value["checkinEndAt"]
+        : serializeDateTime(value["checkinEndAt"]),
     checkoutCode: value["checkoutCode"],
-    checkoutStartAt: value["checkoutStartAt"].toISOString(),
-    checkoutEndAt: value["checkoutEndAt"].toISOString(),
+    checkoutStartAt:
+      value["checkoutStartAt"] == null
+        ? value["checkoutStartAt"]
+        : serializeDateTime(value["checkoutStartAt"]),
+    checkoutEndAt:
+      value["checkoutEndAt"] == null
+        ? value["checkoutEndAt"]
+        : serializeDateTime(value["checkoutEndAt"]),
   };
 }

@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 经费审核记录，用于保留审核动作历史。
  * @export
@@ -22,44 +22,30 @@ import { mapValues } from "../runtime";
 export interface BudgetReviewRecord {
   /**
    * 经费审核记录 ID。
-   * @type {number}
-   * @memberof BudgetReviewRecord
    */
   id: number;
   /**
    * 被审核的经费申请 ID。
-   * @type {number}
-   * @memberof BudgetReviewRecord
    */
   applicationId: number;
   /**
    * 审核人用户 ID。
-   * @type {number}
-   * @memberof BudgetReviewRecord
    */
   reviewerUserId: number;
   /**
    * 审核人展示名称。
-   * @type {string}
-   * @memberof BudgetReviewRecord
    */
   reviewerName: string;
   /**
    * 是否审核通过。
-   * @type {boolean}
-   * @memberof BudgetReviewRecord
    */
   approved: boolean;
   /**
    * 审核意见。
-   * @type {string}
-   * @memberof BudgetReviewRecord
    */
   comment?: string | null;
   /**
    * 审核时间。
-   * @type {Date}
-   * @memberof BudgetReviewRecord
    */
   reviewedAt: Date;
 }
@@ -96,7 +82,7 @@ export function BudgetReviewRecordFromJSONTyped(
     approved: json["approved"],
     comment:
       json["comment"] === undefined ? undefined : json["comment"] === null ? null : json["comment"],
-    reviewedAt: new Date(json["reviewedAt"]),
+    reviewedAt: json["reviewedAt"] == null ? json["reviewedAt"] : parseDateTime(json["reviewedAt"]),
   };
 }
 
@@ -119,6 +105,7 @@ export function BudgetReviewRecordToJSONTyped(
     reviewerName: value["reviewerName"],
     approved: value["approved"],
     comment: value["comment"],
-    reviewedAt: value["reviewedAt"].toISOString(),
+    reviewedAt:
+      value["reviewedAt"] == null ? value["reviewedAt"] : serializeDateTime(value["reviewedAt"]),
   };
 }

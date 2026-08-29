@@ -37,26 +37,18 @@ import {
 export interface AuthResponse {
   /**
    * 登录令牌；调用需要当前登录态的接口时通过 Authorization Bearer 头传递。
-   * @type {string}
-   * @memberof AuthResponse
    */
   token: string;
   /**
    *
-   * @type {AuthUser}
-   * @memberof AuthResponse
    */
   user: AuthUser;
   /**
    * 当前用户拥有的角色列表。
-   * @type {Array<AuthRole>}
-   * @memberof AuthResponse
    */
   roles: Array<AuthRole>;
   /**
    * 当前用户角色权限的并集。
-   * @type {Array<string>}
-   * @memberof AuthResponse
    */
   permissions: Array<string>;
 }

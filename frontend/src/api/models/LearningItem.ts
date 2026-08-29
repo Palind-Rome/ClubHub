@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 社团发布的培训课程、视频、文档或资料资源。
  * @export
@@ -22,152 +22,102 @@ import { mapValues } from "../runtime";
 export interface LearningItem {
   /**
    * LEARNING_ITEMS.ITEM_ID。
-   * @type {number}
-   * @memberof LearningItem
    */
   id: number;
   /**
    * 发布资源的社团。
-   * @type {number}
-   * @memberof LearningItem
    */
   clubId: number;
   /**
    * 创建或上传资源的用户。
-   * @type {number}
-   * @memberof LearningItem
    */
   uploaderUserId?: number | null;
   /**
    * 课程授课人，可以是教师或学生；非课程资源可为空。
-   * @type {number}
-   * @memberof LearningItem
    */
   instructorUserId?: number | null;
   /**
    * 课程或资源标题。
-   * @type {string}
-   * @memberof LearningItem
    */
   title: string;
   /**
    * 资源类型，支持 course、lecture、training、video、document、material。
-   * @type {string}
-   * @memberof LearningItem
    */
   itemType: string;
   /**
    * 资源分类。
-   * @type {string}
-   * @memberof LearningItem
    */
   categoryName?: string | null;
   /**
    * 课程或资源说明。
-   * @type {string}
-   * @memberof LearningItem
    */
   description?: string | null;
   /**
    * 外部文件地址或内部存储引用；列表仅向资源管理者返回，普通用户通过下载接口获取可访问地址。
-   * @type {string}
-   * @memberof LearningItem
    */
   fileUrl?: string | null;
   /**
    * 课程开始时间；非课程资源可为空。
-   * @type {Date}
-   * @memberof LearningItem
    */
   startAt?: Date | null;
   /**
    * 课程结束时间。
-   * @type {Date}
-   * @memberof LearningItem
    */
   endAt?: Date | null;
   /**
    * 课程容量；非课程资源可为空。
-   * @type {number}
-   * @memberof LearningItem
    */
   capacity?: number | null;
   /**
    * 可见范围；department 表示与上传人同一社团部门的有效成员。
-   * @type {LearningItemVisibilityEnum}
-   * @memberof LearningItem
    */
   visibility: LearningItemVisibilityEnum;
   /**
    * 下载设置；approval 表示需要审批，当前不可直接下载。
-   * @type {LearningItemDownloadPermissionEnum}
-   * @memberof LearningItem
    */
   downloadPermission: LearningItemDownloadPermissionEnum;
   /**
    * 发布状态；pending_review 表示等待社团管理员审核，rejected 表示审核驳回。
-   * @type {LearningItemItemStatusEnum}
-   * @memberof LearningItem
    */
   itemStatus: LearningItemItemStatusEnum;
   /**
    * 当前有效学习记录数量。
-   * @type {number}
-   * @memberof LearningItem
    */
   currentEnrollments: number;
   /**
    * 当前用户的学习状态。
-   * @type {LearningItemCurrentUserRecordStatusEnum}
-   * @memberof LearningItem
    */
   currentUserRecordStatus: LearningItemCurrentUserRecordStatusEnum;
   /**
    * 当前用户是否可按社团负责人权限维护资源；课程授课人也具有该课程的维护权限，但不因此获得审核或加入权限。
-   * @type {boolean}
-   * @memberof LearningItem
    */
   canManage: boolean;
   /**
    * 当前用户是否可加入课程；非课程资源恒为 false。
-   * @type {boolean}
-   * @memberof LearningItem
    */
   canEnroll: boolean;
   /**
    * 当前用户是否可退出课程。
-   * @type {boolean}
-   * @memberof LearningItem
    */
   canCancelEnrollment: boolean;
   /**
    * 无法加入课程的中文原因。
-   * @type {string}
-   * @memberof LearningItem
    */
   enrollmentUnavailableReason?: string | null;
   /**
    * 当前用户是否可开始或继续学习非课程资源。
-   * @type {boolean}
-   * @memberof LearningItem
    */
   canStartLearning: boolean;
   /**
    * 无法开始学习资源的中文原因。
-   * @type {string}
-   * @memberof LearningItem
    */
   learningUnavailableReason?: string | null;
   /**
    * 当前用户是否可通过下载接口获取文件地址。
-   * @type {boolean}
-   * @memberof LearningItem
    */
   canDownload: boolean;
   /**
    * 无法直接下载的中文原因。
-   * @type {string}
-   * @memberof LearningItem
    */
   downloadUnavailableReason?: string | null;
 }
@@ -287,13 +237,13 @@ export function LearningItemFromJSONTyped(json: any, ignoreDiscriminator: boolea
         ? undefined
         : json["startAt"] === null
           ? null
-          : new Date(json["startAt"]),
+          : parseDateTime(json["startAt"]),
     endAt:
       json["endAt"] === undefined
         ? undefined
         : json["endAt"] === null
           ? null
-          : new Date(json["endAt"]),
+          : parseDateTime(json["endAt"]),
     capacity:
       json["capacity"] === undefined
         ? undefined
@@ -353,8 +303,8 @@ export function LearningItemToJSONTyped(
     categoryName: value["categoryName"],
     description: value["description"],
     fileUrl: value["fileUrl"],
-    startAt: value["startAt"] == null ? value["startAt"] : value["startAt"].toISOString(),
-    endAt: value["endAt"] == null ? value["endAt"] : value["endAt"].toISOString(),
+    startAt: value["startAt"] == null ? value["startAt"] : serializeDateTime(value["startAt"]),
+    endAt: value["endAt"] == null ? value["endAt"] : serializeDateTime(value["endAt"]),
     capacity: value["capacity"],
     visibility: value["visibility"],
     downloadPermission: value["downloadPermission"],

@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 经费流水记录，余额由经费账户初始额度和流水金额汇总得到。
  * @export
@@ -22,62 +22,42 @@ import { mapValues } from "../runtime";
 export interface BudgetTransaction {
   /**
    * 经费流水 ID。
-   * @type {number}
-   * @memberof BudgetTransaction
    */
   id: number;
   /**
    * 关联经费账户 ID。
-   * @type {number}
-   * @memberof BudgetTransaction
    */
   accountId: number;
   /**
    * 关联经费申请 ID；手工调整类流水可为空。
-   * @type {number}
-   * @memberof BudgetTransaction
    */
   applicationId?: number | null;
   /**
    * 流水所属社团 ID。
-   * @type {number}
-   * @memberof BudgetTransaction
    */
   clubId: number;
   /**
    * 流水所属社团名称。
-   * @type {string}
-   * @memberof BudgetTransaction
    */
   clubName: string;
   /**
    * 流水类型；commitment 审批占用，expense 实际支出，refund 退款，adjustment 调整。
-   * @type {BudgetTransactionTypeEnum}
-   * @memberof BudgetTransaction
    */
   type: BudgetTransactionTypeEnum;
   /**
    * 流水金额，支出或占用为负数，退款或调增为正数。
-   * @type {number}
-   * @memberof BudgetTransaction
    */
   amount: number;
   /**
    * 流水说明。
-   * @type {string}
-   * @memberof BudgetTransaction
    */
   description?: string | null;
   /**
    * 流水发生时间。
-   * @type {Date}
-   * @memberof BudgetTransaction
    */
   occurredAt: Date;
   /**
    * 流水创建时间。
-   * @type {Date}
-   * @memberof BudgetTransaction
    */
   createdAt: Date;
 }
@@ -139,8 +119,8 @@ export function BudgetTransactionFromJSONTyped(
         : json["description"] === null
           ? null
           : json["description"],
-    occurredAt: new Date(json["occurredAt"]),
-    createdAt: new Date(json["createdAt"]),
+    occurredAt: json["occurredAt"] == null ? json["occurredAt"] : parseDateTime(json["occurredAt"]),
+    createdAt: json["createdAt"] == null ? json["createdAt"] : parseDateTime(json["createdAt"]),
   };
 }
 
@@ -165,7 +145,9 @@ export function BudgetTransactionToJSONTyped(
     type: value["type"],
     amount: value["amount"],
     description: value["description"],
-    occurredAt: value["occurredAt"].toISOString(),
-    createdAt: value["createdAt"].toISOString(),
+    occurredAt:
+      value["occurredAt"] == null ? value["occurredAt"] : serializeDateTime(value["occurredAt"]),
+    createdAt:
+      value["createdAt"] == null ? value["createdAt"] : serializeDateTime(value["createdAt"]),
   };
 }

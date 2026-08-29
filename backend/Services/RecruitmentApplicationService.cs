@@ -2,6 +2,7 @@ using System.Data;
 using ClubHub.Api.Controllers;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
+using ClubHub.Api.Infrastructure.Rest;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Oracle.ManagedDataAccess.Client;
@@ -20,7 +21,8 @@ public class RecruitmentApplicationService
 
     public async Task<ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>> GetApplicationsAsync(
         int recruitId,
-        int viewerUserId)
+        int viewerUserId,
+        HttpContext httpContext)
     {
         if (viewerUserId <= 0) return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Fail(400, "请选择当前用户。");
 
@@ -37,22 +39,33 @@ public class RecruitmentApplicationService
             query = query.Where(a => a.UserId == viewer.UserId);
         }
 
-        var applications = await query
-            .OrderByDescending(a => a.SubmittedAt)
-            .ThenByDescending(a => a.ApplicationId)
-            .ToListAsync();
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            query
+                .OrderByDescending(a => a.SubmittedAt)
+                .ThenByDescending(a => a.ApplicationId),
+            httpContext,
+            httpContext.RequestAborted);
+        if (page.Error is not null)
+        {
+            return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Fail(
+                StatusCodes.Status400BadRequest,
+                page.Error.Message,
+                page.Error.Code);
+        }
 
-        return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Ok(applications.Select(ToApplicationDto).ToList());
+        return ServiceResult<IReadOnlyList<RecruitmentApplicationDto>>.Ok(
+            page.Items.Select(ToApplicationDto).ToList());
     }
 
     public async Task<ServiceResult<RecruitmentApplicationDto>> CreateApplicationAsync(
         int recruitId,
+        int applicantUserId,
         CreateRecruitmentApplicationRequest req)
     {
-        if (req.CurrentUserId <= 0) return ServiceResult<RecruitmentApplicationDto>.Fail(400, "请选择当前报名用户。");
+        if (applicantUserId <= 0) return ServiceResult<RecruitmentApplicationDto>.Fail(401, "登录状态已失效，请重新登录。");
         if (string.IsNullOrWhiteSpace(req.ApplicationReason)) return ServiceResult<RecruitmentApplicationDto>.Fail(400, "报名理由不能为空。");
 
-        var applicant = await LoadUserAsync(req.CurrentUserId);
+        var applicant = await LoadUserAsync(applicantUserId);
         if (applicant is null) return ServiceResult<RecruitmentApplicationDto>.Fail(404, "当前用户不存在。");
         if (!UsersController.IsActive(applicant.AccountStatus))
         {
@@ -130,9 +143,10 @@ public class RecruitmentApplicationService
 
     public async Task<ServiceResult<RecruitmentApplicationDto>> ReviewApplicationAsync(
         int applicationId,
+        int reviewerUserId,
         ReviewRecruitmentApplicationRequest req)
     {
-        if (req.CurrentUserId <= 0) return ServiceResult<RecruitmentApplicationDto>.Fail(400, "请选择当前筛选用户。");
+        if (reviewerUserId <= 0) return ServiceResult<RecruitmentApplicationDto>.Fail(401, "登录状态已失效，请重新登录。");
 
         var decision = NormalizeApplicationStatus(req.Decision);
         if (decision is not ApplicationAccepted and not ApplicationRejected)
@@ -145,7 +159,7 @@ public class RecruitmentApplicationService
             return ServiceResult<RecruitmentApplicationDto>.Fail(400, "面试分数必须在 0 到 100 之间。");
         }
 
-        var reviewer = await LoadUserAsync(req.CurrentUserId);
+        var reviewer = await LoadUserAsync(reviewerUserId);
         if (reviewer is null) return ServiceResult<RecruitmentApplicationDto>.Fail(404, "当前用户不存在。");
 
         var application = await ApplicationQuery().FirstOrDefaultAsync(a => a.ApplicationId == applicationId);

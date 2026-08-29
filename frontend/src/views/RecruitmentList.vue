@@ -212,7 +212,7 @@ async function loadClubs() {
 
   clubLoading.value = true;
   try {
-    const data = await requestJson<Club[]>(`/api/clubs`);
+    const data = await requestJson<Club[]>(`/api/v1/clubs`);
     if (requestId !== clubRequestId) return;
     clubs.value = data;
     syncSelectedClubFilter();
@@ -237,10 +237,10 @@ async function loadRecruitments() {
   loading.value = true;
   error.value = "";
   try {
-    const query = new URLSearchParams({ viewerUserId: String(currentUserId.value) });
+    const query = new URLSearchParams();
     if (filters.status) query.set("status", filters.status);
     if (filters.clubId) query.set("clubId", String(filters.clubId));
-    const data = await requestJson<Recruitment[]>(`/api/recruitments?${query.toString()}`);
+    const data = await requestJson<Recruitment[]>(`/api/v1/recruitments?${query.toString()}`);
     if (requestId !== recruitmentRequestId) return;
     recruitments.value = data;
     await syncApplicationWorkbench(requestId);
@@ -290,7 +290,7 @@ async function loadApplications(row: Recruitment) {
   applicationLoading.value = true;
   try {
     const data = await requestJson<RecruitmentApplication[]>(
-      `/api/recruitments/${row.id}/applications?viewerUserId=${currentUserId.value}`,
+      `/api/v1/recruitments/${row.id}/applications`,
     );
     if (requestId === applicationRequestId) applications.value = data;
   } catch (e) {
@@ -379,7 +379,6 @@ async function submitRecruitment(action: RecruitmentWorkflowStatus) {
   saving.value = true;
   try {
     const payload = {
-      currentUserId: currentUserId.value,
       clubId: recruitmentForm.clubId,
       title: recruitmentForm.title,
       description: emptyToNull(recruitmentForm.description),
@@ -391,14 +390,14 @@ async function submitRecruitment(action: RecruitmentWorkflowStatus) {
     };
 
     if (recruitmentFormMode.value === "create") {
-      await requestJson<Recruitment>("/api/recruitments", {
+      await requestJson<Recruitment>("/api/v1/recruitments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       ElMessage.success(action === "pending_review" ? "纳新已提交审核" : "草稿已保存");
     } else if (recruitmentTarget.value) {
-      await requestJson<Recruitment>(`/api/recruitments/${recruitmentTarget.value.id}`, {
+      await requestJson<Recruitment>(`/api/v1/recruitments/${recruitmentTarget.value.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -438,12 +437,11 @@ async function submitApplication() {
   applying.value = true;
   try {
     await requestJson<RecruitmentApplication>(
-      `/api/recruitments/${applicationTarget.value.id}/applications`,
+      `/api/v1/recruitments/${applicationTarget.value.id}/applications`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           applicationReason: applicationForm.applicationReason,
         }),
       },
@@ -489,7 +487,7 @@ async function deleteDraftRecruitment(row: Recruitment) {
 
   saving.value = true;
   try {
-    await requestJson<void>(`/api/recruitments/${row.id}?currentUserId=${currentUserId.value}`, {
+    await requestJson<void>(`/api/v1/recruitments/${row.id}`, {
       method: "DELETE",
     });
     ElMessage.success("草稿已删除");
@@ -520,11 +518,10 @@ async function reviewRecruitment(row: Recruitment, decision: RecruitmentReviewDe
 
   recruitmentReviewing.value = true;
   try {
-    await requestJson<Recruitment>(`/api/recruitments/${row.id}/review`, {
-      method: "PATCH",
+    await requestJson<Recruitment>(`/api/v1/recruitments/${row.id}/reviews`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        currentUserId: currentUserId.value,
         decision,
       }),
     });
@@ -572,12 +569,11 @@ async function submitReview() {
   reviewing.value = true;
   try {
     await requestJson<RecruitmentApplication>(
-      `/api/recruitments/applications/${reviewTarget.value.id}/review`,
+      `/api/v1/applications/${reviewTarget.value.id}/reviews`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentUserId: currentUserId.value,
           decision: reviewForm.decision,
           interviewScore: reviewForm.interviewScore,
         }),
@@ -729,9 +725,7 @@ onUnmounted(() => {
       <div>
         <h2>{{ isApplicationWorkbench ? "纳新申请管理" : "社团纳新" }}</h2>
         <p>
-          {{
-            isApplicationWorkbench ? "查看申请并录入筛选结果" : "发布纳新、提交入社申请、筛选录取"
-          }}
+          {{ isApplicationWorkbench ? "查看申请并录入筛选结果" : "纳新发布、申请与录取管理" }}
         </p>
       </div>
       <div class="header-actions">
@@ -795,7 +789,13 @@ onUnmounted(() => {
         <el-tab-pane :label="`其他社团 ${otherRecruitments.length}`" name="other" />
       </el-tabs>
 
-      <el-table v-loading="loading" :data="displayedRecruitments" stripe empty-text="暂无纳新数据">
+      <el-table
+        v-loading="loading"
+        :data="displayedRecruitments"
+        stripe
+        empty-text="暂无纳新数据"
+        class="business-data-table"
+      >
         <el-table-column label="纳新信息" min-width="260">
           <template #default="{ row }">
             <div class="title-line">{{ row.title }}</div>
@@ -834,7 +834,7 @@ onUnmounted(() => {
             <span v-else class="muted">未申请</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="340" fixed="right">
+        <el-table-column label="操作" min-width="280">
           <template #default="{ row }">
             <template v-if="shouldShowApplyAction(row)">
               <el-button
@@ -931,6 +931,7 @@ onUnmounted(() => {
           :data="applications"
           stripe
           empty-text="暂无申请数据"
+          class="business-data-table"
         >
           <el-table-column prop="applicantName" label="学生" min-width="130" />
           <el-table-column prop="studentNo" label="学号" width="110" />
@@ -957,7 +958,7 @@ onUnmounted(() => {
               {{ formatDateTime(row.submittedAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="150">
             <template #default="{ row }">
               <el-button
                 type="success"

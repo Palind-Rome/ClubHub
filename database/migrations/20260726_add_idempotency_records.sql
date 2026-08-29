@@ -2,7 +2,7 @@
 --
 -- 执行前：
 --   1. 备份目标 schema，并确认连接用户为 CLUBHUB schema 所有者。
---   2. 生产/演示库必须经过人工确认并进入维护窗口；CI 不执行本脚本。
+--   2. 共享开发库和生产库必须经过人工确认并进入维护窗口；CI 不执行本脚本。
 --   3. 部署包含本迁移的后端前，保持 Redis:Features:Idempotency 关闭。
 --
 -- 本脚本只新增 SEQ_IDEMPOTENCY_RECORDS、IDEMPOTENCY_RECORDS 及其约束，

@@ -156,7 +156,7 @@ watch(projectId, loadWorkspace, { immediate: true });
           </div>
           <div>
             <dt>项目负责人</dt>
-            <dd>{{ project.leaderUserId ? `用户 #${project.leaderUserId}` : "暂未分配" }}</dd>
+            <dd>{{ project.leaderUserId ? "已分配（详见成员列表）" : "暂未分配" }}</dd>
           </div>
           <div>
             <dt>开始日期</dt>

@@ -369,7 +369,7 @@ async function submitDeliverable() {
   saving.value = true;
   try {
     await projectTaskRequest<ProjectTaskWithDeliverable>(
-      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable`,
+      `/api/v1/projects/${props.projectId}/tasks/${task.id}/deliverable`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -409,7 +409,7 @@ async function reviewDeliverable() {
   saving.value = true;
   try {
     await projectTaskRequest<ProjectTaskWithDeliverable>(
-      `/api/projects/${props.projectId}/tasks/${task.id}/deliverable/review`,
+      `/api/v1/projects/${props.projectId}/tasks/${task.id}/deliverable/review`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -481,8 +481,8 @@ function assigneeNames(task: ProjectTaskWithDeliverable) {
 }
 function memberText(member: ProjectMember) {
   return member.studentNo
-    ? `${member.realName || `用户 #${member.userId}`}（${member.studentNo}）`
-    : member.realName || `用户 #${member.userId}`;
+    ? `${member.realName || "成员信息暂不可见"}（${member.studentNo}）`
+    : member.realName || "成员信息暂不可见";
 }
 function formatDate(value?: Date | null) {
   return value

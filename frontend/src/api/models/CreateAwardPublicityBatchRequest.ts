@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 创建评奖评优公示批次。
  * @export
@@ -22,32 +22,22 @@ import { mapValues } from "../runtime";
 export interface CreateAwardPublicityBatchRequest {
   /**
    * 公示标题。
-   * @type {string}
-   * @memberof CreateAwardPublicityBatchRequest
    */
   title: string;
   /**
    * 公示说明。
-   * @type {string}
-   * @memberof CreateAwardPublicityBatchRequest
    */
   description?: string | null;
   /**
    * 公示开始时间，不能为空。
-   * @type {Date}
-   * @memberof CreateAwardPublicityBatchRequest
    */
   publicityStartAt: Date | null;
   /**
    * 公示结束时间，必须晚于 publicityStartAt。
-   * @type {Date}
-   * @memberof CreateAwardPublicityBatchRequest
    */
   publicityEndAt: Date | null;
   /**
    * 纳入公示的已通过申请 ID。
-   * @type {Array<number>}
-   * @memberof CreateAwardPublicityBatchRequest
    */
   awardApplicationIds: Array<number>;
 }
@@ -86,8 +76,9 @@ export function CreateAwardPublicityBatchRequestFromJSONTyped(
         : json["description"] === null
           ? null
           : json["description"],
-    publicityStartAt: json["publicityStartAt"] == null ? null : new Date(json["publicityStartAt"]),
-    publicityEndAt: json["publicityEndAt"] == null ? null : new Date(json["publicityEndAt"]),
+    publicityStartAt:
+      json["publicityStartAt"] == null ? null : parseDateTime(json["publicityStartAt"]),
+    publicityEndAt: json["publicityEndAt"] == null ? null : parseDateTime(json["publicityEndAt"]),
     awardApplicationIds: json["awardApplicationIds"],
   };
 }
@@ -112,11 +103,11 @@ export function CreateAwardPublicityBatchRequestToJSONTyped(
     publicityStartAt:
       value["publicityStartAt"] == null
         ? value["publicityStartAt"]
-        : value["publicityStartAt"].toISOString(),
+        : serializeDateTime(value["publicityStartAt"]),
     publicityEndAt:
       value["publicityEndAt"] == null
         ? value["publicityEndAt"]
-        : value["publicityEndAt"].toISOString(),
+        : serializeDateTime(value["publicityEndAt"]),
     awardApplicationIds: value["awardApplicationIds"],
   };
 }

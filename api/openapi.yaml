@@ -13,7 +13,7 @@ servers:
     description: 本地开发服务器
 
 paths:
-  /api/health:
+  /api/v1/health:
     get:
       summary: 健康检查
       description: 兼容旧客户端的简单存活检查；新接入方应使用 `/health/live` 或 `/health/ready`。
@@ -59,7 +59,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/DependencyHealthReport"
 
-  /api/auth/register:
+  /api/v1/auth/register:
     post:
       summary: 用户注册
       operationId: registerUser
@@ -89,7 +89,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/auth/login:
+  /api/v1/auth/captcha:
+    get:
+      summary: 获取登录与注册验证码
+      description: 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+      operationId: createCaptchaChallenge
+      responses:
+        "200":
+          description: 验证码挑战
+          headers:
+            Cache-Control:
+              description: 禁止客户端和中间代理缓存验证码图片。
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptchaChallenge"
+        "429":
+          description: 验证码请求过于频繁
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/v1/auth/login:
     post:
       summary: 用户登录
       operationId: loginUser
@@ -125,7 +149,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/auth/session:
+  /api/v1/auth/session:
     get:
       summary: 刷新当前用户会话
       description: 依据 Bearer 登录令牌中的当前用户重新计算角色、社团身份和权限，沿用当前登录令牌，用于成员身份变化后的前端会话同步。
@@ -158,7 +182,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       summary: 注销当前登录会话
       description: 删除当前 Bearer 登录令牌对应的 Redis 会话；Redis 无法确认注销结果时安全失败。
@@ -181,7 +205,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/auth/roles:
+  /api/v1/auth/roles:
     get:
       summary: 获取基础角色定义
       operationId: getRoleDefinitions
@@ -195,13 +219,14 @@ paths:
                 items:
                   $ref: "#/components/schemas/RoleDefinition"
 
-  /api/auth/permissions:
+  /api/v1/auth/permissions:
     get:
-      summary: 获取权限目录
+      summary: 获取完整权限目录
+      description: 返回系统支持的完整权限定义，供登录页和权限管理界面加载元数据；该 lookup 接口不分页。
       operationId: getPermissionCatalog
       responses:
         "200":
-          description: 权限目录
+          description: 完整权限目录
           content:
             application/json:
               schema:
@@ -209,10 +234,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/PermissionDefinition"
 
-  /api/auth/permissions/check:
+  /api/v1/users/me/permissions:
     get:
-      summary: 检查当前用户是否拥有指定权限
-      operationId: checkPermission
+      summary: 检查当前用户权限
+      description: 从 Bearer Token 识别当前用户，并检查指定权限及可选社团作用域。
+      operationId: checkCurrentUserPermission
       security:
         - bearerAuth: []
       parameters:
@@ -224,7 +250,7 @@ paths:
         - name: clubId
           in: query
           required: false
-          description: Optional club id filter.
+          description: 可选的社团作用域。
           schema:
             type: integer
             minimum: 1
@@ -254,12 +280,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/auth/roles/assign:
+  /api/v1/users/{userId}/roles:
     post:
       summary: 分配用户角色
       operationId: assignUserRole
       security:
         - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: 被分配角色的目标用户 ID。
+          schema:
+            type: integer
+            minimum: 1
       requestBody:
         required: true
         content:
@@ -292,7 +326,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/notices:
+  /api/v1/notices:
     get:
       summary: 查询公告通知
       description: |
@@ -305,6 +339,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: noticeStatus
           in: query
           required: false
@@ -334,6 +370,15 @@ paths:
             type: boolean
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 当前用户可见的公告通知列表
           content:
             application/json:
@@ -414,7 +459,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/notices/{noticeId}:
+  /api/v1/notices/{noticeId}:
     patch:
       summary: 编辑或发布通知草稿
       description: 仅草稿允许修改；保存时保持草稿状态，发布时将发布时间更新为当前时间。操作人必须是草稿创建人，或在对应范围具备 notice:publish / notice:publish:school 权限。
@@ -544,7 +589,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/notices/{noticeId}/reads:
+  /api/v1/notices/{noticeId}/reads:
     post:
       summary: 标记通知已读
       description: 当前用户阅读本人可见且处于已发布状态的通知后写入已读记录；重复标记会返回已有记录。
@@ -592,12 +637,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/clubs:
+  /api/v1/clubs:
     get:
       summary: 获取社团列表
       operationId: getClubs
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 社团列表
           content:
             application/json:
@@ -630,7 +687,7 @@ paths:
         "409":
           description: 社团名称已存在或已有有效注册申请
 
-  /api/clubs/advisor-candidates:
+  /api/v1/clubs/advisor-candidates:
     get:
       summary: 查询社团注册可选指导老师
       description: 学生提交社团注册申请时使用，返回正常状态的教师账号候选；7 位学生学号账号即使被误挂指导老师范围角色也不会进入候选。
@@ -651,11 +708,13 @@ paths:
         "404":
           description: 当前用户不存在
 
-  /api/clubs/applications:
+  /api/v1/clubs/applications:
     get:
       summary: 按当前用户权限查询社团注册申请
       operationId: getClubApplications
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: auditStatus
           in: query
           required: false
@@ -688,6 +747,15 @@ paths:
           example: "2026-07-13"
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 社团注册申请列表
           content:
             application/json:
@@ -730,7 +798,7 @@ paths:
         "409":
           description: 社团名称已存在或已有待审核申请
 
-  /api/clubs/applications/{clubId}:
+  /api/v1/clubs/applications/{clubId}:
     patch:
       summary: 修改退回的社团注册申请并重新提交
       description: 仅原申请人可以修改已退回的社团注册申请；提交后申请状态重新变为待审核，并保留原退回意见供申请人与审核人参考。
@@ -767,8 +835,8 @@ paths:
         "409":
           description: 当前申请状态不允许重新提交，或社团名称已被占用
 
-  /api/clubs/applications/{clubId}/review:
-    patch:
+  /api/v1/clubs/applications/{clubId}/reviews:
+    post:
       summary: 平台管理员审核社团注册申请
       operationId: reviewClubApplication
       x-idempotency-required: true
@@ -803,7 +871,7 @@ paths:
         "403":
           description: 当前用户没有审核权限
 
-  /api/clubs/{clubId}:
+  /api/v1/clubs/{clubId}:
     get:
       summary: 获取社团详情
       operationId: getClubById
@@ -842,23 +910,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Club"
-  /api/clubs/{clubId}/dissolve:
-    patch:
+    delete:
       summary: 解散社团
       description: 社团管理员或系统管理员可以解散社团；系统保留社团档案和成员任期历史，将社团状态标记为 inactive。
       operationId: dissolveClub
+      security:
+        - bearerAuth: []
       parameters:
         - name: clubId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DissolveClubRequest"
       responses:
         "204":
           description: 社团已解散
@@ -871,7 +934,7 @@ paths:
         "409":
           description: 社团已解散或当前状态不允许解散
 
-  /api/clubs/{clubId}/profile:
+  /api/v1/clubs/{clubId}/profile:
     patch:
       summary: 维护社团基础信息
       description: 系统管理员、本社团负责人或指导老师可以维护社团简介、联系方式、指导老师和负责人信息；社团管理员只处理社团注册审核和社团状态管理，不参与社团内部档案维护。
@@ -904,12 +967,14 @@ paths:
         "409":
           description: 社团状态不允许维护或社团名称冲突
 
-  /api/clubs/{clubId}/members:
+  /api/v1/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
       description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
       operationId: getClubMembers
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -960,6 +1025,15 @@ paths:
           description: 按 CLUB_MEMBERS.term_name 精确筛选，例如 2026-2027学年。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 社团成员与任期记录列表
           content:
             application/json:
@@ -972,12 +1046,14 @@ paths:
         "404":
           description: 当前用户或社团不存在
 
-  /api/clubs/{clubId}/departments:
+  /api/v1/clubs/{clubId}/departments:
     get:
       summary: 查询社团部门和小组
       description: 查看某个社团的部门与其下属小组，供成员管理级联选择和组织架构维护使用。
       operationId: getClubDepartments
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -992,6 +1068,15 @@ paths:
           description: 是否包含已停用的部门和小组。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 社团部门与小组列表
           content:
             application/json:
@@ -1036,7 +1121,7 @@ paths:
         "409":
           description: 社团状态不允许维护或部门名称冲突
 
-  /api/clubs/{clubId}/departments/{departmentId}:
+  /api/v1/clubs/{clubId}/departments/{departmentId}:
     patch:
       summary: 更新社团部门
       description: 修改部门名称、编码、说明、联系方式、排序和状态；不删除历史成员任期。
@@ -1074,7 +1159,7 @@ paths:
         "409":
           description: 社团状态不允许维护或部门名称冲突
 
-  /api/clubs/{clubId}/departments/{departmentId}/groups:
+  /api/v1/clubs/{clubId}/departments/{departmentId}/groups:
     post:
       summary: 新增社团小组
       description: 在指定部门下新增小组；小组必须归属于同一社团下的某个部门。
@@ -1112,7 +1197,7 @@ paths:
         "409":
           description: 社团状态不允许维护或小组名称冲突
 
-  /api/clubs/{clubId}/groups/{groupId}:
+  /api/v1/clubs/{clubId}/groups/{groupId}:
     patch:
       summary: 更新社团小组
       description: 修改小组名称、编码、说明、联系方式、排序和状态；小组仍归属于原部门。
@@ -1150,7 +1235,7 @@ paths:
         "409":
           description: 社团状态不允许维护或小组名称冲突
 
-  /api/clubs/{clubId}/members/terms:
+  /api/v1/clubs/{clubId}/members/terms:
     post:
       summary: 新增社团成员或干部任期
       description: 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
@@ -1183,7 +1268,7 @@ paths:
         "409":
           description: 社团状态不允许维护
 
-  /api/clubs/{clubId}/members/{memberId}:
+  /api/v1/clubs/{clubId}/members/{memberId}:
     patch:
       summary: 更新社团成员或干部任期
       description: 系统管理员、本社团负责人或指导老师可以修正成员部门、职位、任期和状态，不删除历史记录。
@@ -1224,8 +1309,36 @@ paths:
           description: 当前用户、社团或成员任期记录不存在
         "409":
           description: 社团状态不允许维护
+    delete:
+      summary: 移出社团成员
+      description: 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
+      operationId: removeClubMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: 已移出社团成员
+        "400":
+          description: 请求内容不符合业务规则
+        "403":
+          description: 当前用户没有移出该成员的权限或需先移交负责人
+        "404":
+          description: 当前用户、社团或成员任期记录不存在
+        "409":
+          description: 社团状态不允许移出或成员身份已结束
 
-  /api/clubs/{clubId}/members/{memberId}/grouping:
+  /api/v1/clubs/{clubId}/members/{memberId}/grouping:
     patch:
       summary: 更新社团成员部门和小组归属
       description: 系统管理员、本社团负责人或指导老师可以调整成员部门和小组；干部只能维护自己管辖范围内的当前有效成员，并只能分配到自己管辖范围。
@@ -1267,23 +1380,19 @@ paths:
         "409":
           description: 社团状态或成员任期状态不允许维护
 
-  /api/clubs/{clubId}/members/self/exit:
-    patch:
+  /api/v1/clubs/{clubId}/members/self:
+    delete:
       summary: 学生主动退出社团
       description: 当前社团成员主动退出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
       operationId: exitCurrentClubMember
+      security:
+        - bearerAuth: []
       parameters:
         - name: clubId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ExitClubMemberRequest"
       responses:
         "204":
           description: 已退出社团
@@ -1296,47 +1405,15 @@ paths:
         "409":
           description: 社团状态不允许退出或成员身份已结束
 
-  /api/clubs/{clubId}/members/{memberId}/exit:
-    patch:
-      summary: 移出社团成员
-      description: 系统管理员、本社团负责人或干部可以将当前有效成员移出社团，系统保留历史任期记录，并同步移除该社团成员身份角色。
-      operationId: removeClubMember
-      parameters:
-        - name: clubId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: memberId
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ExitClubMemberRequest"
-      responses:
-        "204":
-          description: 已移出社团成员
-        "400":
-          description: 请求内容不符合业务规则
-        "403":
-          description: 当前用户没有移出该成员的权限或需先移交负责人
-        "404":
-          description: 当前用户、社团或成员任期记录不存在
-        "409":
-          description: 社团状态不允许移出或成员身份已结束
-
-  /api/clubs/{clubId}/forum-posts:
+  /api/v1/clubs/{clubId}/forum-posts:
     get:
       summary: 查询社团讨论区话题
       operationId: getClubForumPosts
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -1351,6 +1428,15 @@ paths:
             default: false
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 当前用户可见的话题及其回复
           content:
             application/json:
@@ -1426,7 +1512,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/clubs/{clubId}/forum-posts/{postId}/moderation:
+  /api/v1/clubs/{clubId}/forum-posts/{postId}/moderation:
     patch:
       summary: 置顶或隐藏社团讨论区内容
       operationId: moderateClubForumPost
@@ -1483,12 +1569,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/clubs/{clubId}/award-rule-documents:
+  /api/v1/clubs/{clubId}/award-rule-documents:
     get:
       summary: 查询评奖评优评定细则
       description: 查询校级通用细则和本社团细则；普通成员只能查看已发布细则，社团负责人、指导老师和系统管理员可查看可维护范围内的草稿和已归档细则。
       operationId: getClubAwardRuleDocuments
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -1509,6 +1597,15 @@ paths:
           description: 按标题、发布单位、摘要或正文搜索。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 评定细则列表
           content:
             application/json:
@@ -1553,7 +1650,7 @@ paths:
         "409":
           description: 社团状态不允许维护或同一范围下存在重复标题细则
 
-  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}:
+  /api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}:
     patch:
       summary: 更新评奖评优评定细则
       description: 维护人可更新草稿、已发布或已归档细则；全局细则仅系统管理员可维护，社团细则可由本社团维护人维护。
@@ -1591,7 +1688,7 @@ paths:
         "409":
           description: 同一范围下存在重复标题细则
 
-  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish:
+  /api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/publish:
     post:
       summary: 发布评奖评优评定细则
       description: 将草稿或已归档细则发布给可阅读用户；普通成员在细则发布前不可见。
@@ -1619,7 +1716,7 @@ paths:
         "404":
           description: 当前用户、社团或细则不存在
 
-  /api/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file:
+  /api/v1/clubs/{clubId}/award-rule-documents/{ruleDocumentId}/file:
     post:
       summary: 上传评奖评优评定细则附件
       description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个文件并由系统保存私有对象存储引用；前端不再要求维护人手填文件地址。
@@ -1696,12 +1793,14 @@ paths:
         "503":
           description: 文件存储暂不可用
 
-  /api/clubs/{clubId}/award-schemes:
+  /api/v1/clubs/{clubId}/award-schemes:
     get:
       summary: 查询社团评奖评优奖项配置
       description: 面向社团评奖评优流程的奖项开放列表；普通成员可查看已开放、公示中、已归档/已结束奖项、审核中但仍在申请期内的奖项，以及本人申请、提交或推荐记录关联的奖项；负责人、指导老师和管理员可查看草稿、审核中、公示中等全状态奖项。
       operationId: getClubAwardSchemes
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -1722,6 +1821,15 @@ paths:
           description: 按奖项名称、等级名称或设立单位搜索。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 奖项配置列表
           content:
             application/json:
@@ -1766,7 +1874,7 @@ paths:
         "409":
           description: 同一社团、学年、学期下已存在同名奖项
 
-  /api/clubs/{clubId}/award-schemes/{awardSchemeId}:
+  /api/v1/clubs/{clubId}/award-schemes/{awardSchemeId}:
     patch:
       summary: 更新社团评奖评优奖项配置
       description: 在不破坏既有申请外键的前提下更新奖项配置、等级、开放时间和状态；已归档奖项不允许再修改核心规则。
@@ -1804,12 +1912,14 @@ paths:
         "409":
           description: 奖项配置状态不允许修改
 
-  /api/clubs/{clubId}/award-applications:
+  /api/v1/clubs/{clubId}/award-applications:
     get:
       summary: 查询社团评奖评优申请
       description: 普通成员查看自己的申请；社团负责人、指导老师、系统管理员可按审核步骤、状态、奖项、成员筛选本社团申请。
       operationId: getClubAwardApplications
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -1865,6 +1975,15 @@ paths:
           description: 按当前审核步骤筛选。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 评奖评优申请列表
           content:
             application/json:
@@ -1913,7 +2032,7 @@ paths:
         "409":
           description: 奖项不属于当前社团、不在可申请状态或申请时间窗内、成员不在社团内或该成员已有同奖项申请
 
-  /api/clubs/{clubId}/award-applications/{awardApplicationId}:
+  /api/v1/clubs/{clubId}/award-applications/{awardApplicationId}:
     get:
       summary: 获取评奖评优申请详情
       description: 申请人、提交人、推荐人、社团维护人、指导老师、系统管理员可以查看完整申请详情；已进入公示或已归档的申请也可从公示名单进入详情。
@@ -1978,7 +2097,7 @@ paths:
         "409":
           description: 当前申请状态不允许修改
 
-  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments:
+  /api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/attachments:
     post:
       summary: 上传评奖评优申请材料
       description: 参照学习中心资源上传方式，通过 multipart/form-data 上传单个申请材料文件并写入附件记录；创建申请时可先保存草稿、上传材料，再提交审核。
@@ -2030,7 +2149,7 @@ paths:
         "503":
           description: 文件存储暂不可用
 
-  /api/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file:
+  /api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/attachments/{attachmentId}/file:
     get:
       summary: 下载评奖评优申请材料
       description: 校验申请人、推荐人、审核维护人或已公示结果权限后，从私有对象存储读取申请材料并流式返回；历史外部地址数据仅作兼容处理。
@@ -2068,7 +2187,7 @@ paths:
         "503":
           description: 文件存储暂不可用
 
-  /api/clubs/{clubId}/award-applications/{awardApplicationId}/submit:
+  /api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/submit:
     post:
       summary: 提交或重新提交评奖评优申请
       description: 将草稿或退回申请提交到社团负责人初审；重新提交时增加审核轮次并保留历史审核记录。
@@ -2104,7 +2223,7 @@ paths:
         "409":
           description: 当前申请状态不允许提交
 
-  /api/clubs/{clubId}/award-applications/{awardApplicationId}/review:
+  /api/v1/clubs/{clubId}/award-applications/{awardApplicationId}/review:
     post:
       summary: 审核评奖评优申请
       description: 按当前步骤执行负责人初审、指导老师审核、校级终审、公示发布或归档动作；归档动作必须等关联公示批次结束后才能执行，每次动作都会写入审核记录。
@@ -2146,12 +2265,14 @@ paths:
         "409":
           description: 当前申请状态与审核动作不匹配
 
-  /api/clubs/{clubId}/award-publicity:
+  /api/v1/clubs/{clubId}/award-publicity:
     get:
       summary: 查询评奖评优公示批次
       description: 公开查看已公示批次；维护人可查看草稿、公示中、已结束和已归档批次。
       operationId: getClubAwardPublicityBatches
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -2165,6 +2286,15 @@ paths:
             enum: [draft, publicizing, closed, archived]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 公示批次列表
           content:
             application/json:
@@ -2209,7 +2339,7 @@ paths:
         "409":
           description: 申请状态不允许进入公示
 
-  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/publish:
+  /api/v1/clubs/{clubId}/award-publicity/{publicityBatchId}/publish:
     post:
       summary: 发布评奖评优公示批次
       description: 将公示批次发布到公示列表，并把批次内申请标记为公示中。
@@ -2239,7 +2369,7 @@ paths:
         "409":
           description: 公示批次状态不允许发布
 
-  /api/clubs/{clubId}/award-publicity/{publicityBatchId}/archive:
+  /api/v1/clubs/{clubId}/award-publicity/{publicityBatchId}/archive:
     post:
       summary: 归档评奖评优公示批次
       description: 将已公示结束的批次归档，并把批次内申请标记为已归档；归档后的申请成为成员考核奖项分的权威来源。
@@ -2269,12 +2399,14 @@ paths:
         "409":
           description: 公示批次状态不允许归档
 
-  /api/clubs/{clubId}/evaluations:
+  /api/v1/clubs/{clubId}/evaluations:
     get:
       summary: 查询社团成员评价考核记录
       description: 普通成员只能查看本人已公示评价；干部只能查看本人管辖部门或小组成员评价；负责人和系统管理员可查看本社团全部评价。evaluationType=award 用于评优评奖结果与公示。
       operationId: getClubEvaluations
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: path
           required: true
@@ -2295,6 +2427,15 @@ paths:
           description: semester 表示学期考核，award 表示评优评奖结果。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 按角色可见范围过滤后的评价考核记录
           content:
             application/json:
@@ -2339,7 +2480,7 @@ paths:
         "409":
           description: 社团状态不允许维护
 
-  /api/clubs/{clubId}/evaluations/score-preview:
+  /api/v1/clubs/{clubId}/evaluations/score-preview:
     get:
       summary: 预览成员考核系统生成分
       description: 负责人、指导老师、系统管理员或有维护范围的干部可按成员与学期预览活动分、任务分、学习分、奖项分、总分和等级；维护人可在系统生成分基础上微调后保存。
@@ -2380,7 +2521,7 @@ paths:
         "409":
           description: 社团状态不允许维护
 
-  /api/clubs/{clubId}/evaluations/generate:
+  /api/v1/clubs/{clubId}/evaluations/generate:
     post:
       summary: 批量生成成员考核草稿
       description: 系统管理员、本社团负责人或指导老师可以按学期为当前有效成员批量生成成员考核草稿；已公示记录不会被覆盖，已存在草稿会按系统生成分刷新，之后可由维护人微调并确认公示。
@@ -2413,7 +2554,7 @@ paths:
         "409":
           description: 社团状态不允许维护
 
-  /api/clubs/{clubId}/evaluations/{evaluationId}:
+  /api/v1/clubs/{clubId}/evaluations/{evaluationId}:
     patch:
       summary: 更新社团成员评价考核或评优评奖结果
       description: 负责人和系统管理员可以更新任意成员评价；干部只能更新自己管辖部门或小组成员评价。学期考核可在系统生成分基础上微调四项分数，总分和等级由后端按保存后的四项分数重新计算，公示状态用于控制结果展示。
@@ -2451,19 +2592,16 @@ paths:
         "409":
           description: 社团状态不允许维护
 
-  /api/recruitments:
+  /api/v1/recruitments:
     get:
       summary: 查询社团招募列表
       description: 学生可查看审核通过后的纳新和自己的报名状态；社团干部、负责人可查看本社团草稿、审核中和已通过纳新；社团管理员可查看审核中的纳新。
       operationId: getRecruitments
+      security:
+        - bearerAuth: []
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
-          schema:
-            type: integer
-            minimum: 1
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -2477,6 +2615,15 @@ paths:
             enum: [draft, pending_review, not_started, accepting, ended]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 招募列表
           content:
             application/json:
@@ -2492,6 +2639,8 @@ paths:
       summary: 创建社团招募
       description: 系统管理员或目标社团的社团干部、负责人可以创建草稿或提交审核；审核通过后才会对学生开放。
       operationId: createRecruitment
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -2514,11 +2663,13 @@ paths:
         "409":
           description: 社团状态不允许创建招募
 
-  /api/recruitments/{recruitId}:
+  /api/v1/recruitments/{recruitId}:
     patch:
       summary: 更新社团招募
       description: 目标社团的社团干部、负责人可以维护本社团草稿，并将草稿提交社团管理员审核；发布者不能直接改为开放状态。
       operationId: updateRecruitment
+      security:
+        - bearerAuth: []
       parameters:
         - name: recruitId
           in: path
@@ -2550,14 +2701,9 @@ paths:
       summary: 删除草稿招募
       description: 目标社团的社团干部、负责人可以删除本社团草稿招募。
       operationId: deleteRecruitment
+      security:
+        - bearerAuth: []
       parameters:
-        - name: currentUserId
-          in: query
-          required: true
-          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
-          schema:
-            type: integer
-            minimum: 1
         - name: recruitId
           in: path
           required: true
@@ -2575,8 +2721,8 @@ paths:
         "409":
           description: 只有草稿招募可以删除
 
-  /api/recruitments/{recruitId}/review:
-    patch:
+  /api/v1/recruitments/{recruitId}/reviews:
+    post:
       summary: 审核社团招募
       description: 社团管理员审核干部或负责人提交的纳新；审核通过后按开始和结束时间自动显示为未开始、申请中或已结束，驳回后回到草稿。
       operationId: reviewRecruitment
@@ -2612,19 +2758,16 @@ paths:
         "409":
           description: 招募状态不允许审核或同一社团同时间已有已通过招募
 
-  /api/recruitments/{recruitId}/applications:
+  /api/v1/recruitments/{recruitId}/applications:
     get:
       summary: 查询招募报名列表
       description: 社团干部可查看本招募全部报名；学生只能查看自己的报名。
       operationId: getRecruitmentApplications
+      security:
+        - bearerAuth: []
       parameters:
-        - name: viewerUserId
-          in: query
-          required: true
-          description: 当前登录用户 ID（临时兼容，待 RecruitmentsController 迁移至 JWT 后移除）。
-          schema:
-            type: integer
-            minimum: 1
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: recruitId
           in: path
           required: true
@@ -2632,6 +2775,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 招募报名列表
           content:
             application/json:
@@ -2679,8 +2831,8 @@ paths:
         "409":
           description: 已报名、已是成员、社团数量达到上限或招募不接受报名
 
-  /api/recruitments/applications/{applicationId}/review:
-    patch:
+  /api/v1/applications/{applicationId}/reviews:
+    post:
       summary: 筛选招募报名
       description: 社团干部录入面试分并给出录取或拒绝结论；录取后写入社团成员表。
       operationId: reviewRecruitmentApplication
@@ -2716,11 +2868,13 @@ paths:
         "409":
           description: 报名状态、名额、成员关系或社团数量上限不允许录取
 
-  /api/activities:
+  /api/v1/activities:
     get:
       summary: 获取活动列表
       operationId: getActivities
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: currentUserId
           in: query
           required: false
@@ -2729,6 +2883,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 活动列表
           content:
             application/json:
@@ -2762,7 +2925,7 @@ paths:
         "403":
           description: 当前用户没有该社团的活动创建权限
 
-  /api/activities/{activityId}:
+  /api/v1/activities/{activityId}:
     get:
       summary: 获取活动详情
       operationId: getActivityById
@@ -2786,7 +2949,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Activity"
 
-  /api/activities/{activityId}/registrations:
+  /api/v1/activities/{activityId}/registrations:
     post:
       summary: 报名活动
       description: 需要登录。报名人由服务端从 Bearer 令牌解析，不接受客户端指定用户 ID。
@@ -2829,7 +2992,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/activities/{activityId}/review:
+  /api/v1/activities/{activityId}/reviews:
     post:
       summary: 审核活动并发布或驳回
       description: 需要登录，并具备目标社团的 activity:review 权限。审核人由服务端从 Bearer 令牌解析。
@@ -2866,7 +3029,7 @@ paths:
         "404":
           description: 活动不存在
 
-  /api/activities/{activityId}/budget:
+  /api/v1/activities/{activityId}/budget:
     put:
       summary: 旧活动经费预算入口（已停用）
       description: 旧接口已停用，统一改由 `/api/budget/applications` 创建经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
@@ -2902,7 +3065,7 @@ paths:
         "409":
           description: 旧活动经费预算入口已停用，请改用经费管理闭环接口
 
-  /api/activities/{activityId}/budget/review:
+  /api/v1/activities/{activityId}/budget-reviews:
     post:
       summary: 旧活动经费审批入口（已停用）
       description: 旧接口已停用，统一改由 `/api/budget/applications/{applicationId}/review` 审核经费申请，确保账户、审核、流水和余额闭环一致。调用本接口将返回 409。
@@ -2938,7 +3101,7 @@ paths:
         "409":
           description: 旧活动经费审批入口已停用，请改用经费管理闭环接口
 
-  /api/budget/accounts:
+  /api/v1/budget/accounts:
     get:
       summary: 获取经费账户列表
       description: 返回当前用户授权范围内的社团年度经费账户，并由流水汇总已占用金额和剩余额度。
@@ -2946,6 +3109,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -2958,6 +3123,15 @@ paths:
             type: string
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 经费账户列表
           content:
             application/json:
@@ -2997,7 +3171,7 @@ paths:
         "409":
           description: 同一社团同一年度已存在经费账户
 
-  /api/budget/accounts/{accountId}:
+  /api/v1/budget/accounts/{accountId}:
     put:
       summary: 更新社团年度经费账户
       description: 校级社团管理员或系统管理员维护账户名称、年度额度和账户状态；不直接维护已用金额。
@@ -3032,7 +3206,7 @@ paths:
         "404":
           description: 经费账户不存在
 
-  /api/budget/applications:
+  /api/v1/budget/applications:
     get:
       summary: 获取经费申请列表
       description: 返回当前用户授权范围内的经费申请，支持按社团、账户、类型和状态筛选。
@@ -3040,6 +3214,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -3064,6 +3240,15 @@ paths:
             enum: [activity_budget, purchase, reimbursement]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 经费申请列表
           content:
             application/json:
@@ -3108,7 +3293,7 @@ paths:
         "409":
           description: 经费账户余额不足或账户状态不允许申请
 
-  /api/budget/applications/{applicationId}/review:
+  /api/v1/budget/applications/{applicationId}/review:
     post:
       summary: 审核经费申请
       description: 指导老师、校级社团管理员或系统管理员审核待审核经费申请；通过后自动生成占用流水。
@@ -3147,7 +3332,7 @@ paths:
         "409":
           description: 账户余额不足或并发审核冲突
 
-  /api/budget/applications/{applicationId}/cancel:
+  /api/v1/budget/applications/{applicationId}/cancel:
     post:
       summary: 撤销经费申请
       description: 申请人或具备经费申请权限的本社团负责人可撤销待审核经费申请。
@@ -3182,7 +3367,7 @@ paths:
         "404":
           description: 经费申请不存在
 
-  /api/budget/transactions:
+  /api/v1/budget/transactions:
     get:
       summary: 获取经费流水列表
       description: 返回当前用户授权范围内的经费流水，用于审计账户余额。
@@ -3190,6 +3375,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -3202,6 +3389,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 经费流水列表
           content:
             application/json:
@@ -3214,7 +3410,7 @@ paths:
         "403":
           description: 当前用户没有经费查看权限
 
-  /api/activities/{activityId}/checkin-settings:
+  /api/v1/activities/{activityId}/checkin-settings:
     put:
       summary: 设置活动签到签退码和有效时间
       description: 需要登录，并具备目标社团的 activity:checkin:manage 权限。
@@ -3249,7 +3445,7 @@ paths:
         "404":
           description: 活动不存在
 
-  /api/activities/{activityId}/participations:
+  /api/v1/activities/{activityId}/participations:
     get:
       summary: 获取活动参与记录
       description: 需要登录。具备 activity:checkin:manage 或 activity:review 时返回全部记录；其他登录用户仅返回本人记录。
@@ -3257,6 +3453,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: activityId
           in: path
           required: true
@@ -3264,6 +3462,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 活动参与记录列表
           content:
             application/json:
@@ -3276,7 +3483,7 @@ paths:
         "404":
           description: 活动不存在
 
-  /api/activities/{activityId}/checkin:
+  /api/v1/activities/{activityId}/checkins:
     post:
       summary: 活动签到
       description: 需要登录，并具备 activity:checkin 权限。签到用户由服务端从 Bearer 令牌解析。
@@ -3311,7 +3518,7 @@ paths:
         "404":
           description: 活动不存在
 
-  /api/activities/{activityId}/checkout:
+  /api/v1/activities/{activityId}/checkouts:
     post:
       summary: 活动签退
       description: 需要登录，并具备 activity:checkin 权限。签退用户由服务端从 Bearer 令牌解析。
@@ -3346,13 +3553,15 @@ paths:
         "404":
           description: 活动不存在
 
-  /api/users:
+  /api/v1/users:
     get:
       summary: 获取当前账号可查看或可分配的用户列表
       operationId: getUsers
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -3361,6 +3570,15 @@ paths:
           description: 当用于维护指定社团成员任期或选择项目负责人时传入；仅系统管理员、本社团负责人、干部或指导老师可获取该社团有效成员。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 按当前账号权限过滤后的用户、角色和社团成员身份列表
           content:
             application/json:
@@ -3387,7 +3605,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/users/{userId}/status:
+  /api/v1/users/{userId}/status:
     patch:
       summary: 更新用户账号状态
       description: 仅系统管理员可用；停用账号时同时撤销该用户全部登录会话。
@@ -3451,7 +3669,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/users/{userId}/sessions/revoke:
+  /api/v1/users/{userId}/sessions/revoke:
     post:
       summary: 强制撤销用户的全部登录会话
       operationId: revokeUserSessions
@@ -3492,7 +3710,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects:
+  /api/v1/projects:
     get:
       summary: 获取项目列表
       operationId: getProjects
@@ -3523,6 +3741,15 @@ paths:
           description: 每页项目数量，最大 100。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 项目列表
           content:
             application/json:
@@ -3576,7 +3803,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}:
+  /api/v1/projects/{projectId}:
     get:
       summary: 获取项目详情
       operationId: getProjectById
@@ -3595,8 +3822,57 @@ paths:
                 $ref: "#/components/schemas/Project"
         "404":
           description: 项目不存在
+    patch:
+      summary: 撤销待审核或进行中的项目
+      description: 将项目 status 更新为 closed；系统管理员可撤销待审核或进行中项目，本社团负责人仅可撤销待审核申请，校级社团管理员仅可撤销进行中项目。
+      operationId: cancelProject
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelProjectRequest"
+      responses:
+        "200":
+          description: 项目状态已更新为关闭
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: 项目不是待审核/进行中状态或当前用户无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户无权撤销该项目申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 项目不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/leader:
+  /api/v1/projects/{projectId}/leader:
     put:
       summary: 分配或调整项目负责人
       operationId: assignProjectLeader
@@ -3652,7 +3928,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/review:
+  /api/v1/projects/{projectId}/reviews:
     post:
       summary: 指导老师审核项目立项申请
       description: 1.10 项目立项采用一轮审核；仅本社团指导老师可将待审核申请审核为进行中或关闭。
@@ -3705,58 +3981,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/cancel:
-    post:
-      summary: 撤销待审核或进行中的项目
-      description: 系统管理员可撤销待审核或进行中项目；本社团负责人仅可撤销待审核申请；校级社团管理员仅可撤销进行中项目。
-      operationId: cancelProject
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CancelProjectRequest"
-      responses:
-        "200":
-          description: 项目立项申请已撤销
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Project"
-        "400":
-          description: 项目不是待审核/进行中状态或当前用户无效
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "401":
-          description: 登录状态无效
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "403":
-          description: 当前用户无权撤销该项目申请
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "404":
-          description: 项目不存在
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-
-  /api/projects/{projectId}/members:
+  /api/v1/projects/{projectId}/members:
     get:
       summary: 获取项目成员列表
       description: 正在参与该项目的成员可以查看当前成员；项目负责人或本社团负责人、干部可以同时查看历史成员。
@@ -3779,6 +4004,15 @@ paths:
             default: false
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 项目成员列表
           content:
             application/json:
@@ -3861,7 +4095,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/member-candidates:
+  /api/v1/projects/{projectId}/member-candidates:
     get:
       summary: 获取项目成员候选人
       description: 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
@@ -3869,6 +4103,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: projectId
           in: path
           required: true
@@ -3909,7 +4145,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/members/{projectMemberId}:
+  /api/v1/projects/{projectId}/members/{projectMemberId}:
     delete:
       summary: 移除项目成员
       description: 项目负责人或本社团负责人、干部可以软移除项目成员；当前项目负责人不能被移除。
@@ -3957,7 +4193,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks:
+  /api/v1/projects/{projectId}/tasks:
     get:
       summary: 获取项目任务列表
       description: 项目负责人可以查看全部任务；其他正在参与该项目的成员仅能查看分配给自己的任务。默认不返回已完成任务，可显式查看已完成任务。
@@ -3965,6 +4201,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: projectId
           in: path
           required: true
@@ -3980,6 +4218,15 @@ paths:
             default: false
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 当前用户有权查看的项目任务列表
           content:
             application/json:
@@ -4062,7 +4309,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks/{taskId}:
+  /api/v1/projects/{projectId}/tasks/{taskId}:
     delete:
       summary: 删除项目任务
       description: 仅项目负责人可删除任务；关联的执行人关系与进度提交记录会一并删除。
@@ -4104,7 +4351,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks/{taskId}/progress:
+  /api/v1/projects/{projectId}/tasks/{taskId}/progress:
     patch:
       summary: 更新项目任务进度
       description: 任一仍在参与项目的任务执行人可以更新任务进度；已完成任务不能重新打开。
@@ -4168,7 +4415,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks/{taskId}/deliverable:
+  /api/v1/projects/{projectId}/tasks/{taskId}/deliverable:
     post:
       summary: 提交项目任务成果
       description: 任务执行人或项目负责人可为执行中、已延期项目提交任务成果；提交人由 Bearer 令牌解析，提交后进入待审核状态。
@@ -4264,7 +4511,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks/{taskId}/deliverable/review:
+  /api/v1/projects/{projectId}/tasks/{taskId}/deliverable/review:
     post:
       summary: 审核项目任务成果
       description: 本社团指导老师或校级社团管理员可审核待审核成果；审核人由 Bearer 令牌解析，审核结果联动任务状态和项目执行状态。
@@ -4359,7 +4606,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/projects/{projectId}/tasks/{taskId}/progress-reports:
+  /api/v1/projects/{projectId}/tasks/{taskId}/progress-reports:
     get:
       summary: 获取项目任务进度提交记录
       description: 项目负责人可查看项目全部任务的记录；任务执行人仅可查看分配给自己的任务记录。
@@ -4367,6 +4614,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: projectId
           in: path
           required: true
@@ -4381,6 +4630,15 @@ paths:
             minimum: 1
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 按提交时间倒序排列的进度记录
           content:
             application/json:
@@ -4407,11 +4665,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venues:
+  /api/v1/venues:
     get:
       summary: 获取场地列表
       operationId: getVenues
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: status
           in: query
           required: false
@@ -4421,6 +4681,15 @@ paths:
             enum: [available, disabled, maintenance]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 场地列表
           content:
             application/json:
@@ -4457,7 +4726,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venues/{venueId}:
+  /api/v1/venues/{venueId}:
     get:
       summary: 获取场地详情
       operationId: getVenueById
@@ -4523,18 +4792,14 @@ paths:
     delete:
       summary: 删除场地
       operationId: deleteVenue
+      security:
+        - bearerAuth: []
       parameters:
         - name: venueId
           in: path
           required: true
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DeleteVenueRequest"
       responses:
         "204":
           description: 场地已删除
@@ -4557,7 +4822,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venues/{venueId}/status:
+  /api/v1/venues/{venueId}/status:
     patch:
       summary: 更新场地状态
       operationId: updateVenueStatus
@@ -4605,13 +4870,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venue-reservations:
+  /api/v1/venue-reservations:
     get:
       summary: 获取场地预约列表
       operationId: getVenueReservations
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: status
           in: query
           required: false
@@ -4645,6 +4912,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 场地预约列表
           content:
             application/json:
@@ -4716,7 +4992,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venue-reservations/occupied-slots:
+  /api/v1/venue-reservations/occupied-slots:
     get:
       summary: 获取场地已占用时段
       description: 仅返回冲突判断和场地展示所需的脱敏时间信息，不包含申请人、社团或用途。
@@ -4724,6 +5000,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: venueId
           in: query
           required: false
@@ -4732,6 +5010,15 @@ paths:
             type: integer
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 当前及未来仍有效的已通过预约时段
           content:
             application/json:
@@ -4752,7 +5039,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venue-reservations/{reservationId}:
+  /api/v1/venue-reservations/{reservationId}:
     get:
       summary: 获取场地预约详情
       operationId: getVenueReservationById
@@ -4828,7 +5115,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/venue-reservations/{reservationId}/review:
+  /api/v1/venue-reservations/{reservationId}/reviews:
     post:
       summary: 审批场地预约
       operationId: reviewVenueReservation
@@ -4886,7 +5173,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/learning/instructor-lookup:
+  /api/v1/learning/instructors:
     get:
       summary: 按学工号查询课程授课人
       description: 需要登录；在当前用户有权维护的社团范围内，按学号或工号精确查询正常状态的教师或学生。
@@ -4923,7 +5210,7 @@ paths:
         "404":
           description: 当前用户、社团或对应的正常状态教师/学生不存在。
 
-  /api/learning/items:
+  /api/v1/learning/items:
     get:
       summary: 获取可见的课程与学习资源
       description: 按当前角色的公开浏览、社团资源查看和资源维护权限，以及社团成员关系、授课人身份和资源可见范围过滤结果；教师或学生作为授课人的课程始终包含在其可见结果中。
@@ -4931,6 +5218,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -4940,6 +5229,15 @@ paths:
           description: 可选的社团 ID 筛选条件。
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 当前用户可见的课程与学习资源列表。
           content:
             application/json:
@@ -4975,7 +5273,7 @@ paths:
         "403":
           description: 当前用户无权为目标社团发布内容。
 
-  /api/learning/resources/upload:
+  /api/v1/learning/resources:
     post:
       summary: 上传社团学习资源
       description: 拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员可通过 multipart/form-data 将单个文件上传至私有阿里云 OSS 并创建学习资源；客户端可重复调用以完成批量上传。
@@ -5044,7 +5342,7 @@ paths:
         "503":
           description: OSS、ECS RAM 角色临时凭据或存储桶不可用。
 
-  /api/learning/items/{itemId}/file:
+  /api/v1/learning/items/{itemId}/file:
     get:
       summary: 获取受保护的学习资源文件
       description: 校验当前用户的资源可见范围和下载权限；OSS 资源由后端通过同地域内网 Endpoint 读取并流式返回，历史本地文件继续兼容。
@@ -5058,6 +5356,13 @@ paths:
           schema:
             type: integer
             minimum: 1
+        - name: download
+          in: query
+          required: false
+          description: 设为 true 时明确请求下载文件；默认仍按受保护文件响应处理。
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: 文件内容。
@@ -5073,7 +5378,53 @@ paths:
         "503":
           description: OSS、ECS RAM 角色临时凭据或对象读取暂不可用。
 
-  /api/learning/items/{itemId}/preview-session:
+  /api/v1/learning/items/{itemId}/downloads:
+    post:
+      summary: 确认学习资源已成功下载
+      description: 客户端完整读取受保护文件后调用；服务端重新校验资源可见范围和下载权限并追加成功交付日志，不创建、恢复或修改学习记录。文件读取失败时不得调用本接口。
+      operationId: createLearningDownload
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 成功下载审计已记录
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningDownloadResult"
+        "400":
+          description: 资源状态或下载设置无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不可见该资源或资源不允许下载
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 用户或学习资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/v1/learning/items/{itemId}/preview-session:
     post:
       summary: 准备学习资源在线预览会话
       description: 重新校验登录状态、发布状态、资源可见范围和管理权限；成功后设置仅限对应预览路径、HttpOnly、SameSite=Strict 的短时 Cookie，不记录下载时间或下载 IP。Office 在线转换在独立低权限 worker 完成前保持禁用。
@@ -5113,7 +5464,7 @@ paths:
         "503":
           description: 私有 OSS 或预览缓存暂不可用。
 
-  /api/learning/items/{itemId}/preview:
+  /api/v1/learning/items/{itemId}/preview:
     get:
       summary: 获取受保护的学习资源在线预览内容
       description: 使用预览会话 Cookie 再次校验用户和资源权限；返回 inline 内容并支持单段 HTTP Range。原生支持 MP4、WebM、JPG、JPEG、PNG、GIF、WebP 和 PDF；Office 在线转换在独立低权限 worker 完成前保持禁用。该操作不会写入下载时间或下载 IP。
@@ -5220,7 +5571,7 @@ paths:
         "503":
           description: 私有 OSS 或预览缓存暂不可用。
 
-  /api/learning/items/{itemId}:
+  /api/v1/learning/items/{itemId}:
     put:
       summary: 更新课程或学习资源
       description: 当前仍拥有目标社团 resource:upload 权限的负责人、干部、指导老师或系统管理员，以及课程授课人，可维护资源元数据与权限设置；仅曾经上传过资源不构成持续授权。授课人身份不授予课程审核或加入权限。
@@ -5280,7 +5631,7 @@ paths:
         "503":
           description: OSS、ECS RAM 角色临时凭据或对象删除暂不可用，数据库记录保持不变。
 
-  /api/learning/items/{itemId}/review:
+  /api/v1/learning/items/{itemId}/reviews:
     post:
       summary: 审核课程或学习资源
       description: 拥有目标社团 resource:review 权限的指导老师、社团管理员或系统管理员审核待审核内容；通过后发布，驳回后保留为已驳回状态，发布者修改后可重新提交审核。审核人与时间写入操作日志。
@@ -5318,7 +5669,7 @@ paths:
         "409":
           description: 当前状态不允许审核。
 
-  /api/learning/items/{itemId}/enrollments:
+  /api/v1/learning/items/{itemId}/enrollments:
     post:
       summary: 加入培训课程
       description: 拥有 course:enroll 权限的学生加入有名额且对其可见的培训课程；教师和指导老师不能加入课程。
@@ -5376,7 +5727,7 @@ paths:
         "404":
           description: 课程、报名记录或当前用户不存在。
 
-  /api/learning/items/{itemId}/learning:
+  /api/v1/learning/items/{itemId}/learning-records:
     post:
       summary: 开始或继续学习资源
       description: 为当前登录用户创建或恢复视频、文档、资料的学习记录。
@@ -5410,35 +5761,7 @@ paths:
         "404":
           description: 学习资源不存在
 
-  /api/learning/items/{itemId}/download:
-    post:
-      summary: 校验权限并记录学习资源下载
-      description: 校验可见范围和下载设置，通过后记录下载用户、时间和 IP；OSS 文件返回受鉴权的后端文件地址，由后端读取私有对象并流式传输。
-      operationId: downloadLearningItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: itemId
-          in: path
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-      responses:
-        "200":
-          description: 下载权限校验通过且行为已记录
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LearningDownloadResult"
-        "400":
-          description: 资源没有有效文件地址
-        "403":
-          description: 当前用户不可见该资源或资源不允许直接下载
-        "404":
-          description: 学习资源不存在
-
-  /api/learning/items/{itemId}/statistics:
+  /api/v1/learning/items/{itemId}/statistics:
     get:
       summary: 获取学习资源统计
       description: 资源维护者、本社团负责人或指导老师可查看统计；拥有 stats:view 的社团管理员可查看跨社团匿名聚合统计，系统管理员拥有全局权限。
@@ -5464,7 +5787,7 @@ paths:
         "404":
           description: 学习资源不存在
 
-  /api/learning/records:
+  /api/v1/learning/records:
     get:
       summary: 获取学习记录
       description: 拥有 own:records:view 的当前用户可查看本人记录；资源维护者及拥有本社团运营或统计权限的负责人、干部、指导老师可查看指定资源的实名学习记录。stats:view 不授予实名名单访问权。
@@ -5472,6 +5795,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: itemId
           in: query
           required: false
@@ -5480,6 +5805,15 @@ paths:
             minimum: 1
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: 符合查询条件的学习记录列表。
           content:
             application/json:
@@ -5490,7 +5824,7 @@ paths:
         "400":
           description: 资源 ID 无效。
 
-  /api/learning/records/{recordId}/progress:
+  /api/v1/learning/records/{recordId}/progress:
     put:
       summary: 更新学习进度和累计时长
       description: 当前登录用户只能更新自己的学习记录，进度达到 100 时自动标记完成。
@@ -5523,13 +5857,15 @@ paths:
           description: 当前用户无权更新该学习记录。
         "404":
           description: 学习记录或当前用户不存在。
-  /api/materials:
+  /api/v1/materials:
     get:
       summary: List activity materials
       operationId: getMaterials
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -5543,6 +5879,15 @@ paths:
             enum: [active, disabled]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: Materials visible to the current material manager.
           content:
             application/json:
@@ -5617,7 +5962,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/materials/{materialId}:
+  /api/v1/materials/{materialId}:
     put:
       summary: Update an activity material
       operationId: updateMaterial
@@ -5673,13 +6018,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/material-borrows:
+  /api/v1/material-borrows:
     get:
       summary: List material borrow records
       operationId: getMaterialBorrows
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
         - name: clubId
           in: query
           required: false
@@ -5703,6 +6050,15 @@ paths:
             enum: [borrowed, returned, damaged]
       responses:
         "200":
+          headers:
+            X-Page:
+              $ref: "#/components/headers/X-Page"
+            X-Page-Size:
+              $ref: "#/components/headers/X-Page-Size"
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
           description: Borrow records visible to the current material manager.
           content:
             application/json:
@@ -5780,7 +6136,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/material-borrows/{borrowId}/return:
+  /api/v1/material-borrows/{borrowId}/return:
     post:
       summary: Register material return
       operationId: returnMaterialBorrow
@@ -5832,7 +6188,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/material-borrows/{borrowId}/damage:
+  /api/v1/material-borrows/{borrowId}/damage:
     post:
       summary: Register material damage
       operationId: damageMaterialBorrow
@@ -5892,6 +6248,23 @@ paths:
 
 components:
   parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      description: 显式启用分页时的页码，从 1 开始；省略 page 和 pageSize 时返回完整集合以兼容 lookup 调用。
+      schema:
+        type: integer
+        minimum: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: 显式启用分页时的每页记录数，最大 100；可单独传入并默认使用第 1 页。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -5902,6 +6275,28 @@ components:
         minLength: 8
         maxLength: 128
         pattern: '^[A-Za-z0-9._~:+/\-=]+$'
+
+  headers:
+    X-Page:
+      description: 当前页码。
+      schema:
+        type: integer
+        minimum: 1
+    X-Page-Size:
+      description: 当前每页记录数。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+    X-Total-Count:
+      description: 符合过滤条件的记录总数。
+      schema:
+        type: integer
+        minimum: 0
+    Link:
+      description: RFC 8288 上一页和下一页链接。
+      schema:
+        type: string
 
   securitySchemes:
     bearerAuth:
@@ -5921,8 +6316,11 @@ components:
       properties:
         code:
           type: string
-          nullable: true
-          example: venue_reservation_conflict
+          pattern: '^(VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|CONFLICT|PAYLOAD_TOO_LARGE|RATE_LIMITED|SERVICE_UNAVAILABLE|INTERNAL_ERROR|REQUEST_FAILED)$'
+          description: >-
+            固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、
+            PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。
+          example: VALIDATION_ERROR
         message:
           type: string
           example: 该场地在所选时间段已有已通过预约。
@@ -5930,6 +6328,7 @@ components:
           type: string
           nullable: true
       required:
+        - code
         - message
 
     HealthStatus:
@@ -6058,11 +6457,27 @@ components:
           nullable: true
           maxLength: 20
           example: "2024"
+        captchaToken:
+          type: string
+          description: 由验证码接口签发的短时一次性挑战令牌。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        captchaCode:
+          type: string
+          description: 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+          minLength: 5
+          maxLength: 5
+          pattern: "^[0-9]{5}$"
+          example: "52843"
       required:
         - username
         - password
         - realName
         - studentNo
+        - captchaToken
+        - captchaCode
 
     LoginRequest:
       type: object
@@ -6080,9 +6495,53 @@ components:
           minLength: 1
           maxLength: 128
           example: ClubHub123
+        captchaToken:
+          type: string
+          description: 由验证码接口签发的短时一次性挑战令牌。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        captchaCode:
+          type: string
+          description: 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+          minLength: 5
+          maxLength: 5
+          pattern: "^[0-9]{5}$"
+          example: "52843"
       required:
         - username
         - password
+        - captchaToken
+        - captchaCode
+
+    CaptchaChallenge:
+      type: object
+      description: 短时有效、仅可使用一次的图形验证码挑战。
+      properties:
+        captchaToken:
+          type: string
+          description: 服务端生成的不可伪造挑战令牌；仅用于提交验证码答案。
+          minLength: 40
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_-]+$"
+          example: 2d8J6wW8V0d7fH1n4Y4p9Q2s3A5b6C7D8E9F0gH1I2J
+        image:
+          type: string
+          description: 可直接用于 img src 的 SVG data URL；图片中不包含可复制的明文答案。
+          minLength: 100
+          maxLength: 20000
+          pattern: "^data:image/svg\\+xml;base64,[A-Za-z0-9+/=]+$"
+          example: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==
+        expiresAt:
+          type: string
+          format: date-time
+          description: 验证码挑战过期时间。
+          example: "2026-08-29T12:00:00Z"
+      required:
+        - captchaToken
+        - image
+        - expiresAt
 
     AssignRoleRequest:
       type: object
@@ -6090,7 +6549,7 @@ components:
       properties:
         targetUserId:
           type: integer
-          description: 被分配角色的用户 ID。
+          description: 旧版兼容字段；v1 资源路由以 path 中的 userId 为准。
           example: 2
         roleCode:
           type: string
@@ -6103,7 +6562,6 @@ components:
           nullable: true
           example: 1
       required:
-        - targetUserId
         - roleCode
 
     AuthResponse:
@@ -9197,9 +9655,6 @@ components:
     CreateRecruitmentRequest:
       type: object
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
         clubId:
           type: integer
           minimum: 1
@@ -9226,7 +9681,6 @@ components:
           enum: [draft, pending_review]
           default: draft
       required:
-        - currentUserId
         - clubId
         - title
         - startAt
@@ -9242,9 +9696,6 @@ components:
     UpdateRecruitmentRequest:
       type: object
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
         title:
           type: string
           nullable: true
@@ -9271,40 +9722,27 @@ components:
           allOf:
             - $ref: "#/components/schemas/RecruitmentWorkflowStatus"
           nullable: true
-      required:
-        - currentUserId
     ReviewRecruitmentRequest:
       type: object
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
         decision:
           type: string
           enum: [approved, rejected]
       required:
-        - currentUserId
         - decision
 
     CreateRecruitmentApplicationRequest:
       type: object
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
         applicationReason:
           type: string
           minLength: 1
       required:
-        - currentUserId
         - applicationReason
 
     ReviewRecruitmentApplicationRequest:
       type: object
       properties:
-        currentUserId:
-          type: integer
-          minimum: 1
         decision:
           type: string
           enum: [accepted, rejected]
@@ -9315,7 +9753,6 @@ components:
           maximum: 100
           nullable: true
       required:
-        - currentUserId
         - decision
 
     UpdateUserAccountStatusRequest:

@@ -80,11 +80,11 @@
   --club-warning: #f5a524;
   --club-danger: #ff6b85;
   --club-info: #94a3b8;
-  --club-bg: #0c1321;
-  --club-bg-elevated: rgba(18, 28, 45, 0.9);
-  --club-bg-muted: #172235;
-  --club-surface: rgba(23, 34, 53, 0.78);
-  --club-surface-solid: #172235;
+  --club-bg: #111a2a;
+  --club-bg-elevated: rgba(29, 42, 64, 0.92);
+  --club-bg-muted: #25344d;
+  --club-surface: rgba(31, 46, 70, 0.82);
+  --club-surface-solid: #1f2e46;
   --club-surface-hover: rgba(92, 168, 255, 0.12);
   --club-text: #eef4ff;
   --club-text-secondary: #b4c0d4;
@@ -93,6 +93,16 @@
   --club-border-strong: rgba(151, 170, 199, 0.28);
   --club-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
   --club-shadow-md: 0 18px 45px rgba(0, 0, 0, 0.3);
+
+  --el-bg-color: var(--club-surface-solid);
+  --el-bg-color-overlay: #263752;
+  --el-fill-color: #2b3d5a;
+  --el-fill-color-light: #263752;
+  --el-fill-color-lighter: #22324c;
+  --el-fill-color-extra-light: #1f2e46;
+  --el-fill-color-dark: #314563;
+  --el-fill-color-darker: #374c6c;
+  --el-fill-color-blank: var(--club-surface-solid);
 }
 
 html {
@@ -167,6 +177,118 @@ a {
   --el-table-row-hover-bg-color: var(--club-surface-hover);
 
   border-radius: var(--club-radius-md);
+  background: var(--club-surface-solid);
+}
+
+.el-table .el-table__inner-wrapper {
+  border-radius: inherit;
+}
+
+.el-table td.el-table__cell.el-table-fixed-column--left,
+.el-table td.el-table__cell.el-table-fixed-column--right,
+.el-table th.el-table__cell.el-table-fixed-column--left,
+.el-table th.el-table__cell.el-table-fixed-column--right,
+.el-table .el-table__fixed-right-patch {
+  background: var(--club-surface-solid) !important;
+}
+
+.el-table th.el-table__cell.el-table-fixed-column--left,
+.el-table th.el-table__cell.el-table-fixed-column--right,
+.el-table .el-table__fixed-right-patch {
+  background: var(--club-bg-muted) !important;
+}
+
+/* 核心业务页面统一使用与蓝粉应用壳一致的数据表表面。 */
+.business-data-table.el-table {
+  --el-table-border-color: var(--club-border);
+  --el-table-header-bg-color: color-mix(
+    in srgb,
+    var(--club-primary-soft) 58%,
+    var(--club-surface-solid)
+  );
+  --el-table-row-hover-bg-color: color-mix(
+    in srgb,
+    var(--club-accent-soft) 34%,
+    var(--club-surface-solid)
+  );
+
+  overflow: hidden;
+  border: 1px solid var(--club-border);
+  border-radius: var(--club-radius-lg);
+  background: var(--club-bg-elevated);
+  box-shadow: var(--club-shadow-sm);
+}
+
+.business-data-table.el-table::before,
+.business-data-table.el-table .el-table__inner-wrapper::before {
+  display: none;
+}
+
+.business-data-table.el-table th.el-table__cell {
+  color: var(--club-text-secondary);
+  background: var(--el-table-header-bg-color);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+}
+
+.business-data-table.el-table td.el-table__cell {
+  border-bottom-color: var(--club-border);
+  background: color-mix(in srgb, var(--club-surface-solid) 78%, transparent);
+}
+
+.business-data-table.el-table--border th.el-table__cell,
+.business-data-table.el-table--border td.el-table__cell {
+  border-right-color: var(--club-border-strong);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-input-number .el-input__wrapper {
+  background: var(--club-surface-solid);
+}
+
+.club-context-popper.el-select__popper,
+.club-context-popper .el-select-dropdown,
+.club-context-popper .el-select-dropdown__list {
+  background: var(--club-surface-solid);
+}
+
+.el-select-dropdown__item {
+  height: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  line-height: 1.45;
+  background: transparent;
+}
+
+.el-select-dropdown__item.is-hovering,
+.el-select-dropdown__item.is-selected {
+  background: transparent;
+}
+
+.el-select-dropdown__item:hover {
+  background: color-mix(in srgb, var(--club-primary-soft) 72%, var(--club-surface-solid));
+}
+
+.club-context-popper .el-select-dropdown__item {
+  min-height: 58px;
+  margin: 4px 6px;
+  padding-block: 9px;
+  border-radius: var(--club-radius-sm);
+}
+
+.club-context-popper .el-select-dropdown__item:hover {
+  background: color-mix(in srgb, var(--club-primary-soft) 72%, var(--club-surface-solid));
+}
+
+.business-data-table.el-table .cell {
+  line-height: 1.55;
+}
+
+.business-data-table.el-table .el-button + .el-button {
+  margin-left: 6px;
 }
 
 .el-overlay {

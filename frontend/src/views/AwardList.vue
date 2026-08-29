@@ -20,6 +20,7 @@ import {
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { awardApplicationEntryState, awardReviewResultText } from "../defenseBusinessRules";
 import {
   canMaintainScopedMember,
   collectCadreScopesFromMembers,
@@ -480,6 +481,13 @@ const creatableAwardSchemes = computed(() =>
       scheme.levels.some((level) => level.levelStatus === "active"),
   ),
 );
+const applicationEntry = computed(() =>
+  awardApplicationEntryState(
+    selectedClubId.value,
+    creatableAwardSchemes.value.length,
+    applicantOptions.value.length,
+  ),
+);
 const applicationSchemeOptions = computed(() => {
   if (!applicationTarget.value) return creatableAwardSchemes.value;
   return schemes.value.filter(
@@ -627,7 +635,7 @@ async function loadClubs() {
   }
 
   try {
-    clubs.value = await requestJson<Club[]>("/api/clubs");
+    clubs.value = await requestJson<Club[]>("/api/v1/clubs");
     if (
       !selectedClubId.value ||
       !accessibleClubs.value.some((club) => club.id === selectedClubId.value)
@@ -653,7 +661,7 @@ async function loadMembers() {
   try {
     const query = new URLSearchParams({ includeHistory: "false" });
     const data = await requestJson<ClubMemberRecord[]>(
-      `/api/clubs/${clubId}/members?${query.toString()}`,
+      `/api/v1/clubs/${clubId}/members?${query.toString()}`,
     );
     if (requestId === memberRequestId) members.value = data;
   } catch {
@@ -682,10 +690,10 @@ async function loadAwardWorkspace() {
   clearAwardWorkspaceData();
   try {
     const [schemeData, ruleDocumentData, applicationData, publicityData] = await Promise.all([
-      requestJson<AwardSchemeRecord[]>(`/api/clubs/${clubId}/award-schemes`),
-      requestJson<AwardRuleDocumentRecord[]>(`/api/clubs/${clubId}/award-rule-documents`),
-      requestJson<AwardApplicationRecord[]>(`/api/clubs/${clubId}/award-applications`),
-      requestJson<AwardPublicityBatchRecord[]>(`/api/clubs/${clubId}/award-publicity`),
+      requestJson<AwardSchemeRecord[]>(`/api/v1/clubs/${clubId}/award-schemes`),
+      requestJson<AwardRuleDocumentRecord[]>(`/api/v1/clubs/${clubId}/award-rule-documents`),
+      requestJson<AwardApplicationRecord[]>(`/api/v1/clubs/${clubId}/award-applications`),
+      requestJson<AwardPublicityBatchRecord[]>(`/api/v1/clubs/${clubId}/award-publicity`),
     ]);
     if (requestId !== loadRequestId) return;
     schemes.value = schemeData;
@@ -842,8 +850,8 @@ async function submitScheme() {
       })),
     };
     const url = schemeTarget.value
-      ? `/api/clubs/${selectedClubId.value}/award-schemes/${schemeTarget.value.awardSchemeId}`
-      : `/api/clubs/${selectedClubId.value}/award-schemes`;
+      ? `/api/v1/clubs/${selectedClubId.value}/award-schemes/${schemeTarget.value.awardSchemeId}`
+      : `/api/v1/clubs/${selectedClubId.value}/award-schemes`;
     await requestJson<AwardSchemeRecord>(url, {
       method: schemeTarget.value ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -944,8 +952,8 @@ async function submitRuleDocument() {
     };
     const wasEditing = Boolean(ruleTarget.value);
     const url = wasEditing
-      ? `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value!.ruleDocumentId}`
-      : `/api/clubs/${selectedClubId.value}/award-rule-documents`;
+      ? `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${ruleTarget.value!.ruleDocumentId}`
+      : `/api/v1/clubs/${selectedClubId.value}/award-rule-documents`;
     let savedDocument = await requestJson<AwardRuleDocumentRecord>(url, {
       method: wasEditing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -977,7 +985,7 @@ async function uploadRuleDocumentFile(ruleDocumentId: number) {
   const formData = new FormData();
   formData.append("file", file, file.name);
   const response = await fetchAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${ruleDocumentId}/file`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
@@ -995,7 +1003,7 @@ async function publishRuleDocument(row: AwardRuleDocumentRecord) {
   saving.value = true;
   try {
     await requestJson<AwardRuleDocumentRecord>(
-      `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/publish`,
+      `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/publish`,
       { method: "POST" },
     );
     ElMessage.success("评定细则已发布");
@@ -1024,9 +1032,8 @@ function resetApplicationForm() {
 }
 
 function openCreateApplicationDialog() {
-  if (!selectedClubId.value) return;
-  if (creatableAwardSchemes.value.length === 0) {
-    ElMessage.warning("当前社团暂无在申请期内的奖项项目。");
+  if (applicationEntry.value.disabled) {
+    ElMessage.warning(applicationEntry.value.reason);
     return;
   }
   applicationTarget.value = null;
@@ -1074,7 +1081,7 @@ async function submitApplication() {
     let savedApplication: AwardApplicationRecord;
     if (applicationTarget.value) {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1087,7 +1094,7 @@ async function submitApplication() {
       );
     } else {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1106,7 +1113,7 @@ async function submitApplication() {
     }
     if (applicationSubmitAfterUpload.value) {
       savedApplication = await requestJson<AwardApplicationRecord>(
-        `/api/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
+        `/api/v1/clubs/${selectedClubId.value}/award-applications/${savedApplication.awardApplicationId}/submit`,
         { method: "POST" },
       );
       applicationTarget.value = savedApplication;
@@ -1141,7 +1148,7 @@ async function uploadApplicationFiles(awardApplicationId: number) {
     formData.append("file", file, file.name);
     formData.append("attachmentType", "申请材料");
     const response = await fetchAwardFile(
-      `/api/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${awardApplicationId}/attachments`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${auth.value?.token ?? ""}` },
@@ -1160,7 +1167,7 @@ async function submitExistingApplication(row: AwardApplicationRecord) {
   if (!selectedClubId.value) return;
   try {
     await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${row.awardApplicationId}/submit`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${row.awardApplicationId}/submit`,
       { method: "POST" },
     );
     ElMessage.success("申请已提交审核");
@@ -1173,7 +1180,7 @@ async function submitExistingApplication(row: AwardApplicationRecord) {
 async function downloadRuleDocument(row: AwardRuleDocumentRecord) {
   if (!selectedClubId.value || !row.materialUrl) return;
   await downloadManagedAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-rule-documents/${row.ruleDocumentId}/file`,
     row.materialName || row.ruleTitle,
   );
 }
@@ -1184,7 +1191,7 @@ async function downloadApplicationAttachment(
 ) {
   if (!selectedClubId.value) return;
   await downloadManagedAwardFile(
-    `/api/clubs/${selectedClubId.value}/award-applications/${application.awardApplicationId}/attachments/${attachment.attachmentId}/file`,
+    `/api/v1/clubs/${selectedClubId.value}/award-applications/${application.awardApplicationId}/attachments/${attachment.attachmentId}/file`,
     attachment.attachmentName,
   );
 }
@@ -1242,7 +1249,7 @@ async function submitReview() {
   saving.value = true;
   try {
     await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}/review`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${applicationTarget.value.awardApplicationId}/review`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1305,7 +1312,7 @@ async function submitPublicity() {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1334,7 +1341,7 @@ async function publishPublicity(row: AwardPublicityBatchRecord) {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/publish`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/publish`,
       { method: "POST" },
     );
     ElMessage.success("公示已发布");
@@ -1357,7 +1364,7 @@ async function archivePublicity(row: AwardPublicityBatchRecord) {
   saving.value = true;
   try {
     await requestJson<AwardPublicityBatchRecord>(
-      `/api/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/archive`,
+      `/api/v1/clubs/${selectedClubId.value}/award-publicity/${row.publicityBatchId}/archive`,
       { method: "POST" },
     );
     ElMessage.success("公示已归档，奖项分可进入成员考核");
@@ -1386,6 +1393,10 @@ function publicityItemResultText(result: string) {
   return result || "-";
 }
 
+function reviewResultText(value?: string | null) {
+  return awardReviewResultText(value);
+}
+
 async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
   const cachedApplication = applications.value.find(
     (application) => application.awardApplicationId === item.awardApplicationId,
@@ -1398,7 +1409,7 @@ async function openPublicityItemDetail(item: AwardPublicityItemRecord) {
 
   try {
     const application = await requestJson<AwardApplicationRecord>(
-      `/api/clubs/${selectedClubId.value}/award-applications/${item.awardApplicationId}`,
+      `/api/v1/clubs/${selectedClubId.value}/award-applications/${item.awardApplicationId}`,
     );
     detailTarget.value = application;
     detailVisible.value = true;
@@ -1683,7 +1694,7 @@ onUnmounted(() => {
     <div class="page-head app-page-header">
       <div>
         <h2>评奖评优</h2>
-        <div class="subtitle">申请、审核、公示与成员考核奖项分联动</div>
+        <p class="subtitle">奖项申请、审核、公示与归档</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="reloadAll">刷新</el-button>
@@ -1703,9 +1714,21 @@ onUnmounted(() => {
         >
           新增奖项
         </el-button>
-        <el-button type="success" :icon="Plus" @click="openCreateApplicationDialog">
-          发起申请
-        </el-button>
+        <el-tooltip :disabled="!applicationEntry.disabled" :content="applicationEntry.reason">
+          <span
+            :tabindex="applicationEntry.disabled ? 0 : -1"
+            :aria-label="applicationEntry.disabled ? applicationEntry.reason : undefined"
+          >
+            <el-button
+              type="success"
+              :icon="Plus"
+              :disabled="applicationEntry.disabled"
+              @click="openCreateApplicationDialog"
+            >
+              发起申请
+            </el-button>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 
@@ -1816,6 +1839,7 @@ onUnmounted(() => {
         :data="filteredRuleDocuments"
         empty-text="暂无评定细则"
         row-key="ruleDocumentId"
+        class="business-data-table"
       >
         <el-table-column type="expand">
           <template #default="{ row }">
@@ -1877,7 +1901,7 @@ onUnmounted(() => {
         <el-table-column label="发布时间" width="170">
           <template #default="{ row }">{{ formatDate(row.publishedAt || row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="220">
           <template #default="{ row }">
             <el-button :icon="View" @click="openRuleDetail(row)">查看</el-button>
             <el-button
@@ -1904,6 +1928,7 @@ onUnmounted(() => {
         :data="filteredApplications"
         empty-text="暂无评奖评优申请"
         row-key="awardApplicationId"
+        class="business-data-table"
       >
         <el-table-column label="申请人" min-width="150">
           <template #default="{ row }">
@@ -1938,7 +1963,7 @@ onUnmounted(() => {
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDate(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="240">
           <template #default="{ row }">
             <el-button :icon="View" @click="openDetail(row)">查看</el-button>
             <el-button
@@ -1978,6 +2003,7 @@ onUnmounted(() => {
         :data="filteredSchemes"
         empty-text="暂无奖项项目"
         row-key="awardSchemeId"
+        class="business-data-table"
       >
         <el-table-column label="奖项项目" min-width="220">
           <template #default="{ row }">
@@ -2014,7 +2040,7 @@ onUnmounted(() => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120" fixed="right">
+        <el-table-column v-if="canMaintainSelectedClub" label="操作" width="120">
           <template #default="{ row }">
             <el-button :icon="Edit" @click="openEditSchemeDialog(row)">编辑</el-button>
           </template>
@@ -2036,6 +2062,7 @@ onUnmounted(() => {
           :data="filteredPublicityBatches"
           empty-text="暂无公示批次"
           row-key="publicityBatchId"
+          class="business-data-table"
         >
           <el-table-column label="公示标题" min-width="220">
             <template #default="{ row }">
@@ -2058,7 +2085,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" min-width="220">
             <template #default="{ row }">
               <el-button :icon="View" @click="openPublicityBatchDetail(row)">查看名单</el-button>
               <el-button
@@ -2567,7 +2594,7 @@ onUnmounted(() => {
           </el-descriptions-item>
         </el-descriptions>
         <el-table
-          class="publicity-detail-table"
+          class="publicity-detail-table business-data-table"
           :data="publicityDetailTarget.items"
           border
           empty-text="暂无公示名单"
@@ -2588,7 +2615,7 @@ onUnmounted(() => {
               <el-tag effect="plain">{{ publicityItemResultText(row.publicityResult) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right">
+          <el-table-column label="操作" width="140">
             <template #default="{ row }">
               <el-button size="small" :icon="View" @click="openPublicityItemDetail(row)">
                 查看申请
@@ -2699,7 +2726,7 @@ onUnmounted(() => {
             :timestamp="formatDate(record.reviewedAt)"
           >
             <strong>{{ record.reviewerName || "系统" }}</strong>
-            <span> {{ record.reviewResult }} </span>
+            <span> · {{ reviewResultText(record.reviewResult) }}</span>
             <div class="muted">{{ record.reviewComment || "无审核意见" }}</div>
           </el-timeline-item>
         </el-timeline>
@@ -2739,6 +2766,10 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
 }
 
 .summary-strip {

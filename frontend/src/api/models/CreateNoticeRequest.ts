@@ -13,7 +13,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from "../runtime";
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from "../runtime";
 /**
  * 新建、编辑或发布公告通知请求；操作人身份只从 Bearer Token 获取。
  * @export
@@ -22,50 +22,34 @@ import { mapValues } from "../runtime";
 export interface CreateNoticeRequest {
   /**
    * 通知类型，例如 announcement、urgent、event。
-   * @type {string}
-   * @memberof CreateNoticeRequest
    */
   noticeType: string;
   /**
    * 通知标题。
-   * @type {string}
-   * @memberof CreateNoticeRequest
    */
   title: string;
   /**
    * 通知正文。
-   * @type {string}
-   * @memberof CreateNoticeRequest
    */
   content: string;
   /**
    * 定向类型。
-   * @type {CreateNoticeRequestTargetTypeEnum}
-   * @memberof CreateNoticeRequest
    */
   targetType: CreateNoticeRequestTargetTypeEnum;
   /**
    * 成员定向所属社团 ID；仅 member 定向需要作为社团上下文，全校、社团、部门定向可为空。
-   * @type {number}
-   * @memberof CreateNoticeRequest
    */
   clubId?: number | null;
   /**
    * 目标 ID；school 为空，club 传目标社团 ID，department 传成员任期 memberId，member 传目标 userId。
-   * @type {number}
-   * @memberof CreateNoticeRequest
    */
   targetId?: number | null;
   /**
    * 过期时间，必须晚于发布时间。
-   * @type {Date}
-   * @memberof CreateNoticeRequest
    */
   expireAt?: Date | null;
   /**
    * 通知状态；draft 表示保存草稿，published 表示立即发布，默认 published。
-   * @type {CreateNoticeRequestNoticeStatusEnum}
-   * @memberof CreateNoticeRequest
    */
   noticeStatus?: CreateNoticeRequestNoticeStatusEnum;
 }
@@ -132,7 +116,7 @@ export function CreateNoticeRequestFromJSONTyped(
         ? undefined
         : json["expireAt"] === null
           ? null
-          : new Date(json["expireAt"]),
+          : parseDateTime(json["expireAt"]),
     noticeStatus: json["noticeStatus"] == null ? undefined : json["noticeStatus"],
   };
 }
@@ -156,7 +140,7 @@ export function CreateNoticeRequestToJSONTyped(
     targetType: value["targetType"],
     clubId: value["clubId"],
     targetId: value["targetId"],
-    expireAt: value["expireAt"] == null ? value["expireAt"] : value["expireAt"].toISOString(),
+    expireAt: value["expireAt"] == null ? value["expireAt"] : serializeDateTime(value["expireAt"]),
     noticeStatus: value["noticeStatus"],
   };
 }
