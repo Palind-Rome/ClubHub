@@ -179,6 +179,18 @@ const activeTransactions = computed(() =>
     (item) => activeClubId.value === 0 || item.clubId === activeClubId.value,
   ),
 );
+const showAccountOperationColumn = computed(() =>
+  accounts.value.some((account) => canManageAccountForClub(account.clubId)),
+);
+const showApplicationOperationColumn = computed(() =>
+  activeApplications.value.some(
+    (application) =>
+      application.status === "pending" &&
+      (canReviewForClub(application.clubId) ||
+        application.applicantUserId === auth.value?.user.id ||
+        canApplyForClub(application.clubId)),
+  ),
+);
 
 const pendingReviewCount = computed(
   () =>
@@ -608,7 +620,7 @@ onMounted(() => {
           <div class="metric">
             <Warning class="metric-icon warning" />
             <div>
-              <span>待审核申请</span>
+              <span>待我审核</span>
               <strong>{{ pendingReviewCount }}</strong>
             </div>
           </div>
@@ -641,7 +653,7 @@ onMounted(() => {
             <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column v-if="showAccountOperationColumn" label="操作" width="120">
           <template #default="{ row }">
             <el-button
               v-if="canManageAccountForClub(row.clubId)"
@@ -696,7 +708,7 @@ onMounted(() => {
         <el-table-column label="审核意见" min-width="160">
           <template #default="{ row }">{{ row.reviewComment || "暂无" }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column v-if="showApplicationOperationColumn" label="操作" width="210">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'pending' && canReviewForClub(row.clubId)"

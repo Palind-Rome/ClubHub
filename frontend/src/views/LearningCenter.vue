@@ -21,7 +21,7 @@ import {
   type LearningRecord,
   type LearningTeacherCandidate,
 } from "../api";
-import { apiClient } from "../apiClient";
+import { apiClient, createIdempotencyKey } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
 import { prepareLearningDownload } from "../learningDownload";
 import { prepareLearningPreview } from "../learningPreview";
@@ -688,7 +688,7 @@ async function reviewItem(item: LearningItem, approved: boolean) {
 
   try {
     await api.reviewLearningItem({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       itemId: item.id,
       reviewLearningItemRequest: { result: approved ? "approved" : "rejected" },
     });
@@ -1017,7 +1017,7 @@ async function enroll(item: LearningItem) {
   enrollingId.value = item.id;
   try {
     await api.enrollLearningItem({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       itemId: item.id,
     });
     ElMessage.success("已加入课程");
@@ -1409,89 +1409,91 @@ onUnmounted(() => {
       </el-table-column>
       <el-table-column label="操作" min-width="320">
         <template #default="{ row }">
-          <el-button
-            v-if="isCourseItem(row) && canEnrollCourses && row.instructorUserId !== currentUserId"
-            size="small"
-            type="primary"
-            :disabled="!row.canEnroll"
-            :loading="enrollingId === row.id"
-            :title="row.enrollmentUnavailableReason ?? ''"
-            @click="enroll(row)"
-          >
-            加入课程
-          </el-button>
-          <el-button
-            v-if="row.canCancelEnrollment"
-            size="small"
-            type="warning"
-            :loading="cancellingId === row.id"
-            @click="cancelEnrollment(row)"
-          >
-            退出课程
-          </el-button>
-          <el-button v-if="!isCourseItem(row)" size="small" @click="openPreview(row)">
-            在线预览
-          </el-button>
-          <el-button
-            v-if="!isCourseItem(row)"
-            size="small"
-            type="primary"
-            :disabled="!row.canStartLearning"
-            :loading="learningId === row.id"
-            :title="row.learningUnavailableReason ?? ''"
-            @click="startLearning(row)"
-          >
-            {{ row.currentUserRecordStatus === "none" ? "开始学习" : "继续学习" }}
-          </el-button>
-          <el-button
-            v-if="!isCourseItem(row)"
-            size="small"
-            type="success"
-            :disabled="!row.canDownload"
-            :loading="downloadingId === row.id"
-            :title="row.downloadUnavailableReason ?? ''"
-            @click="downloadItem(row)"
-          >
-            下载
-          </el-button>
-          <el-button v-if="row.canManage" size="small" @click="openEditDialog(row)">
-            编辑
-          </el-button>
-          <el-button v-if="canViewStatistics(row)" size="small" @click="openStatistics(row)">
-            统计
-          </el-button>
-          <el-button
-            v-if="canReviewItem(row)"
-            size="small"
-            type="success"
-            @click="reviewItem(row, true)"
-          >
-            通过
-          </el-button>
-          <el-button
-            v-if="canReviewItem(row)"
-            size="small"
-            type="warning"
-            @click="reviewItem(row, false)"
-          >
-            驳回
-          </el-button>
-          <el-button
-            v-if="canDeleteItem(row)"
-            size="small"
-            type="danger"
-            :loading="deletingId === row.id"
-            @click="deleteResource(row)"
-          >
-            删除
-          </el-button>
-          <el-button
-            v-if="canViewRecords(row) || row.currentUserRecordStatus !== 'none'"
-            size="small"
-            @click="openRecords(row)"
-          >
-            {{ canViewRecords(row) ? "学习用户" : "学习记录" }}
-          </el-button>
+          <div class="learning-row-actions">
+            <el-button
+              v-if="isCourseItem(row) && canEnrollCourses && row.instructorUserId !== currentUserId"
+              size="small"
+              type="primary"
+              :disabled="!row.canEnroll"
+              :loading="enrollingId === row.id"
+              :title="row.enrollmentUnavailableReason ?? ''"
+              @click="enroll(row)"
+            >
+              加入课程
+            </el-button>
+            <el-button
+              v-if="row.canCancelEnrollment"
+              size="small"
+              type="warning"
+              :loading="cancellingId === row.id"
+              @click="cancelEnrollment(row)"
+            >
+              退出课程
+            </el-button>
+            <el-button v-if="!isCourseItem(row)" size="small" @click="openPreview(row)">
+              在线预览
+            </el-button>
+            <el-button
+              v-if="!isCourseItem(row)"
+              size="small"
+              type="primary"
+              :disabled="!row.canStartLearning"
+              :loading="learningId === row.id"
+              :title="row.learningUnavailableReason ?? ''"
+              @click="startLearning(row)"
+            >
+              {{ row.currentUserRecordStatus === "none" ? "开始学习" : "继续学习" }}
+            </el-button>
+            <el-button
+              v-if="!isCourseItem(row)"
+              size="small"
+              type="success"
+              :disabled="!row.canDownload"
+              :loading="downloadingId === row.id"
+              :title="row.downloadUnavailableReason ?? ''"
+              @click="downloadItem(row)"
+            >
+              下载
+            </el-button>
+            <el-button v-if="row.canManage" size="small" @click="openEditDialog(row)">
+              编辑
+            </el-button>
+            <el-button v-if="canViewStatistics(row)" size="small" @click="openStatistics(row)">
+              统计
+            </el-button>
+            <el-button
+              v-if="canReviewItem(row)"
+              size="small"
+              type="success"
+              @click="reviewItem(row, true)"
+            >
+              通过
+            </el-button>
+            <el-button
+              v-if="canReviewItem(row)"
+              size="small"
+              type="warning"
+              @click="reviewItem(row, false)"
+            >
+              驳回
+            </el-button>
+            <el-button
+              v-if="canDeleteItem(row)"
+              size="small"
+              type="danger"
+              :loading="deletingId === row.id"
+              @click="deleteResource(row)"
+            >
+              删除
+            </el-button>
+            <el-button
+              v-if="canViewRecords(row) || row.currentUserRecordStatus !== 'none'"
+              size="small"
+              @click="openRecords(row)"
+            >
+              {{ canViewRecords(row) ? "学习用户" : "学习记录" }}
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -1812,7 +1814,7 @@ onUnmounted(() => {
             placeholder="请选择开始时间"
           />
         </el-form-item>
-        <el-form-item v-if="isCourseForm" label="结束时间（可选）" prop="endAt">
+        <el-form-item v-if="isCourseForm" label="结束时间" prop="endAt">
           <el-date-picker
             v-model="courseForm.endAt"
             type="datetime"
@@ -2065,6 +2067,22 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 20px;
+}
+
+.learning-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.learning-row-actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+.learning-row-actions :deep(.el-button--danger),
+.learning-row-actions :deep(.el-button--warning) {
+  order: 2;
 }
 
 .preview-stage {

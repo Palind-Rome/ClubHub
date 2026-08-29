@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,7 +32,10 @@ public sealed class ClubHubWebApplicationFactory : WebApplicationFactory<Program
             services.RemoveAll<IDbContextOptionsConfiguration<ClubHubDbContext>>();
             services.RemoveAll<IDatabaseProvider>();
             services.AddDbContext<ClubHubDbContext>(options =>
-                options.UseInMemoryDatabase(_databaseName));
+                options
+                    .UseInMemoryDatabase(_databaseName)
+                    .ConfigureWarnings(warnings =>
+                        warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         });
     }
 }

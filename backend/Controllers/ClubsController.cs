@@ -307,7 +307,7 @@ public class ClubsController : ControllerBase
             AdvisorName = null,
             ContactPhone = EmptyToNull(req.ContactPhone),
             ApplyReason = req.ApplyReason.Trim(),
-            MaterialUrl = req.MaterialUrl.Trim(),
+            MaterialUrl = EmptyToNull(req.MaterialUrl),
             AuditStatus = AuditPending,
             ClubStatus = ClubPending,
             CreatedAt = now,
@@ -416,7 +416,7 @@ public class ClubsController : ControllerBase
         club.AdvisorName = advisor.User is null ? null : DisplayUser(advisor.User);
         club.ContactPhone = EmptyToNull(req.ContactPhone);
         club.ApplyReason = req.ApplyReason.Trim();
-        club.MaterialUrl = req.MaterialUrl.Trim();
+        club.MaterialUrl = EmptyToNull(req.MaterialUrl);
         club.AuditStatus = AuditPending;
         club.ClubStatus = ClubPending;
         club.PresidentUserId = null;
@@ -2839,7 +2839,6 @@ public class ClubsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Name)) return "社团名称不能为空。";
         if (string.IsNullOrWhiteSpace(req.Category)) return "社团类别不能为空。";
         if (string.IsNullOrWhiteSpace(req.ApplyReason)) return "申请理由不能为空。";
-        if (string.IsNullOrWhiteSpace(req.MaterialUrl)) return "材料链接或归档编号不能为空。";
         return null;
     }
 
@@ -4804,7 +4803,7 @@ public class CreateClubApplicationRequest
     public string Category { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string ApplyReason { get; set; } = string.Empty;
-    public string MaterialUrl { get; set; } = string.Empty;
+    public string? MaterialUrl { get; set; }
     public int? AdvisorUserId { get; set; }
     public string? AdvisorName { get; set; }
     public string? ContactPhone { get; set; }

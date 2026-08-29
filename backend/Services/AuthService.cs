@@ -106,19 +106,19 @@ public class AuthService
             "社团干部",
             ClubScope,
             "指定社团内角色，可管理招募、活动、通知、资源、项目任务，查看本社团经费，并处理本社团物资借还记录。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "evaluation:draft", "budget:view", "venue:reserve"]),
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "evaluation:draft", "budget:view", "venue:reserve"]),
         new(
             ClubLeaderRole,
             "社团负责人",
             ClubScope,
             "指定社团内最高业务角色，可维护社团信息、成员、社团内部角色、运营统计、本社团物资库存和经费申请。",
-            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:view", "budget:apply", "project:apply", "club:stats:view", "venue:reserve"]),
+            ["club:internal:view", "club:notice:view", "club:resource:view", "forum:post", "forum:moderate", "activity:checkin", "task:own:view", "evaluation:own:view", "recruitment:manage", "activity:create", "activity:checkin:manage", "notice:publish", "resource:upload", "project:task:manage", "material:borrow:use", "material:borrow:record", "material:inventory:manage", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "budget:view", "budget:apply", "project:apply", "club:stats:view", "venue:reserve"]),
         new(
             AdvisorRole,
             "指导老师",
             ClubScope,
             "指定社团指导角色，可查看社团运营与通知、发布社团通知、处理本社团物资借还记录、维护并审核学习资源，以及审核活动、项目、经费和评价，可按负责人权限维护成员、考核与评奖评优。",
-            ["club:internal:view", "club:notice:view", "club:operation:view", "notice:publish", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:view", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
+            ["club:internal:view", "club:notice:view", "club:operation:view", "notice:publish", "forum:post", "forum:moderate", "resource:upload", "resource:review", "material:borrow:use", "material:borrow:record", "activity:review", "project:review", "budget:view", "budget:review", "evaluation:review", "evaluation:draft", "club:info:manage", "club:member:manage", "club:role:assign", "club:stats:view"]),
         new(
             "CLUB_ADMIN",
             "社团管理员",

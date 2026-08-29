@@ -8,6 +8,19 @@ export function activityRegistrationButtonText(options: {
   return options.canRegister ? "报名" : "不可报名";
 }
 
+export function activityStatusPriority(status?: string | null) {
+  const priorities: Record<string, number> = {
+    pending_review: 0,
+    published: 1,
+    ongoing: 2,
+    rejected: 3,
+    draft: 4,
+    finished: 5,
+    cancelled: 6,
+  };
+  return priorities[(status ?? "").trim().toLowerCase()] ?? 7;
+}
+
 export function awardReviewResultText(value?: string | null) {
   const normalized = (value ?? "").trim().toLowerCase();
   const labels: Record<string, string> = {

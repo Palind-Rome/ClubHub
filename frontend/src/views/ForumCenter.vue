@@ -2,9 +2,10 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ChatDotRound, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
-import type { Club, UserSummary } from "../api/models";
+import type { Club } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
+import { collectManageableClubIds } from "../composables/useManageableClubs";
 
 type Status = "published" | "hidden";
 interface Post {
@@ -26,7 +27,6 @@ const showHidden = ref(false);
 const replyingTo = ref<Post | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
-const currentMemberClubIds = ref(new Set<number>());
 const topicFormRef = ref<FormInstance>();
 const replyFormRef = ref<FormInstance>();
 const topicForm = reactive({ title: "", content: "" });
@@ -41,10 +41,23 @@ const canPost = computed(() =>
 const canModerate = computed(() =>
   (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:moderate"),
 );
+const forumPostClubIds = computed(() =>
+  collectManageableClubIds(auth.value?.roles ?? [], "forum:post"),
+);
+const forumModerateClubIds = computed(() =>
+  collectManageableClubIds(auth.value?.roles ?? [], "forum:moderate"),
+);
 const canPostToSelectedClub = computed(
   () =>
-    canPost.value &&
-    Boolean(selectedClubId.value && currentMemberClubIds.value.has(selectedClubId.value)),
+    Boolean(selectedClubId.value) &&
+    ((auth.value?.permissions ?? []).includes("*") ||
+      forumPostClubIds.value.has(selectedClubId.value!)),
+);
+const canModerateSelectedClub = computed(
+  () =>
+    Boolean(selectedClubId.value) &&
+    ((auth.value?.permissions ?? []).includes("*") ||
+      forumModerateClubIds.value.has(selectedClubId.value!)),
 );
 const topicRules: FormRules = {
   title: [{ required: true, message: "请输入话题标题", trigger: "blur" }],
@@ -56,22 +69,7 @@ const replyRules: FormRules = {
 
 async function loadClubs() {
   try {
-    const [clubResult, userResult] = await Promise.allSettled([
-      requestJson<Club[]>("/api/v1/clubs"),
-      requestJson<UserSummary[]>("/api/v1/users"),
-    ]);
-    if (clubResult.status === "rejected") throw clubResult.reason;
-    clubs.value = clubResult.value;
-    const users = userResult.status === "fulfilled" ? userResult.value : [];
-    const currentUser = users.find((user) => user.id === auth.value?.user.id);
-    currentMemberClubIds.value = new Set(
-      (currentUser?.memberships ?? [])
-        .filter((membership) => {
-          const status = (membership.memberStatus ?? "active").trim().toLowerCase();
-          return ["active", "normal", "enabled", "在任", "正常"].includes(status);
-        })
-        .map((membership) => membership.clubId),
-    );
+    clubs.value = await requestJson<Club[]>("/api/v1/clubs");
     selectedClubId.value ??= clubs.value[0]?.id;
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
@@ -85,7 +83,7 @@ async function loadPosts() {
   const includeHidden = showHidden.value;
   loading.value = true;
   try {
-    const query = includeHidden ? "?includeHidden=true" : "";
+    const query = includeHidden && canModerateSelectedClub.value ? "?includeHidden=true" : "";
     const posts = await requestJson<Post[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     if (requestVersion === postsRequestVersion) topics.value = posts;
   } catch (error) {
@@ -147,7 +145,13 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
 }
 
 const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN", { hour12: false });
-watch(selectedClubId, () => void loadPosts());
+watch(selectedClubId, () => {
+  if (showHidden.value && !canModerateSelectedClub.value) {
+    showHidden.value = false;
+    return;
+  }
+  void loadPosts();
+});
 watch(showHidden, () => void loadPosts());
 onMounted(() => {
   stopSessionListener = onSessionChange(() => {
@@ -173,7 +177,9 @@ onUnmounted(() => stopSessionListener?.());
         <el-select v-model="selectedClubId" placeholder="选择社团" class="club-select">
           <el-option v-for="club in clubs" :key="club.id" :label="club.name" :value="club.id" />
         </el-select>
-        <el-checkbox v-if="canModerate" v-model="showHidden">查看隐藏内容</el-checkbox>
+        <el-checkbox v-if="canModerateSelectedClub" v-model="showHidden">
+          查看隐藏内容
+        </el-checkbox>
         <el-button :icon="Refresh" @click="loadPosts">刷新</el-button>
       </div>
     </div>
@@ -186,7 +192,7 @@ onUnmounted(() => stopSessionListener?.());
     />
     <el-alert
       v-else-if="canPost && selectedClubId && !canPostToSelectedClub"
-      title="你可以浏览该社团讨论，但只有当前有效成员才能发布或回复。"
+      title="当前身份没有该社团的发布权限；请选择本人任职或指导的社团。"
       type="info"
       :closable="false"
       show-icon
@@ -238,7 +244,7 @@ onUnmounted(() => stopSessionListener?.());
           @click="replyingTo = topic"
           >回复</el-button
         >
-        <template v-if="canModerate"
+        <template v-if="canModerateSelectedClub"
           ><el-button
             link
             :icon="Star"
@@ -269,7 +275,7 @@ onUnmounted(() => stopSessionListener?.());
         >
         <p>{{ reply.content }}</p>
         <el-button
-          v-if="canModerate"
+          v-if="canModerateSelectedClub"
           link
           :icon="reply.postStatus === 'hidden' ? View : Hide"
           @click="

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   attachIdempotencyKey,
+  createIdempotencyKey,
   finishIdempotencyAttempt,
   resetIdempotencyAttemptsForTests,
 } from "./apiClient";
@@ -54,6 +55,27 @@ describe("idempotency request middleware", () => {
     );
 
     expect(key(nextSubmission)).not.toBe(key(first));
+  });
+
+  it("does not create idempotency keys for safe GET requests", () => {
+    const request = attachIdempotencyKey("/api/v1/projects", { method: "GET" });
+    expect(key(request)).toBeNull();
+  });
+
+  it("creates a UUID-shaped key when randomUUID is unavailable", () => {
+    let nextByte = 0;
+    vi.stubGlobal("crypto", {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.forEach((_value, index) => {
+          bytes[index] = nextByte++;
+        });
+        return bytes;
+      },
+    });
+
+    expect(createIdempotencyKey()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 });
 

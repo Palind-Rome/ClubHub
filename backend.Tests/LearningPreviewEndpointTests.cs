@@ -82,8 +82,11 @@ public sealed class LearningPreviewEndpointTests
         Assert.Equal(1, storage.MetadataReads);
     }
 
-    [Fact]
-    public async Task PreviewSession_OverHttp_AllowsCookieAuthenticatedContentRequest()
+    [Theory]
+    [InlineData("/api/learning")]
+    [InlineData("/api/v1/learning")]
+    public async Task PreviewSession_OverHttp_AllowsCookieAuthenticatedContentRequest(
+        string routePrefix)
     {
         const string imageReference = "clubs/156102/learning/156104/test.png";
         var imageBytes = Convert.FromBase64String(
@@ -96,13 +99,18 @@ public sealed class LearningPreviewEndpointTests
         var (client, itemId) = await SeedAndAuthenticateAsync(factory, imageReference);
 
         using var sessionResponse = await client.PostAsync(
-            $"/api/learning/items/{itemId}/preview-session",
+            $"{routePrefix}/items/{itemId}/preview-session",
             null);
         Assert.Equal(HttpStatusCode.NoContent, sessionResponse.StatusCode);
+        var cookie = Assert.Single(sessionResponse.Headers.GetValues("Set-Cookie"));
+        Assert.Contains(
+            $"Path={routePrefix}/items/{itemId}/preview",
+            cookie,
+            StringComparison.OrdinalIgnoreCase);
 
         client.DefaultRequestHeaders.Authorization = null;
         using var previewResponse = await client.GetAsync(
-            $"/api/learning/items/{itemId}/preview");
+            $"{routePrefix}/items/{itemId}/preview");
 
         Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
         Assert.Equal("image/png", previewResponse.Content.Headers.ContentType?.MediaType);

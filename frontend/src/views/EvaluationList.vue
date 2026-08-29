@@ -777,19 +777,19 @@ onUnmounted(() => {
     <div class="summary-strip">
       <div>
         <span>考核记录</span>
-        <strong>{{ summary.total }}</strong>
+        <strong>{{ loading ? "—" : summary.total }}</strong>
       </div>
       <div>
         <span>已公示</span>
-        <strong>{{ summary.published }}</strong>
+        <strong>{{ loading ? "—" : summary.published }}</strong>
       </div>
       <div>
         <span>未公示</span>
-        <strong>{{ summary.draft }}</strong>
+        <strong>{{ loading ? "—" : summary.draft }}</strong>
       </div>
       <div>
         <span>平均总分</span>
-        <strong>{{ summary.average }}</strong>
+        <strong>{{ loading ? "—" : summary.average }}</strong>
       </div>
       <div>
         <span>当前社团</span>
@@ -909,18 +909,21 @@ onUnmounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="170">
+      <el-table-column label="操作" width="180">
         <template #default="{ row }">
-          <el-button :icon="View" @click="openDetail(row)">查看</el-button>
-          <el-button
-            v-if="canMaintainEvaluationRecord(row)"
-            type="primary"
-            plain
-            :icon="Edit"
-            @click="openEditDialog(row)"
-          >
-            编辑
-          </el-button>
+          <div class="evaluation-row-actions">
+            <el-button size="small" :icon="View" @click="openDetail(row)">查看</el-button>
+            <el-button
+              v-if="canMaintainEvaluationRecord(row)"
+              size="small"
+              type="primary"
+              plain
+              :icon="Edit"
+              @click="openEditDialog(row)"
+            >
+              编辑
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -1162,6 +1165,17 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.evaluation-row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.evaluation-row-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .summary-strip {

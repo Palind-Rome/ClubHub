@@ -933,28 +933,25 @@ onMounted(async () => {
         </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
-            <div v-if="canRecordBorrowForClub(row.clubId)" class="row-actions">
+            <div
+              v-if="canRecordBorrowForClub(row.clubId) && isBorrowInProgress(row)"
+              class="row-actions"
+            >
               <el-button
                 :icon="Check"
                 type="success"
                 size="small"
                 :loading="returningBorrowId === row.id"
-                :disabled="returningBorrowId !== null || !isBorrowInProgress(row)"
+                :disabled="returningBorrowId !== null"
                 @click="returnBorrow(row)"
               >
                 归还
               </el-button>
-              <el-button
-                :icon="Warning"
-                type="danger"
-                size="small"
-                plain
-                :disabled="!isBorrowInProgress(row)"
-                @click="openDamage(row)"
-              >
+              <el-button :icon="Warning" type="danger" size="small" plain @click="openDamage(row)">
                 损坏
               </el-button>
             </div>
+            <span v-else-if="canRecordBorrowForClub(row.clubId)" class="muted">已完成</span>
             <span v-else class="muted">无权限</span>
           </template>
         </el-table-column>

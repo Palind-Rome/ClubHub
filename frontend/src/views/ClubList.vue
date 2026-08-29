@@ -329,7 +329,6 @@ const applicationForm = reactive({
   category: "",
   description: "",
   applyReason: "",
-  materialUrl: "",
   contactPhone: "",
   advisorUserId: null as number | null,
 });
@@ -429,7 +428,6 @@ const applicationRules: FormRules = {
   name: [{ required: true, message: "请填写社团名称", trigger: "blur" }],
   category: [{ required: true, message: "请填写社团类别", trigger: "blur" }],
   applyReason: [{ required: true, message: "请填写申请理由", trigger: "blur" }],
-  materialUrl: [{ required: true, message: "请填写材料链接或归档编号", trigger: "blur" }],
 };
 
 const reviewRules: FormRules = {
@@ -1246,7 +1244,6 @@ function resetApplicationForm() {
   applicationForm.category = "";
   applicationForm.description = "";
   applicationForm.applyReason = "";
-  applicationForm.materialUrl = "";
   applicationForm.contactPhone = "";
   applicationForm.advisorUserId = null;
   applicationFormRef.value?.clearValidate();
@@ -1257,7 +1254,6 @@ function fillApplicationForm(row: ClubApplication) {
   applicationForm.category = row.category ?? "";
   applicationForm.description = row.description ?? "";
   applicationForm.applyReason = row.applyReason;
-  applicationForm.materialUrl = row.materialUrl;
   applicationForm.contactPhone = row.contactPhone ?? "";
   applicationForm.advisorUserId = row.advisorUserId;
   applicationFormRef.value?.clearValidate();
@@ -3274,9 +3270,6 @@ onUnmounted(() => {
                   <el-descriptions-item label="拟选指导老师">
                     {{ row.advisorName || "-" }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="材料链接或归档编号">
-                    {{ row.materialUrl }}
-                  </el-descriptions-item>
                   <el-descriptions-item label="联系电话">
                     {{ row.contactPhone || "-" }}
                   </el-descriptions-item>
@@ -3386,9 +3379,6 @@ onUnmounted(() => {
                   </el-descriptions-item>
                   <el-descriptions-item label="Logo 地址">
                     {{ row.logoUrl || "-" }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="材料链接或归档编号">
-                    {{ row.materialUrl || "-" }}
                   </el-descriptions-item>
                   <el-descriptions-item label="申请人">
                     {{ row.applicantName || "-" }}
@@ -3518,9 +3508,6 @@ onUnmounted(() => {
                 <el-descriptions-item label="申请人">
                   {{ selectedClub.applicantName || "-" }}
                 </el-descriptions-item>
-                <el-descriptions-item label="材料链接或归档编号">
-                  {{ selectedClub.materialUrl || "-" }}
-                </el-descriptions-item>
                 <el-descriptions-item label="审核人">
                   {{ selectedClub.reviewerName || "-" }}
                 </el-descriptions-item>
@@ -3589,7 +3576,7 @@ onUnmounted(() => {
             <span>启用部门 {{ organizationSummary.activeDepartments }} 个</span>
             <span>小组 {{ organizationSummary.groups }} 个</span>
             <span>启用小组 {{ organizationSummary.activeGroups }} 个</span>
-            <span>当前成员 {{ organizationSummary.currentMembers }} 人</span>
+            <span>当前成员 {{ memberLoading ? "—" : organizationSummary.currentMembers }} 人</span>
           </div>
 
           <div class="organization-panel">
@@ -3647,8 +3634,9 @@ onUnmounted(() => {
                     <el-table-column
                       v-if="canReorderDepartmentGroups(row)"
                       label=""
-                      width="116"
+                      width="126"
                       align="center"
+                      class-name="organization-control-column"
                     >
                       <template #default="{ row: group }">
                         <div class="reorder-controls">
@@ -3717,7 +3705,8 @@ onUnmounted(() => {
                     <el-table-column
                       v-if="canShowGroupOperationColumn(row)"
                       label="操作"
-                      width="100"
+                      width="112"
+                      class-name="organization-control-column"
                     >
                       <template #default="{ row: group }">
                         <el-button
@@ -3734,7 +3723,13 @@ onUnmounted(() => {
                   </el-table>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canReorderDepartments" label="" width="116" align="center">
+              <el-table-column
+                v-if="canReorderDepartments"
+                label=""
+                width="126"
+                align="center"
+                class-name="organization-control-column"
+              >
                 <template #default="{ row }">
                   <div class="reorder-controls">
                     <button
@@ -3800,26 +3795,33 @@ onUnmounted(() => {
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canShowOrganizationOperationColumn" label="操作" width="190">
+              <el-table-column
+                v-if="canShowOrganizationOperationColumn"
+                label="操作"
+                width="210"
+                class-name="organization-control-column"
+              >
                 <template #default="{ row }">
-                  <el-button
-                    v-if="canMaintainDepartment(row)"
-                    type="primary"
-                    plain
-                    :icon="Edit"
-                    @click="editDepartment(row)"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canMaintainDepartmentGroups(row)"
-                    type="primary"
-                    plain
-                    :icon="Plus"
-                    @click="openCreateGroupDialog(row.departmentId)"
-                  >
-                    小组
-                  </el-button>
+                  <div class="row-actions organization-row-actions">
+                    <el-button
+                      v-if="canMaintainDepartment(row)"
+                      type="primary"
+                      plain
+                      :icon="Edit"
+                      @click="editDepartment(row)"
+                    >
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canMaintainDepartmentGroups(row)"
+                      type="primary"
+                      plain
+                      :icon="Plus"
+                      @click="openCreateGroupDialog(row.departmentId)"
+                    >
+                      新增小组
+                    </el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -3850,7 +3852,7 @@ onUnmounted(() => {
                       <span>{{ selectedClub.category || "社团" }}</span>
                     </div>
                     <el-tag size="small" effect="plain">
-                      当前 {{ organizationSummary.currentMembers }} 人
+                      当前 {{ memberLoading ? "—" : organizationSummary.currentMembers }} 人
                     </el-tag>
                   </div>
                 </div>
@@ -4117,11 +4119,11 @@ onUnmounted(() => {
           </div>
 
           <div class="member-summary">
-            <span>当前列表 {{ memberGroupSummary.total }} 条</span>
-            <span>有效任期 {{ memberGroupSummary.current }} 条</span>
-            <span>部门 {{ memberGroupSummary.departments }} 个</span>
-            <span>小组 {{ memberGroupSummary.groups }} 个</span>
-            <span>待补资料 {{ memberGroupSummary.unassigned }} 条</span>
+            <span>当前列表 {{ memberLoading ? "—" : memberGroupSummary.total }} 条</span>
+            <span>有效任期 {{ memberLoading ? "—" : memberGroupSummary.current }} 条</span>
+            <span>部门 {{ memberLoading ? "—" : memberGroupSummary.departments }} 个</span>
+            <span>小组 {{ memberLoading ? "—" : memberGroupSummary.groups }} 个</span>
+            <span>待补资料 {{ memberLoading ? "—" : memberGroupSummary.unassigned }} 条</span>
             <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
               <el-input-number
                 v-model="newAcademicTermStartYear"
@@ -4214,11 +4216,12 @@ onUnmounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="contributionScore" label="贡献分" width="100" />
-          <el-table-column v-if="canShowMemberOperationColumn" label="操作" width="150">
+          <el-table-column v-if="canShowMemberOperationColumn" label="操作" width="190">
             <template #default="{ row }">
               <div class="row-actions member-row-actions">
                 <el-button
                   v-if="canEditMemberRow(row)"
+                  size="small"
                   type="primary"
                   plain
                   :icon="Edit"
@@ -4228,6 +4231,7 @@ onUnmounted(() => {
                 </el-button>
                 <el-button
                   v-if="canExitMemberRow(row)"
+                  size="small"
                   type="danger"
                   plain
                   :icon="DeleteIcon"
@@ -4238,6 +4242,7 @@ onUnmounted(() => {
                 </el-button>
                 <el-button
                   v-if="canRemoveMemberRow(row)"
+                  size="small"
                   type="danger"
                   plain
                   :icon="DeleteIcon"
@@ -4419,15 +4424,6 @@ onUnmounted(() => {
             maxlength="500"
             show-word-limit
           />
-        </el-form-item>
-        <el-form-item label="材料链接或归档编号" prop="materialUrl">
-          <el-input
-            v-model="applicationForm.materialUrl"
-            placeholder="社团章程、成员名单等材料的 OSS 链接或校内归档编号"
-          />
-          <div class="form-tip">
-            用于审核社团章程、成员名单与指导老师同意材料，不是社团主页地址。
-          </div>
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="applicationForm.contactPhone" maxlength="30" />
@@ -5125,17 +5121,27 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.identity-row-actions,
-.member-row-actions {
+.identity-row-actions {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
 }
 
-.identity-row-actions :deep(.el-button),
-.member-row-actions :deep(.el-button) {
+.identity-row-actions :deep(.el-button) {
   width: 100%;
+  margin-left: 0;
+}
+
+.member-row-actions,
+.organization-row-actions {
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.member-row-actions :deep(.el-button),
+.organization-row-actions :deep(.el-button) {
+  width: auto;
   margin-left: 0;
 }
 
@@ -5241,6 +5247,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   width: 98px;
+}
+
+:deep(.organization-control-column .cell) {
+  overflow: visible;
+  padding: 0 8px;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .drag-handle {

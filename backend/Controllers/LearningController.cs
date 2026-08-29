@@ -609,6 +609,9 @@ public class LearningController : ControllerBase
                     title: "资源预览会话容量已满",
                     detail: "当前在线预览会话过多，请稍后重试。");
             }
+            var previewRoutePrefix = Request.Path.StartsWithSegments("/api/v1")
+                ? "/api/v1/learning"
+                : "/api/learning";
             Response.Cookies.Append(
                 AuthTokenService.PreviewCookieName,
                 previewToken,
@@ -619,7 +622,7 @@ public class LearningController : ControllerBase
                     // 使用 HTTPS 时标记 Secure，避免当前 HTTP 部署静默丢弃预览 Cookie。
                     Secure = Request.IsHttps,
                     SameSite = SameSiteMode.Strict,
-                    Path = $"/api/learning/items/{itemId}/preview",
+                    Path = $"{previewRoutePrefix}/items/{itemId}/preview",
                     MaxAge = _authTokenService.PreviewSessionLifetime,
                     IsEssential = true
                 });

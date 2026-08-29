@@ -62,6 +62,6 @@ describe("运营工作台就绪约束", () => {
     expect(awardSource).toContain(':disabled="applicationEntry.disabled"');
     expect(awardSource).toContain(':content="applicationEntry.reason"');
     expect(forumSource).toContain('<el-card v-if="canPostToSelectedClub"');
-    expect(forumSource).toContain("只有当前有效成员才能发布或回复");
+    expect(forumSource).toContain("请选择本人任职或指导的社团");
   });
 });

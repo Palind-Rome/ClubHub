@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import clubListSource from "./views/ClubList.vue?raw";
 import {
   activityRegistrationButtonText,
+  activityStatusPriority,
   awardApplicationEntryState,
   awardReviewResultText,
 } from "./defenseBusinessRules";
@@ -22,6 +23,13 @@ describe("答辩业务入口规则", () => {
         canRegister: true,
       }),
     ).toBe("报名");
+  });
+
+  it("sorts review and registration activities ahead of historical rows", () => {
+    expect(activityStatusPriority("pending_review")).toBeLessThan(
+      activityStatusPriority("published"),
+    );
+    expect(activityStatusPriority("published")).toBeLessThan(activityStatusPriority("finished"));
   });
 
   it.each([
@@ -52,8 +60,8 @@ describe("答辩业务入口规则", () => {
     expect(awardApplicationEntryState(1, 1, 1).disabled).toBe(false);
   });
 
-  it("uses the same material wording in club application validation, form, and details", () => {
-    expect(clubListSource).toContain('message: "请填写材料链接或归档编号"');
-    expect(clubListSource.match(/label="材料链接或归档编号"/g)).toHaveLength(4);
+  it("does not ask applicants to enter an unverifiable material link", () => {
+    expect(clubListSource).not.toContain("材料链接或归档编号");
+    expect(clubListSource).not.toContain("applicationForm.materialUrl");
   });
 });

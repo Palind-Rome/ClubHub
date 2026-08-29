@@ -9401,7 +9401,9 @@ components:
           minLength: 1
         materialUrl:
           type: string
-          minLength: 1
+          nullable: true
+          deprecated: true
+          description: 历史兼容字段；新申请流程不再要求填写材料链接。
         advisorUserId:
           type: integer
           nullable: true
@@ -9420,7 +9422,6 @@ components:
         - name
         - category
         - applyReason
-        - materialUrl
 
     ReviewClubApplicationRequest:
       type: object

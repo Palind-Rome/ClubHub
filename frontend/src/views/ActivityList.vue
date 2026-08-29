@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
-import { activityRegistrationButtonText } from "../defenseBusinessRules";
+import { activityRegistrationButtonText, activityStatusPriority } from "../defenseBusinessRules";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
 
 interface Activity {
@@ -91,6 +91,7 @@ const registeringActivityId = ref<number | null>(null);
 let stopSessionListener: (() => void) | undefined;
 
 const createDialogVisible = ref(false);
+const activityDetailVisible = ref(false);
 const reviewDialogVisible = ref(false);
 const settingsDialogVisible = ref(false);
 const signDialogVisible = ref(false);
@@ -190,10 +191,19 @@ const statusFilterOptions = [
 ];
 
 const filteredActivities = computed(() => {
-  if (statusFilter.value === "all") {
-    return activities.value;
-  }
-  return activities.value.filter((activity) => activity.status === statusFilter.value);
+  const rows =
+    statusFilter.value === "all"
+      ? [...activities.value]
+      : activities.value.filter((activity) => activity.status === statusFilter.value);
+  return rows.sort((left, right) => {
+    const priority = activityStatusPriority(left.status) - activityStatusPriority(right.status);
+    if (priority !== 0) return priority;
+    const leftTime = left.startTime ? new Date(left.startTime).getTime() : 0;
+    const rightTime = right.startTime ? new Date(right.startTime).getTime() : 0;
+    return activityStatusPriority(left.status) >= activityStatusPriority("finished")
+      ? rightTime - leftTime
+      : leftTime - rightTime;
+  });
 });
 
 const statusLabel: Record<string, string> = {
@@ -558,6 +568,11 @@ function openReview(activity: Activity) {
   reviewDialogVisible.value = true;
 }
 
+function openActivityDetail(activity: Activity) {
+  currentActivity.value = activity;
+  activityDetailVisible.value = true;
+}
+
 async function reviewActivity() {
   if (!currentActivity.value || !currentUserId.value) return;
 
@@ -790,6 +805,7 @@ async function openParticipations(activity: Activity) {
               <el-button size="small" plain>活动详情</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item @click="openActivityDetail(row)">活动信息</el-dropdown-item>
                   <el-dropdown-item
                     v-if="canViewParticipations(row)"
                     @click="openParticipations(row)"
@@ -843,6 +859,44 @@ async function openParticipations(activity: Activity) {
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog v-model="activityDetailVisible" title="活动详情" width="680px">
+      <el-descriptions v-if="currentActivity" :column="2" border>
+        <el-descriptions-item label="活动标题" :span="2">
+          {{ currentActivity.title }}
+        </el-descriptions-item>
+        <el-descriptions-item label="主办社团">
+          {{ currentActivity.clubName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="当前状态">
+          {{ statusLabel[currentActivity.status ?? ""] || currentActivity.status || "未设置" }}
+        </el-descriptions-item>
+        <el-descriptions-item label="活动时间" :span="2">
+          {{ formatActivityTimeRange(currentActivity) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="报名截止">
+          {{ formatTime(currentActivity.registrationDeadline) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="活动地点">
+          {{ currentActivity.location || "未填写" }}
+        </el-descriptions-item>
+        <el-descriptions-item label="活动说明" :span="2">
+          {{ currentActivity.description || "未填写" }}
+        </el-descriptions-item>
+        <el-descriptions-item label="活动审核意见" :span="2">
+          {{ currentActivity.reviewComment || "暂无审核意见" }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="currentActivity.budgetAmount" label="申请经费">
+          ¥{{ currentActivity.budgetAmount.toFixed(2) }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="currentActivity.budgetAmount" label="经费审核意见">
+          {{ currentActivity.budgetComment || "暂无审核意见" }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button type="primary" @click="activityDetailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="createDialogVisible" title="创建活动" width="620px">
       <el-form label-position="top">
