@@ -262,4 +262,20 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetInt32();
     }
+
+    [Fact]
+    public async Task UploadImage_ExceedsRequestSizeLimit_Returns413()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create a multipart request that exceeds 5 MB limit
+        using var content = new MultipartFormDataContent();
+        var oversizeData = new byte[6 * 1024 * 1024]; // 6 MB
+        content.Add(new ByteArrayContent(oversizeData), "image", "large.jpg");
+
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts/upload-image", content);
+
+        // Should receive 413 Payload Too Large due to RequestSizeLimit
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+    }
 }

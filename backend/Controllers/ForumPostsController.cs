@@ -194,6 +194,7 @@ public sealed class ForumPostsController : ControllerBase
     }
 
     [HttpPost("upload-image")]
+    [RequestSizeLimit(5 * 1024 * 1024 + 1024)]
     public async Task<IActionResult> UploadImage(int clubId, IFormFile? image)
     {
         var context = await GetUserContextAsync(clubId);
