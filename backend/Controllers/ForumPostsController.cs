@@ -52,12 +52,52 @@ public sealed class ForumPostsController : ControllerBase
         if (includeHidden && !canModerate)
             return StatusCode(403, new { message = "当前用户没有查看已隐藏内容的权限。" });
 
-        var posts = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
-            .Where(post => post.ClubId == clubId)
-            .OrderByDescending(post => post.IsTop).ThenByDescending(post => post.CreatedAt).ThenByDescending(post => post.PostId)
+        // 1. 分页查询顶级话题
+        var topicQuery = _db.ForumPosts.AsNoTracking().Include(post => post.User)
+            .Where(post => post.ClubId == clubId && post.ParentPostId == null)
+            .Where(post => includeHidden || IsPublished(post))
+            .OrderByDescending(post => post.IsTop)
+            .ThenByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.PostId);
+
+        var page = await ApiPaginationQuery.MaterializeAsync(
+            topicQuery,
+            HttpContext,
+            HttpContext.RequestAborted);
+
+        if (page.Error is not null) return BadRequest(page.Error);
+        if (page.Items.Count == 0) return Ok(page.Items);
+
+        // 2. 获取当前页顶级话题的 ID
+        var topicIds = page.Items.Select(t => t.PostId).ToArray();
+
+        // 3. 加载顶级话题及其所有后代
+        var allRelatedPosts = await _db.ForumPosts.AsNoTracking().Include(p => p.User)
+            .Where(p => p.ClubId == clubId && (topicIds.Contains(p.PostId) || topicIds.Contains(p.ParentPostId!.Value)))
             .ToListAsync();
-        var topics = posts.Where(post => post.ParentPostId is null).Where(post => includeHidden || IsPublished(post))
-            .Select(topic => ToApiPost(topic, BuildNestedReplies(posts, topic.PostId, includeHidden))).ToList();
+
+        // 递归加载嵌套的后代
+        var postsToLoad = new HashSet<int>(topicIds);
+        while (true)
+        {
+            var newPostIds = allRelatedPosts
+                .Where(p => postsToLoad.Contains(p.ParentPostId ?? 0) && !topicIds.Contains(p.PostId))
+                .Select(p => p.PostId)
+                .ToArray();
+            if (newPostIds.Length == 0) break;
+
+            var nestedPosts = await _db.ForumPosts.AsNoTracking().Include(p => p.User)
+                .Where(p => p.ClubId == clubId && newPostIds.Contains(p.PostId))
+                .ToListAsync();
+            allRelatedPosts.AddRange(nestedPosts);
+            foreach (var id in newPostIds) postsToLoad.Add(id);
+        }
+
+        // 4. 在内存中构建树形结构
+        var topics = page.Items
+            .Select(topic => ToApiPost(topic, BuildNestedReplies(allRelatedPosts, topic.PostId, includeHidden)))
+            .ToList();
+
         return Ok(topics);
     }
 

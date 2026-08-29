@@ -262,4 +262,80 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetInt32();
     }
+
+    [Fact]
+    public async Task GetPosts_WithPagination_ReturnsCorrectPageAndHeaders()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create 15 topics with nested replies
+        for (int i = 1; i <= 15; i++)
+        {
+            var topicId = await PostAndReadId(client, clubId, $"{{\"title\":\"topic-{i}\",\"content\":\"body-{i}\"}}");
+
+            // Each topic has 2-3 replies
+            for (int j = 1; j <= (i % 3 + 2); j++)
+            {
+                var replyId = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topicId},\"content\":\"reply-{j}\"}}");
+
+                // Some replies have nested replies (3 levels deep)
+                if (j % 2 == 0)
+                {
+                    await PostAndReadId(client, clubId, $"{{\"parentPostId\":{replyId},\"content\":\"nested-reply\"}}");
+                }
+            }
+        }
+
+        // Test default page (page 1, default size)
+        using var page1Response = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
+        Assert.Equal(HttpStatusCode.OK, page1Response.StatusCode);
+        using var page1Document = System.Text.Json.JsonDocument.Parse(await page1Response.Content.ReadAsStringAsync());
+        var page1Items = page1Document.RootElement.GetArrayLength();
+        Assert.True(page1Items > 0, "First page should have items");
+
+        // Verify pagination headers exist
+        Assert.True(page1Response.Headers.Contains("X-Page"), "Response should contain X-Page header");
+        Assert.True(page1Response.Headers.Contains("X-Page-Size"), "Response should contain X-Page-Size header");
+        Assert.True(page1Response.Headers.Contains("X-Total-Count"), "Response should contain X-Total-Count header");
+
+        // Test page 2
+        var pageSize = page1Items;
+        using var page2Response = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts?page=2&pageSize={pageSize}");
+        Assert.Equal(HttpStatusCode.OK, page2Response.StatusCode);
+        using var page2Document = System.Text.Json.JsonDocument.Parse(await page2Response.Content.ReadAsStringAsync());
+        var page2Items = page2Document.RootElement.GetArrayLength();
+
+        // Verify pages have different content if second page exists
+        if (page2Items > 0)
+        {
+            var page1FirstTopic = page1Document.RootElement[0].GetProperty("title").GetString();
+            var page2FirstTopic = page2Document.RootElement[0].GetProperty("title").GetString();
+            Assert.NotEqual(page1FirstTopic, page2FirstTopic);
+        }
+    }
+
+    [Fact]
+    public async Task GetPosts_NestedRepliesInPaginatedTopics_IncludeNestedReplies()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create topic with deeply nested replies
+        var topicId = await PostAndReadId(client, clubId, "{\"title\":\"nested-topic\",\"content\":\"body\"}");
+        var level1Id = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topicId},\"content\":\"level1\"}}");
+        var level2Id = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level1Id},\"content\":\"level2\"}}");
+        var level3Id = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level2Id},\"content\":\"level3\"}}");
+
+        // Get paginated posts
+        using var response = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        // Verify nested structure is preserved in paginated results
+        var topicReply = document.RootElement[0].GetProperty("replies")[0];
+        var level1Nested = topicReply.GetProperty("replies")[0];
+        var level2Nested = level1Nested.GetProperty("replies")[0];
+        Assert.Equal("level1", topicReply.GetProperty("content").GetString());
+        Assert.Equal("level2", level1Nested.GetProperty("content").GetString());
+        Assert.Equal("level3", level2Nested.GetProperty("content").GetString());
+    }
 }
