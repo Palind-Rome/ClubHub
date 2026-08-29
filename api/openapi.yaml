@@ -1512,7 +1512,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
-  /api/v1/clubs/{clubId}/forum-posts/{postId}/moderation:
+  /api/v1/clubs/{clubId}/forum-posts/{postId}:
     patch:
       summary: 置顶或隐藏社团讨论区内容
       operationId: moderateClubForumPost
@@ -1558,6 +1558,53 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "403":
           description: 当前用户没有讨论区管理权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团或帖子不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    delete:
+      summary: 删除社团讨论区话题或回复
+      description: 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+      operationId: deleteClubForumPost
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: 删除成功
+        "400":
+          description: 请求参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户既不是帖子发布者也不是讨论区管理员，无权删除
           content:
             application/json:
               schema:

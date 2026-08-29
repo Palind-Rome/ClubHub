@@ -1,29 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { ChatDotRound, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
-import { ElMessage, type FormInstance, type FormRules } from "element-plus";
-import type { Club, UserSummary } from "../api/models";
+import { ChatDotRound, Delete, Hide, Refresh, Star, View } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import type { Club, ForumPost, UserSummary } from "../api/models";
+import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { requestJson } from "../composables/useApiRequest";
 
-type Status = "published" | "hidden";
-interface Post {
-  id: number;
-  title?: string | null;
-  content: string;
-  userName?: string | null;
-  isTop: boolean;
-  postStatus: Status;
-  createdAt: string;
-  replies: Post[];
-}
-
 const clubs = ref<Club[]>([]);
-const topics = ref<Post[]>([]);
+const topics = ref<ForumPost[]>([]);
 const selectedClubId = ref<number>();
 const loading = ref(false);
+const loadError = ref<string | null>(null);
 const showHidden = ref(false);
-const replyingTo = ref<Post | null>(null);
+const replyingTo = ref<ForumPost | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
 const currentMemberClubIds = ref(new Set<number>());
@@ -38,9 +28,20 @@ let stopSessionListener: (() => void) | null = null;
 const canPost = computed(() =>
   (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:post"),
 );
-const canModerate = computed(() =>
-  (auth.value?.permissions ?? []).some((item) => item === "*" || item === "forum:moderate"),
-);
+const canModerate = computed(() => {
+  if (!selectedClubId.value) return false;
+  const roles = auth.value?.roles ?? [];
+  const clubId = selectedClubId.value;
+  return roles.some((role) => {
+    const hasPermission = (role.permissions ?? []).some(
+      (p: string) => p === "*" || p === "forum:moderate",
+    );
+    if (!hasPermission) return false;
+    if (role.scope === "system") return true;
+    if (role.scope === "club") return role.clubId === clubId;
+    return false;
+  });
+});
 const canPostToSelectedClub = computed(
   () =>
     canPost.value &&
@@ -84,14 +85,18 @@ async function loadPosts() {
   const clubId = selectedClubId.value;
   const includeHidden = showHidden.value;
   loading.value = true;
+  loadError.value = null;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const posts = await requestJson<Post[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
-    if (requestVersion === postsRequestVersion) topics.value = posts;
+    const data = await requestJson<any[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const posts = data.map(ForumPostFromJSON);
+    if (requestVersion === postsRequestVersion) {
+      topics.value = posts;
+      loadError.value = null;
+    }
   } catch (error) {
     if (requestVersion === postsRequestVersion) {
-      topics.value = [];
-      ElMessage.error(error instanceof Error ? error.message : "讨论区加载失败");
+      loadError.value = error instanceof Error ? error.message : "讨论区加载失败";
     }
   } finally {
     loading.value = false;
@@ -122,12 +127,12 @@ async function createPost(parentPostId?: number) {
   }
 }
 
-async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postStatus">>) {
+async function moderate(post: ForumPost, change: Partial<Pick<ForumPost, "isTop" | "postStatus">>) {
   if (!selectedClubId.value) return;
   if (moderatingPostIds.value.has(post.id)) return;
   moderatingPostIds.value = new Set(moderatingPostIds.value).add(post.id);
   try {
-    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}/moderation`, {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -146,7 +151,43 @@ async function moderate(post: Post, change: Partial<Pick<Post, "isTop" | "postSt
   }
 }
 
-const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN", { hour12: false });
+async function deletePost(post: ForumPost) {
+  if (!selectedClubId.value) return;
+  const isTopicDelete = !post.title ? false : true;
+  const replyCount = post.replies?.length ?? 0;
+  const confirmMessage = isTopicDelete
+    ? `确定要删除话题"${post.title}"吗？此操作无法撤销。${replyCount > 0 ? `该话题有${replyCount}条回复，删除话题时它们也会被删除。` : ""}`
+    : "确定要删除这条回复吗？此操作无法撤销。";
+
+  try {
+    await ElMessageBox.confirm(confirmMessage, "警告", {
+      confirmButtonText: "确定删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await requestJson(`/api/v1/clubs/${selectedClubId.value}/forum-posts/${post.id}`, {
+      method: "DELETE",
+    });
+    ElMessage.success("删除成功");
+    await loadPosts();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "删除失败");
+  }
+}
+
+function canDeletePost(post: ForumPost): boolean {
+  return (auth.value?.user.id && post.userId === auth.value.user.id) || canModerate.value;
+}
+
+const formatTime = (value: Date | string) => {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return date.toLocaleString("zh-CN", { hour12: false });
+};
 watch(selectedClubId, () => void loadPosts());
 watch(showHidden, () => void loadPosts());
 onMounted(() => {
@@ -154,6 +195,7 @@ onMounted(() => {
     auth.value = readAuth();
     postsRequestVersion++;
     topics.value = [];
+    loadError.value = null;
     if (!canModerate.value) showHidden.value = false;
     void loadPosts();
   });
@@ -209,7 +251,15 @@ onUnmounted(() => stopSessionListener?.());
         <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
       </el-form>
     </el-card>
-    <el-skeleton v-if="loading" :rows="5" animated />
+    <el-alert
+      v-if="loadError"
+      :title="loadError"
+      type="error"
+      :closable="false"
+      show-icon
+      class="load-error-alert"
+    />
+    <el-skeleton v-else-if="loading" :rows="5" animated />
     <el-empty v-else-if="selectedClubId && !topics.length" description="暂时还没有话题" />
     <article
       v-for="topic in topics"
@@ -255,7 +305,17 @@ onUnmounted(() => stopSessionListener?.());
               })
             "
             >{{ topic.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
+          ><el-button link type="danger" :icon="Delete" @click="deletePost(topic)"
+            >删除</el-button
           ></template
+        >
+        <el-button
+          v-if="!canModerate && canDeletePost(topic)"
+          link
+          type="danger"
+          :icon="Delete"
+          @click="deletePost(topic)"
+          >删除</el-button
         >
       </div>
       <div
@@ -268,15 +328,30 @@ onUnmounted(() => stopSessionListener?.());
           >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
         >
         <p>{{ reply.content }}</p>
-        <el-button
-          v-if="canModerate"
-          link
-          :icon="reply.postStatus === 'hidden' ? View : Hide"
-          @click="
-            moderate(reply, { postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden' })
-          "
-          >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
-        >
+        <div class="reply-actions">
+          <el-button
+            v-if="canModerate"
+            link
+            :icon="reply.postStatus === 'hidden' ? View : Hide"
+            @click="
+              moderate(reply, {
+                postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden',
+              })
+            "
+            >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
+          >
+          <el-button v-if="canModerate" link type="danger" :icon="Delete" @click="deletePost(reply)"
+            >删除</el-button
+          >
+          <el-button
+            v-if="!canModerate && canDeletePost(reply)"
+            link
+            type="danger"
+            :icon="Delete"
+            @click="deletePost(reply)"
+            >删除</el-button
+          >
+        </div>
       </div>
     </article>
     <el-dialog
@@ -338,6 +413,9 @@ onUnmounted(() => stopSessionListener?.());
 .membership-notice :deep(.el-alert__title) {
   color: var(--club-text);
 }
+.load-error-alert {
+  margin-top: 12px;
+}
 .topic {
   margin-top: 14px;
   border: 1px solid color-mix(in srgb, var(--club-primary) 18%, var(--club-border));
@@ -389,6 +467,11 @@ onUnmounted(() => stopSessionListener?.());
   border-left: 3px solid color-mix(in srgb, var(--club-primary) 54%, var(--club-border));
   border-radius: 0 var(--club-radius-sm) var(--club-radius-sm) 0;
   background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
+}
+.reply-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 small {
   color: var(--el-text-color-secondary);
