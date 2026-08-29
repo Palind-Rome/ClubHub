@@ -55,7 +55,7 @@ public sealed class ForumPostsController : ControllerBase
         // 1. 分页查询顶级话题
         var topicQuery = _db.ForumPosts.AsNoTracking().Include(post => post.User)
             .Where(post => post.ClubId == clubId && post.ParentPostId == null)
-            .Where(post => includeHidden || post.PostStatus == Published || string.IsNullOrWhiteSpace(post.PostStatus))
+            .Where(post => includeHidden || post.PostStatus == Published || string.IsNullOrEmpty(post.PostStatus))
             .OrderByDescending(post => post.IsTop)
             .ThenByDescending(post => post.CreatedAt)
             .ThenByDescending(post => post.PostId);
