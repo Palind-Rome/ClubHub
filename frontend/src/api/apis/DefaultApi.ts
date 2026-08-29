@@ -106,6 +106,11 @@ import {
   CancelProjectRequestFromJSON,
   CancelProjectRequestToJSON,
 } from "../models/CancelProjectRequest";
+import {
+  type CaptchaChallenge,
+  CaptchaChallengeFromJSON,
+  CaptchaChallengeToJSON,
+} from "../models/CaptchaChallenge";
 import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
 import {
   type ClubApplication,
@@ -3529,6 +3534,50 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<BudgetApplication> {
     const response = await this.createBudgetApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for createCaptchaChallenge without sending the request
+   */
+  async createCaptchaChallengeRequestOpts(): Promise<runtime.RequestOpts> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/v1/auth/captcha`;
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+   * 获取登录与注册验证码
+   */
+  async createCaptchaChallengeRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<CaptchaChallenge>> {
+    const requestOptions = await this.createCaptchaChallengeRequestOpts();
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      CaptchaChallengeFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 获取短时有效、仅可使用一次的图形验证码挑战。验证码答案不会通过 API 返回。
+   * 获取登录与注册验证码
+   */
+  async createCaptchaChallenge(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<CaptchaChallenge> {
+    const response = await this.createCaptchaChallengeRaw(initOverrides);
     return await response.value();
   }
 

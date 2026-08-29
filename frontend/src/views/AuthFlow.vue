@@ -3,7 +3,12 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
-import type { PermissionDefinition, RegisterRequest, UserSummary } from "../api/models";
+import type {
+  CaptchaChallenge,
+  PermissionDefinition,
+  RegisterRequest,
+  UserSummary,
+} from "../api/models";
 import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";
@@ -19,6 +24,8 @@ const managedUsers = ref<UserSummary[]>([]);
 const usersLoading = ref(false);
 const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
+const captcha = ref<CaptchaChallenge | null>(null);
+const captchaLoading = ref(false);
 
 const STUDENT_NO_LENGTH = 7;
 const STAFF_NO_LENGTH = 5;
@@ -31,6 +38,8 @@ const studentNoIntroText = `学工号学生 ${STUDENT_NO_LENGTH} 位、教师 ${
 const loginForm = ref({
   username: "",
   password: "",
+  captchaToken: "",
+  captchaCode: "",
 });
 
 const registerForm = ref({
@@ -44,11 +53,19 @@ const registerForm = ref({
   college: "",
   major: "",
   grade: "",
+  captchaToken: "",
+  captchaCode: "",
 });
+
+const captchaCodeRules = [
+  { required: true, message: "请输入验证码", trigger: "blur" },
+  { pattern: /^\d{5}$/, message: "请输入 5 位数字验证码", trigger: "blur" },
+];
 
 const loginRules: FormRules = {
   username: [{ required: true, message: "请输入用户名或学工号", trigger: "blur" }],
   password: [{ required: true, message: "请输入密码", trigger: "blur" }],
+  captchaCode: captchaCodeRules,
 };
 
 const registerRules: FormRules = {
@@ -76,6 +93,7 @@ const registerRules: FormRules = {
   college: [{ max: 100, message: "学院最多 100 个字符", trigger: "blur" }],
   major: [{ max: 100, message: "专业最多 100 个字符", trigger: "blur" }],
   grade: [{ max: 20, message: "年级最多 20 个字符", trigger: "blur" }],
+  captchaCode: captchaCodeRules,
 };
 
 const currentStep = computed(() => {
@@ -110,10 +128,39 @@ async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+async function loadCaptcha(showError = true) {
+  captchaLoading.value = true;
+  try {
+    const challenge = await requestJson<CaptchaChallenge>("/api/v1/auth/captcha", {
+      cache: "no-store",
+    });
+    captcha.value = challenge;
+    loginForm.value.captchaToken = challenge.captchaToken;
+    loginForm.value.captchaCode = "";
+    registerForm.value.captchaToken = challenge.captchaToken;
+    registerForm.value.captchaCode = "";
+  } catch (error) {
+    captcha.value = null;
+    if (showError) {
+      ElMessage.error(error instanceof Error ? error.message : "验证码加载失败，请稍后重试");
+    }
+  } finally {
+    captchaLoading.value = false;
+  }
+}
+
+async function ensureCaptcha() {
+  if (captcha.value?.captchaToken) return true;
+
+  await loadCaptcha(true);
+  return false;
+}
+
 async function login() {
   if (!(await validateForm(loginFormRef.value))) {
     return;
   }
+  if (!(await ensureCaptcha())) return;
 
   loading.value = true;
   try {
@@ -122,6 +169,8 @@ async function login() {
       body: JSON.stringify({
         username: loginForm.value.username.trim(),
         password: loginForm.value.password,
+        captchaToken: loginForm.value.captchaToken,
+        captchaCode: loginForm.value.captchaCode.trim(),
       }),
     });
     applyAuth(result);
@@ -131,6 +180,7 @@ async function login() {
     ElMessage.error(e instanceof Error ? e.message : "登录失败");
   } finally {
     loading.value = false;
+    if (!auth.value) await loadCaptcha(false);
   }
 }
 
@@ -138,6 +188,7 @@ async function register() {
   if (!(await validateForm(registerFormRef.value))) {
     return;
   }
+  if (!(await ensureCaptcha())) return;
 
   loading.value = true;
   try {
@@ -152,6 +203,7 @@ async function register() {
     ElMessage.error(e instanceof Error ? e.message : "注册失败");
   } finally {
     loading.value = false;
+    if (!auth.value) await loadCaptcha(false);
   }
 }
 
@@ -181,6 +233,8 @@ function buildRegisterPayload(): RegisterRequest {
     college: optionalText(registerForm.value.college),
     major: optionalText(registerForm.value.major),
     grade: optionalText(registerForm.value.grade),
+    captchaToken: registerForm.value.captchaToken,
+    captchaCode: registerForm.value.captchaCode.trim(),
   };
 }
 
@@ -200,6 +254,7 @@ async function logout() {
     auth.value = null;
     clearSession();
     mode.value = "login";
+    await loadCaptcha(false);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "注销失败，请稍后重试");
   }
@@ -294,6 +349,7 @@ async function loadPermissionCatalog() {
 }
 
 loadPermissionCatalog();
+if (!auth.value) void loadCaptcha(false);
 </script>
 
 <template>
@@ -329,6 +385,29 @@ loadPermissionCatalog();
             show-password
             @keyup.enter="login"
           />
+        </el-form-item>
+        <el-form-item label="验证码" prop="captchaCode">
+          <div class="captcha-row">
+            <el-input
+              v-model="loginForm.captchaCode"
+              maxlength="5"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="5 位数字"
+              @keyup.enter="login"
+            />
+            <button
+              type="button"
+              class="captcha-preview"
+              :disabled="captchaLoading"
+              aria-label="刷新验证码"
+              @click="loadCaptcha()"
+            >
+              <img v-if="captcha" :src="captcha.image" alt="验证码图片，点击刷新" />
+              <span v-else>{{ captchaLoading ? "加载中…" : "点击加载" }}</span>
+            </button>
+          </div>
+          <div class="field-help">验证码 5 位数字，点击图片刷新</div>
         </el-form-item>
         <el-button type="primary" :loading="loading" class="full-button" @click="login"
           >登录</el-button
@@ -398,6 +477,29 @@ loadPermissionCatalog();
           </el-form-item>
           <el-form-item label="年级" prop="grade">
             <el-input v-model="registerForm.grade" maxlength="20" />
+          </el-form-item>
+          <el-form-item label="验证码" prop="captchaCode">
+            <div class="captcha-row">
+              <el-input
+                v-model="registerForm.captchaCode"
+                maxlength="5"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="5 位数字"
+                @keyup.enter="register"
+              />
+              <button
+                type="button"
+                class="captcha-preview"
+                :disabled="captchaLoading"
+                aria-label="刷新验证码"
+                @click="loadCaptcha()"
+              >
+                <img v-if="captcha" :src="captcha.image" alt="验证码图片，点击刷新" />
+                <span v-else>{{ captchaLoading ? "加载中…" : "点击加载" }}</span>
+              </button>
+            </div>
+            <div class="field-help">验证码 5 位数字，点击图片刷新</div>
           </el-form-item>
         </div>
         <el-button type="primary" :loading="loading" class="full-button" @click="register"
@@ -604,6 +706,50 @@ loadPermissionCatalog();
   line-height: 1.4;
 }
 
+.captcha-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.captcha-row .el-input {
+  min-width: 0;
+}
+
+.captcha-preview {
+  display: grid;
+  flex: 0 0 160px;
+  place-items: center;
+  min-height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--club-radius-sm);
+  color: var(--el-text-color-secondary);
+  background: var(--club-bg-muted);
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.captcha-preview:hover:not(:disabled) {
+  border-color: var(--el-color-primary);
+}
+
+.captcha-preview:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.captcha-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  object-fit: cover;
+}
+
 .page-title {
   display: flex;
   justify-content: space-between;
@@ -673,6 +819,10 @@ loadPermissionCatalog();
 
   .page-title {
     flex-direction: column;
+  }
+
+  .captcha-preview {
+    flex-basis: 136px;
   }
 }
 </style>

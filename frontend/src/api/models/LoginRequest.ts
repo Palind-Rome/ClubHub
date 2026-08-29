@@ -28,6 +28,14 @@ export interface LoginRequest {
    * 登录密码。
    */
   password: string;
+  /**
+   * 由验证码接口签发的短时一次性挑战令牌。
+   */
+  captchaToken: string;
+  /**
+   * 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+   */
+  captchaCode: string;
 }
 
 /**
@@ -36,6 +44,8 @@ export interface LoginRequest {
 export function instanceOfLoginRequest(value: object): value is LoginRequest {
   if (!("username" in value) || value["username"] === undefined) return false;
   if (!("password" in value) || value["password"] === undefined) return false;
+  if (!("captchaToken" in value) || value["captchaToken"] === undefined) return false;
+  if (!("captchaCode" in value) || value["captchaCode"] === undefined) return false;
   return true;
 }
 
@@ -50,6 +60,8 @@ export function LoginRequestFromJSONTyped(json: any, ignoreDiscriminator: boolea
   return {
     username: json["username"],
     password: json["password"],
+    captchaToken: json["captchaToken"],
+    captchaCode: json["captchaCode"],
   };
 }
 
@@ -68,5 +80,7 @@ export function LoginRequestToJSONTyped(
   return {
     username: value["username"],
     password: value["password"],
+    captchaToken: value["captchaToken"],
+    captchaCode: value["captchaCode"],
   };
 }

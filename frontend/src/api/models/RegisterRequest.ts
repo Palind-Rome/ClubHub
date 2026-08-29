@@ -60,6 +60,14 @@ export interface RegisterRequest {
    * 年级，可为空。
    */
   grade?: string | null;
+  /**
+   * 由验证码接口签发的短时一次性挑战令牌。
+   */
+  captchaToken: string;
+  /**
+   * 用户从验证码图片中识别出的 5 位数字，不区分大小写。
+   */
+  captchaCode: string;
 }
 
 /**
@@ -70,6 +78,8 @@ export function instanceOfRegisterRequest(value: object): value is RegisterReque
   if (!("password" in value) || value["password"] === undefined) return false;
   if (!("realName" in value) || value["realName"] === undefined) return false;
   if (!("studentNo" in value) || value["studentNo"] === undefined) return false;
+  if (!("captchaToken" in value) || value["captchaToken"] === undefined) return false;
+  if (!("captchaCode" in value) || value["captchaCode"] === undefined) return false;
   return true;
 }
 
@@ -97,6 +107,8 @@ export function RegisterRequestFromJSONTyped(
       json["college"] === undefined ? undefined : json["college"] === null ? null : json["college"],
     major: json["major"] === undefined ? undefined : json["major"] === null ? null : json["major"],
     grade: json["grade"] === undefined ? undefined : json["grade"] === null ? null : json["grade"],
+    captchaToken: json["captchaToken"],
+    captchaCode: json["captchaCode"],
   };
 }
 
@@ -123,5 +135,7 @@ export function RegisterRequestToJSONTyped(
     college: value["college"],
     major: value["major"],
     grade: value["grade"],
+    captchaToken: value["captchaToken"],
+    captchaCode: value["captchaCode"],
   };
 }
