@@ -52,65 +52,15 @@ public sealed class ForumPostsController : ControllerBase
         if (includeHidden && !canModerate)
             return StatusCode(403, new { message = "当前用户没有查看已隐藏内容的权限。" });
 
-        // 1. 加载所有顶级话题
-        var allTopics = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
-            .Where(post => post.ClubId == clubId && post.ParentPostId == null)
-            .OrderByDescending(post => post.IsTop)
-            .ThenByDescending(post => post.CreatedAt)
-            .ThenByDescending(post => post.PostId)
+        // 加载所有帖子和用户信息
+        var posts = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
+            .Where(post => post.ClubId == clubId)
+            .OrderByDescending(post => post.IsTop).ThenByDescending(post => post.CreatedAt).ThenByDescending(post => post.PostId)
             .ToListAsync();
 
-        // 2. 在内存中过滤
-        var filteredTopics = allTopics
-            .Where(post => includeHidden || IsPublished(post))
-            .ToList();
-
-        // 3. 手动分页
-        var pageQuery = HttpContext.Request.Query;
-        var pageStr = pageQuery["page"].ToString();
-        var pageSizeStr = pageQuery["pageSize"].ToString();
-        var page = int.TryParse(pageStr, out var p) && p > 0 ? p : 1;
-        var pageSize = int.TryParse(pageSizeStr, out var ps) && ps > 0 ? ps : 10;
-
-        var totalCount = filteredTopics.Count;
-        var pageTopics = filteredTopics.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-
-        if (pageTopics.Count == 0) return Ok(pageTopics);
-
-        // 4. 获取当前页顶级话题的 ID
-        var topicIds = pageTopics.Select(t => t.PostId).ToArray();
-
-        // 5. 加载顶级话题及其所有后代
-        var allRelatedPosts = await _db.ForumPosts.AsNoTracking().Include(p => p.User)
-            .Where(p => p.ClubId == clubId && (topicIds.Contains(p.PostId) || (p.ParentPostId.HasValue && topicIds.Contains(p.ParentPostId.Value))))
-            .ToListAsync();
-
-        // 递归加载嵌套的后代
-        var postsToLoad = new HashSet<int>(topicIds);
-        while (true)
-        {
-            var newPostIds = allRelatedPosts
-                .Where(p => postsToLoad.Contains(p.ParentPostId ?? 0) && !topicIds.Contains(p.PostId))
-                .Select(p => p.PostId)
-                .ToArray();
-            if (newPostIds.Length == 0) break;
-
-            var nestedPosts = await _db.ForumPosts.AsNoTracking().Include(p => p.User)
-                .Where(p => p.ClubId == clubId && newPostIds.Contains(p.PostId))
-                .ToListAsync();
-            allRelatedPosts.AddRange(nestedPosts);
-            foreach (var id in newPostIds) postsToLoad.Add(id);
-        }
-
-        // 6. 在内存中构建树形结构
-        var topics = pageTopics
-            .Select(topic => ToApiPost(topic, BuildNestedReplies(allRelatedPosts, topic.PostId, includeHidden)))
-            .ToList();
-
-        // 7. 设置分页响应头
-        HttpContext.Response.Headers.Add("X-Page", page.ToString());
-        HttpContext.Response.Headers.Add("X-Page-Size", pageSize.ToString());
-        HttpContext.Response.Headers.Add("X-Total-Count", totalCount.ToString());
+        // 筛选顶级话题
+        var topics = posts.Where(post => post.ParentPostId is null).Where(post => includeHidden || IsPublished(post))
+            .Select(topic => ToApiPost(topic, BuildNestedReplies(posts, topic.PostId, includeHidden))).ToList();
 
         return Ok(topics);
     }
