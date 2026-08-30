@@ -14,6 +14,7 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import { formatBeijingDateTime, toBeijingDateTimeInput } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 import { collectManageableClubIds } from "../composables/useManageableClubs";
 
@@ -659,26 +660,11 @@ function applicationTagType(status: ApplicationStatus | null) {
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatBeijingDateTime(value);
 }
 
 function dateTimeInput(value: Date | string | null | undefined) {
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (!date || Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  const second = String(date.getSeconds()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  return toBeijingDateTimeInput(value);
 }
 
 function emptyToNull(value: string) {

@@ -21,7 +21,7 @@ import {
   type LearningRecord,
   type LearningTeacherCandidate,
 } from "../api";
-import { apiClient } from "../apiClient";
+import { apiClient, createIdempotencyKey } from "../apiClient";
 import { onSessionChange, readAuth, saveAuth, type AuthRole } from "../authSession";
 import { prepareLearningDownload } from "../learningDownload";
 import { prepareLearningPreview } from "../learningPreview";
@@ -688,7 +688,7 @@ async function reviewItem(item: LearningItem, approved: boolean) {
 
   try {
     await api.reviewLearningItem({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       itemId: item.id,
       reviewLearningItemRequest: { result: approved ? "approved" : "rejected" },
     });
@@ -1017,7 +1017,7 @@ async function enroll(item: LearningItem) {
   enrollingId.value = item.id;
   try {
     await api.enrollLearningItem({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       itemId: item.id,
     });
     ElMessage.success("已加入课程");

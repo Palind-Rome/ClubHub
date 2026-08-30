@@ -10,6 +10,7 @@
     <PackageReference Include="AlibabaCloud.OSS.V2" Version="0.2.0" />
     <PackageReference Include="Aliyun.Credentials" Version="1.5.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Oracle.EntityFrameworkCore" Version="10.23.26200" />
     <PackageReference Include="StackExchange.Redis" Version="3.0.17" />

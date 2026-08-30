@@ -1438,6 +1438,10 @@ public class ClubsController : ControllerBase
         }
 
         var normalizedTerm = EmptyToNull(termName);
+        if (normalizedTerm is not null)
+        {
+            normalizedTerm = NormalizeSemesterEvaluationTermName(normalizedTerm);
+        }
         var viewer = access.Viewer!;
         var canViewAll = UsersController.IsPlatformAdmin(viewer) ||
             IsClubEvaluationPrincipal(viewer, clubId);
@@ -1518,7 +1522,7 @@ public class ClubsController : ControllerBase
         var access = await EnsureCanMaintainEvaluationAsync(clubId, currentUserId.Value, userId);
         if (access.Result is not null) return access.Result;
 
-        var normalizedTermName = termName.Trim();
+        var normalizedTermName = NormalizeSemesterEvaluationTermName(termName);
         var termValidationError = ValidateSemesterEvaluationTermName(normalizedTermName);
         if (termValidationError is not null)
         {
@@ -1587,7 +1591,7 @@ public class ClubsController : ControllerBase
             return StatusCode(403, new { message = "只有系统管理员、本社团负责人或指导老师可以批量生成成员考核。" });
         }
 
-        var termName = req.TermName.Trim();
+        var termName = NormalizeSemesterEvaluationTermName(req.TermName);
         var termValidationError = ValidateSemesterEvaluationTermName(termName);
         if (termValidationError is not null)
         {
@@ -1751,7 +1755,7 @@ public class ClubsController : ControllerBase
 
         var now = DateTime.UtcNow;
         var normalizedType = NormalizeEvaluationType(req.EvaluationType)!;
-        var termName = req.TermName.Trim();
+        var termName = NormalizeSemesterEvaluationTermName(req.TermName);
         var scores = await ResolveEvaluationScoresAsync(
             clubId,
             req.UserId,
@@ -1825,7 +1829,8 @@ public class ClubsController : ControllerBase
         if (access.Result is not null) return access.Result;
 
         var nextEvaluationType = req.EvaluationType ?? evaluation.EvaluationType;
-        var nextTermName = req.TermName ?? evaluation.TermName;
+        var nextTermName = NormalizeSemesterEvaluationTermName(
+            req.TermName ?? evaluation.TermName ?? string.Empty);
         var existingEvaluationType = NormalizeEvaluationType(evaluation.EvaluationType) ?? EvaluationSemester;
         var normalizedNextEvaluationType = NormalizeEvaluationType(nextEvaluationType);
         var isEvaluationTypeChanged =
@@ -1862,7 +1867,7 @@ public class ClubsController : ControllerBase
         }
 
         var normalizedType = normalizedNextEvaluationType!;
-        var termName = nextTermName!.Trim();
+        var termName = nextTermName ?? string.Empty;
         var scores = await ResolveEvaluationScoresAsync(
             clubId,
             evaluation.UserId,
@@ -3105,7 +3110,7 @@ public class ClubsController : ControllerBase
             publicStatus,
             EvaluationPublicStatusText(publicStatus),
             evaluation.CommentText,
-            evaluation.CreatedAt);
+            LearningWorkflow.AsUtc(evaluation.CreatedAt));
     }
 
     private static string? ValidateMemberTermRequest(
@@ -4191,6 +4196,20 @@ public class ClubsController : ControllerBase
             .Trim()
             .ToLowerInvariant();
 
+    internal static string NormalizeSemesterEvaluationTermName(string termName)
+    {
+        var normalized = Regex.Replace(termName.Trim(), @"\s+", string.Empty);
+        var legacy = Regex.Match(normalized, @"^(?<year>20\d{2})学年(?<term>春|秋)(?:季)?(?:学期?)?$");
+        if (!legacy.Success || !int.TryParse(legacy.Groups["year"].Value, out var year))
+        {
+            return termName.Trim();
+        }
+
+        return legacy.Groups["term"].Value == "春"
+            ? $"{year - 1}-{year}学年春季"
+            : $"{year}-{year + 1}学年秋季";
+    }
+
     private static string? ValidateSemesterEvaluationTermName(string termName) =>
         ResolveEvaluationTermWindow(termName) is null
             ? "考核学期格式无法识别，请填写如 2025-2026学年春季、2026-2027学年秋季、2026秋季或 2027春季，年份区间必须为相邻学年。"
@@ -4198,7 +4217,7 @@ public class ClubsController : ControllerBase
 
     private static EvaluationTermWindow? ResolveEvaluationTermWindow(string termName)
     {
-        var normalized = termName.Trim();
+        var normalized = NormalizeSemesterEvaluationTermName(termName);
         var hasSpring = normalized.Contains("春", StringComparison.Ordinal);
         var hasFall = normalized.Contains("秋", StringComparison.Ordinal);
         var hasAcademicYear = normalized.Contains("学年", StringComparison.Ordinal);

@@ -3,6 +3,12 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { onSessionChange, readAuth } from "../authSession";
+import { apiClient, createIdempotencyKey } from "../apiClient";
+import {
+  beijingStoredDateTimeTimestamp,
+  formatBeijingDateTime,
+  toBeijingDateTimeInput,
+} from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 import { activityRegistrationButtonText } from "../defenseBusinessRules";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
@@ -238,12 +244,12 @@ onUnmounted(() => {
 });
 
 function formatDateTimeForPicker(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  const value = toBeijingDateTimeInput(date);
+  return value ? `${value}:00` : "";
 }
 
 function formatTime(value: string | null) {
-  return value ? new Date(value).toLocaleString() : "-";
+  return formatBeijingDateTime(value);
 }
 
 function formatActivityTimeRange(activity: Activity) {
@@ -298,8 +304,8 @@ function buildRecommendedCheckinSettings(activity: Activity) {
     };
   }
 
-  const start = new Date(activity.startTime);
-  const end = new Date(activity.endTime);
+  const start = new Date(beijingStoredDateTimeTimestamp(activity.startTime));
+  const end = new Date(beijingStoredDateTimeTimestamp(activity.endTime));
   const checkinEnd = new Date(start.getTime() + CHECKIN_WINDOW_MINUTES * 60 * 1000);
   const effectiveCheckinEnd = checkinEnd > end ? end : checkinEnd;
 
@@ -437,7 +443,7 @@ async function loadClubOptions() {
 function canRegister(activity: Activity) {
   const deadlinePassed =
     activity.registrationDeadline != null &&
-    new Date(activity.registrationDeadline).getTime() < Date.now();
+    beijingStoredDateTimeTimestamp(activity.registrationDeadline) < Date.now();
 
   return (
     Boolean(currentUserId.value) &&
@@ -563,13 +569,13 @@ async function reviewActivity() {
 
   saving.value = true;
   try {
-    await requestJson<Activity>(`/api/v1/activities/${currentActivity.value.id}/reviews`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    await apiClient.reviewActivity({
+      idempotencyKey: createIdempotencyKey(),
+      activityId: currentActivity.value.id,
+      reviewActivityRequest: {
         approved: reviewForm.value.approved,
         comment: emptyToNull(reviewForm.value.comment),
-      }),
+      },
     });
     reviewDialogVisible.value = false;
     ElMessage.success("审核结果已保存");
@@ -803,12 +809,19 @@ async function openParticipations(activity: Activity) {
                   >
                     {{ registerButtonText(row) }}
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="canReviewActivity(row)" @click="openReview(row)">
-                    活动审核
-                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+
+            <el-button
+              v-if="canReviewActivity(row)"
+              size="small"
+              type="warning"
+              plain
+              @click="openReview(row)"
+            >
+              活动审核
+            </el-button>
 
             <el-button
               v-if="canManageMaterial(row)"

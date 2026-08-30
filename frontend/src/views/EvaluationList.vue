@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { Edit, Plus, Refresh, Search, View } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import { beijingStoredDateTimeTimestamp, formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 import {
   canMaintainScopedMember,
@@ -355,8 +356,8 @@ function isScoreSortField(
 
 function dateSortValue(value: string | null) {
   if (!value) return 0;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  const timestamp = beijingStoredDateTimeTimestamp(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 async function validateForm(form?: FormInstance) {
@@ -458,6 +459,8 @@ async function loadScorePreview(options: { silent?: boolean } = {}) {
   const clubId = selectedClubId.value;
   const userId = evaluationForm.userId;
   const termName = evaluationForm.termName.trim();
+  const formMode = evaluationFormMode.value;
+  const targetId = evaluationTarget.value?.evaluationId ?? null;
   if (!evaluationDialogVisible.value || !clubId || !userId || !termName) return;
 
   scorePreviewLoading.value = true;
@@ -469,7 +472,13 @@ async function loadScorePreview(options: { silent?: boolean } = {}) {
     const preview = await requestJson<ClubEvaluationScorePreview>(
       `/api/v1/clubs/${clubId}/evaluations/score-preview?${query.toString()}`,
     );
-    if (requestId === scorePreviewRequestId) applyScorePreview(preview);
+    const sameForm =
+      evaluationDialogVisible.value &&
+      evaluationFormMode.value === formMode &&
+      (evaluationTarget.value?.evaluationId ?? null) === targetId &&
+      evaluationForm.userId === userId &&
+      evaluationForm.termName.trim() === termName;
+    if (requestId === scorePreviewRequestId && sameForm) applyScorePreview(preview);
   } catch (error) {
     if (requestId === scorePreviewRequestId && !options.silent) {
       ElMessage.error(error instanceof Error ? error.message : "考核分生成失败");
@@ -494,6 +503,11 @@ function resetEvaluationForm() {
   evaluationForm.publicStatus = "draft";
   evaluationForm.commentText = "";
   evaluationFormRef.value?.clearValidate();
+}
+
+function invalidateScorePreview() {
+  scorePreviewRequestId++;
+  scorePreviewLoading.value = false;
 }
 
 function resetGenerateForm() {
@@ -522,6 +536,7 @@ function openCreateDialog() {
     return;
   }
 
+  invalidateScorePreview();
   evaluationFormMode.value = "create";
   evaluationTarget.value = null;
   resetEvaluationForm();
@@ -566,6 +581,7 @@ function openEditDialog(row: ClubEvaluationRecord) {
     return;
   }
 
+  invalidateScorePreview();
   evaluationFormMode.value = "edit";
   evaluationTarget.value = row;
   evaluationForm.userId = row.userId;
@@ -603,10 +619,10 @@ async function submitEvaluation() {
       awardTitle: null,
       awardLevel: null,
       awardReason: null,
-      activityScore: evaluationForm.activityScore,
-      taskScore: evaluationForm.taskScore,
-      learningScore: evaluationForm.learningScore,
-      awardScore: evaluationForm.awardScore,
+      activityScore: normalizeScore(evaluationForm.activityScore),
+      taskScore: normalizeScore(evaluationForm.taskScore),
+      learningScore: normalizeScore(evaluationForm.learningScore),
+      awardScore: normalizeScore(evaluationForm.awardScore),
       publicStatus: evaluationForm.publicStatus,
       commentText: emptyToNull(evaluationForm.commentText),
     };
@@ -656,6 +672,11 @@ function emptyToNull(value: string) {
   return trimmed.length === 0 ? null : trimmed;
 }
 
+function normalizeScore(value: number | null | undefined) {
+  const score = Number(value);
+  return Number.isFinite(score) ? score : 0;
+}
+
 function canMaintainEvaluationRecord(row: ClubEvaluationRecord) {
   const member = members.value.find((item) => item.userId === row.userId);
   return Boolean(member && canMaintainMember(member));
@@ -697,10 +718,7 @@ function evaluationGrade(totalScore: number) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("zh-CN", { hour12: false });
+  return formatBeijingDateTime(value);
 }
 
 watch(selectedClubId, () => {
