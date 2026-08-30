@@ -14,11 +14,9 @@ const notices = ref<number | null>(null);
 const recruitments = ref<number | null>(null);
 let dashboardRequestId = 0;
 
-const roleSummary = computed(() => {
+const roleSummaries = computed(() => {
   const roles = auth.value?.roles ?? [];
-  return roles.length
-    ? roles.map((role) => role.displayName || role.name).join(" · ")
-    : "暂无业务角色";
+  return roles.length ? roles.map((role) => role.displayName || role.name) : ["暂无业务角色"];
 });
 
 const attentionItems = computed(() => {
@@ -95,14 +93,19 @@ onUnmounted(() => stopSessionListener?.());
       <div class="identity-primary">
         <span class="identity-kicker">CURRENT IDENTITY</span>
         <h3>{{ auth?.user.realName || "当前用户" }}</h3>
-        <p>{{ roleSummary }}</p>
+        <ul class="identity-summary" aria-label="当前身份列表">
+          <li v-for="role in roleSummaries" :key="role">{{ role }}</li>
+        </ul>
       </div>
       <div class="identity-details" aria-label="账号基本信息">
         <div>
           <span>学号</span><strong>{{ auth?.user.studentNo || "未填写" }}</strong>
         </div>
         <div>
-          <span>身份</span><strong>{{ roleSummary }}</strong>
+          <span>身份</span>
+          <ul class="identity-list">
+            <li v-for="role in roleSummaries" :key="role">{{ role }}</li>
+          </ul>
         </div>
         <div>
           <span>学院</span><strong>{{ auth?.user.college || "未填写" }}</strong>
@@ -178,7 +181,7 @@ onUnmounted(() => stopSessionListener?.());
 }
 .identity-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
   gap: var(--club-space-6);
   align-items: center;
   padding: clamp(24px, 3vw, 38px);
@@ -193,13 +196,36 @@ onUnmounted(() => stopSessionListener?.());
   );
   box-shadow: var(--club-shadow-sm);
 }
+.identity-primary,
+.identity-details {
+  min-width: 0;
+}
 .identity-card h3 {
   margin: 7px 0;
   font-size: clamp(24px, 3vw, 38px);
 }
-.identity-card p {
+.identity-summary,
+.identity-list {
+  display: grid;
+  gap: 5px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.identity-summary {
   color: var(--club-text-secondary);
+}
+.identity-summary li {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--club-primary) 16%, var(--club-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--club-bg-elevated) 78%, transparent);
+  overflow-wrap: anywhere;
+}
+.identity-list li {
+  overflow-wrap: anywhere;
 }
 .identity-kicker {
   color: var(--club-primary-strong);
@@ -210,7 +236,7 @@ onUnmounted(() => stopSessionListener?.());
 .identity-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
-  min-width: min(520px, 52%);
+  width: 100%;
   border: 1px solid var(--club-border);
   border-radius: var(--club-radius-md);
   background: var(--club-surface);
@@ -318,7 +344,7 @@ onUnmounted(() => stopSessionListener?.());
     grid-template-columns: repeat(2, 1fr);
   }
   .identity-details {
-    min-width: min(480px, 58%);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 640px) {
