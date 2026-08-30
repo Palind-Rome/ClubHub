@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import appShellSource from "./components/shell/AppShell.vue?raw";
 import routerSource from "./router/index.ts?raw";
+import dashboardSource from "./views/DashboardHome.vue?raw";
 
 const viewSources = import.meta.glob("./views/*.vue", {
   eager: true,
@@ -22,6 +23,15 @@ describe("运营工作台就绪约束", () => {
     expect(routerSource).toContain('path: "/dashboard"');
     expect(routerSource).toContain('redirect: "/dashboard"');
     expect(routerSource).toContain('title: "运营工作台"');
+  });
+
+  it("多身份工作台按独立身份行展示并保留单身份兼容布局", () => {
+    expect(dashboardSource).toContain('v-for="role in roleSummaries"');
+    expect(dashboardSource).toContain(".identity-card");
+    expect(dashboardSource).toContain(
+      "grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr)",
+    );
+    expect(dashboardSource).toContain("min-width: 0");
   });
 
   it("页面眉标由路由语义提供，不再硬编码通用 Workspace", () => {
