@@ -402,7 +402,7 @@ public class NoticesController : ControllerBase
                 NoticeId = noticeId,
                 UserId = user.UserId,
                 IsRead = true,
-                ReadAt = existing.ReadAt
+                ReadAt = LearningWorkflow.AsUtc(existing.ReadAt)
             });
         }
 
@@ -434,7 +434,7 @@ public class NoticesController : ControllerBase
             NoticeId = noticeId,
             UserId = user.UserId,
             IsRead = true,
-            ReadAt = read.ReadAt
+            ReadAt = LearningWorkflow.AsUtc(read.ReadAt)
         });
     }
 
@@ -661,11 +661,11 @@ public class NoticesController : ControllerBase
             TargetType = ToApiTargetType(notice.TargetType),
             TargetId = notice.TargetId,
             TargetName = ResolveTargetName(notice, context),
-            PublishAt = notice.PublishAt,
-            ExpireAt = notice.ExpireAt,
+            PublishAt = LearningWorkflow.AsUtc(notice.PublishAt),
+            ExpireAt = LearningWorkflow.AsUtc(notice.ExpireAt),
             NoticeStatus = ToApiNoticeStatus(effectiveStatus),
             IsRead = read is not null,
-            ReadAt = read?.ReadAt,
+            ReadAt = LearningWorkflow.AsUtc(read?.ReadAt),
             AudienceCount = canViewStatistics ? CountAudience(notice, context) : null,
             ReadCount = canViewStatistics
                 ? notice.Reads.Select(r => r.UserId).Distinct().Count()

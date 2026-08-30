@@ -151,7 +151,7 @@ public class ActivitiesController : ControllerBase
             return permissionError;
         }
 
-        var now = DateTime.Now;
+        var now = RecruitmentWorkflow.BusinessNow();
         var activity = new Activity
         {
             ClubId = req.ClubId,
@@ -251,7 +251,7 @@ public class ActivitiesController : ControllerBase
                 return Error(StatusCodes.Status400BadRequest, "ACTIVITY_NOT_PUBLISHED", "活动未发布，暂不能报名");
             }
 
-            var now = DateTime.Now;
+            var now = RecruitmentWorkflow.BusinessNow();
             if (activity.RegistrationDeadline is not null && now > activity.RegistrationDeadline.Value)
             {
                 return Error(StatusCodes.Status400BadRequest, "REGISTRATION_CLOSED", "报名已截止");
@@ -372,7 +372,7 @@ public class ActivitiesController : ControllerBase
         activity.ReviewerUserId = currentUserId.Value;
         activity.ReviewComment = req.Comment;
         activity.ActivityStatus = req.Approved.Value ? "published" : "rejected";
-        activity.PublishedAt = req.Approved.Value ? DateTime.Now : null;
+        activity.PublishedAt = req.Approved.Value ? RecruitmentWorkflow.BusinessNow() : null;
 
         await _db.SaveChangesAsync();
         await _publicQueryCache.InvalidateActivityAsync(
@@ -618,7 +618,7 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { message = "用户不存在，不能签到或签退。" });
         }
 
-        var now = DateTime.Now;
+        var now = RecruitmentWorkflow.BusinessNow();
         var expectedCode = isCheckin ? activity.CheckinCode : activity.CheckoutCode;
         var windowStart = isCheckin ? activity.CheckinStartAt : activity.CheckoutStartAt;
         var windowEnd = isCheckin ? activity.CheckinEndAt : activity.CheckoutEndAt;

@@ -3,7 +3,10 @@ import {
   beijingCalendarDateTimestamp,
   beijingDateTimeTimestamp,
   beijingDateTimeToUtcIso,
+  beijingStoredDateTimeTimestamp,
+  formatBeijingDateTime,
   formatVenueReservationDateTime,
+  toBeijingDateTimeInput,
   venueReservationTimestamp,
 } from "./beijingTime";
 
@@ -30,6 +33,15 @@ describe("Beijing time helpers", () => {
   it("uses the Beijing calendar date regardless of the machine timezone", () => {
     expect(beijingCalendarDateTimestamp(new Date("2026-07-20T16:30:00Z"))).toBe(
       Date.parse("2026-07-20T16:00:00Z"),
+    );
+  });
+
+  it("formats both UTC and legacy Beijing-local API values as UTC+8", () => {
+    expect(formatBeijingDateTime("2026-07-21T00:30:00Z")).toBe("2026-07-21 08:30");
+    expect(formatBeijingDateTime("2026-07-21T08:30:00")).toBe("2026-07-21 08:30");
+    expect(toBeijingDateTimeInput("2026-07-21T00:30:00Z")).toBe("2026-07-21T08:30");
+    expect(beijingStoredDateTimeTimestamp("2026-07-21T08:30:00")).toBe(
+      Date.parse("2026-07-21T00:30:00Z"),
     );
   });
 });

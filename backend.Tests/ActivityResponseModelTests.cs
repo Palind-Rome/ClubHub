@@ -106,7 +106,7 @@ public sealed class ActivityResponseModelTests
     {
         await using var factory = new ClubHubWebApplicationFactory();
         using var client = await CreateAuthenticatedActivityClient(factory, "CLUB_OFFICER");
-        var now = DateTime.Now;
+        var now = RecruitmentWorkflow.BusinessNow();
 
         using var response = await client.PutAsJsonAsync(
             "/api/activities/119/checkin-settings",
@@ -319,7 +319,7 @@ public sealed class ActivityResponseModelTests
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
-        var now = DateTime.Now;
+        var now = RecruitmentWorkflow.BusinessNow();
         var user = new User
         {
             UserId = 21,

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   attachIdempotencyKey,
+  createIdempotencyKey,
   finishIdempotencyAttempt,
   resetIdempotencyAttemptsForTests,
 } from "./apiClient";
@@ -12,6 +13,12 @@ describe("idempotency request middleware", () => {
     vi.stubGlobal("crypto", {
       randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`,
     });
+  });
+
+  it("does not add idempotency keys to read requests", () => {
+    const result = attachIdempotencyKey("/api/v1/projects", { method: "GET" });
+
+    expect(key(result)).toBeNull();
   });
 
   it("reuses the same key for the same in-flight request fingerprint", () => {
@@ -54,6 +61,19 @@ describe("idempotency request middleware", () => {
     );
 
     expect(key(nextSubmission)).not.toBe(key(first));
+  });
+
+  it("falls back when randomUUID is unavailable", () => {
+    vi.stubGlobal("crypto", {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.fill(7);
+        return bytes;
+      },
+    });
+
+    expect(createIdempotencyKey()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 });
 

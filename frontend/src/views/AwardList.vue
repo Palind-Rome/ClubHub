@@ -19,6 +19,12 @@ import {
   View,
 } from "@element-plus/icons-vue";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
+import {
+  beijingLocalInputToUtcIso,
+  beijingStoredDateTimeTimestamp,
+  formatBeijingDateTime,
+  toBeijingDateTimeInput,
+} from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 import { awardApplicationEntryState, awardReviewResultText } from "../defenseBusinessRules";
 import {
@@ -1504,8 +1510,8 @@ function canArchivePublicity(row: AwardPublicityBatchRecord) {
   if (!["publicizing", "closed"].includes(row.publicityStatus)) return false;
   if (!row.publicityEndAt) return false;
 
-  const endAt = new Date(row.publicityEndAt);
-  return !Number.isNaN(endAt.getTime()) && endAt.getTime() <= Date.now();
+  const endAt = beijingStoredDateTimeTimestamp(row.publicityEndAt);
+  return Number.isFinite(endAt) && endAt <= Date.now();
 }
 
 function validateAwardLevels() {
@@ -1597,33 +1603,29 @@ function applicationLabel(application: AwardApplicationRecord) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("zh-CN", { hour12: false });
+  return formatBeijingDateTime(value);
 }
 
 function toDateTimeLocal(value: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
+  return toBeijingDateTimeInput(value);
 }
 
 function isAwardSchemeAvailableForApplication(scheme: AwardSchemeRecord) {
   if (!["open", "reviewing"].includes(scheme.schemeStatus)) return false;
   const now = Date.now();
-  const startAt = scheme.applicationStartAt ? new Date(scheme.applicationStartAt).getTime() : null;
-  const endAt = scheme.applicationEndAt ? new Date(scheme.applicationEndAt).getTime() : null;
+  const startAt = scheme.applicationStartAt
+    ? beijingStoredDateTimeTimestamp(scheme.applicationStartAt)
+    : null;
+  const endAt = scheme.applicationEndAt
+    ? beijingStoredDateTimeTimestamp(scheme.applicationEndAt)
+    : null;
   if (startAt !== null && (Number.isNaN(startAt) || startAt > now)) return false;
   if (endAt !== null && (Number.isNaN(endAt) || endAt < now)) return false;
   return true;
 }
 
 function fromDateTimeLocal(value: string) {
-  return value ? new Date(value).toISOString() : null;
+  return value ? beijingLocalInputToUtcIso(value) : null;
 }
 
 function emptyToNull(value: string) {

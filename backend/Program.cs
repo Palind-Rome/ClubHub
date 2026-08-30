@@ -13,6 +13,14 @@ using Org.OpenAPITools.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Windows 的 EventLog provider 需要写入系统日志源；测试环境只需稳定记录到控制台，
+// 避免权限不足掩盖故障注入场景本身的断言结果。
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+}
+
 builder.Services.AddControllers(options =>
     {
         options.Conventions.Insert(0, new ApiVersionRouteConvention());

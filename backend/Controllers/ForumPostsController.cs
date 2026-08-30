@@ -102,15 +102,20 @@ public sealed class ForumPostsController : ControllerBase
         else if (string.IsNullOrWhiteSpace(title))
             return BadRequest(new { message = "\u8bdd\u9898\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002" });
 
+        if (content.Length < 1 || content.Length > 4000)
+            return BadRequest(new { message = "\u6b63\u6587\u9577\u5ea6\u5fc5\u9808\u4e3a 1-4000 \u5b57\u7b26\u3002" });
+        if (!isReply && (title.Length < 1 || title.Length > 120))
+            return BadRequest(new { message = "\u6807\u9898\u9577\u5ea6\u5fc5\u9808\u4e3a 1-120 \u5b57\u7b26\u3002" });
+
         var now = DateTime.UtcNow;
         var post = new ForumPost { ClubId = clubId, UserId = context.User!.UserId, ParentPostId = parent?.PostId, Title = isReply ? null : title, Content = content, IsTop = 0, PostStatus = Published, CreatedAt = now, UpdatedAt = now };
         _db.ForumPosts.Add(post);
         await _db.SaveChangesAsync();
         post.User = context.User;
-        return Created($"/api/clubs/{clubId}/forum-posts/{post.PostId}", ToApiPost(post, []));
+        return Created($"/api/v1/clubs/{clubId}/forum-posts/{post.PostId}", ToApiPost(post, []));
     }
 
-    [HttpPatch("{postId:int}/moderation")]
+    [HttpPatch("{postId:int}")]
     public async Task<IActionResult> Moderate(int clubId, int postId, [FromBody] ApiModerateForumPostRequest request)
     {
         var context = await GetUserContextAsync(clubId);
@@ -128,6 +133,59 @@ public sealed class ForumPostsController : ControllerBase
         post.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(ToApiPost(post, []));
+    }
+
+    [HttpDelete("{postId:int}")]
+    public async Task<IActionResult> Delete(int clubId, int postId)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+
+        var post = await _db.ForumPosts.FirstOrDefaultAsync(item => item.PostId == postId && item.ClubId == clubId);
+        if (post is null) return NotFound(new { message = "\u8ba8\u8bba\u533a\u5185\u5bb9\u4e0d\u5b58\u5728\u3002" });
+
+        var canModerate = Allows(context.Roles!, ForumModeratePermission, clubId);
+        var isOwner = post.UserId == context.User!.UserId;
+
+        if (!canModerate && !isOwner)
+            return StatusCode(403, new { message = "\u4f60\u65e0\u6743\u524a\u9664\u8fd9\u4e2a\u5185\u5bb9\u3002" });
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var isTopicDelete = post.ParentPostId is null;
+
+        if (isTopicDelete)
+        {
+            var replies = await _db.ForumPosts.Where(r => r.ParentPostId == postId).ToListAsync();
+            _db.ForumPosts.RemoveRange(replies);
+            foreach (var reply in replies)
+            {
+                _db.OperationLogs.Add(new OperationLog
+                {
+                    UserId = context.User.UserId,
+                    ModuleName = "forum",
+                    OperationType = "reply_deleted",
+                    TargetTable = "FORUM_POSTS",
+                    TargetId = reply.PostId,
+                    IpAddress = ipAddress,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        _db.ForumPosts.Remove(post);
+        _db.OperationLogs.Add(new OperationLog
+        {
+            UserId = context.User.UserId,
+            ModuleName = "forum",
+            OperationType = isTopicDelete ? "topic_deleted" : "reply_deleted",
+            TargetTable = "FORUM_POSTS",
+            TargetId = postId,
+            IpAddress = ipAddress,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     private async Task<UserContext> GetUserContextAsync(int clubId)
@@ -148,6 +206,6 @@ public sealed class ForumPostsController : ControllerBase
     private static bool Allows(IReadOnlyList<PermissionRole> roles, string permission, int clubId) =>
         AuthService.RolesAllow(roles, permission, clubId);
     private static bool IsPublished(ForumPost post) => string.Equals(post.PostStatus, Published, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(post.PostStatus);
-    private static ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = post.Content, IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = post.CreatedAt, UpdatedAt = post.UpdatedAt, Replies = replies };
+    private static ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = post.Content, IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = LearningWorkflow.AsUtc(post.CreatedAt), UpdatedAt = LearningWorkflow.AsUtc(post.UpdatedAt), Replies = replies };
     private sealed record UserContext(IActionResult? Result, User? User, IReadOnlyList<PermissionRole>? Roles);
 }

@@ -9,6 +9,7 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using ApiBudgetAccount = Org.OpenAPITools.Models.BudgetAccount;
 using ApiBudgetApplication = Org.OpenAPITools.Models.BudgetApplication;
 using ApiBudgetTransaction = Org.OpenAPITools.Models.BudgetTransaction;
@@ -43,6 +44,12 @@ public class BudgetController : ControllerBase
     private const int MaxCommentLength = 255;
     private const int MaxWriteRetries = 3;
     internal const IsolationLevel BudgetApprovalIsolationLevel = IsolationLevel.ReadCommitted;
+    internal const string BudgetApplicationRowLockSql =
+        "SELECT APPLICATION_ID FROM BUDGET_APPLICATIONS WHERE APPLICATION_ID = :p0 FOR UPDATE";
+    internal const string BudgetAccountRowLockSql =
+        "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE ACCOUNT_ID = :p0 FOR UPDATE";
+    internal const string BudgetClubAccountRowLockSql =
+        "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE CLUB_ID = :p0 AND ACCOUNT_ID = :p1 FOR UPDATE";
 
     private static readonly HashSet<string> AllowedAccountStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -594,42 +601,76 @@ public class BudgetController : ControllerBase
     /// <summary>
     /// Review decisions must serialize on the application row before status is checked.
     /// </summary>
-    private Task<BudgetApplication?> LockBudgetApplicationAsync(int applicationId) =>
-        _db.BudgetApplications
-            .FromSqlInterpolated($"""
-                SELECT *
-                FROM BUDGET_APPLICATIONS
-                WHERE APPLICATION_ID = {applicationId}
-                FOR UPDATE
-                """)
-            .SingleOrDefaultAsync();
+    private async Task<BudgetApplication?> LockBudgetApplicationAsync(int applicationId)
+    {
+        var lockedId = await LockRowIdAsync(
+            BudgetApplicationRowLockSql,
+            applicationId);
+        return lockedId is null
+            ? null
+            : await _db.BudgetApplications.FirstOrDefaultAsync(
+                application => application.ApplicationId == lockedId.Value,
+                HttpContext.RequestAborted);
+    }
 
     /// <summary>
     /// 审核通过和调整账户额度都会改变同一账户的可用余额判断，必须先锁账户行再汇总流水。
     /// </summary>
-    private Task<BudgetAccount?> LockBudgetAccountAsync(int accountId) =>
-        _db.BudgetAccounts
-            .FromSqlInterpolated($"""
-                SELECT *
-                FROM BUDGET_ACCOUNTS
-                WHERE ACCOUNT_ID = {accountId}
-                FOR UPDATE
-                """)
-            .SingleOrDefaultAsync();
+    private async Task<BudgetAccount?> LockBudgetAccountAsync(int accountId)
+    {
+        var lockedId = await LockRowIdAsync(
+            BudgetAccountRowLockSql,
+            accountId);
+        return lockedId is null
+            ? null
+            : await _db.BudgetAccounts.FirstOrDefaultAsync(
+                account => account.AccountId == lockedId.Value,
+                HttpContext.RequestAborted);
+    }
 
     /// <summary>
     /// 以社团和账户双键加锁，避免跨社团数据污染时误锁到不属于申请的账户。
     /// </summary>
-    private Task<BudgetAccount?> LockBudgetAccountAsync(int clubId, int accountId) =>
-        _db.BudgetAccounts
-            .FromSqlInterpolated($"""
-                SELECT *
-                FROM BUDGET_ACCOUNTS
-                WHERE CLUB_ID = {clubId}
-                  AND ACCOUNT_ID = {accountId}
-                FOR UPDATE
-                """)
-            .SingleOrDefaultAsync();
+    private async Task<BudgetAccount?> LockBudgetAccountAsync(int clubId, int accountId)
+    {
+        var lockedId = await LockRowIdAsync(
+            BudgetClubAccountRowLockSql,
+            clubId,
+            accountId);
+        return lockedId is null
+            ? null
+            : await _db.BudgetAccounts.FirstOrDefaultAsync(
+                account => account.AccountId == lockedId.Value,
+                HttpContext.RequestAborted);
+    }
+
+    private async Task<int?> LockRowIdAsync(string sql, params int[] values)
+    {
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        if (_db.Database.CurrentTransaction is { } transaction)
+        {
+            command.Transaction = transaction.GetDbTransaction();
+        }
+
+        for (var index = 0; index < values.Length; index++)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = $"p{index}";
+            parameter.DbType = System.Data.DbType.Int32;
+            parameter.Value = values[index];
+            command.Parameters.Add(parameter);
+        }
+
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync(HttpContext.RequestAborted);
+        }
+
+        var result = await command.ExecuteScalarAsync(HttpContext.RequestAborted);
+        return result is null || result == DBNull.Value ? null : Convert.ToInt32(result);
+    }
 
     private async Task<IActionResult?> RequireClubPermissionAsync(
         int userId,

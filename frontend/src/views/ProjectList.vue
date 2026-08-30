@@ -13,7 +13,7 @@ import {
   type ProjectTask as ProjectTaskDto,
   type UserSummary,
 } from "../api";
-import { apiClient as api } from "../apiClient";
+import { apiClient as api, createIdempotencyKey } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
 
 const publicApi = new DefaultApi(
@@ -500,7 +500,7 @@ async function createProject() {
   saving.value = true;
   try {
     await api.createProject({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       createProjectRequest: {
         clubId: createForm.clubId,
         projectName: createForm.projectName.trim(),
@@ -575,7 +575,7 @@ async function reviewProject() {
   reviewSavingId.value = reviewForm.projectId;
   try {
     await api.reviewProject({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       projectId: reviewForm.projectId,
       reviewProjectRequest: {
         projectStatus: reviewForm.projectStatus,
@@ -640,7 +640,7 @@ async function submitTaskDeliverable() {
   taskSavingId.value = activeTask.value.id;
   try {
     const task = await api.submitProjectTaskDeliverable({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       projectId: selectedProject.value.id,
       taskId: activeTask.value.id,
       submitProjectTaskDeliverableRequest: {
@@ -683,7 +683,7 @@ async function reviewTaskDeliverable() {
   taskSavingId.value = activeTask.value.id;
   try {
     const task = await api.reviewProjectTaskDeliverable({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       projectId: selectedProject.value.id,
       taskId: activeTask.value.id,
       reviewProjectTaskDeliverableRequest: {

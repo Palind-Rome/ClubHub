@@ -1960,13 +1960,13 @@ public class AwardWorkflowController : ControllerBase
         VersionNo = document.VersionNo,
         RuleStatus = ToAwardRuleDocumentStatusRecordValue(document.RuleStatus),
         RuleStatusText = AwardRuleStatusText(document.RuleStatus),
-        EffectiveStartAt = document.EffectiveStartAt,
-        EffectiveEndAt = document.EffectiveEndAt,
+        EffectiveStartAt = LearningWorkflow.AsUtc(document.EffectiveStartAt),
+        EffectiveEndAt = LearningWorkflow.AsUtc(document.EffectiveEndAt),
         PublishedByUserId = document.PublishedByUserId,
         PublishedByName = DisplayUser(document.PublishedByUser),
-        PublishedAt = document.PublishedAt,
-        CreatedAt = document.CreatedAt,
-        UpdatedAt = document.UpdatedAt
+        PublishedAt = LearningWorkflow.AsUtc(document.PublishedAt),
+        CreatedAt = LearningWorkflow.AsUtc(document.CreatedAt),
+        UpdatedAt = LearningWorkflow.AsUtc(document.UpdatedAt)
     };
 
     private static AwardSchemeRecordDto ToAwardSchemeRecordDto(AwardScheme scheme) => new()
@@ -1985,16 +1985,16 @@ public class AwardWorkflowController : ControllerBase
         IsFixedAmount = scheme.IsFixedAmount == 1,
         Description = scheme.Description,
         MaterialDescription = scheme.MaterialDescription,
-        ApplicationStartAt = scheme.ApplicationStartAt,
-        ApplicationEndAt = scheme.ApplicationEndAt,
-        PublicityStartAt = scheme.PublicityStartAt,
-        PublicityEndAt = scheme.PublicityEndAt,
+        ApplicationStartAt = LearningWorkflow.AsUtc(scheme.ApplicationStartAt),
+        ApplicationEndAt = LearningWorkflow.AsUtc(scheme.ApplicationEndAt),
+        PublicityStartAt = LearningWorkflow.AsUtc(scheme.PublicityStartAt),
+        PublicityEndAt = LearningWorkflow.AsUtc(scheme.PublicityEndAt),
         SchemeStatus = ToAwardSchemeStatusRecordValue(scheme.SchemeStatus),
         SchemeStatusText = AwardSchemeStatusText(scheme.SchemeStatus),
         CreatedByUserId = scheme.CreatedByUserId,
         CreatedByName = DisplayUser(scheme.CreatedByUser),
-        CreatedAt = scheme.CreatedAt,
-        UpdatedAt = scheme.UpdatedAt,
+        CreatedAt = LearningWorkflow.AsUtc(scheme.CreatedAt),
+        UpdatedAt = LearningWorkflow.AsUtc(scheme.UpdatedAt),
         Levels = scheme.Levels
             .OrderBy(level => level.DisplayOrder)
             .ThenBy(level => level.LevelName)
@@ -2046,12 +2046,12 @@ public class AwardWorkflowController : ControllerBase
         ReviewRound = application.ReviewRound,
         FinalAwardScore = application.FinalAwardScore,
         FinalAmount = application.FinalAmount,
-        SubmittedAt = application.SubmittedAt,
-        ApprovedAt = application.ApprovedAt,
-        PublicizedAt = application.PublicizedAt,
-        ArchivedAt = application.ArchivedAt,
-        CreatedAt = application.CreatedAt,
-        UpdatedAt = application.UpdatedAt,
+        SubmittedAt = LearningWorkflow.AsUtc(application.SubmittedAt),
+        ApprovedAt = LearningWorkflow.AsUtc(application.ApprovedAt),
+        PublicizedAt = LearningWorkflow.AsUtc(application.PublicizedAt),
+        ArchivedAt = LearningWorkflow.AsUtc(application.ArchivedAt),
+        CreatedAt = LearningWorkflow.AsUtc(application.CreatedAt),
+        UpdatedAt = LearningWorkflow.AsUtc(application.UpdatedAt),
         ReviewRecords = application.ReviewRecords
             .OrderBy(record => record.ReviewedAt)
             .Select(ToAwardReviewRecordDto)
@@ -2074,7 +2074,7 @@ public class AwardWorkflowController : ControllerBase
         ReviewComment = record.ReviewComment,
         FromStatus = record.FromStatus,
         ToStatus = record.ToStatus,
-        ReviewedAt = record.ReviewedAt
+        ReviewedAt = LearningWorkflow.AsUtc(record.ReviewedAt)
     };
 
     private static AwardAttachmentRecordDto ToAwardAttachmentRecordDto(AwardAttachment attachment) => new()
@@ -2086,7 +2086,7 @@ public class AwardWorkflowController : ControllerBase
         AttachmentType = attachment.AttachmentType,
         UploadedByUserId = attachment.UploadedByUserId,
         UploadedByName = DisplayUser(attachment.UploadedByUser),
-        UploadedAt = attachment.UploadedAt
+        UploadedAt = LearningWorkflow.AsUtc(attachment.UploadedAt)
     };
 
     private static AwardPublicityBatchRecordDto ToAwardPublicityBatchRecordDto(AwardPublicityBatch batch) => new()
@@ -2096,14 +2096,14 @@ public class AwardWorkflowController : ControllerBase
         ClubName = batch.Club?.ClubName ?? $"社团 {batch.ClubId}",
         Title = batch.Title,
         Description = batch.Description,
-        PublicityStartAt = batch.PublicityStartAt,
-        PublicityEndAt = batch.PublicityEndAt,
+        PublicityStartAt = LearningWorkflow.AsUtc(batch.PublicityStartAt),
+        PublicityEndAt = LearningWorkflow.AsUtc(batch.PublicityEndAt),
         PublicityStatus = ToAwardPublicityStatusRecordValue(batch.PublicityStatus),
         PublicityStatusText = AwardPublicityStatusText(batch.PublicityStatus),
         PublisherUserId = batch.PublisherUserId,
         PublisherName = DisplayUser(batch.Publisher),
-        CreatedAt = batch.CreatedAt,
-        UpdatedAt = batch.UpdatedAt,
+        CreatedAt = LearningWorkflow.AsUtc(batch.CreatedAt),
+        UpdatedAt = LearningWorkflow.AsUtc(batch.UpdatedAt),
         Items = batch.Items
             .OrderBy(item => item.DisplayOrder)
             .ThenBy(item => item.PublicityItemId)
@@ -2127,7 +2127,7 @@ public class AwardWorkflowController : ControllerBase
             FinalAmount = application?.FinalAmount,
             DisplayOrder = item.DisplayOrder,
             PublicityResult = ToAwardPublicityItemResultRecordValue(item.PublicityResult),
-            CreatedAt = item.CreatedAt
+            CreatedAt = LearningWorkflow.AsUtc(item.CreatedAt)
         };
     }
 
@@ -2368,8 +2368,7 @@ public class AwardWorkflowController : ControllerBase
     private static DateTime BusinessToday() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone).Date;
 
-    private static DateTime BusinessNow() =>
-        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BusinessTimeZone);
+    private static DateTime BusinessNow() => DateTime.UtcNow;
 
     private static TimeZoneInfo ResolveBusinessTimeZone()
     {
