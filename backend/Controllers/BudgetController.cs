@@ -44,6 +44,12 @@ public class BudgetController : ControllerBase
     private const int MaxCommentLength = 255;
     private const int MaxWriteRetries = 3;
     internal const IsolationLevel BudgetApprovalIsolationLevel = IsolationLevel.ReadCommitted;
+    internal const string BudgetApplicationRowLockSql =
+        "SELECT APPLICATION_ID FROM BUDGET_APPLICATIONS WHERE APPLICATION_ID = :p0 FOR UPDATE";
+    internal const string BudgetAccountRowLockSql =
+        "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE ACCOUNT_ID = :p0 FOR UPDATE";
+    internal const string BudgetClubAccountRowLockSql =
+        "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE CLUB_ID = :p0 AND ACCOUNT_ID = :p1 FOR UPDATE";
 
     private static readonly HashSet<string> AllowedAccountStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -598,7 +604,7 @@ public class BudgetController : ControllerBase
     private async Task<BudgetApplication?> LockBudgetApplicationAsync(int applicationId)
     {
         var lockedId = await LockRowIdAsync(
-            "SELECT APPLICATION_ID FROM BUDGET_APPLICATIONS WHERE APPLICATION_ID = :p0 FOR UPDATE",
+            BudgetApplicationRowLockSql,
             applicationId);
         return lockedId is null
             ? null
@@ -613,7 +619,7 @@ public class BudgetController : ControllerBase
     private async Task<BudgetAccount?> LockBudgetAccountAsync(int accountId)
     {
         var lockedId = await LockRowIdAsync(
-            "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE ACCOUNT_ID = :p0 FOR UPDATE",
+            BudgetAccountRowLockSql,
             accountId);
         return lockedId is null
             ? null
@@ -628,7 +634,7 @@ public class BudgetController : ControllerBase
     private async Task<BudgetAccount?> LockBudgetAccountAsync(int clubId, int accountId)
     {
         var lockedId = await LockRowIdAsync(
-            "SELECT ACCOUNT_ID FROM BUDGET_ACCOUNTS WHERE CLUB_ID = :p0 AND ACCOUNT_ID = :p1 FOR UPDATE",
+            BudgetClubAccountRowLockSql,
             clubId,
             accountId);
         return lockedId is null
