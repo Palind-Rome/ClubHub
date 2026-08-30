@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "elem
 import type { Club, ForumPost, UserSummary } from "../api/models";
 import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
+import { formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 
 const clubs = ref<Club[]>([]);
@@ -185,8 +186,7 @@ function canDeletePost(post: ForumPost): boolean {
 }
 
 const formatTime = (value: Date | string) => {
-  const date = typeof value === "string" ? new Date(value) : value;
-  return date.toLocaleString("zh-CN", { hour12: false });
+  return formatBeijingDateTime(value);
 };
 watch(selectedClubId, () => void loadPosts());
 watch(showHidden, () => void loadPosts());
@@ -228,7 +228,7 @@ onUnmounted(() => stopSessionListener?.());
     />
     <el-alert
       v-else-if="canPost && selectedClubId && !canPostToSelectedClub"
-      title="你可以浏览该社团讨论，但只有当前有效成员才能发布或回复。"
+      title="你可以浏览该社团讨论，但只有当前具有发布权限的成员才能发布或回复。"
       type="info"
       :closable="false"
       show-icon

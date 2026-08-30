@@ -48,15 +48,35 @@ function handleUnauthorizedResponse(init: RequestInit) {
 
 export function attachIdempotencyKey(url: string, init: RequestInit) {
   const parsed = new URL(url, window.location.origin);
+  const method = (init.method ?? "GET").toUpperCase();
+  if (["GET", "HEAD", "OPTIONS"].includes(method)) return init;
   if (!idempotentPaths.some((pattern) => pattern.test(parsed.pathname))) return init;
 
-  const fingerprint = `${init.method ?? "GET"}\n${parsed.pathname}${parsed.search}\n${String(init.body ?? "")}`;
-  const key = idempotencyKeys.get(fingerprint) ?? crypto.randomUUID();
+  const fingerprint = `${method}\n${parsed.pathname}${parsed.search}\n${String(init.body ?? "")}`;
+  const key = idempotencyKeys.get(fingerprint) ?? createIdempotencyKey();
   idempotencyKeys.set(fingerprint, key);
   idempotencyFingerprintsByKey.set(key, fingerprint);
   const headers = new Headers(init.headers);
   headers.set("Idempotency-Key", key);
   return { ...init, headers };
+}
+
+export function createIdempotencyKey() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0"));
+    return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
+      .slice(6, 8)
+      .join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+  }
+
+  return `clubhub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
 }
 
 export function finishIdempotencyAttempt(init: RequestInit, response: Response) {

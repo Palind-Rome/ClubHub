@@ -62,6 +62,45 @@ describe("运营工作台就绪约束", () => {
     expect(awardSource).toContain(':disabled="applicationEntry.disabled"');
     expect(awardSource).toContain(':content="applicationEntry.reason"');
     expect(forumSource).toContain('<el-card v-if="canPostToSelectedClub"');
-    expect(forumSource).toContain("只有当前有效成员才能发布或回复");
+    expect(forumSource).toContain("只有当前具有发布权限的成员才能发布或回复");
+  });
+
+  it("答辩写操作不依赖旧浏览器的 crypto.randomUUID", () => {
+    for (const fileName of [
+      "ProjectList.vue",
+      "LearningCenter.vue",
+      "ActivityList.vue",
+      "BudgetManagement.vue",
+    ]) {
+      expect(viewSources[`./views/${fileName}`]).not.toContain("crypto.randomUUID");
+    }
+  });
+
+  it("活动审核入口在待审核行直接展示", () => {
+    const activitySource = viewSources["./views/ActivityList.vue"];
+    expect(activitySource).toContain('v-if="canReviewActivity(row)"');
+    expect(activitySource).toContain("活动审核");
+    expect(activitySource).toContain("apiClient.reviewActivity");
+  });
+
+  it("经费审核使用带幂等键的 API 客户端", () => {
+    const budgetSource = viewSources["./views/BudgetManagement.vue"];
+    expect(budgetSource).toContain("apiClient.reviewBudgetApplication");
+    expect(budgetSource).toContain("createIdempotencyKey()");
+  });
+
+  it("业务时间展示统一经过北京时间格式化", () => {
+    expect(viewSources["./views/AwardList.vue"]).toContain("formatBeijingDateTime");
+    expect(viewSources["./views/NoticeCenter.vue"]).toContain("formatBeijingDateTime");
+    expect(viewSources["./views/ForumCenter.vue"]).toContain("formatBeijingDateTime");
+    expect(viewSources["./views/EvaluationList.vue"]).toContain("formatBeijingDateTime");
+  });
+
+  it("考核编辑会保留当前表单并按数字提交四项分数", () => {
+    const evaluationSource = viewSources["./views/EvaluationList.vue"];
+    expect(evaluationSource).toContain("invalidateScorePreview");
+    expect(evaluationSource).toContain(
+      "learningScore: normalizeScore(evaluationForm.learningScore)",
+    );
   });
 });

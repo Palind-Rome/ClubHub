@@ -4,6 +4,11 @@ import { Bell, Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-v
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { type AuthResponse, onSessionChange, readAuth } from "../authSession";
 import type { Club, ClubMemberRecord, Notice as ApiNotice } from "../api/models";
+import {
+  beijingLocalInputToUtcIso,
+  formatBeijingDateTime,
+  toBeijingDateTimeInput,
+} from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
 
 type TargetType = "school" | "club" | "department" | "member";
@@ -294,7 +299,7 @@ async function submitNotice(noticeStatus: "draft" | "published") {
           targetType: publishForm.targetType,
           clubId: target.clubId,
           targetId: target.targetId,
-          expireAt: publishForm.expireAt || null,
+          expireAt: publishForm.expireAt ? beijingLocalInputToUtcIso(publishForm.expireAt) : null,
           noticeStatus,
         }),
       },
@@ -382,7 +387,7 @@ function noticePayload(row: Notice, noticeStatus: "draft" | "published") {
     targetType: row.targetType,
     clubId: row.targetType === "member" ? row.clubId : null,
     targetId: row.targetId,
-    expireAt: row.expireAt,
+    expireAt: row.expireAt ? beijingLocalInputToUtcIso(row.expireAt) : null,
     noticeStatus,
   };
 }
@@ -497,16 +502,11 @@ function noticeTypeText(value: string) {
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  return new Date(value).toLocaleString();
+  return formatBeijingDateTime(value);
 }
 
 function toDateTimeInput(value: string | null | undefined) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return toBeijingDateTimeInput(value);
 }
 
 function refreshSession() {

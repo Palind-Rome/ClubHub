@@ -10,6 +10,7 @@ import {
   BUDGET_REVIEW_PERMISSION,
 } from "../budgetPermissions";
 import type { BudgetAccount, BudgetApplication, BudgetTransaction } from "../api/models";
+import { apiClient, createIdempotencyKey } from "../apiClient";
 import { requestJson } from "../composables/useApiRequest";
 import { formatVenueReservationDateTime } from "../beijingTime";
 
@@ -492,17 +493,14 @@ async function submitReview() {
   if (!reviewTarget.value || !(await reviewFormRef.value?.validate())) return;
 
   try {
-    await requestJson<BudgetApplication>(
-      `/api/v1/budget/applications/${reviewTarget.value.id}/review`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          approved: reviewForm.approved,
-          comment: reviewForm.comment.trim() || null,
-        }),
+    await apiClient.reviewBudgetApplication({
+      idempotencyKey: createIdempotencyKey(),
+      applicationId: reviewTarget.value.id,
+      reviewBudgetApplicationRequest: {
+        approved: reviewForm.approved,
+        comment: reviewForm.comment.trim() || null,
       },
-    );
+    });
 
     reviewDialogVisible.value = false;
     ElMessage.success("经费审核结果已保存");

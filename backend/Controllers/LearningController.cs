@@ -619,7 +619,7 @@ public class LearningController : ControllerBase
                     // 使用 HTTPS 时标记 Secure，避免当前 HTTP 部署静默丢弃预览 Cookie。
                     Secure = Request.IsHttps,
                     SameSite = SameSiteMode.Strict,
-                    Path = $"/api/learning/items/{itemId}/preview",
+                    Path = $"{PreviewRoutePrefix()}/items/{itemId}/preview",
                     MaxAge = _authTokenService.PreviewSessionLifetime,
                     IsEssential = true
                 });
@@ -668,6 +668,9 @@ public class LearningController : ControllerBase
         return Path.GetExtension(path).ToLowerInvariant() is
             ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
     }
+
+    private string PreviewRoutePrefix() =>
+        Request.Path.StartsWithSegments("/api/v1") ? "/api/v1/learning" : "/api/learning";
 
     /// <summary>
     /// 使用短时预览会话重新校验权限后，以 inline 和 Range 语义返回预览内容。
