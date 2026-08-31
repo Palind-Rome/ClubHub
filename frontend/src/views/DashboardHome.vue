@@ -181,7 +181,7 @@ onUnmounted(() => stopSessionListener?.());
 }
 .identity-card {
   display: grid;
-  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(250px, 1fr) minmax(0, 520px);
   gap: var(--club-space-6);
   align-items: center;
   padding: clamp(24px, 3vw, 38px);
@@ -208,6 +208,9 @@ onUnmounted(() => stopSessionListener?.());
 .identity-list {
   display: grid;
   gap: 5px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -218,6 +221,8 @@ onUnmounted(() => stopSessionListener?.());
 .identity-summary li {
   width: fit-content;
   max-width: 100%;
+  font-family: inherit;
+  font-weight: 500;
   padding: 3px 9px;
   border: 1px solid color-mix(in srgb, var(--club-primary) 16%, var(--club-border));
   border-radius: 999px;
@@ -225,6 +230,9 @@ onUnmounted(() => stopSessionListener?.());
   overflow-wrap: anywhere;
 }
 .identity-list li {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .identity-kicker {
@@ -237,6 +245,8 @@ onUnmounted(() => stopSessionListener?.());
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   width: 100%;
+  max-width: 520px;
+  justify-self: end;
   border: 1px solid var(--club-border);
   border-radius: var(--club-radius-md);
   background: var(--club-surface);
@@ -340,11 +350,15 @@ onUnmounted(() => stopSessionListener?.());
   text-decoration: none;
 }
 @media (max-width: 1050px) {
+  .identity-card {
+    grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.2fr);
+  }
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .identity-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
   }
 }
 @media (max-width: 640px) {
