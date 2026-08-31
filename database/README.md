@@ -3,7 +3,7 @@
 本目录保存 ClubHub 的 Oracle 数据库脚本。
 
 - `schema.sql`：当前权威全量建表脚本，用于全新的本地开发库或明确测试库。
-- `verify.sql`：验证当前用户、41 张核心表、40 个核心主键 Sequence 及其列默认值和推进位置，并检查项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示细则、经费闭环和幂等台账约束。
+- `verify.sql`：验证当前用户、41 张核心表、40 个核心主键 Sequence 及其列默认值和推进位置，并检查场地维护截止时间、项目成员、任务执行人、进度记录、社团部门和小组约束、评奖评优申请审批、公示细则、经费闭环和幂等台账约束。
 - `seeds/`：隔离开发或测试环境使用的样例数据。
 - `views/`：后续放统计视图。
 - `migrations/`：已有数据库的增量迁移脚本；项目成员关系依次包含 `001_add_project_members.sql` 与 `002_harden_project_members_constraints.sql`。
@@ -70,6 +70,10 @@
     发现某个现有 Sequence 未超过对应表最大主键时执行。脚本不创建表、不删除或
     更新业务数据，也明确排除当前未部署的幂等台账 Sequence。当前共享库的 39 个
     在用 Sequence 已全部通过审计，无需执行本脚本。
+13. `20260831_add_venue_maintenance_until.sql`：为 `VENUES` 增加可空的
+    `MAINTENANCE_UNTIL`，约定以 UTC 语义保存维护截止时间，并增加状态一致性检查约束。
+    执行前备份数据库并暂停场地状态写入；脚本不会替已有数据推测维护截止时间，历史维护记录
+    的空值由管理员按实际情况确认。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
@@ -146,6 +150,8 @@
 14. 当前 production Redis 关闭，因此不要执行 `migrations/20260726_add_idempotency_records.sql`；只有未来正式恢复 Redis 幂等能力时，才在维护窗口重新评估并迁移。
 15. 导入显式主键数据后先只读比较 39 个在用 Sequence 与对应表最大主键；仅在发现落后时执行 `migrations/20260828_align_primary_key_sequences.sql`。截至 2026-08-28，当前共享库全部正常，无需执行。
 16. 当前共享库执行 `009_data_quality_audit.sql` 做业务数据巡检，各查询应返回 0 行。`verify.sql` 面向包含幂等台账的 41 表完整结构；在本迁移仍被跳过时，不要将其中缺失 `IDEMPOTENCY_RECORDS` 的结果误判为其他结构故障。
+17. 执行 `migrations/20260831_add_venue_maintenance_until.sql`。执行前备份并暂停场地状态变更，
+    执行后运行 `verify.sql` 检查 `VENUES.MAINTENANCE_UNTIL` 和状态一致性约束，再恢复场地状态写入。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 

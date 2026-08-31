@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Infrastructure.Rest;
@@ -21,7 +20,6 @@ public class VenuesController : ControllerBase
     private const string ReservationStatusApproved = "approved";
     private const string ReservationStatusCancelled = "cancelled";
     private static readonly TimeZoneInfo BeijingTimeZone = ResolveBeijingTimeZone();
-    private static readonly ConcurrentDictionary<int, DateTime> MaintenanceUntilByVenueId = new();
 
     private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -159,10 +157,16 @@ public class VenuesController : ControllerBase
             return BadRequest(Error("venue_status_invalid", "场地状态参数不合法。"));
         }
 
+        var normalizedMaintenanceUntil = NormalizeMaintenanceUntil(
+            normalizedStatus,
+            req.MaintenanceUntil,
+            out var maintenanceError);
+        if (maintenanceError is not null) return maintenanceError;
+
         var venue = await _db.Venues.FindAsync(venueId);
         if (venue is null) return NotFound(Error("venue_not_found", "场地不存在。"));
 
-        var conflicts = await StatusConflictQuery(venueId, normalizedStatus, req.MaintenanceUntil)
+        var conflicts = await StatusConflictQuery(venueId, normalizedStatus, normalizedMaintenanceUntil)
             .ToListAsync();
         if (conflicts.Count > 0 && req.CancelConflictingReservations != true)
         {
@@ -179,7 +183,9 @@ public class VenuesController : ControllerBase
         }
 
         venue.VenueStatus = normalizedStatus;
-        UpdateMaintenanceUntil(venueId, normalizedStatus, req.MaintenanceUntil);
+        // EF Core wraps the single SaveChanges call in one Oracle transaction,
+        // so status, maintenance deadline and reservation cancellations commit together.
+        venue.MaintenanceUntil = normalizedMaintenanceUntil;
         await _db.SaveChangesAsync();
         await _publicQueryCache.InvalidateVenueAsync(
             venueId,
@@ -214,7 +220,6 @@ public class VenuesController : ControllerBase
             .ToListAsync();
         _db.VenueReservations.RemoveRange(reservations);
         _db.Venues.Remove(venue);
-        MaintenanceUntilByVenueId.TryRemove(venueId, out _);
         await _db.SaveChangesAsync();
         await _publicQueryCache.InvalidateVenueAsync(
             venueId,
@@ -261,15 +266,27 @@ public class VenuesController : ControllerBase
         return query;
     }
 
-    private static void UpdateMaintenanceUntil(int venueId, string status, DateTime? maintenanceUntil)
+    private static DateTime? NormalizeMaintenanceUntil(
+        string status,
+        DateTime? maintenanceUntil,
+        out IActionResult? error)
     {
+        error = null;
         if (status != "maintenance" || maintenanceUntil is null)
         {
-            MaintenanceUntilByVenueId.TryRemove(venueId, out _);
-            return;
+            return null;
         }
 
-        MaintenanceUntilByVenueId[venueId] = RequestTimeToUtc(maintenanceUntil.Value);
+        var normalized = RequestTimeToUtc(maintenanceUntil.Value);
+        if (normalized == default || normalized <= DateTime.UtcNow)
+        {
+            error = new BadRequestObjectResult(Error(
+                "venue_maintenance_until_invalid",
+                "维护结束时间必须晚于当前时间。"));
+            return null;
+        }
+
+        return normalized;
     }
 
     private static DateTime RequestTimeToUtc(DateTime value)
@@ -367,9 +384,7 @@ public class VenuesController : ControllerBase
             status,
             venue.ManagerUserId,
             venue.CreatedAt ?? DateTime.MinValue,
-            status == "maintenance" && MaintenanceUntilByVenueId.TryGetValue(venue.VenueId, out var maintenanceUntil)
-                ? maintenanceUntil
-                : null);
+            status == "maintenance" ? LearningWorkflow.AsUtc(venue.MaintenanceUntil) : null);
     }
 
     private static VenueDto ToDto(VenuePublicCacheEntry venue)
@@ -384,9 +399,7 @@ public class VenuesController : ControllerBase
             status,
             venue.ManagerUserId,
             venue.CreatedAt,
-            status == "maintenance" && MaintenanceUntilByVenueId.TryGetValue(venue.Id, out var maintenanceUntil)
-                ? maintenanceUntil
-                : null);
+            status == "maintenance" ? LearningWorkflow.AsUtc(venue.MaintenanceUntil) : null);
     }
 
     private static string? NullIfBlank(string? value)

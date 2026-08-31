@@ -114,7 +114,8 @@ public sealed class PublicQueryCacheService
                 venue.Capacity ?? 0,
                 venue.VenueStatus,
                 venue.ManagerUserId,
-                venue.CreatedAt ?? DateTime.MinValue))
+                venue.CreatedAt ?? DateTime.MinValue,
+                venue.MaintenanceUntil))
             .FirstOrDefaultAsync(cancellationToken);
 }
 
@@ -154,4 +155,5 @@ public sealed record VenuePublicCacheEntry(
     int Capacity,
     string? Status,
     int? ManagerUserId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    DateTime? MaintenanceUntil);

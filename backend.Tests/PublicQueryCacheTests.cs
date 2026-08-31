@@ -114,6 +114,68 @@ public sealed class PublicQueryCacheTests
     }
 
     [Fact]
+    public async Task VenueCacheRebuildsPersistedMaintenanceDeadline()
+    {
+        var redis = new InMemoryRedisDatabase();
+        await using var factory = CreateFactory(redis);
+        await SeedAsync(factory.Services);
+        using var client = factory.CreateClient();
+
+        var firstDeadline = new DateTime(2026, 9, 15, 4, 0, 0, DateTimeKind.Utc);
+        var secondDeadline = firstDeadline.AddDays(2);
+
+        using var firstResponse = await client.GetAsync("/api/venues/21");
+        var first = await ReadJsonAsync(firstResponse);
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal("maintenance", first.GetProperty("status").GetString());
+        Assert.Equal(firstDeadline, first.GetProperty("maintenanceUntil").GetDateTime());
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+            var venue = await db.Venues.FindAsync(21);
+            venue!.MaintenanceUntil = secondDeadline;
+            await db.SaveChangesAsync();
+        }
+
+        using var cachedResponse = await client.GetAsync("/api/venues/21");
+        var cached = await ReadJsonAsync(cachedResponse);
+        Assert.Equal(firstDeadline, cached.GetProperty("maintenanceUntil").GetDateTime());
+
+        redis.Unavailable = true;
+        using var fallbackResponse = await client.GetAsync("/api/venues/21");
+        var fallback = await ReadJsonAsync(fallbackResponse);
+        Assert.Equal(secondDeadline, fallback.GetProperty("maintenanceUntil").GetDateTime());
+        redis.Unavailable = false;
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var cache = scope.ServiceProvider.GetRequiredService<PublicQueryCacheService>();
+            await cache.InvalidateVenueAsync(21);
+        }
+
+        using var refreshedResponse = await client.GetAsync("/api/venues/21");
+        var refreshed = await ReadJsonAsync(refreshedResponse);
+        Assert.Equal(secondDeadline, refreshed.GetProperty("maintenanceUntil").GetDateTime());
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+            var venue = await db.Venues.FindAsync(21);
+            venue!.VenueStatus = "available";
+            venue.MaintenanceUntil = null;
+            await db.SaveChangesAsync();
+            var cache = scope.ServiceProvider.GetRequiredService<PublicQueryCacheService>();
+            await cache.InvalidateVenueAsync(21);
+        }
+
+        using var clearedResponse = await client.GetAsync("/api/venues/21");
+        var cleared = await ReadJsonAsync(clearedResponse);
+        Assert.Equal("available", cleared.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, cleared.GetProperty("maintenanceUntil").ValueKind);
+    }
+
+    [Fact]
     public async Task RedisOutageFallsBackAndRecoveryNaturallyRebuilds()
     {
         var redis = new InMemoryRedisDatabase { Unavailable = true };
@@ -202,6 +264,15 @@ public sealed class PublicQueryCacheTests
             VenueName = "Lecture hall",
             Capacity = 100,
             VenueStatus = "available",
+            CreatedAt = DateTime.UtcNow
+        });
+        db.Venues.Add(new Venue
+        {
+            VenueId = 21,
+            VenueName = "Maintenance hall",
+            Capacity = 80,
+            VenueStatus = "maintenance",
+            MaintenanceUntil = new DateTime(2026, 9, 15, 4, 0, 0, DateTimeKind.Utc),
             CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
