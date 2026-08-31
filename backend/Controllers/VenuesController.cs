@@ -277,7 +277,15 @@ public class VenuesController : ControllerBase
             return null;
         }
 
-        var normalized = RequestTimeToUtc(maintenanceUntil.Value);
+        if (maintenanceUntil.Value.Kind == DateTimeKind.Unspecified)
+        {
+            error = new BadRequestObjectResult(Error(
+                "venue_maintenance_until_timezone_required",
+                "维护结束时间必须包含时区信息。"));
+            return null;
+        }
+
+        var normalized = TruncateToSecond(RequestTimeToUtc(maintenanceUntil.Value));
         if (normalized == default || normalized <= DateTime.UtcNow)
         {
             error = new BadRequestObjectResult(Error(
@@ -288,6 +296,9 @@ public class VenuesController : ControllerBase
 
         return normalized;
     }
+
+    private static DateTime TruncateToSecond(DateTime value) =>
+        new(value.Year, value.Month, value.Day, value.Hour, value.Minute, value.Second, DateTimeKind.Utc);
 
     private static DateTime RequestTimeToUtc(DateTime value)
     {

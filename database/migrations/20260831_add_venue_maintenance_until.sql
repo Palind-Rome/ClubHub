@@ -6,7 +6,7 @@
 --   3. Run as the CLUBHUB schema owner, then execute database/verify.sql.
 --
 -- Semantics:
---   - MAINTENANCE_UNTIL is nullable and stores UTC wall-clock time in Oracle DATE.
+--   - MAINTENANCE_UNTIL is nullable and stores UTC wall-clock time to whole-second precision in Oracle DATE.
 --   - A null value means that the maintenance end time is not set.
 --   - The application clears the value when VENUE_STATUS leaves maintenance.
 --

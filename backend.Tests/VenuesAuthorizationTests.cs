@@ -33,7 +33,15 @@ public sealed class VenuesAuthorizationTests : IClassFixture<ClubHubWebApplicati
     public async Task MaintenanceDeadlineIsPersistedAndClearedWithStatus()
     {
         var (client, userId, venueId) = await SeedVenueAdminAsync();
-        var deadline = DateTime.UtcNow.AddDays(3).AddSeconds(30);
+        var requestedDeadline = DateTime.UtcNow.AddDays(3).AddSeconds(30);
+        var deadline = new DateTime(
+            requestedDeadline.Year,
+            requestedDeadline.Month,
+            requestedDeadline.Day,
+            requestedDeadline.Hour,
+            requestedDeadline.Minute,
+            requestedDeadline.Second,
+            DateTimeKind.Utc);
 
         using var maintenanceResponse = await client.PatchAsJsonAsync(
             $"/api/v1/venues/{venueId}/status",
@@ -41,7 +49,7 @@ public sealed class VenuesAuthorizationTests : IClassFixture<ClubHubWebApplicati
             {
                 operatorUserId = userId,
                 status = "maintenance",
-                maintenanceUntil = deadline,
+                maintenanceUntil = requestedDeadline,
                 cancelConflictingReservations = false
             });
         var maintenanceBody = await ReadJsonAsync(maintenanceResponse);
@@ -97,6 +105,36 @@ public sealed class VenuesAuthorizationTests : IClassFixture<ClubHubWebApplicati
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(ApiErrorCodes.ValidationError, body.GetProperty("code").GetString());
         Assert.Equal("维护结束时间必须晚于当前时间。", body.GetProperty("message").GetString());
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var venue = await db.Venues.FindAsync(venueId);
+        Assert.Equal("available", venue!.VenueStatus);
+        Assert.Null(venue.MaintenanceUntil);
+    }
+
+    [Fact]
+    public async Task UnzonedMaintenanceDeadlineIsRejectedBeforeStateChange()
+    {
+        var (client, userId, venueId) = await SeedVenueAdminAsync();
+        var unzonedDeadline = DateTime.SpecifyKind(
+            DateTime.UtcNow.AddDays(3),
+            DateTimeKind.Unspecified);
+
+        using var response = await client.PatchAsJsonAsync(
+            $"/api/v1/venues/{venueId}/status",
+            new
+            {
+                operatorUserId = userId,
+                status = "maintenance",
+                maintenanceUntil = unzonedDeadline,
+                cancelConflictingReservations = false
+            });
+        var body = await ReadJsonAsync(response);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(ApiErrorCodes.ValidationError, body.GetProperty("code").GetString());
+        Assert.Equal("维护结束时间必须包含时区信息。", body.GetProperty("message").GetString());
 
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
