@@ -26,6 +26,7 @@ public sealed class BudgetApprovalFlowTests : IClassFixture<ClubHubWebApplicatio
     private const int ClubId = 201;
     private const int AccountId = 301;
     private const int ApplicationId = 401;
+    private const int OriginalActivityId = 501;
     private readonly ClubHubWebApplicationFactory _factory;
 
     public BudgetApprovalFlowTests(ClubHubWebApplicationFactory factory) => _factory = factory;
@@ -136,6 +137,41 @@ public sealed class BudgetApprovalFlowTests : IClassFixture<ClubHubWebApplicatio
             1,
             await db.BudgetReviewRecords.CountAsync(
                 item => item.ApplicationId == ApplicationId));
+        Assert.Equal(OriginalActivityId, application.ActivityId);
+        Assert.InRange(
+            application.SubmittedAt,
+            DateTime.UtcNow.AddMinutes(-1),
+            DateTime.UtcNow.AddMinutes(1));
+    }
+
+    [Fact]
+    public async Task ResubmitApplication_WhenNullableFieldsAreExplicitlyNull_ClearsExistingValues()
+    {
+        await using var factory = await RelationalBudgetWebApplicationFactory.CreateAsync();
+        using var client = await SeedScenarioAsync(
+            factory,
+            applicationStatus: "rejected",
+            grantApplicantReviewPermission: false);
+
+        using var content = new StringContent(
+            """{"activityId":null,"title":"清空可选字段","amount":800,"purpose":"采购活动物料","detail":null}""",
+            Encoding.UTF8,
+            "application/json");
+        using var response = await client.PostAsync(
+            $"/api/v1/budget/applications/{ApplicationId}/resubmit",
+            content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("activityId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("detail").ValueKind);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var application = await db.BudgetApplications.SingleAsync(
+            item => item.ApplicationId == ApplicationId);
+        Assert.Null(application.ActivityId);
+        Assert.Null(application.Detail);
     }
 
     [Fact]
@@ -154,6 +190,13 @@ public sealed class BudgetApprovalFlowTests : IClassFixture<ClubHubWebApplicatio
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("activity_budget", document.RootElement.GetProperty("type").GetString());
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var application = await db.BudgetApplications.SingleAsync(
+            item => item.ApplicationId == ApplicationId);
+        Assert.Equal(OriginalActivityId, application.ActivityId);
+        Assert.Equal("原预算明细", application.Detail);
     }
 
     [Fact]
@@ -242,11 +285,20 @@ public sealed class BudgetApprovalFlowTests : IClassFixture<ClubHubWebApplicatio
             CreatedAt = now,
             UpdatedAt = now
         });
+        db.Activities.Add(new Activity
+        {
+            ActivityId = OriginalActivityId,
+            ClubId = ClubId,
+            Title = "原关联活动",
+            ActivityStatus = "published",
+            CreatedAt = now.AddDays(-2)
+        });
         db.BudgetApplications.Add(new BudgetApplication
         {
             ApplicationId = ApplicationId,
             AccountId = AccountId,
             ClubId = ClubId,
+            ActivityId = OriginalActivityId,
             ApplicantUserId = ApplicantUserId,
             ApplicationType = "activity_budget",
             Title = "原经费申请",

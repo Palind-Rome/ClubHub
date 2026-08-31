@@ -618,7 +618,7 @@ public class BudgetController : ControllerBase
 
                 var title = NullIfBlank(req.Title) ?? application.Title;
                 var purpose = NullIfBlank(req.Purpose) ?? application.Purpose;
-                var detail = req.Detail is not null ? NullIfBlank(req.Detail) : application.Detail;
+                var detail = req.DetailWasProvided ? NullIfBlank(req.Detail) : application.Detail;
                 var amount = req.Amount.HasValue ? Convert.ToDecimal(req.Amount.Value) : application.Amount;
                 var newType = req.Type is { } type ? EnumMemberValue(type) : null;
                 var applicationType = newType ?? application.ApplicationType;
@@ -632,7 +632,7 @@ public class BudgetController : ControllerBase
                 if (validation is not null) return validation;
 
                 Activity? activity = null;
-                var activityId = req.ActivityId ?? application.ActivityId;
+                var activityId = req.ActivityIdWasProvided ? req.ActivityId : application.ActivityId;
                 if (activityId is not null)
                 {
                     activity = await _db.Activities
@@ -659,6 +659,7 @@ public class BudgetController : ControllerBase
                 application.Purpose = purpose;
                 application.Detail = detail;
                 application.ApplicationStatus = ApplicationStatusPending;
+                application.SubmittedAt = now;
                 application.ReviewerUserId = null;
                 application.ReviewComment = null;
                 application.ReviewedAt = null;
