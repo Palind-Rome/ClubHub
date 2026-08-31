@@ -114,6 +114,16 @@ WHERE (table_name, column_name) IN (
 )
 ORDER BY table_name, column_name;
 
+SELECT column_id, column_name, data_type, nullable, data_default
+FROM user_tab_columns
+WHERE table_name = 'VENUES'
+  AND column_name = 'MAINTENANCE_UNTIL';
+
+SELECT constraint_name, constraint_type, status, deferrable, deferred
+FROM user_constraints
+WHERE table_name = 'VENUES'
+  AND constraint_name = 'CK_VENUES_MAINTENANCE_UNTIL';
+
 -- 以下查询应返回 0 行：每个主键 sequence 必须存在，且下一个值必须大于当前最大主键。
 WITH sequence_targets AS (
   SELECT 'SEQ_USERS' AS sequence_name, NVL(MAX(user_id), 0) AS max_id FROM users
@@ -248,6 +258,11 @@ SELECT transaction_id, transaction_type, amount
 FROM budget_transactions
 WHERE transaction_type NOT IN ('commitment', 'expense', 'refund', 'adjustment')
    OR amount = 0;
+
+SELECT venue_id, venue_status, maintenance_until
+FROM venues
+WHERE maintenance_until IS NOT NULL
+  AND NVL(LOWER(TRIM(venue_status)), '#') <> 'maintenance';
 
 SELECT account.account_id,
        account.club_id,

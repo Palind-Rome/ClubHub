@@ -305,6 +305,11 @@ CREATE TABLE VENUES (
   room_no varchar2(255),
   capacity number,
   venue_status varchar2(255),
+  maintenance_until date,
+  CONSTRAINT CK_VENUES_MAINTENANCE_UNTIL CHECK (
+    maintenance_until IS NULL OR
+    NVL(LOWER(TRIM(venue_status)), '#') = 'maintenance'
+  ),
   created_at date
 );
 

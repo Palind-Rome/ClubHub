@@ -29,7 +29,7 @@ export interface UpdateVenueStatusRequest {
    */
   status: UpdateVenueStatusRequestStatusEnum;
   /**
-   * status 为 maintenance 时可选填写的维护结束时间。
+   * status 为 maintenance 时可选填写的维护结束时间；客户端使用带时区的 ISO 8601 时间，服务端按 UTC 语义、秒精度持久化。未填写表示维护期限未知，切换到其他状态时该值会被清除。
    */
   maintenanceUntil?: Date | null;
   /**

@@ -7,6 +7,8 @@ namespace ClubHub.Api.Services;
 
 public sealed class PublicQueryCacheService
 {
+    private const string VenueCacheVersion = "v2";
+
     private static readonly RedisCachePolicy ActivityDetailPolicy = new(
         "activity-detail",
         TimeSpan.FromMinutes(2),
@@ -63,7 +65,8 @@ public sealed class PublicQueryCacheService
         _keyBuilder.Build("activity", "detail", activityId);
 
     private RedisKey VenueKey(int venueId) =>
-        _keyBuilder.Build("venue", "detail", venueId);
+        // The version separates pre-#166 payloads that do not contain MaintenanceUntil.
+        _keyBuilder.Build("venue", "detail", VenueCacheVersion, venueId);
 
     private Task<ActivityPublicCacheEntry?> LoadActivityAsync(
         int activityId,
@@ -114,7 +117,8 @@ public sealed class PublicQueryCacheService
                 venue.Capacity ?? 0,
                 venue.VenueStatus,
                 venue.ManagerUserId,
-                venue.CreatedAt ?? DateTime.MinValue))
+                venue.CreatedAt ?? DateTime.MinValue,
+                venue.MaintenanceUntil))
             .FirstOrDefaultAsync(cancellationToken);
 }
 
@@ -154,4 +158,5 @@ public sealed record VenuePublicCacheEntry(
     int Capacity,
     string? Status,
     int? ManagerUserId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    DateTime? MaintenanceUntil);
