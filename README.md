@@ -11,7 +11,6 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 - 前端：Vue 3 / Vite
 - 数据库：Oracle Database 18c 或更高版本
 - 数据访问：Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider
-- 缓存与协调：Redis / StackExchange.Redis（按功能开关启用）
 - 协作：GitHub Issues / Pull Requests / GitHub Actions
 
 ## 目录结构
@@ -30,39 +29,6 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 ├── CONTRIBUTING.md   # 协作说明
 └── README.md
 ```
-
-## 设计文档
-
-- [Redis 数据边界与故障降级基线](docs/architecture/redis-data-boundary.md)：规定后续
-  Redis 子任务统一使用的数据分类、Key、TTL、持久化、故障降级和回滚边界。
-
-## Redis 后端基础组件
-
-直接运行后端时 Redis 默认关闭。使用 Docker 开发环境时，先复制 `.env.example`
-为 `.env` 并设置本机专用 `REDIS_PASSWORD`，再运行
-`docker compose -f docker-compose.dev.yml up`。Redis 只在容器网络内开放，宿主机
-不映射 6379；业务缓存和可靠状态能力分别由 `REDIS_CACHE_ENABLED`、
-`REDIS_AUTH_SESSIONS_ENABLED`、`REDIS_PERMISSION_CACHE_ENABLED`、
-`REDIS_PREVIEW_SESSIONS_ENABLED`、`REDIS_RATE_LIMITING_ENABLED` 与
-`REDIS_IDEMPOTENCY_ENABLED` 控制，默认全部关闭。
-
-截至 2026-08-20，production 暂时不部署 Redis：生产 `docker-compose.yml` 不创建
-Redis service，backend 显式使用 `Redis__Enabled=false`，Deploy workflow 不再要求或
-传递 `REDIS_PASSWORD` / Redis feature vars，并会清理服务器 `.env` 中遗留的 Redis
-配置。开发与 CI 的 Redis 支持保持不变；未来恢复 production Redis 前需先确定稳定的
-镜像来源并按运维手册恢复 service、Secret 与 readiness 依赖。
-
-统一连接、Key、序列化和 Cache Aside 实现在 `backend/Infrastructure/Redis/`。
-`GET /health/live` 只检查 API 进程；`GET /health/ready` 还会检查已启用的 Redis。
-启用 `REDIS_CACHE_ENABLED` 后，活动详情和场地详情使用统一缓存；活动报名人数和
-当前用户报名状态仍实时查询 Oracle。Redis 超时或断连时查询自动回源 Oracle，
-Oracle 写入成功后再失效对应详情缓存。
-Issue #156 还提供 Redis 登录会话 allowlist、5 分钟权限快照、跨实例预览会话、
-固定窗口限流和 Oracle 幂等台账。启用幂等前必须先人工执行
-`database/migrations/20260726_add_idempotency_records.sql`；最后启用认证会话，
-启用时已有纯签名 Token 将失效并要求重新登录。
-部署、备份、恢复、升级、密码轮换和排障步骤见
-[Redis 运维手册](docs/operations/redis-runbook.md)。
 
 ## 课程要求摘要
 
