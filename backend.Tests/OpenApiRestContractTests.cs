@@ -119,6 +119,23 @@ public class OpenApiRestContractTests
         Assert.Contains("      required:\n        - code", NormalizeNewLines(apiErrorSchema), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ResubmitBudgetApplicationDeclaresApiErrorResponses()
+    {
+        var document = ReadDocument();
+        var operation = Slice(
+            document,
+            "  /api/v1/budget/applications/{applicationId}/resubmit:",
+            "  /api/v1/budget/transactions:");
+
+        foreach (var status in new[] { "400", "401", "403", "404", "409" })
+        {
+            var responsePattern =
+                $@"(?ms)^        ""{status}"":\s*$.*?^          content:\s*$.*?^            application/json:\s*$.*?^              schema:\s*$.*?^                \$ref: ""#/components/schemas/ApiError""\s*$";
+            Assert.Matches(responsePattern, operation);
+        }
+    }
+
     private static string ReadDocument()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../api/openapi.yaml"));

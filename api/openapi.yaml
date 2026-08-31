@@ -3414,6 +3414,94 @@ paths:
         "404":
           description: 经费申请不存在
 
+  /api/v1/budget/applications/{applicationId}/reviews:
+    get:
+      summary: 获取经费申请审核记录
+      description: 返回指定经费申请的全部审核历史记录，按时间倒序排列。
+      operationId: getBudgetApplicationReviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 审核记录列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetReviewRecord"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+        "403":
+          description: 当前用户没有该社团的经费查看权限
+        "404":
+          description: 经费申请不存在
+
+  /api/v1/budget/applications/{applicationId}/resubmit:
+    post:
+      summary: 重新提交被驳回的经费申请
+      description: 申请人或具备经费申请权限的负责人可将被驳回的申请修改后重新提交，状态回到待审核，历史审核记录保留。
+      operationId: resubmitBudgetApplication
+      x-idempotency-required: true
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResubmitBudgetApplicationRequest"
+      responses:
+        "200":
+          description: 经费申请已重新提交，状态回到待审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetApplication"
+        "400":
+          description: 当前申请状态不允许重新提交或参数不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 当前用户未登录或登录状态已失效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户没有重新提交该申请的权限
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 经费申请不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 并发写入冲突
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/v1/budget/transactions:
     get:
       summary: 获取经费流水列表
@@ -10205,6 +10293,49 @@ components:
           maxLength: 255
           description: 撤销说明。
           example: 活动方案调整，暂不申请经费。
+
+    BudgetApplicationType:
+      type: string
+      nullable: true
+      enum: [activity_budget, purchase, reimbursement]
+      description: 经费申请类型。
+      example: activity_budget
+
+    ResubmitBudgetApplicationRequest:
+      type: object
+      description: 重新提交被驳回经费申请的请求，所有字段均为可选，仅更新传入的字段。
+      properties:
+        activityId:
+          type: integer
+          nullable: true
+          description: 关联活动，可不填。
+          example: 12
+        type:
+          $ref: "#/components/schemas/BudgetApplicationType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费申请标题。
+          example: 迎新活动物料采购（修订）
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: 申请金额，必须大于 0。
+          example: 1200
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 经费用途。
+          example: 活动布置、设备耗材、报名物料
+        detail:
+          type: string
+          nullable: true
+          maxLength: 4000
+          description: 经费明细说明。
+          example: 横幅 2 条，单价 120 元；矿泉水 10 箱，单价 45 元。
 
     BudgetReviewRecord:
       type: object

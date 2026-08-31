@@ -12,11 +12,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using ApiBudgetAccount = Org.OpenAPITools.Models.BudgetAccount;
 using ApiBudgetApplication = Org.OpenAPITools.Models.BudgetApplication;
+using ApiBudgetReviewRecord = Org.OpenAPITools.Models.BudgetReviewRecord;
 using ApiBudgetTransaction = Org.OpenAPITools.Models.BudgetTransaction;
 using ApiCancelBudgetApplicationRequest = Org.OpenAPITools.Models.CancelBudgetApplicationRequest;
 using ApiCreateBudgetAccountRequest = Org.OpenAPITools.Models.CreateBudgetAccountRequest;
 using ApiCreateBudgetApplicationRequest = Org.OpenAPITools.Models.CreateBudgetApplicationRequest;
 using ApiError = Org.OpenAPITools.Models.ApiError;
+using ApiResubmitBudgetApplicationRequest = Org.OpenAPITools.Models.ResubmitBudgetApplicationRequest;
 using ApiReviewBudgetApplicationRequest = Org.OpenAPITools.Models.ReviewBudgetApplicationRequest;
 using ApiUpdateBudgetAccountRequest = Org.OpenAPITools.Models.UpdateBudgetAccountRequest;
 
@@ -423,6 +425,11 @@ public class BudgetController : ControllerBase
                     "当前用户没有该社团的经费审核权限。");
                 if (permission is not null) return permission;
 
+                if (application.ApplicantUserId == currentUserId.Value)
+                {
+                    return StatusCode(403, Error("budget_self_review_forbidden", "申请人不能审批自己的经费申请。"));
+                }
+
                 if (!string.Equals(application.ApplicationStatus, ApplicationStatusPending, StringComparison.OrdinalIgnoreCase))
                 {
                     return BadRequest(Error("budget_application_status_invalid", "只有待审核的经费申请才能审核。"));
@@ -538,6 +545,137 @@ public class BudgetController : ControllerBase
             "经费申请正在被其他操作修改，请刷新后重试。");
     }
 
+    [HttpGet("applications/{applicationId:int}/reviews")]
+    public async Task<IActionResult> GetReviewRecords(int applicationId)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        var application = await ApplicationQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.ApplicationId == applicationId);
+        if (application is null) return NotFound(Error("budget_application_not_found", "经费申请不存在。"));
+
+        if (application.ApplicantUserId != currentUserId.Value)
+        {
+            var permission = await RequireClubPermissionAsync(
+                currentUserId.Value,
+                BudgetViewPermission,
+                application.ClubId,
+                "当前用户没有该社团的经费查看权限。");
+            if (permission is not null) return permission;
+        }
+
+        var records = await _db.BudgetReviewRecords
+            .AsNoTracking()
+            .Include(record => record.ReviewerUser)
+            .Where(record => record.ApplicationId == applicationId)
+            .OrderByDescending(record => record.ReviewedAt)
+            .ToListAsync();
+
+        return Ok(records.Select(ToDto));
+    }
+
+    [HttpPost("applications/{applicationId:int}/resubmit")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("resubmitBudgetApplication")]
+    public async Task<IActionResult> ResubmitApplication(
+        int applicationId,
+        [FromBody] ApiResubmitBudgetApplicationRequest req)
+    {
+        var currentUserId = User.GetUserId();
+        if (currentUserId is null) return Unauthorized(Error("auth_required", "登录状态已失效，请重新登录。"));
+
+        return await ExecuteSerializableWriteAsync(
+            async () =>
+            {
+                var application = await LockBudgetApplicationAsync(applicationId);
+                if (application is null) return NotFound(Error("budget_application_not_found", "经费申请不存在。"));
+
+                if (!string.Equals(application.ApplicationStatus, ApplicationStatusRejected, StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(Error("budget_application_status_invalid", "只有已驳回的经费申请才能重新提交。"));
+                }
+
+                if (application.ApplicantUserId != currentUserId.Value)
+                {
+                    var permission = await RequireClubPermissionAsync(
+                        currentUserId.Value,
+                        BudgetApplyPermission,
+                        application.ClubId,
+                        "当前用户没有重新提交该社团经费申请的权限。");
+                    if (permission is not null) return permission;
+                }
+
+                var account = await AccountQuery()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.AccountId == application.AccountId);
+                if (account is null) return NotFound(Error("budget_account_not_found", "经费账户不存在。"));
+
+                if (!string.Equals(account.AccountStatus, AccountStatusActive, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Conflict(Error("budget_account_closed", "经费账户已关闭，不能重新提交经费申请。"));
+                }
+
+                var title = NullIfBlank(req.Title) ?? application.Title;
+                var purpose = NullIfBlank(req.Purpose) ?? application.Purpose;
+                var detail = req.DetailWasProvided ? NullIfBlank(req.Detail) : application.Detail;
+                var amount = req.Amount.HasValue ? Convert.ToDecimal(req.Amount.Value) : application.Amount;
+                var newType = req.Type is { } type ? EnumMemberValue(type) : null;
+                var applicationType = newType ?? application.ApplicationType;
+
+                if (!AllowedApplicationTypes.Contains(applicationType))
+                {
+                    return BadRequest(Error("budget_application_type_invalid", "经费申请类型不合法。"));
+                }
+
+                var validation = ValidateApplicationInput(title, amount, purpose, detail);
+                if (validation is not null) return validation;
+
+                Activity? activity = null;
+                var activityId = req.ActivityIdWasProvided ? req.ActivityId : application.ActivityId;
+                if (activityId is not null)
+                {
+                    activity = await _db.Activities
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(item => item.ActivityId == activityId.Value);
+                    if (activity is null) return NotFound(Error("activity_not_found", "关联活动不存在。"));
+                    if (activity.ClubId != application.ClubId)
+                    {
+                        return BadRequest(Error("budget_activity_club_mismatch", "关联活动必须属于经费账户对应社团。"));
+                    }
+                }
+
+                var remainingAmount = await GetRemainingAmountAsync(application.AccountId, account.InitialAmount);
+                if (amount > remainingAmount)
+                {
+                    return Conflict(Error("budget_insufficient_balance", "经费账户余额不足，不能提交该金额的申请。"));
+                }
+
+                var now = DateTime.UtcNow;
+                application.ActivityId = activityId;
+                application.ApplicationType = applicationType;
+                application.Title = title;
+                application.Amount = amount;
+                application.Purpose = purpose;
+                application.Detail = detail;
+                application.ApplicationStatus = ApplicationStatusPending;
+                application.SubmittedAt = now;
+                application.ReviewerUserId = null;
+                application.ReviewComment = null;
+                application.ReviewedAt = null;
+                application.UpdatedAt = now;
+
+                await _db.SaveChangesAsync();
+
+                var resubmitted = await ApplicationQuery()
+                    .AsNoTracking()
+                    .FirstAsync(item => item.ApplicationId == application.ApplicationId);
+                return Ok(ToDto(resubmitted));
+            },
+            "budget_resubmit_write_conflict",
+            "经费申请正在被其他操作修改，请稍后重试。");
+    }
+
     [HttpGet("transactions")]
     public async Task<IActionResult> GetTransactions([FromQuery] int? clubId, [FromQuery] int? accountId)
     {
@@ -646,6 +784,20 @@ public class BudgetController : ControllerBase
 
     private async Task<int?> LockRowIdAsync(string sql, params int[] values)
     {
+        // Isolated relational tests use SQLite, which does not support FOR UPDATE.
+        // Oracle keeps the locking clause unchanged in production.
+        if (string.Equals(
+                _db.Database.ProviderName,
+                "Microsoft.EntityFrameworkCore.Sqlite",
+                StringComparison.Ordinal))
+        {
+            const string forUpdateSuffix = " FOR UPDATE";
+            if (sql.EndsWith(forUpdateSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                sql = sql[..^forUpdateSuffix.Length];
+            }
+        }
+
         var connection = _db.Database.GetDbConnection();
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
@@ -794,6 +946,17 @@ public class BudgetController : ControllerBase
         ReviewerUserId = application.ReviewerUserId,
         ReviewerName = DisplayName(application.ReviewerUser),
         ReviewComment = application.ReviewComment
+    };
+
+    private static ApiBudgetReviewRecord ToDto(BudgetReviewRecord record) => new()
+    {
+        Id = record.ReviewId,
+        ApplicationId = record.ApplicationId,
+        ReviewerUserId = record.ReviewerUserId,
+        ReviewerName = DisplayName(record.ReviewerUser),
+        Approved = record.Approved == 1,
+        Comment = record.CommentText,
+        ReviewedAt = StoredTimeToUtc(record.ReviewedAt)
     };
 
     private static ApiBudgetTransaction ToDto(BudgetTransaction transaction) => new()
