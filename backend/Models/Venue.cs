@@ -106,9 +106,10 @@ namespace Org.OpenAPITools.Models
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// 维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义返回，空值表示未设置。
+        /// 维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义、秒精度返回，空值表示未设置。
         /// </summary>
-        /// <value>维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义返回，空值表示未设置。</value>
+        /// <value>维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义、秒精度返回，空值表示未设置。</value>
+        /* <example>2026-09-15T12:00Z</example> */
         [DataMember(Name="maintenanceUntil", EmitDefaultValue=true)]
         public DateTime? MaintenanceUntil { get; set; }
 

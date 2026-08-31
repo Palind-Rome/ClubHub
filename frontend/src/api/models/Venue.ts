@@ -53,7 +53,7 @@ export interface Venue {
    */
   createdAt: Date;
   /**
-   * 维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义返回，空值表示未设置。
+   * 维护结束时间。仅在 maintenance 状态下有业务含义；接口按 UTC 语义、秒精度返回，空值表示未设置。
    */
   maintenanceUntil?: Date | null;
 }
