@@ -787,6 +787,9 @@ public class ClubHubDbContext : DbContext
             e.Property(v => v.VenueId)
              .ValueGeneratedOnAdd()
              .HasDefaultValueSql("SEQ_VENUES.NEXTVAL");
+            e.Property(v => v.MaintenanceUntil)
+             .HasColumnName("MAINTENANCE_UNTIL")
+             .HasColumnType("DATE");
             e.HasMany(v => v.Reservations)
              .WithOne(r => r.Venue)
              .HasForeignKey(r => r.VenueId)

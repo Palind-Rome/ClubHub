@@ -68,9 +68,10 @@ namespace Org.OpenAPITools.Models
         public StatusEnum Status { get; set; }
 
         /// <summary>
-        /// status 为 maintenance 时可选填写的维护结束时间。
+        /// status 为 maintenance 时可选填写的维护结束时间；客户端使用带时区的 ISO 8601 时间，服务端按 UTC 语义、秒精度持久化。未填写表示维护期限未知，切换到其他状态时该值会被清除。
         /// </summary>
-        /// <value>status 为 maintenance 时可选填写的维护结束时间。</value>
+        /// <value>status 为 maintenance 时可选填写的维护结束时间；客户端使用带时区的 ISO 8601 时间，服务端按 UTC 语义、秒精度持久化。未填写表示维护期限未知，切换到其他状态时该值会被清除。</value>
+        /* <example>2026-09-15T12:00Z</example> */
         [DataMember(Name="maintenanceUntil", EmitDefaultValue=true)]
         public DateTime? MaintenanceUntil { get; set; }
 

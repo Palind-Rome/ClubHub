@@ -26,6 +26,9 @@ public class Venue
     [Column("VENUE_STATUS")]
     public string? VenueStatus { get; set; }
 
+    [Column("MAINTENANCE_UNTIL")]
+    public DateTime? MaintenanceUntil { get; set; }
+
     [Column("CREATED_AT")]
     public DateTime? CreatedAt { get; set; }
 
