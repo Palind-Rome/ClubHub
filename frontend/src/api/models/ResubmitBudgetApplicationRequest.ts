@@ -33,7 +33,7 @@ export interface ResubmitBudgetApplicationRequest {
    */
   activityId?: number | null;
   /**
-   * 申请类型。
+   *
    */
   type?: BudgetApplicationType | null;
   /**

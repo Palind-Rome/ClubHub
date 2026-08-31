@@ -157,6 +157,24 @@ public sealed class BudgetApprovalFlowTests : IClassFixture<ClubHubWebApplicatio
     }
 
     [Fact]
+    public async Task ResubmitApplication_WhenTypeIsNull_PreservesExistingType()
+    {
+        await using var factory = await RelationalBudgetWebApplicationFactory.CreateAsync();
+        using var client = await SeedScenarioAsync(
+            factory,
+            applicationStatus: "rejected",
+            grantApplicantReviewPermission: false);
+
+        using var response = await client.PostAsJsonAsync(
+            $"/api/v1/budget/applications/{ApplicationId}/resubmit",
+            new { type = (string?)null, title = "接受可空申请类型" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("activity_budget", document.RootElement.GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task ResubmitApplication_WhenNotRejected_ReturnsBadRequest()
     {
         await using var factory = await RelationalBudgetWebApplicationFactory.CreateAsync();

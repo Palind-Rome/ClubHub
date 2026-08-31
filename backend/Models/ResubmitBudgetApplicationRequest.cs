@@ -34,10 +34,8 @@ namespace Org.OpenAPITools.Models
         public int? ActivityId { get; set; }
 
         /// <summary>
-        /// 申请类型。
+        /// Gets or Sets Type
         /// </summary>
-        /// <value>申请类型。</value>
-        /* <example>activity_budget</example> */
         [DataMember(Name="type", EmitDefaultValue=true)]
         public BudgetApplicationType? Type { get; set; }
 

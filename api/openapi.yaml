@@ -10276,8 +10276,10 @@ components:
 
     BudgetApplicationType:
       type: string
+      nullable: true
       enum: [activity_budget, purchase, reimbursement]
       description: 经费申请类型。
+      example: activity_budget
 
     ResubmitBudgetApplicationRequest:
       type: object
@@ -10289,11 +10291,7 @@ components:
           description: 关联活动，可不填。
           example: 12
         type:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/BudgetApplicationType"
-          description: 申请类型。
-          example: activity_budget
+          $ref: "#/components/schemas/BudgetApplicationType"
         title:
           type: string
           minLength: 1
