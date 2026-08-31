@@ -556,12 +556,15 @@ public class BudgetController : ControllerBase
             .FirstOrDefaultAsync(item => item.ApplicationId == applicationId);
         if (application is null) return NotFound(Error("budget_application_not_found", "经费申请不存在。"));
 
-        var permission = await RequireClubPermissionAsync(
-            currentUserId.Value,
-            BudgetViewPermission,
-            application.ClubId,
-            "当前用户没有该社团的经费查看权限。");
-        if (permission is not null) return permission;
+        if (application.ApplicantUserId != currentUserId.Value)
+        {
+            var permission = await RequireClubPermissionAsync(
+                currentUserId.Value,
+                BudgetViewPermission,
+                application.ClubId,
+                "当前用户没有该社团的经费查看权限。");
+            if (permission is not null) return permission;
+        }
 
         var records = await _db.BudgetReviewRecords
             .AsNoTracking()
@@ -574,6 +577,7 @@ public class BudgetController : ControllerBase
     }
 
     [HttpPost("applications/{applicationId:int}/resubmit")]
+    [ClubHub.Api.Infrastructure.Idempotency.IdempotentOperation("resubmitBudgetApplication")]
     public async Task<IActionResult> ResubmitApplication(
         int applicationId,
         [FromBody] ApiResubmitBudgetApplicationRequest req)
@@ -616,7 +620,7 @@ public class BudgetController : ControllerBase
                 var purpose = NullIfBlank(req.Purpose) ?? application.Purpose;
                 var detail = req.Detail is not null ? NullIfBlank(req.Detail) : application.Detail;
                 var amount = req.Amount.HasValue ? Convert.ToDecimal(req.Amount.Value) : application.Amount;
-                var newType = Enum.IsDefined(req.Type) ? EnumMemberValue(req.Type) : null;
+                var newType = req.Type is { } type ? EnumMemberValue(type) : null;
                 var applicationType = newType ?? application.ApplicationType;
 
                 if (!AllowedApplicationTypes.Contains(applicationType))
@@ -779,6 +783,20 @@ public class BudgetController : ControllerBase
 
     private async Task<int?> LockRowIdAsync(string sql, params int[] values)
     {
+        // Isolated relational tests use SQLite, which does not support FOR UPDATE.
+        // Oracle keeps the locking clause unchanged in production.
+        if (string.Equals(
+                _db.Database.ProviderName,
+                "Microsoft.EntityFrameworkCore.Sqlite",
+                StringComparison.Ordinal))
+        {
+            const string forUpdateSuffix = " FOR UPDATE";
+            if (sql.EndsWith(forUpdateSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                sql = sql[..^forUpdateSuffix.Length];
+            }
+        }
+
         var connection = _db.Database.GetDbConnection();
         await using var command = connection.CreateCommand();
         command.CommandText = sql;

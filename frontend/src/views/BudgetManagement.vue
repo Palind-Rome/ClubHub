@@ -602,21 +602,18 @@ async function submitResubmit() {
   if (!resubmitTarget.value || !(await resubmitFormRef.value?.validate())) return;
 
   try {
-    await requestJson<BudgetApplication>(
-      `/api/v1/budget/applications/${resubmitTarget.value.id}/resubmit`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityId: resubmitForm.activityId ?? null,
-          type: resubmitForm.type,
-          title: resubmitForm.title,
-          amount: resubmitForm.amount,
-          purpose: resubmitForm.purpose,
-          detail: resubmitForm.detail.trim() || null,
-        }),
+    await apiClient.resubmitBudgetApplication({
+      idempotencyKey: createIdempotencyKey(),
+      applicationId: resubmitTarget.value.id,
+      resubmitBudgetApplicationRequest: {
+        activityId: resubmitForm.activityId ?? null,
+        type: resubmitForm.type,
+        title: resubmitForm.title,
+        amount: resubmitForm.amount,
+        purpose: resubmitForm.purpose,
+        detail: resubmitForm.detail.trim() || null,
       },
-    );
+    });
 
     resubmitDialogVisible.value = false;
     ElMessage.success("经费申请已重新提交，等待审核");
@@ -630,9 +627,9 @@ async function openReviewHistory(application: BudgetApplication) {
   reviewHistoryVisible.value = true;
   loadingReviews.value = true;
   try {
-    reviewRecords.value = await requestJson<BudgetReviewRecord[]>(
-      `/api/v1/budget/applications/${application.id}/reviews`,
-    );
+    reviewRecords.value = await apiClient.getBudgetApplicationReviews({
+      applicationId: application.id,
+    });
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "加载审核历史失败");
     reviewRecords.value = [];

@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { BudgetApplicationType } from "./BudgetApplicationType";
+import {
+  BudgetApplicationTypeFromJSON,
+  BudgetApplicationTypeFromJSONTyped,
+  BudgetApplicationTypeToJSON,
+  BudgetApplicationTypeToJSONTyped,
+} from "./BudgetApplicationType";
+
 /**
  * 重新提交被驳回经费申请的请求，所有字段均为可选，仅更新传入的字段。
  * @export
@@ -22,52 +30,29 @@ import { mapValues } from "../runtime";
 export interface ResubmitBudgetApplicationRequest {
   /**
    * 关联活动，可不填。
-   * @type {number}
-   * @memberof ResubmitBudgetApplicationRequest
    */
   activityId?: number | null;
   /**
    * 申请类型。
-   * @type {ResubmitBudgetApplicationRequestTypeEnum}
-   * @memberof ResubmitBudgetApplicationRequest
    */
-  type?: ResubmitBudgetApplicationRequestTypeEnum;
+  type?: BudgetApplicationType | null;
   /**
    * 经费申请标题。
-   * @type {string}
-   * @memberof ResubmitBudgetApplicationRequest
    */
   title?: string;
   /**
    * 申请金额，必须大于 0。
-   * @type {number}
-   * @memberof ResubmitBudgetApplicationRequest
    */
   amount?: number;
   /**
    * 经费用途。
-   * @type {string}
-   * @memberof ResubmitBudgetApplicationRequest
    */
   purpose?: string;
   /**
    * 经费明细说明。
-   * @type {string}
-   * @memberof ResubmitBudgetApplicationRequest
    */
   detail?: string | null;
 }
-
-/**
- * @export
- */
-export const ResubmitBudgetApplicationRequestTypeEnum = {
-  ActivityBudget: "activity_budget",
-  Purchase: "purchase",
-  Reimbursement: "reimbursement",
-} as const;
-export type ResubmitBudgetApplicationRequestTypeEnum =
-  (typeof ResubmitBudgetApplicationRequestTypeEnum)[keyof typeof ResubmitBudgetApplicationRequestTypeEnum];
 
 /**
  * Check if a given object implements the ResubmitBudgetApplicationRequest interface.
@@ -98,7 +83,12 @@ export function ResubmitBudgetApplicationRequestFromJSONTyped(
         : json["activityId"] === null
           ? null
           : json["activityId"],
-    type: json["type"] == null ? undefined : json["type"],
+    type:
+      json["type"] === undefined
+        ? undefined
+        : json["type"] === null
+          ? null
+          : BudgetApplicationTypeFromJSON(json["type"]),
     title: json["title"] == null ? undefined : json["title"],
     amount: json["amount"] == null ? undefined : json["amount"],
     purpose: json["purpose"] == null ? undefined : json["purpose"],
@@ -123,7 +113,7 @@ export function ResubmitBudgetApplicationRequestToJSONTyped(
 
   return {
     activityId: value["activityId"],
-    type: value["type"],
+    type: BudgetApplicationTypeToJSON(value["type"]),
     title: value["title"],
     amount: value["amount"],
     purpose: value["purpose"],

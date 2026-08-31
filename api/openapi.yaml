@@ -3448,9 +3448,11 @@ paths:
       summary: 重新提交被驳回的经费申请
       description: 申请人或具备经费申请权限的负责人可将被驳回的申请修改后重新提交，状态回到待审核，历史审核记录保留。
       operationId: resubmitBudgetApplication
+      x-idempotency-required: true
       security:
         - bearerAuth: []
       parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: applicationId
           in: path
           required: true
@@ -10129,7 +10131,6 @@ components:
           example: 王明
         type:
           type: string
-          nullable: true
           enum: [activity_budget, purchase, reimbursement]
           description: 申请类型；activity_budget 活动预算，purchase 采购申请，reimbursement 报销申请。
           example: activity_budget
@@ -10273,6 +10274,11 @@ components:
           description: 撤销说明。
           example: 活动方案调整，暂不申请经费。
 
+    BudgetApplicationType:
+      type: string
+      enum: [activity_budget, purchase, reimbursement]
+      description: 经费申请类型。
+
     ResubmitBudgetApplicationRequest:
       type: object
       description: 重新提交被驳回经费申请的请求，所有字段均为可选，仅更新传入的字段。
@@ -10283,8 +10289,9 @@ components:
           description: 关联活动，可不填。
           example: 12
         type:
-          type: string
-          enum: [activity_budget, purchase, reimbursement]
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/BudgetApplicationType"
           description: 申请类型。
           example: activity_budget
         title:

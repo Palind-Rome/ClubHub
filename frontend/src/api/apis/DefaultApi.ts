@@ -1109,6 +1109,9 @@ export interface GetBudgetAccountsRequest {
 }
 
 export interface GetBudgetApplicationReviewsRequest {
+  /**
+   *
+   */
   applicationId: number;
 }
 
@@ -1896,7 +1899,17 @@ export interface RemoveProjectMemberRequest {
 }
 
 export interface ResubmitBudgetApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
+  idempotencyKey: string;
+  /**
+   *
+   */
   applicationId: number;
+  /**
+   *
+   */
   resubmitBudgetApplicationRequest: ResubmitBudgetApplicationRequest;
 }
 
@@ -6242,7 +6255,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications/{applicationId}/reviews`;
+    let urlPath = `/api/v1/budget/applications/{applicationId}/reviews`;
     urlPath = urlPath.replace(
       "{applicationId}",
       encodeURIComponent(String(requestParameters["applicationId"])),
@@ -10072,6 +10085,13 @@ export class DefaultApi extends runtime.BaseAPI {
   async resubmitBudgetApplicationRequestOpts(
     requestParameters: ResubmitBudgetApplicationOperationRequest,
   ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling resubmitBudgetApplication().',
+      );
+    }
+
     if (requestParameters["applicationId"] == null) {
       throw new runtime.RequiredError(
         "applicationId",
@@ -10092,6 +10112,10 @@ export class DefaultApi extends runtime.BaseAPI {
 
     headerParameters["Content-Type"] = "application/json";
 
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
       const tokenString = await token("bearerAuth", []);
@@ -10101,7 +10125,7 @@ export class DefaultApi extends runtime.BaseAPI {
       }
     }
 
-    let urlPath = `/api/budget/applications/{applicationId}/resubmit`;
+    let urlPath = `/api/v1/budget/applications/{applicationId}/resubmit`;
     urlPath = urlPath.replace(
       "{applicationId}",
       encodeURIComponent(String(requestParameters["applicationId"])),

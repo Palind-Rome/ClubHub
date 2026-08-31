@@ -25,6 +25,7 @@ export * from "./AwardSchemeRecord";
 export * from "./BorrowMaterialRequest";
 export * from "./BudgetAccount";
 export * from "./BudgetApplication";
+export * from "./BudgetApplicationType";
 export * from "./BudgetReviewRecord";
 export * from "./BudgetTransaction";
 export * from "./CancelBudgetApplicationRequest";

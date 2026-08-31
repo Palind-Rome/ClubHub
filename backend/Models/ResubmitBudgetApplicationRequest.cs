@@ -33,41 +33,13 @@ namespace Org.OpenAPITools.Models
         [DataMember(Name="activityId", EmitDefaultValue=true)]
         public int? ActivityId { get; set; }
 
-
-        /// <summary>
-        /// 申请类型。
-        /// </summary>
-        /// <value>申请类型。</value>
-        
-        public enum TypeEnum
-        {
-            
-            /// <summary>
-            /// Enum ActivityBudgetEnum for activity_budget
-            /// </summary>
-            [EnumMember(Value = "activity_budget")]
-            ActivityBudgetEnum = 1,
-            
-            /// <summary>
-            /// Enum PurchaseEnum for purchase
-            /// </summary>
-            [EnumMember(Value = "purchase")]
-            PurchaseEnum = 2,
-            
-            /// <summary>
-            /// Enum ReimbursementEnum for reimbursement
-            /// </summary>
-            [EnumMember(Value = "reimbursement")]
-            ReimbursementEnum = 3
-        }
-
         /// <summary>
         /// 申请类型。
         /// </summary>
         /// <value>申请类型。</value>
         /* <example>activity_budget</example> */
         [DataMember(Name="type", EmitDefaultValue=true)]
-        public TypeEnum Type { get; set; }
+        public BudgetApplicationType? Type { get; set; }
 
         /// <summary>
         /// 经费申请标题。
