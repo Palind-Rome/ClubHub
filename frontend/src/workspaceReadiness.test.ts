@@ -28,9 +28,9 @@ describe("运营工作台就绪约束", () => {
   it("多身份工作台按独立身份行展示并保留单身份兼容布局", () => {
     expect(dashboardSource).toContain('v-for="role in roleSummaries"');
     expect(dashboardSource).toContain(".identity-card");
-    expect(dashboardSource).toContain(
-      "grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr)",
-    );
+    expect(dashboardSource).toContain("grid-template-columns: minmax(250px, 1fr) minmax(0, 520px)");
+    expect(dashboardSource).toContain("font-family: inherit");
+    expect(dashboardSource).toContain("max-width: 520px");
     expect(dashboardSource).toContain("min-width: 0");
   });
 
