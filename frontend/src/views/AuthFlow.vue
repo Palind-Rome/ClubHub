@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
+import { ResponseError } from "../api";
 import type {
   CaptchaChallenge,
   PermissionDefinition,
@@ -13,6 +14,7 @@ import { UpdateUserAccountStatusRequestAccountStatusEnum } from "../api/models";
 import { type AuthResponse, type AuthRole, clearSession, readAuth, saveAuth } from "../authSession";
 import { apiClient } from "../apiClient";
 import { authRedirectPath } from "../authRedirect";
+import { confirmationProblem, newPasswordProblem } from "../passwordChange";
 
 const router = useRouter();
 const route = useRoute();
@@ -24,8 +26,11 @@ const managedUsers = ref<UserSummary[]>([]);
 const usersLoading = ref(false);
 const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
+const passwordFormRef = ref<FormInstance>();
 const captcha = ref<CaptchaChallenge | null>(null);
 const captchaLoading = ref(false);
+const passwordDialogVisible = ref(false);
+const passwordLoading = ref(false);
 
 const STUDENT_NO_LENGTH = 7;
 const STAFF_NO_LENGTH = 5;
@@ -55,6 +60,12 @@ const registerForm = ref({
   grade: "",
   captchaToken: "",
   captchaCode: "",
+});
+
+const passwordForm = ref({
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
 });
 
 const captchaCodeRules = [
@@ -94,6 +105,18 @@ const registerRules: FormRules = {
   major: [{ max: 100, message: "专业最多 100 个字符", trigger: "blur" }],
   grade: [{ max: 20, message: "年级最多 20 个字符", trigger: "blur" }],
   captchaCode: captchaCodeRules,
+};
+
+const passwordRules: FormRules = {
+  currentPassword: [
+    { required: true, message: "请输入当前密码", trigger: "blur" },
+    { max: 128, message: "当前密码最多 128 个字符", trigger: "blur" },
+  ],
+  newPassword: [
+    { required: true, message: "请输入新密码", trigger: "blur" },
+    { validator: validateNewPassword, trigger: "blur" },
+  ],
+  confirmPassword: [{ validator: validatePasswordConfirmation, trigger: "blur" }],
 };
 
 const currentStep = computed(() => {
@@ -258,6 +281,67 @@ async function logout() {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "注销失败，请稍后重试");
   }
+}
+
+function openPasswordDialog() {
+  passwordForm.value = {
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  };
+  passwordDialogVisible.value = true;
+  void nextTick(() => passwordFormRef.value?.clearValidate());
+}
+
+function validateNewPassword(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  const problem = newPasswordProblem(passwordForm.value.currentPassword, value ?? "");
+  callback(problem ? new Error(problem) : undefined);
+}
+
+function validatePasswordConfirmation(
+  _rule: unknown,
+  value: string,
+  callback: (error?: Error) => void,
+) {
+  const problem = confirmationProblem(passwordForm.value.newPassword, value ?? "");
+  callback(problem ? new Error(problem) : undefined);
+}
+
+async function changePassword() {
+  if (!(await validateForm(passwordFormRef.value))) return;
+
+  passwordLoading.value = true;
+  try {
+    await apiClient.changeCurrentUserPassword({
+      changePasswordRequest: {
+        currentPassword: passwordForm.value.currentPassword,
+        newPassword: passwordForm.value.newPassword,
+      },
+    });
+    passwordDialogVisible.value = false;
+    auth.value = null;
+    clearSession();
+    mode.value = "login";
+    ElMessage.success("密码修改成功，请使用新密码重新登录");
+    await router.replace("/auth");
+    await loadCaptcha(false);
+  } catch (error) {
+    ElMessage.error(await passwordChangeErrorMessage(error));
+  } finally {
+    passwordLoading.value = false;
+  }
+}
+
+async function passwordChangeErrorMessage(error: unknown) {
+  if (error instanceof ResponseError) {
+    try {
+      const payload = (await error.response.clone().json()) as { message?: string };
+      if (payload.message) return payload.message;
+    } catch {
+      // Fall through to the safe generic message.
+    }
+  }
+  return error instanceof Error ? error.message : "密码修改失败，请稍后重试";
 }
 
 async function loadManagedUsers() {
@@ -518,6 +602,7 @@ if (!auth.value) void loadCaptcha(false);
           <p>{{ auth.user.realName }}（{{ auth.user.studentNo || auth.user.username }}）</p>
         </div>
         <div class="actions">
+          <el-button type="primary" plain @click="openPasswordDialog">修改密码</el-button>
           <el-button type="danger" plain @click="logout">退出登录</el-button>
         </div>
       </div>
@@ -584,6 +669,69 @@ if (!auth.value) void loadCaptcha(false);
           </div>
         </div>
       </div>
+
+      <el-dialog
+        v-model="passwordDialogVisible"
+        title="修改密码"
+        width="min(460px, 92vw)"
+        destroy-on-close
+        :close-on-click-modal="!passwordLoading"
+        :close-on-press-escape="!passwordLoading"
+      >
+        <el-alert
+          title="修改成功后，当前账号的登录会话将失效，需要使用新密码重新登录。"
+          type="info"
+          :closable="false"
+          show-icon
+          class="password-alert"
+        />
+        <el-form
+          ref="passwordFormRef"
+          :model="passwordForm"
+          :rules="passwordRules"
+          label-position="top"
+          @submit.prevent="changePassword"
+        >
+          <el-form-item label="当前密码" prop="currentPassword">
+            <el-input
+              v-model="passwordForm.currentPassword"
+              type="password"
+              maxlength="128"
+              autocomplete="current-password"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item label="新密码" prop="newPassword">
+            <el-input
+              v-model="passwordForm.newPassword"
+              type="password"
+              :minlength="6"
+              maxlength="128"
+              autocomplete="new-password"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item label="确认新密码" prop="confirmPassword">
+            <el-input
+              v-model="passwordForm.confirmPassword"
+              type="password"
+              :minlength="6"
+              maxlength="128"
+              autocomplete="new-password"
+              show-password
+              @keyup.enter="changePassword"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button :disabled="passwordLoading" @click="passwordDialogVisible = false">
+            取消
+          </el-button>
+          <el-button type="primary" :loading="passwordLoading" @click="changePassword">
+            确认修改
+          </el-button>
+        </template>
+      </el-dialog>
 
       <div v-if="isSystemAdmin" class="info-panel user-admin-panel">
         <div class="panel-heading">
@@ -790,6 +938,10 @@ if (!auth.value) void loadCaptcha(false);
   margin: -8px 0 0;
   color: var(--club-text-secondary);
   font-size: 13px;
+}
+
+.password-alert {
+  margin-bottom: 18px;
 }
 
 .account-grid {

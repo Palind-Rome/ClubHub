@@ -147,6 +147,23 @@ public class AuthController : ControllerBase
         }
     }
 
+    [Authorize]
+    [HttpPut("~/api/v1/users/me/password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
+        }
+
+        var result = await _authService.ChangePasswordAsync(
+            userId,
+            request,
+            ClientIp(),
+            HttpContext.RequestAborted);
+        return result.Succeeded ? NoContent() : ToActionResult(result);
+    }
+
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles()
     {

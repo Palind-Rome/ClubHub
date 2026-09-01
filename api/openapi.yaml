@@ -222,13 +222,13 @@ paths:
         "204":
           description: 密码修改成功，当前用户需要使用新密码重新登录
         "400":
-          description: 新密码不符合规则或与当前密码相同
+          description: 当前密码错误、新密码不符合规则或与当前密码相同
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "401":
-          description: 登录状态缺失、令牌无效或当前密码错误
+          description: 登录状态缺失或令牌无效
           content:
             application/json:
               schema:
