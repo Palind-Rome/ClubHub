@@ -201,7 +201,7 @@ FOR INSERT OR UPDATE OF VENUE_ID, START_AT, END_AT, RESERVATION_STATUS
 ON VENUE_RESERVATIONS
 COMPOUND TRIGGER
   TYPE venue_id_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
-  TYPE reservation_id_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
+  TYPE reservation_id_set IS TABLE OF VENUE_RESERVATIONS.RESERVATION_ID%TYPE INDEX BY VARCHAR2(100);
   g_venue_ids venue_id_set;
   g_changed_ids reservation_id_set;
 
@@ -218,17 +218,18 @@ COMPOUND TRIGGER
     END IF;
 
     IF :NEW.RESERVATION_ID IS NOT NULL THEN
-      g_changed_ids(:NEW.RESERVATION_ID) := TRUE;
+      g_changed_ids(TO_CHAR(:NEW.RESERVATION_ID)) := :NEW.RESERVATION_ID;
     END IF;
 
     IF UPDATING AND :OLD.RESERVATION_ID IS NOT NULL THEN
-      g_changed_ids(:OLD.RESERVATION_ID) := TRUE;
+      g_changed_ids(TO_CHAR(:OLD.RESERVATION_ID)) := :OLD.RESERVATION_ID;
     END IF;
   END AFTER EACH ROW;
 
   AFTER STATEMENT IS
     l_venue_id          PLS_INTEGER;
-    l_reservation_id    PLS_INTEGER;
+    l_reservation_key   VARCHAR2(100);
+    l_reservation_id    VENUE_RESERVATIONS.RESERVATION_ID%TYPE;
     l_locked_venue_id   VENUES.VENUE_ID%TYPE;
     l_invalid_count     PLS_INTEGER;
     l_conflict_count    PLS_INTEGER;
@@ -254,8 +255,9 @@ COMPOUND TRIGGER
     -- Only rows changed by this statement participate in the validation. This
     -- keeps historical APPROVED anomalies from blocking unrelated approvals,
     -- while still checking every new or updated row against current data.
-    l_reservation_id := g_changed_ids.FIRST;
-    WHILE l_reservation_id IS NOT NULL LOOP
+    l_reservation_key := g_changed_ids.FIRST;
+    WHILE l_reservation_key IS NOT NULL LOOP
+      l_reservation_id := g_changed_ids(l_reservation_key);
       SELECT COUNT(*)
         INTO l_invalid_count
         FROM venue_reservations reservation
@@ -286,7 +288,7 @@ COMPOUND TRIGGER
         RAISE_APPLICATION_ERROR(-20054, '同一场地的已通过预约时间区间不能重叠。');
       END IF;
 
-      l_reservation_id := g_changed_ids.NEXT(l_reservation_id);
+      l_reservation_key := g_changed_ids.NEXT(l_reservation_key);
     END LOOP;
   END AFTER STATEMENT;
 END TRG_VENUE_RESERVATION_OVERLAP;

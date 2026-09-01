@@ -15,7 +15,7 @@ public sealed class DatabaseRoutineOracleTests
     private const int ReservationId = 9215001;
     private const int OverlapReservationId = 9215002;
     private const int AdjacentReservationId = 9215003;
-    private const int UpdateReservationId = 9215004;
+    private const long HighReservationId = 2147483648L;
 
     [OracleIntegrationFact]
     public async Task BudgetRoutines_ReviewAndVenueTrigger_ProtectOracleInvariants()
@@ -195,7 +195,7 @@ public sealed class DatabaseRoutineOracleTests
                 connection,
                 transaction,
                 "INSERT INTO venue_reservations (reservation_id, venue_id, club_id, applicant_user_id, start_at, end_at, purpose, reservation_status, reviewer_user_id, created_at) VALUES (:reservationId, :venueId, :clubId, :userId, DATE '2026-09-01' + 1/48, DATE '2026-09-01' + 1/16, '状态变更预约', 'pending', :reviewerId, SYSDATE)",
-                ("reservationId", UpdateReservationId),
+                ("reservationId", HighReservationId),
                 ("venueId", VenueId),
                 ("clubId", ClubId),
                 ("userId", UserId),
@@ -205,19 +205,19 @@ public sealed class DatabaseRoutineOracleTests
                 transaction,
                 "UPDATE venue_reservations SET reservation_status = 'approved' WHERE reservation_id = :reservationId",
                 -20054,
-                ("reservationId", UpdateReservationId));
+                ("reservationId", HighReservationId));
             Assert.Equal(
                 "pending",
                 await ScalarStringAsync(
                     connection,
                     transaction,
                     "SELECT reservation_status FROM venue_reservations WHERE reservation_id = :reservationId",
-                    ("reservationId", UpdateReservationId)));
+                    ("reservationId", HighReservationId)));
             await ExecuteAsync(
                 connection,
                 transaction,
                 "UPDATE venue_reservations SET start_at = DATE '2026-09-01' + 1/12, end_at = DATE '2026-09-01' + 1/8, reservation_status = 'approved' WHERE reservation_id = :reservationId",
-                ("reservationId", UpdateReservationId));
+                ("reservationId", HighReservationId));
         }
         finally
         {
