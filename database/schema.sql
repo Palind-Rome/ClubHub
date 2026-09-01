@@ -961,3 +961,7 @@ ALTER TABLE FORUM_POSTS ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) DEF
 ALTER TABLE FORUM_POSTS ADD FOREIGN KEY (parent_post_id) REFERENCES FORUM_POSTS (post_id) DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE OPERATION_LOGS ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) DEFERRABLE INITIALLY IMMEDIATE;
+
+-- Oracle routines for derived budget balance, budget approval and venue overlap.
+-- The included migration is also safe to rerun on an existing database.
+@@migrations/20260901_add_budget_and_venue_routines.sql

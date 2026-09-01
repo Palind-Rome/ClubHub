@@ -259,6 +259,24 @@ FROM budget_transactions
 WHERE transaction_type NOT IN ('commitment', 'expense', 'refund', 'adjustment')
    OR amount = 0;
 
+-- 以下查询应返回 0 行：已通过场地预约不得存在无效时间区间或跨记录重叠。
+SELECT reservation_id, venue_id, start_at, end_at, reservation_status
+FROM venue_reservations
+WHERE UPPER(TRIM(NVL(reservation_status, '#'))) = 'APPROVED'
+  AND (start_at IS NULL OR end_at IS NULL OR start_at >= end_at);
+
+SELECT left_reservation.reservation_id AS left_reservation_id,
+       right_reservation.reservation_id AS right_reservation_id,
+       left_reservation.venue_id
+FROM venue_reservations left_reservation
+JOIN venue_reservations right_reservation
+  ON right_reservation.venue_id = left_reservation.venue_id
+ AND right_reservation.reservation_id > left_reservation.reservation_id
+WHERE UPPER(TRIM(NVL(left_reservation.reservation_status, '#'))) = 'APPROVED'
+  AND UPPER(TRIM(NVL(right_reservation.reservation_status, '#'))) = 'APPROVED'
+  AND left_reservation.start_at < right_reservation.end_at
+  AND right_reservation.start_at < left_reservation.end_at;
+
 SELECT venue_id, venue_status, maintenance_until
 FROM venues
 WHERE maintenance_until IS NOT NULL
@@ -646,3 +664,29 @@ WHERE document.published_by_user_id IS NOT NULL
     FROM users publisher
     WHERE publisher.user_id = document.published_by_user_id
   );
+
+-- 以下查询应返回 1 行：触发器按场地筛选预约，使用该索引减少历史记录扫描。
+SELECT index_name, table_name, uniqueness, status
+FROM user_indexes
+WHERE index_name = 'IX_VENUE_RESERVATIONS_VENUE_ID'
+  AND table_name = 'VENUE_RESERVATIONS';
+
+-- 以下查询应返回 3 行，且三个数据库例程的状态均为 VALID。
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_name IN (
+  'FN_BUDGET_AVAILABLE_AMOUNT',
+  'SP_REVIEW_BUDGET_APPLICATION',
+  'TRG_VENUE_RESERVATION_OVERLAP'
+)
+ORDER BY object_type, object_name;
+
+-- 以下查询应返回 0 行：例程编译错误需要先修复，再进入业务验收。
+SELECT name, type, line, position, text
+FROM user_errors
+WHERE name IN (
+  'FN_BUDGET_AVAILABLE_AMOUNT',
+  'SP_REVIEW_BUDGET_APPLICATION',
+  'TRG_VENUE_RESERVATION_OVERLAP'
+)
+ORDER BY name, sequence;

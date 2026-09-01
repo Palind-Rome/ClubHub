@@ -74,6 +74,11 @@
     `MAINTENANCE_UNTIL`，约定以 UTC 语义保存维护截止时间，并增加状态一致性检查约束。
     执行前备份数据库并暂停场地状态写入；脚本不会替已有数据推测维护截止时间，历史维护记录
     的空值由管理员按实际情况确认。
+14. `20260901_add_budget_and_venue_routines.sql`：新增经费可用余额函数、经费申请审批
+    过程、场地预约时间冲突 compound trigger 和 `VENUE_ID` 索引。该脚本不改变表结构；
+    过程不自行提交事务，由调用方控制提交或回滚。触发器在语句级检查同一场地已通过预约
+    的半开时间区间，应在现有应用层校验之后作为数据库事实约束使用。部署前先运行
+    `verify.sql` 中的已通过预约时间核查，记录历史异常后再执行迁移。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
@@ -184,5 +189,23 @@ ASP.NET Core 后端通过 EF Core + Oracle 驱动连接远程 Oracle，**不需�
 - 使用 Oracle 语法。
 - 表结构变更必须同步 `schema.sql` 和数据库设计文档。
 - 新增种子数据、视图、迁移脚本时放入对应子目录。
+- 数据库函数、存储过程、触发器和 `VENUE_ID` 索引随
+  `migrations/20260901_add_budget_and_venue_routines.sql` 增量部署，并同步到
+  `schema.sql` 与 `verify.sql`；禁止只在共享数据库中手工创建而不留脚本。
 - `schema.sql` 中核心 sequence 从 `1000000` 起步，用于避开 seeds 保留的显式样例 ID；
   已有数据库的迁移脚本使用 `GREATEST(实时最大主键 + 1, 1000000)` 作为安全下限。
+
+### 数据库例程边界
+
+- `FN_BUDGET_AVAILABLE_AMOUNT(account_id)` 只读汇总 `BUDGET_ACCOUNTS.initial_amount` 与
+  `BUDGET_TRANSACTIONS.amount`，流水的负数占用、正数退款/调整语义与后端保持一致。
+- `SP_REVIEW_BUDGET_APPLICATION` 锁定待审核申请和对应账户，执行额度判断、申请状态更新、
+  审核记录写入和批准占用流水写入；过程不包含权限判断，也不提交事务，权限仍由 API 层负责。
+- `TRG_VENUE_RESERVATION_OVERLAP` 使用 `AFTER STATEMENT` 检查 `[start_at, end_at)` 区间，
+  同一场地首尾相接允许通过，重叠则抛出 `ORA-20054`；采用父行锁避免并发审批绕过检查，
+  同时避免普通行级触发器查询变更表产生 mutating table 错误。校验只把本次 INSERT/
+  UPDATE 涉及的预约作为冲突一侧，历史异常由 `verify.sql` 报告并单独治理。
+- `IX_VENUE_RESERVATIONS_VENUE_ID` 支持按场地定位受影响预约；部署触发器前先运行
+  `verify.sql` 中的已通过预约时间核查，确认现有数据状态。
+- 例程的验证必须在隔离 Oracle Schema 中执行 `backend.OracleIntegrationTests`；共享开发库
+  只在确认迁移窗口、备份和回滚方案后人工执行迁移。
