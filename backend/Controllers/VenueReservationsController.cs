@@ -6,6 +6,7 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Oracle.ManagedDataAccess.Client;
 using Org.OpenAPITools.Models;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using VenueReservationEntity = ClubHub.Api.Data.Entities.VenueReservation;
@@ -338,7 +339,18 @@ public class VenueReservationsController : ControllerBase
             ? null
             : req.ReviewComment.Trim();
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsVenueOverlapViolation(ex))
+        {
+            return Conflict(Error("venue_reservation_conflict", "审批通过失败：该场地在所选时间段已有已通过预约。"));
+        }
+        catch (DbUpdateException ex) when (IsVenueDataViolation(ex))
+        {
+            return Conflict(Error("venue_reservation_data_invalid", "审批通过失败：场地预约数据不一致，请联系管理员核对。"));
+        }
 
         return Ok(ToDto(reservation));
     }
@@ -546,6 +558,44 @@ public class VenueReservationsController : ControllerBase
 
         var now = DateTime.UtcNow;
         return StoredTimeToUtc(reservation.StartAt.Value) <= now && StoredTimeToUtc(reservation.EndAt.Value) > now;
+    }
+
+    private static bool IsVenueOverlapViolation(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OracleException oracleException && oracleException.Number == 20054)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("ORA-20054", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsVenueDataViolation(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OracleException oracleException &&
+                (oracleException.Number == 20052 || oracleException.Number == 20053))
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("ORA-20052", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("ORA-20053", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<(IActionResult? Error, bool CanReview, IReadOnlyList<int> ClubIds)> GetReservationAccessAsync(int userId)
