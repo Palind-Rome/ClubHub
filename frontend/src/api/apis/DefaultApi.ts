@@ -92,6 +92,11 @@ import {
   BudgetApplicationToJSON,
 } from "../models/BudgetApplication";
 import {
+  type BudgetReviewRecord,
+  BudgetReviewRecordFromJSON,
+  BudgetReviewRecordToJSON,
+} from "../models/BudgetReviewRecord";
+import {
   type BudgetTransaction,
   BudgetTransactionFromJSON,
   BudgetTransactionToJSON,
@@ -368,6 +373,11 @@ import {
   RegisterRequestFromJSON,
   RegisterRequestToJSON,
 } from "../models/RegisterRequest";
+import {
+  type ResubmitBudgetApplicationRequest,
+  ResubmitBudgetApplicationRequestFromJSON,
+  ResubmitBudgetApplicationRequestToJSON,
+} from "../models/ResubmitBudgetApplicationRequest";
 import {
   type ReviewActivityBudgetRequest,
   ReviewActivityBudgetRequestFromJSON,
@@ -1096,6 +1106,13 @@ export interface GetBudgetAccountsRequest {
    *
    */
   fiscalYear?: string;
+}
+
+export interface GetBudgetApplicationReviewsRequest {
+  /**
+   *
+   */
+  applicationId: number;
 }
 
 export interface GetBudgetApplicationsRequest {
@@ -1879,6 +1896,21 @@ export interface RemoveProjectMemberRequest {
    *
    */
   projectMemberId: number;
+}
+
+export interface ResubmitBudgetApplicationOperationRequest {
+  /**
+   * 标记一次业务提交；带有 x-idempotency-required: true 的操作必须提供，并在同一次提交及网络重试中复用。
+   */
+  idempotencyKey: string;
+  /**
+   *
+   */
+  applicationId: number;
+  /**
+   *
+   */
+  resubmitBudgetApplicationRequest: ResubmitBudgetApplicationRequest;
 }
 
 export interface ResubmitClubApplicationRequest {
@@ -6198,6 +6230,74 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
+   * Creates request options for getBudgetApplicationReviews without sending the request
+   */
+  async getBudgetApplicationReviewsRequestOpts(
+    requestParameters: GetBudgetApplicationReviewsRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling getBudgetApplicationReviews().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/budget/applications/{applicationId}/reviews`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "GET",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 返回指定经费申请的全部审核历史记录，按时间倒序排列。
+   * 获取经费申请审核记录
+   */
+  async getBudgetApplicationReviewsRaw(
+    requestParameters: GetBudgetApplicationReviewsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<Array<BudgetReviewRecord>>> {
+    const requestOptions = await this.getBudgetApplicationReviewsRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      jsonValue.map(BudgetReviewRecordFromJSON),
+    );
+  }
+
+  /**
+   * 返回指定经费申请的全部审核历史记录，按时间倒序排列。
+   * 获取经费申请审核记录
+   */
+  async getBudgetApplicationReviews(
+    requestParameters: GetBudgetApplicationReviewsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<Array<BudgetReviewRecord>> {
+    const response = await this.getBudgetApplicationReviewsRaw(requestParameters, initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Creates request options for getBudgetApplications without sending the request
    */
   async getBudgetApplicationsRequestOpts(
@@ -9977,6 +10077,97 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.removeProjectMemberRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for resubmitBudgetApplication without sending the request
+   */
+  async resubmitBudgetApplicationRequestOpts(
+    requestParameters: ResubmitBudgetApplicationOperationRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling resubmitBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["applicationId"] == null) {
+      throw new runtime.RequiredError(
+        "applicationId",
+        'Required parameter "applicationId" was null or undefined when calling resubmitBudgetApplication().',
+      );
+    }
+
+    if (requestParameters["resubmitBudgetApplicationRequest"] == null) {
+      throw new runtime.RequiredError(
+        "resubmitBudgetApplicationRequest",
+        'Required parameter "resubmitBudgetApplicationRequest" was null or undefined when calling resubmitBudgetApplication().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(requestParameters["idempotencyKey"]);
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/budget/applications/{applicationId}/resubmit`;
+    urlPath = urlPath.replace(
+      "{applicationId}",
+      encodeURIComponent(String(requestParameters["applicationId"])),
+    );
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ResubmitBudgetApplicationRequestToJSON(
+        requestParameters["resubmitBudgetApplicationRequest"],
+      ),
+    };
+  }
+
+  /**
+   * 申请人或具备经费申请权限的负责人可将被驳回的申请修改后重新提交，状态回到待审核，历史审核记录保留。
+   * 重新提交被驳回的经费申请
+   */
+  async resubmitBudgetApplicationRaw(
+    requestParameters: ResubmitBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<BudgetApplication>> {
+    const requestOptions = await this.resubmitBudgetApplicationRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      BudgetApplicationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 申请人或具备经费申请权限的负责人可将被驳回的申请修改后重新提交，状态回到待审核，历史审核记录保留。
+   * 重新提交被驳回的经费申请
+   */
+  async resubmitBudgetApplication(
+    requestParameters: ResubmitBudgetApplicationOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<BudgetApplication> {
+    const response = await this.resubmitBudgetApplicationRaw(requestParameters, initOverrides);
+    return await response.value();
   }
 
   /**

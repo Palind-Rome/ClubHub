@@ -630,12 +630,12 @@ if (!auth.value) void loadCaptcha(false);
 }
 
 .auth-shell {
-  min-height: 520px;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 420px);
   gap: 28px;
   align-items: center;
-  padding-top: 24px;
+  padding-block: 24px;
 }
 
 .register-shell {

@@ -21,6 +21,8 @@ public static class GeneratedJsonRequiredMembers
 
     public static void Apply(JsonTypeInfo typeInfo)
     {
+        TrackResubmitRequestPresence(typeInfo);
+
         if (!RequiredJsonProperties.TryGetValue(typeInfo.Type, out var requiredProperties))
         {
             return;
@@ -32,6 +34,46 @@ public static class GeneratedJsonRequiredMembers
             {
                 property.IsRequired = true;
             }
+        }
+    }
+
+    private static void TrackResubmitRequestPresence(JsonTypeInfo typeInfo)
+    {
+        // Nullable PATCH fields need to distinguish an omitted property from an
+        // explicitly supplied null so the controller can preserve or clear values.
+        if (typeInfo.Type != typeof(ResubmitBudgetApplicationRequest))
+        {
+            return;
+        }
+
+        foreach (var property in typeInfo.Properties)
+        {
+            var propertyName = property.Name;
+            if (!propertyName.Equals("activityId", StringComparison.OrdinalIgnoreCase) &&
+                !propertyName.Equals("detail", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var setter = property.Set;
+            if (setter is null)
+            {
+                continue;
+            }
+
+            property.Set = (obj, value) =>
+            {
+                setter(obj, value);
+                var request = (ResubmitBudgetApplicationRequest)obj;
+                if (propertyName.Equals("activityId", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.ActivityIdWasProvided = true;
+                }
+                else
+                {
+                    request.DetailWasProvided = true;
+                }
+            };
         }
     }
 }

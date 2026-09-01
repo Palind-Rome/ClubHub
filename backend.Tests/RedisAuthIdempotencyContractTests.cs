@@ -32,6 +32,7 @@ public sealed class RedisAuthIdempotencyContractTests
         "registerActivity",
         "reviewActivity",
         "createBudgetApplication",
+        "resubmitBudgetApplication",
         "reviewBudgetApplication",
         "createVenueReservation",
         "reviewVenueReservation",
