@@ -253,6 +253,12 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "429":
           description: 密码修改请求过于频繁，请稍后重试
+          headers:
+            Retry-After:
+              description: 距离下一次可重试的秒数
+              schema:
+                type: integer
+                minimum: 0
           content:
             application/json:
               schema:

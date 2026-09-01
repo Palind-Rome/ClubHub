@@ -148,6 +148,10 @@ public class OpenApiRestContractTests
         Assert.Contains("仅保存安全哈希", operation, StringComparison.Ordinal);
         Assert.Contains("不会在响应、日志或操作记录中返回或记录", operation, StringComparison.Ordinal);
         Assert.Contains("撤销该用户可撤销的全部登录会话", operation, StringComparison.Ordinal);
+        var rateLimitResponse = Slice(operation, "        \"429\":", "        \"503\":");
+        Assert.Contains("Retry-After:", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("type: integer", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("minimum: 0", rateLimitResponse, StringComparison.Ordinal);
         Assert.Matches(
             "(?ms)^        \"429\":\\s*$.*?^          content:\\s*$.*?^                \\$ref: \"#/components/schemas/ApiError\"\\s*$",
             operation);

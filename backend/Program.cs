@@ -4,6 +4,7 @@ using ClubHub.Api.Infrastructure.Idempotency;
 using ClubHub.Api.Infrastructure.Rest;
 using ClubHub.Api.Services;
 using ClubHub.Api.Validation;
+using System.Net;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -55,6 +56,32 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
         ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    foreach (var value in builder.Configuration
+                 .GetSection("ForwardedHeaders:KnownProxies")
+                 .Get<string[]>() ?? [])
+    {
+        if (!IPAddress.TryParse(value, out var proxy))
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownProxies contains an invalid IP address: {value}");
+        }
+
+        options.KnownProxies.Add(proxy);
+    }
+
+    foreach (var value in builder.Configuration
+                 .GetSection("ForwardedHeaders:KnownIPNetworks")
+                 .Get<string[]>() ?? [])
+    {
+        if (!System.Net.IPNetwork.TryParse(value, out var network) || network.PrefixLength == 0)
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownIPNetworks contains an invalid or unrestricted CIDR network: {value}");
+        }
+
+        options.KnownIPNetworks.Add(network);
+    }
 });
 builder.Services.Configure<OssStorageOptions>(
     builder.Configuration.GetSection(OssStorageOptions.SectionName));
