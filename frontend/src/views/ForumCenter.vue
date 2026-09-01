@@ -214,7 +214,7 @@ onUnmounted(() => stopSessionListener?.());
     <div class="heading app-page-header">
       <div>
         <h1>社团讨论区</h1>
-        <p>来聊点有意思的。一起建设社团的精神家园！</p>
+        <div class="subtitle">来聊点有意思的。一起建设社团的精神家园！</div>
       </div>
       <div class="toolbar">
         <el-select v-model="selectedClubId" placeholder="选择社团" class="club-select">
@@ -243,14 +243,14 @@ onUnmounted(() => stopSessionListener?.());
       <template #header>发布话题</template>
       <el-form ref="topicFormRef" :model="topicForm" :rules="topicRules" label-position="top">
         <el-form-item label="标题" prop="title"
-          ><el-input v-model="topicForm.title" maxlength="120" show-word-limit
+          ><el-input v-model="topicForm.title" maxlength="120" show-word-limit placeholder="标题不会写？试试这个公式：谁 + 做了什么事 + 为什么值得看"
         /></el-form-item>
         <el-form-item label="内容" prop="content">
           <MarkdownEditor
             v-model="topicForm.content"
             :club-id="selectedClubId"
             :maxlength="4000"
-            placeholder="支持 Markdown 格式..."
+            placeholder="写之前深呼吸，不用完美，发出来就是第一步。"
           />
         </el-form-item>
         <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
@@ -364,7 +364,7 @@ onUnmounted(() => stopSessionListener?.());
             :club-id="selectedClubId"
             :maxlength="4000"
             :rows="5"
-            placeholder="支持 Markdown 格式..."
+            placeholder="看完不评论的，默认要承包下次活动搬水/拍照/写推文（手动狗头）"
           /> </el-form-item
       ></el-form>
       <template #footer
@@ -400,7 +400,15 @@ onUnmounted(() => stopSessionListener?.());
 }
 .heading {
   justify-content: space-between;
-  margin-bottom: 16px;
+}
+.subtitle,
+.workspace-head p,
+.muted {
+  color: var(--el-text-color-secondary);
+}
+.subtitle {
+  margin-top: 6px;
+  font-size: 14px;
 }
 .club-select {
   width: 240px;

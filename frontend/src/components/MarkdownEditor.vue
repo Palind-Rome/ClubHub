@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { ElButton, ElMessage } from "element-plus";
+import { ElButton, ElInput, ElMessage } from "element-plus";
 import { Picture, Loading } from "@element-plus/icons-vue";
 import { requestJson } from "../composables/useApiRequest";
 import { ForumImageUploadResponseFromJSON } from "../api/models";
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 const fileInput = ref<HTMLInputElement>();
-const textareaRef = ref<HTMLTextAreaElement>();
+const textareaRef = ref();
 const isUploading = ref(false);
 
 const textContent = computed({
@@ -60,7 +60,7 @@ async function handleImageUpload(event: Event) {
     );
 
     const markdownImage = `![${response.fileName}](${response.imageUrl})`;
-    const textarea = textareaRef.value;
+    const textarea = (textareaRef.value as any)?.$el?.querySelector("textarea");
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -99,7 +99,7 @@ function triggerImageUpload() {
 <template>
   <div class="markdown-editor">
     <div class="toolbar">
-      <span class="hint">支持 Markdown 格式</span>
+      <span class="hint">ClubHub 现已支持 Markdown 格式</span>
       <el-button
         v-if="clubId"
         link
@@ -110,15 +110,15 @@ function triggerImageUpload() {
         {{ isUploading ? "上传中..." : "插入图片" }}
       </el-button>
     </div>
-    <textarea
+    <el-input
       ref="textareaRef"
       v-model="textContent"
+      type="textarea"
       :placeholder="placeholder"
       :rows="rows"
       :maxlength="maxlength"
-      class="editor-textarea"
+      show-word-limit
     />
-    <div class="word-count">{{ textContent.length }} / {{ maxlength }}</div>
     <input
       ref="fileInput"
       type="file"
@@ -148,30 +148,5 @@ function triggerImageUpload() {
 
 .hint {
   font-size: 12px;
-}
-
-.editor-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 14px;
-  resize: vertical;
-  transition: border-color 0.3s;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: var(--el-color-primary);
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-  }
-}
-
-.word-count {
-  text-align: right;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 </style>
