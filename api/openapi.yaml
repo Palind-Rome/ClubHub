@@ -259,6 +259,7 @@ paths:
               schema:
                 type: integer
                 minimum: 0
+                example: 60
           content:
             application/json:
               schema:
