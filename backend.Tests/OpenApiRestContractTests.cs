@@ -115,7 +115,7 @@ public class OpenApiRestContractTests
                 "REQUEST_FAILED"
             },
             code => Assert.Contains(code, apiErrorSchema, StringComparison.Ordinal));
-        Assert.Contains("pattern: '^(\", apiErrorSchema, StringComparison.Ordinal);
+        Assert.Contains("pattern: '^(", apiErrorSchema, StringComparison.Ordinal);
         Assert.Contains("      required:\n        - code", NormalizeNewLines(apiErrorSchema), StringComparison.Ordinal);
     }
 
