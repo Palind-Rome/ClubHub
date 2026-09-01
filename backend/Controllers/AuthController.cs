@@ -156,6 +156,20 @@ public class AuthController : ControllerBase
             return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
         }
 
+        var accountLimit = await AcquireRateLimitAsync(
+            "password-change-user",
+            userId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            5,
+            TimeSpan.FromMinutes(15));
+        if (accountLimit is not null) return accountLimit;
+
+        var ipLimit = await AcquireRateLimitAsync(
+            "password-change-ip",
+            ClientIp(),
+            20,
+            TimeSpan.FromMinutes(15));
+        if (ipLimit is not null) return ipLimit;
+
         var result = await _authService.ChangePasswordAsync(
             userId,
             request,

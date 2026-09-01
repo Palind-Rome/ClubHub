@@ -128,6 +128,61 @@ public sealed class PasswordChangeEndpointTests
     }
 
     [Fact]
+    public async Task ChangePasswordChecksUserAndIpRateLimitsBeforeChangingPassword()
+    {
+        var limiter = new RecordingRateLimiter();
+        await using var baseFactory = new ClubHubWebApplicationFactory();
+        await using var factory = baseFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDistributedRateLimiter>();
+                services.AddSingleton<IDistributedRateLimiter>(limiter);
+            }));
+        using var client = await CreateAuthenticatedClientAsync(factory);
+
+        var response = await ChangePasswordAsync(client, CurrentPassword, NewPassword);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Collection(
+            limiter.Acquisitions,
+            acquisition =>
+            {
+                Assert.Equal("password-change-user", acquisition.Policy);
+                Assert.Equal("21301", acquisition.Subject);
+                Assert.Equal(5, acquisition.Limit);
+                Assert.Equal(TimeSpan.FromMinutes(15), acquisition.Window);
+            },
+            acquisition =>
+            {
+                Assert.Equal("password-change-ip", acquisition.Policy);
+                Assert.False(string.IsNullOrWhiteSpace(acquisition.Subject));
+                Assert.Equal(20, acquisition.Limit);
+                Assert.Equal(TimeSpan.FromMinutes(15), acquisition.Window);
+            });
+    }
+
+    [Fact]
+    public async Task ChangePasswordWhenUserRateLimitIsExceededReturns429BeforePasswordValidation()
+    {
+        var limiter = new RecordingRateLimiter("password-change-user");
+        await using var baseFactory = new ClubHubWebApplicationFactory();
+        await using var factory = baseFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDistributedRateLimiter>();
+                services.AddSingleton<IDistributedRateLimiter>(limiter);
+            }));
+        using var client = await CreateAuthenticatedClientAsync(factory);
+
+        var response = await ChangePasswordAsync(client, "wrong-password", NewPassword);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal("37", response.Headers.GetValues("Retry-After").Single());
+        Assert.Single(limiter.Acquisitions);
+        await AssertPasswordRemainsAsync(factory, CurrentPassword);
+    }
+
+    [Fact]
     public void PasswordHashIsConfiguredAsConcurrencyToken()
     {
         using var factory = new ClubHubWebApplicationFactory();
@@ -224,4 +279,36 @@ public sealed class PasswordChangeEndpointTests
             return Task.CompletedTask;
         }
     }
+
+    private sealed class RecordingRateLimiter(string? rejectedPolicy = null)
+        : IDistributedRateLimiter
+    {
+        public bool Enabled => true;
+
+        public List<RateLimitAcquisition> Acquisitions { get; } = [];
+
+        public Task<RateLimitDecision> AcquireAsync(
+            string policy,
+            string subject,
+            int limit,
+            TimeSpan window,
+            CancellationToken cancellationToken = default)
+        {
+            Acquisitions.Add(new RateLimitAcquisition(policy, subject, limit, window));
+            return Task.FromResult(policy == rejectedPolicy
+                ? new RateLimitDecision(false, 0, 37)
+                : new RateLimitDecision(true, limit - 1, 0));
+        }
+
+        public Task ResetAsync(
+            string policy,
+            string subject,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed record RateLimitAcquisition(
+        string Policy,
+        string Subject,
+        int Limit,
+        TimeSpan Window);
 }
