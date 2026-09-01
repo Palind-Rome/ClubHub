@@ -6,6 +6,7 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Oracle.ManagedDataAccess.Client;
 using Org.OpenAPITools.Models;
 using ApiError = Org.OpenAPITools.Models.ApiError;
 using VenueReservationEntity = ClubHub.Api.Data.Entities.VenueReservation;
@@ -338,7 +339,14 @@ public class VenueReservationsController : ControllerBase
             ? null
             : req.ReviewComment.Trim();
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsVenueOverlapViolation(ex))
+        {
+            return Conflict(Error("venue_reservation_conflict", "审批通过失败：该场地在所选时间段已有已通过预约。"));
+        }
 
         return Ok(ToDto(reservation));
     }
@@ -546,6 +554,24 @@ public class VenueReservationsController : ControllerBase
 
         var now = DateTime.UtcNow;
         return StoredTimeToUtc(reservation.StartAt.Value) <= now && StoredTimeToUtc(reservation.EndAt.Value) > now;
+    }
+
+    private static bool IsVenueOverlapViolation(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OracleException oracleException && oracleException.Number == 20054)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("ORA-20054", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<(IActionResult? Error, bool CanReview, IReadOnlyList<int> ClubIds)> GetReservationAccessAsync(int userId)
