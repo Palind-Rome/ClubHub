@@ -3194,7 +3194,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。
+   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。服务端仅保存安全哈希，不会在响应、日志或操作记录中返回或记录当前密码、新密码或密码哈希。
    * 修改当前用户密码
    */
   async changeCurrentUserPasswordRaw(
@@ -3208,7 +3208,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。
+   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。服务端仅保存安全哈希，不会在响应、日志或操作记录中返回或记录当前密码、新密码或密码哈希。
    * 修改当前用户密码
    */
   async changeCurrentUserPassword(
