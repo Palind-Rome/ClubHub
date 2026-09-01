@@ -115,7 +115,7 @@ public class OpenApiRestContractTests
                 "REQUEST_FAILED"
             },
             code => Assert.Contains(code, apiErrorSchema, StringComparison.Ordinal));
-        Assert.Contains("pattern: '^(", apiErrorSchema, StringComparison.Ordinal);
+        Assert.Contains("pattern: '^(\", apiErrorSchema, StringComparison.Ordinal);
         Assert.Contains("      required:\n        - code", NormalizeNewLines(apiErrorSchema), StringComparison.Ordinal);
     }
 
@@ -152,6 +152,7 @@ public class OpenApiRestContractTests
         Assert.Contains("Retry-After:", rateLimitResponse, StringComparison.Ordinal);
         Assert.Contains("type: integer", rateLimitResponse, StringComparison.Ordinal);
         Assert.Contains("minimum: 0", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("example: 60", rateLimitResponse, StringComparison.Ordinal);
         Assert.Matches(
             "(?ms)^        \"429\":\\s*$.*?^          content:\\s*$.*?^                \\$ref: \"#/components/schemas/ApiError\"\\s*$",
             operation);
