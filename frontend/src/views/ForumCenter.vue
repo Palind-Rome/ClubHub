@@ -243,7 +243,11 @@ onUnmounted(() => stopSessionListener?.());
       <template #header>发布话题</template>
       <el-form ref="topicFormRef" :model="topicForm" :rules="topicRules" label-position="top">
         <el-form-item label="标题" prop="title"
-          ><el-input v-model="topicForm.title" maxlength="120" show-word-limit placeholder="标题不会写？试试这个公式：谁 + 做了什么事 + 为什么值得看"
+          ><el-input
+            v-model="topicForm.title"
+            maxlength="120"
+            show-word-limit
+            placeholder="标题不会写？试试这个公式：谁 + 做了什么事 + 为什么值得看"
         /></el-form-item>
         <el-form-item label="内容" prop="content">
           <MarkdownEditor
