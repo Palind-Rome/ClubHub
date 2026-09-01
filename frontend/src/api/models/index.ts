@@ -31,6 +31,7 @@ export * from "./BudgetTransaction";
 export * from "./CancelBudgetApplicationRequest";
 export * from "./CancelProjectRequest";
 export * from "./CaptchaChallenge";
+export * from "./ChangePasswordRequest";
 export * from "./Club";
 export * from "./ClubApplication";
 export * from "./ClubDepartmentRecord";
