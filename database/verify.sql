@@ -665,6 +665,12 @@ WHERE document.published_by_user_id IS NOT NULL
     WHERE publisher.user_id = document.published_by_user_id
   );
 
+-- 以下查询应返回 1 行：触发器按场地筛选预约，使用该索引减少历史记录扫描。
+SELECT index_name, table_name, uniqueness, status
+FROM user_indexes
+WHERE index_name = 'IX_VENUE_RESERVATIONS_VENUE_ID'
+  AND table_name = 'VENUE_RESERVATIONS';
+
 -- 以下查询应返回 3 行，且三个数据库例程的状态均为 VALID。
 SELECT object_name, object_type, status
 FROM user_objects

@@ -41,6 +41,17 @@ public sealed class DatabaseRoutineOracleTests
                     )
                       AND status = 'VALID'
                     """));
+            Assert.Equal(
+                1,
+                await ScalarIntAsync(
+                    connection,
+                    transaction,
+                    """
+                    SELECT COUNT(*)
+                    FROM user_indexes
+                    WHERE index_name = 'IX_VENUE_RESERVATIONS_VENUE_ID'
+                      AND table_name = 'VENUE_RESERVATIONS'
+                    """));
 
             await ExecuteAsync(
                 connection,

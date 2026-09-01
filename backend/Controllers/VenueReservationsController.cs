@@ -347,6 +347,10 @@ public class VenueReservationsController : ControllerBase
         {
             return Conflict(Error("venue_reservation_conflict", "审批通过失败：该场地在所选时间段已有已通过预约。"));
         }
+        catch (DbUpdateException ex) when (IsVenueDataViolation(ex))
+        {
+            return Conflict(Error("venue_reservation_data_invalid", "审批通过失败：场地预约数据不一致，请联系管理员核对。"));
+        }
 
         return Ok(ToDto(reservation));
     }
@@ -566,6 +570,26 @@ public class VenueReservationsController : ControllerBase
             }
 
             if (current.Message.Contains("ORA-20054", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsVenueDataViolation(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OracleException oracleException &&
+                (oracleException.Number == 20052 || oracleException.Number == 20053))
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("ORA-20052", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("ORA-20053", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

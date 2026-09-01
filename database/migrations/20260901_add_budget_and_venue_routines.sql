@@ -7,8 +7,44 @@
 --
 -- This migration creates no tables or columns. CREATE OR REPLACE is used so the
 -- script can be rerun after a review fix. Oracle DDL commits implicitly.
+--
+-- Impact scope:
+--   * FN_BUDGET_AVAILABLE_AMOUNT reads budget account and transaction rows.
+--   * SP_REVIEW_BUDGET_APPLICATION updates a pending application and its review
+--     record; an approval also writes one commitment transaction.
+--   * TRG_VENUE_RESERVATION_OVERLAP checks INSERT/UPDATE statements that affect
+--     approved venue reservations and may raise ORA-20052/20053/20054.
+--   * IX_VENUE_RESERVATIONS_VENUE_ID adds an index for the trigger's venue scan.
+--   * Existing business rows are not rewritten by this migration.
+--
+-- Preflight:
+--   Run the approved-reservation interval checks in database/verify.sql before
+--   deployment and record any historical anomalies for separate data cleanup.
+--
+-- Rollback (run as the schema owner after stopping related writes):
+--   DROP INDEX IX_VENUE_RESERVATIONS_VENUE_ID;
+--   DROP TRIGGER TRG_VENUE_RESERVATION_OVERLAP;
+--   DROP PROCEDURE SP_REVIEW_BUDGET_APPLICATION;
+--   DROP FUNCTION FN_BUDGET_AVAILABLE_AMOUNT;
+--   Dropping these objects restores the previous application-only venue
+--   reservation behavior. Restore backed-up definitions instead when the
+--   target schema already had objects with these names.
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK;
+
+DECLARE
+  l_index_count PLS_INTEGER;
+BEGIN
+  SELECT COUNT(*)
+    INTO l_index_count
+    FROM user_indexes
+   WHERE index_name = 'IX_VENUE_RESERVATIONS_VENUE_ID';
+
+  IF l_index_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE INDEX IX_VENUE_RESERVATIONS_VENUE_ID ON VENUE_RESERVATIONS (VENUE_ID)';
+  END IF;
+END;
+/
 
 CREATE OR REPLACE FUNCTION FN_BUDGET_AVAILABLE_AMOUNT (
   p_account_id IN BUDGET_ACCOUNTS.ACCOUNT_ID%TYPE
@@ -53,7 +89,6 @@ IS
   l_amount             BUDGET_APPLICATIONS.AMOUNT%TYPE;
   l_title              BUDGET_APPLICATIONS.TITLE%TYPE;
   l_account_status     BUDGET_ACCOUNTS.ACCOUNT_STATUS%TYPE;
-  l_initial_amount     BUDGET_ACCOUNTS.INITIAL_AMOUNT%TYPE;
   l_available_amount   NUMBER;
   l_user_count         PLS_INTEGER;
 BEGIN
@@ -93,8 +128,8 @@ BEGIN
   END IF;
 
   IF p_approved = 1 THEN
-    SELECT account_status, initial_amount
-      INTO l_account_status, l_initial_amount
+    SELECT account_status
+      INTO l_account_status
       FROM budget_accounts
      WHERE account_id = l_account_id
        AND club_id = l_club_id
@@ -166,7 +201,9 @@ FOR INSERT OR UPDATE OF VENUE_ID, START_AT, END_AT, RESERVATION_STATUS
 ON VENUE_RESERVATIONS
 COMPOUND TRIGGER
   TYPE venue_id_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
+  TYPE reservation_id_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
   g_venue_ids venue_id_set;
+  g_changed_ids reservation_id_set;
 
   AFTER EACH ROW IS
   BEGIN
@@ -179,13 +216,22 @@ COMPOUND TRIGGER
        AND UPPER(TRIM(NVL(:OLD.RESERVATION_STATUS, '#'))) = 'APPROVED' THEN
       g_venue_ids(:OLD.VENUE_ID) := TRUE;
     END IF;
+
+    IF :NEW.RESERVATION_ID IS NOT NULL THEN
+      g_changed_ids(:NEW.RESERVATION_ID) := TRUE;
+    END IF;
+
+    IF UPDATING AND :OLD.RESERVATION_ID IS NOT NULL THEN
+      g_changed_ids(:OLD.RESERVATION_ID) := TRUE;
+    END IF;
   END AFTER EACH ROW;
 
   AFTER STATEMENT IS
-    l_venue_id        PLS_INTEGER;
-    l_locked_venue_id VENUES.VENUE_ID%TYPE;
-    l_invalid_count   PLS_INTEGER;
-    l_conflict_count  PLS_INTEGER;
+    l_venue_id          PLS_INTEGER;
+    l_reservation_id    PLS_INTEGER;
+    l_locked_venue_id   VENUES.VENUE_ID%TYPE;
+    l_invalid_count     PLS_INTEGER;
+    l_conflict_count    PLS_INTEGER;
   BEGIN
     l_venue_id := g_venue_ids.FIRST;
     WHILE l_venue_id IS NOT NULL LOOP
@@ -202,10 +248,18 @@ COMPOUND TRIGGER
           RAISE_APPLICATION_ERROR(-20052, '预约引用的场地不存在。');
       END;
 
+      l_venue_id := g_venue_ids.NEXT(l_venue_id);
+    END LOOP;
+
+    -- Only rows changed by this statement participate in the validation. This
+    -- keeps historical APPROVED anomalies from blocking unrelated approvals,
+    -- while still checking every new or updated row against current data.
+    l_reservation_id := g_changed_ids.FIRST;
+    WHILE l_reservation_id IS NOT NULL LOOP
       SELECT COUNT(*)
         INTO l_invalid_count
         FROM venue_reservations reservation
-       WHERE reservation.venue_id = l_venue_id
+       WHERE reservation.reservation_id = l_reservation_id
          AND UPPER(TRIM(NVL(reservation.reservation_status, '#'))) = 'APPROVED'
          AND (reservation.start_at IS NULL
               OR reservation.end_at IS NULL
@@ -221,7 +275,8 @@ COMPOUND TRIGGER
         JOIN venue_reservations right_reservation
           ON right_reservation.venue_id = left_reservation.venue_id
          AND right_reservation.reservation_id > left_reservation.reservation_id
-       WHERE left_reservation.venue_id = l_venue_id
+       WHERE (left_reservation.reservation_id = l_reservation_id
+              OR right_reservation.reservation_id = l_reservation_id)
          AND UPPER(TRIM(NVL(left_reservation.reservation_status, '#'))) = 'APPROVED'
          AND UPPER(TRIM(NVL(right_reservation.reservation_status, '#'))) = 'APPROVED'
          AND left_reservation.start_at < right_reservation.end_at
@@ -231,7 +286,7 @@ COMPOUND TRIGGER
         RAISE_APPLICATION_ERROR(-20054, '同一场地的已通过预约时间区间不能重叠。');
       END IF;
 
-      l_venue_id := g_venue_ids.NEXT(l_venue_id);
+      l_reservation_id := g_changed_ids.NEXT(l_reservation_id);
     END LOOP;
   END AFTER STATEMENT;
 END TRG_VENUE_RESERVATION_OVERLAP;
