@@ -331,7 +331,7 @@ onUnmounted(() => stopSessionListener?.());
         <ReplyItem
           :reply="reply"
           :can-moderate="canModerate"
-          :can-post="canPost"
+          :can-post="canPostToSelectedClub"
           :can-delete-post="canDeletePost"
           :moderating-post-ids="moderatingPostIds"
           @reply-to="
