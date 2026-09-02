@@ -278,4 +278,37 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         // Should receive 413 Payload Too Large due to RequestSizeLimit
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
     }
+
+    [Fact]
+    public async Task DeleteImage_WithValidStorageKey_ReturnsOk()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
+
+        // Should succeed (actual deletion handled by ForumImageUploadService)
+        Assert.True(response.IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_WithoutStorageKey_ReturnsBadRequest()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_NonMember_IsForbidden()
+    {
+        var (client, clubId) = await SeedAsync(member: false, moderate: false);
+        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }

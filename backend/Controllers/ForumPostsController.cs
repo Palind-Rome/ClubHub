@@ -234,6 +234,19 @@ public sealed class ForumPostsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpDelete("delete-image")]
+    public async Task<IActionResult> DeleteImage(int clubId, [FromQuery] string storageKey)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return BadRequest(new { message = "storageKey 参数不能为空" });
+
+        var success = await _imageUploadService.DeleteAsync(storageKey, HttpContext.RequestAborted);
+        return success ? Ok() : StatusCode(500, new { message = "删除失败" });
+    }
+
     private async Task<UserContext> GetUserContextAsync(int clubId)
     {
         var userId = User.GetUserId();

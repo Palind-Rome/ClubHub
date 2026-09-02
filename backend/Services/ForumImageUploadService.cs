@@ -11,7 +11,7 @@ public enum UploadFailureKind
     Storage
 }
 
-public sealed record UploadResult(bool Success, string? ImageUrl, string? FileName, UploadFailureKind? FailureKind, string? ErrorMessage);
+public sealed record UploadResult(bool Success, string? ImageUrl, string? FileName, string? StorageKey, UploadFailureKind? FailureKind, string? ErrorMessage);
 
 public sealed class ForumImageUploadService : IDisposable
 {
@@ -114,10 +114,10 @@ public sealed class ForumImageUploadService : IDisposable
     {
         var (isValid, failureKind, errorMessage) = ValidateImage(file);
         if (!isValid)
-            return new(false, null, null, failureKind, errorMessage);
+            return new(false, null, null, null, failureKind, errorMessage);
 
         if (_client == null)
-            return new(false, null, null, UploadFailureKind.Storage, "OSS 服务未正确配置");
+            return new(false, null, null, null, UploadFailureKind.Storage, "OSS 服务未正确配置");
 
         var fileName = file.FileName ?? "image.jpg";
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -138,7 +138,7 @@ public sealed class ForumImageUploadService : IDisposable
                 cancellationToken: cancellationToken);
 
             var imageUrl = BuildImageUrl(objectName);
-            return new(true, imageUrl, Path.GetFileName(objectName), null, null);
+            return new(true, imageUrl, Path.GetFileName(objectName), objectName, null, null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -147,7 +147,33 @@ public sealed class ForumImageUploadService : IDisposable
         catch (Exception exception)
         {
             _logger.LogError(exception, "OSS upload failed for club {ClubId} file {FileName}", clubId, fileName);
-            return new(false, null, null, UploadFailureKind.Storage, "上传失败");
+            return new(false, null, null, null, UploadFailureKind.Storage, "上传失败");
+        }
+    }
+
+    /// <summary>
+    /// 删除已上传的图片
+    /// </summary>
+    public async Task<bool> DeleteAsync(string storageKey, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey) || _client == null)
+            return false;
+
+        try
+        {
+            await _client.DeleteObjectAsync(
+                new OSS.Models.DeleteObjectRequest
+                {
+                    Bucket = _options.Bucket,
+                    Key = storageKey
+                },
+                cancellationToken: cancellationToken);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "OSS delete failed for key {StorageKey}", storageKey);
+            return false;
         }
     }
 

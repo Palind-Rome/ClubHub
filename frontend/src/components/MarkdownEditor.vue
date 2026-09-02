@@ -69,6 +69,15 @@ async function handleImageUpload(event: Event) {
       const nextContent = `${before}\n${markdownImage}\n${after}`;
       if (nextContent.length > props.maxlength) {
         ElMessage.error(`插入图片后内容不能超过 ${props.maxlength} 个字符`);
+        // Clean up the uploaded image
+        if (response.storageKey) {
+          await requestJson(
+            `/api/v1/clubs/${props.clubId}/forum-posts/delete-image?storageKey=${encodeURIComponent(response.storageKey)}`,
+            { method: "DELETE" },
+          ).catch(() => {
+            // Silently ignore cleanup errors
+          });
+        }
         return;
       }
       textContent.value = nextContent;
