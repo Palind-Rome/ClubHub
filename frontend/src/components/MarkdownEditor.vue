@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { ElButton, ElInput, ElMessage } from "element-plus";
+import { ElButton, ElInput, ElMessage, type InputInstance } from "element-plus";
 import { Picture, Loading } from "@element-plus/icons-vue";
 import { requestJson } from "../composables/useApiRequest";
 import { ForumImageUploadResponseFromJSON } from "../api/models";
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 const fileInput = ref<HTMLInputElement>();
-const textareaRef = ref();
+const textareaRef = ref<InputInstance>();
 const isUploading = ref(false);
 
 const textContent = computed({
@@ -60,7 +60,7 @@ async function handleImageUpload(event: Event) {
     );
 
     const markdownImage = `![${response.fileName}](${response.imageUrl})`;
-    const textarea = (textareaRef.value as any)?.$el?.querySelector("textarea");
+    const textarea = textareaRef.value?.textarea;
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
