@@ -967,6 +967,17 @@ export interface DeleteClubForumPostRequest {
   postId: number;
 }
 
+export interface DeleteForumImageRequest {
+  /**
+   *
+   */
+  clubId: number;
+  /**
+   * 存储对象键，来自上传响应
+   */
+  storageKey: string;
+}
+
 export interface DeleteLearningResourceRequest {
   /**
    *
@@ -5311,6 +5322,77 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteClubForumPostRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteForumImage without sending the request
+   */
+  async deleteForumImageRequestOpts(
+    requestParameters: DeleteForumImageRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling deleteForumImage().',
+      );
+    }
+
+    if (requestParameters["storageKey"] == null) {
+      throw new runtime.RequiredError(
+        "storageKey",
+        'Required parameter "storageKey" was null or undefined when calling deleteForumImage().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["storageKey"] != null) {
+      queryParameters["storageKey"] = requestParameters["storageKey"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/delete-image`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 删除已上传的论坛图片
+   */
+  async deleteForumImageRaw(
+    requestParameters: DeleteForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteForumImageRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除已上传的论坛图片
+   */
+  async deleteForumImage(
+    requestParameters: DeleteForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteForumImageRaw(requestParameters, initOverrides);
   }
 
   /**

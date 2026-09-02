@@ -29,6 +29,10 @@ export interface ForumImageUploadResponse {
    */
   fileName: string;
   /**
+   * 存储对象键，用于后续删除操作。
+   */
+  storageKey: string;
+  /**
    * 上传时间。
    */
   uploadedAt: Date;
@@ -42,6 +46,7 @@ export function instanceOfForumImageUploadResponse(
 ): value is ForumImageUploadResponse {
   if (!("imageUrl" in value) || value["imageUrl"] === undefined) return false;
   if (!("fileName" in value) || value["fileName"] === undefined) return false;
+  if (!("storageKey" in value) || value["storageKey"] === undefined) return false;
   if (!("uploadedAt" in value) || value["uploadedAt"] === undefined) return false;
   return true;
 }
@@ -60,6 +65,7 @@ export function ForumImageUploadResponseFromJSONTyped(
   return {
     imageUrl: json["imageUrl"],
     fileName: json["fileName"],
+    storageKey: json["storageKey"],
     uploadedAt: json["uploadedAt"] == null ? json["uploadedAt"] : parseDateTime(json["uploadedAt"]),
   };
 }
@@ -79,6 +85,7 @@ export function ForumImageUploadResponseToJSONTyped(
   return {
     imageUrl: value["imageUrl"],
     fileName: value["fileName"],
+    storageKey: value["storageKey"],
     uploadedAt:
       value["uploadedAt"] == null ? value["uploadedAt"] : serializeDateTime(value["uploadedAt"]),
   };

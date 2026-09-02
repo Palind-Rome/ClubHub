@@ -44,6 +44,15 @@ namespace Org.OpenAPITools.Models
         public string FileName { get; set; }
 
         /// <summary>
+        /// 存储对象键，用于后续删除操作。
+        /// </summary>
+        /// <value>存储对象键，用于后续删除操作。</value>
+        /* <example>clubs/1/forum/2026/08/19/abc123def456.png</example> */
+        [Required]
+        [DataMember(Name="storageKey", EmitDefaultValue=false)]
+        public string StorageKey { get; set; }
+
+        /// <summary>
         /// 上传时间。
         /// </summary>
         /// <value>上传时间。</value>
