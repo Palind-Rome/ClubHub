@@ -1571,7 +1571,7 @@ paths:
 
     delete:
       summary: 删除社团讨论区话题或回复
-      description: 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+      description: 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
       operationId: deleteClubForumPost
       security:
         - bearerAuth: []
@@ -1590,7 +1590,7 @@ paths:
             minimum: 1
       responses:
         "204":
-          description: 删除成功
+          description: 删除成功（包括所有后代）
         "400":
           description: 请求参数不合法
           content:
@@ -1611,6 +1611,128 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "404":
           description: 社团或帖子不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/v1/clubs/{clubId}/forum-posts/upload-image:
+    post:
+      summary: 上传论坛图片到 OSS
+      operationId: uploadForumImage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: 图片文件，支持 jpg、png、gif、webp，文件大小 ≤ 5MB
+              required: [image]
+      responses:
+        "200":
+          description: 图片上传成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumImageUploadResponse"
+        "400":
+          description: 图片文件不合法（类型或大小超限）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "413":
+          description: 文件过大，超出大小限制
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: OSS 上传失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/v1/clubs/{clubId}/forum-posts/delete-image:
+    delete:
+      summary: 删除已上传的论坛图片
+      operationId: deleteForumImage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: storageKey
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 存储对象键，来自上传响应
+      responses:
+        "200":
+          description: 图片删除成功
+        "400":
+          description: storageKey 参数不能为空
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 当前用户不是该社团的有效成员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 社团不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: OSS 删除失败
           content:
             application/json:
               schema:
@@ -7148,6 +7270,29 @@ components:
           enum: [published, hidden]
           example: published
       required: [isTop, postStatus]
+
+    ForumImageUploadResponse:
+      type: object
+      description: 论坛图片上传响应
+      properties:
+        imageUrl:
+          type: string
+          description: 上传后的图片 OSS URL，可直接在 Markdown 中使用。
+          example: https://clubhub-oss.aliyuncs.com/forum/2026/08/19/abc123.png
+        fileName:
+          type: string
+          description: 图片文件名。
+          example: abc123.png
+        storageKey:
+          type: string
+          description: 存储对象键，用于后续删除操作。
+          example: clubs/1/forum/2026/08/19/abc123def456.png
+        uploadedAt:
+          type: string
+          format: date-time
+          description: 上传时间。
+          example: 2026-08-19T10:30:00Z
+      required: [imageUrl, fileName, storageKey, uploadedAt]
 
     NoticeReadResult:
       type: object

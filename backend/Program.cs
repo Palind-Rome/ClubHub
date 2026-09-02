@@ -62,6 +62,7 @@ builder.Services.Configure<LearningPreviewOptions>(
     builder.Configuration.GetSection(LearningPreviewOptions.SectionName));
 builder.Services.AddSingleton<ILearningObjectStorage, OssLearningObjectStorage>();
 builder.Services.AddSingleton<IAwardObjectStorage, OssAwardObjectStorage>();
+builder.Services.AddSingleton<ForumImageUploadService>();
 builder.Services.AddSingleton<OfficePreviewConverter>();
 builder.Services.AddSingleton<OfficeConversionLimiter>();
 builder.Services.AddSingleton<LearningPreviewService>();

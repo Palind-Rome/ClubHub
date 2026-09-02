@@ -40,13 +40,13 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     }
 
     [Fact]
-    public async Task CreateReply_ToReply_IsRejected()
+    public async Task CreateReply_ToReply_IsAllowed()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
         var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
         var reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"reply\"}}");
         using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts", Json($"{{\"parentPostId\":{reply},\"content\":\"nested\"}}"));
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
@@ -144,6 +144,44 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     }
 
     [Fact]
+    public async Task NestedReplies_UpToThreeLevels_CreateQueryAndCascadeDelete()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create topic -> reply level 1 -> reply level 2 -> reply level 3
+        var topic = await PostAndReadId(client, clubId, "{\"title\":\"topic\",\"content\":\"body\"}");
+        var level1Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{topic},\"content\":\"level1\"}}");
+        var level2Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level1Reply},\"content\":\"level2\"}}");
+        var level3Reply = await PostAndReadId(client, clubId, $"{{\"parentPostId\":{level2Reply},\"content\":\"level3\"}}");
+
+        // Verify all created
+        Assert.NotEqual(0, level1Reply);
+        Assert.NotEqual(0, level2Reply);
+        Assert.NotEqual(0, level3Reply);
+
+        // Verify structure in GET
+        using var getResponse = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
+        using var getDocument = System.Text.Json.JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
+        var topicReply = getDocument.RootElement[0].GetProperty("replies")[0];
+        var level1Nested = topicReply.GetProperty("replies")[0];
+        var level2Nested = level1Nested.GetProperty("replies")[0];
+        Assert.Equal("level1", topicReply.GetProperty("content").GetString());
+        Assert.Equal("level2", level1Nested.GetProperty("content").GetString());
+        Assert.Equal("level3", level2Nested.GetProperty("content").GetString());
+
+        // Delete level 2 reply -> should cascade delete level 3
+        using var deleteLevel2 = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/{level2Reply}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteLevel2.StatusCode);
+
+        // Verify level 2 and 3 deleted, but level 1 still exists
+        using var afterDeleteResponse = await client.GetAsync($"/api/v1/clubs/{clubId}/forum-posts");
+        using var afterDeleteDocument = System.Text.Json.JsonDocument.Parse(await afterDeleteResponse.Content.ReadAsStringAsync());
+        var topicReplyAfter = afterDeleteDocument.RootElement[0].GetProperty("replies")[0];
+        Assert.Equal("level1", topicReplyAfter.GetProperty("content").GetString());
+        Assert.Equal(0, topicReplyAfter.GetProperty("replies").GetArrayLength());
+    }
+
+    [Fact]
     public async Task DeleteReply_ByOwner_Succeeds()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
@@ -223,5 +261,54 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
         Assert.True(response.IsSuccessStatusCode);
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetInt32();
+    }
+
+    [Fact]
+    public async Task UploadImage_ExceedsRequestSizeLimit_Returns413()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        // Create a multipart request that exceeds 5 MB limit
+        using var content = new MultipartFormDataContent();
+        var oversizeData = new byte[6 * 1024 * 1024]; // 6 MB
+        content.Add(new ByteArrayContent(oversizeData), "image", "large.jpg");
+
+        using var response = await client.PostAsync($"/api/v1/clubs/{clubId}/forum-posts/upload-image", content);
+
+        // Should receive 413 Payload Too Large due to RequestSizeLimit
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_WithValidStorageKey_ReturnsServerError()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
+
+        // OSS not configured in tests, so deletion fails with 500; verifies endpoint exists and accepts storageKey
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_WithoutStorageKey_ReturnsBadRequest()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_NonMember_IsForbidden()
+    {
+        var (client, clubId) = await SeedAsync(member: false, moderate: false);
+        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

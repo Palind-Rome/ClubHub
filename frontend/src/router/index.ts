@@ -120,7 +120,7 @@ const router = createRouter({
     {
       path: "/forum",
       component: ForumCenter,
-      meta: { title: "讨论区", eyebrow: "Community Forum" },
+      meta: { title: "社团讨论区", eyebrow: "Community Forum" },
     },
   ],
 });

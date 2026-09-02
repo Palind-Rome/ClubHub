@@ -267,6 +267,11 @@ import {
   DependencyHealthReportFromJSON,
   DependencyHealthReportToJSON,
 } from "../models/DependencyHealthReport";
+import {
+  type ForumImageUploadResponse,
+  ForumImageUploadResponseFromJSON,
+  ForumImageUploadResponseToJSON,
+} from "../models/ForumImageUploadResponse";
 import { type ForumPost, ForumPostFromJSON, ForumPostToJSON } from "../models/ForumPost";
 import {
   type GenerateClubEvaluationsRequest,
@@ -960,6 +965,17 @@ export interface DeleteClubForumPostRequest {
    *
    */
   postId: number;
+}
+
+export interface DeleteForumImageRequest {
+  /**
+   *
+   */
+  clubId: number;
+  /**
+   * 存储对象键，来自上传响应
+   */
+  storageKey: string;
 }
 
 export interface DeleteLearningResourceRequest {
@@ -2459,6 +2475,17 @@ export interface UploadClubAwardRuleDocumentFileRequest {
    * 最大 50 MB 的评定细则附件。
    */
   file: Blob;
+}
+
+export interface UploadForumImageRequest {
+  /**
+   *
+   */
+  clubId: number;
+  /**
+   * 图片文件，支持 jpg、png、gif、webp，文件大小 ≤ 5MB
+   */
+  image: Blob;
 }
 
 export interface UploadLearningResourceRequest {
@@ -5273,7 +5300,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
    * 删除社团讨论区话题或回复
    */
   async deleteClubForumPostRaw(
@@ -5287,7 +5314,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 删除话题（包括其所有回复）或删除回复。话题发布者或讨论区管理员可执行删除操作。删除操作会记录至审计日志。
+   * 删除话题或回复。删除话题时级联删除其所有后代回复（包括嵌套回复）。删除回复时仅删除该回复及其所有子后代。话题发布者或讨论区管理员可执行删除操作。所有删除操作均记录至审计日志。
    * 删除社团讨论区话题或回复
    */
   async deleteClubForumPost(
@@ -5295,6 +5322,77 @@ export class DefaultApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<void> {
     await this.deleteClubForumPostRaw(requestParameters, initOverrides);
+  }
+
+  /**
+   * Creates request options for deleteForumImage without sending the request
+   */
+  async deleteForumImageRequestOpts(
+    requestParameters: DeleteForumImageRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling deleteForumImage().',
+      );
+    }
+
+    if (requestParameters["storageKey"] == null) {
+      throw new runtime.RequiredError(
+        "storageKey",
+        'Required parameter "storageKey" was null or undefined when calling deleteForumImage().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    if (requestParameters["storageKey"] != null) {
+      queryParameters["storageKey"] = requestParameters["storageKey"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/delete-image`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "DELETE",
+      headers: headerParameters,
+      query: queryParameters,
+    };
+  }
+
+  /**
+   * 删除已上传的论坛图片
+   */
+  async deleteForumImageRaw(
+    requestParameters: DeleteForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.deleteForumImageRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 删除已上传的论坛图片
+   */
+  async deleteForumImage(
+    requestParameters: DeleteForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.deleteForumImageRaw(requestParameters, initOverrides);
   }
 
   /**
@@ -13363,6 +13461,94 @@ export class DefaultApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
+    return await response.value();
+  }
+
+  /**
+   * Creates request options for uploadForumImage without sending the request
+   */
+  async uploadForumImageRequestOpts(
+    requestParameters: UploadForumImageRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["clubId"] == null) {
+      throw new runtime.RequiredError(
+        "clubId",
+        'Required parameter "clubId" was null or undefined when calling uploadForumImage().',
+      );
+    }
+
+    if (requestParameters["image"] == null) {
+      throw new runtime.RequiredError(
+        "image",
+        'Required parameter "image" was null or undefined when calling uploadForumImage().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+    const consumes: runtime.Consume[] = [{ contentType: "multipart/form-data" }];
+    // @ts-ignore: canConsumeForm may be unused
+    const canConsumeForm = runtime.canConsumeForm(consumes);
+
+    let formParams: { append(param: string, value: any): any };
+    let useForm = false;
+    // use FormData to transmit files using content-type "multipart/form-data"
+    useForm = canConsumeForm;
+    if (useForm) {
+      formParams = new FormData();
+    } else {
+      formParams = new URLSearchParams();
+    }
+
+    if (requestParameters["image"] != null) {
+      formParams.append("image", requestParameters["image"] as any);
+    }
+
+    let urlPath = `/api/v1/clubs/{clubId}/forum-posts/upload-image`;
+    urlPath = urlPath.replace("{clubId}", encodeURIComponent(String(requestParameters["clubId"])));
+
+    return {
+      path: urlPath,
+      method: "POST",
+      headers: headerParameters,
+      query: queryParameters,
+      body: formParams,
+    };
+  }
+
+  /**
+   * 上传论坛图片到 OSS
+   */
+  async uploadForumImageRaw(
+    requestParameters: UploadForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ForumImageUploadResponse>> {
+    const requestOptions = await this.uploadForumImageRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ForumImageUploadResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * 上传论坛图片到 OSS
+   */
+  async uploadForumImage(
+    requestParameters: UploadForumImageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ForumImageUploadResponse> {
+    const response = await this.uploadForumImageRaw(requestParameters, initOverrides);
     return await response.value();
   }
 

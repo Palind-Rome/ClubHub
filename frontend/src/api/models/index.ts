@@ -66,6 +66,7 @@ export * from "./DependencyHealthCheck";
 export * from "./DependencyHealthReport";
 export * from "./DissolveClubRequest";
 export * from "./ExitClubMemberRequest";
+export * from "./ForumImageUploadResponse";
 export * from "./ForumPost";
 export * from "./GenerateClubEvaluationsRequest";
 export * from "./GenerateClubEvaluationsResult";
