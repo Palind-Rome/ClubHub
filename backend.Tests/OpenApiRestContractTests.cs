@@ -136,6 +136,28 @@ public class OpenApiRestContractTests
         }
     }
 
+    [Fact]
+    public void ChangePasswordDocumentsSensitiveDataHandlingAndRateLimitResponse()
+    {
+        var document = ReadDocument();
+        var operation = Slice(
+            document,
+            "  /api/v1/users/me/password:",
+            "  /api/v1/auth/roles:");
+
+        Assert.Contains("仅保存安全哈希", operation, StringComparison.Ordinal);
+        Assert.Contains("不会在响应、日志或操作记录中返回或记录", operation, StringComparison.Ordinal);
+        Assert.Contains("撤销该用户可撤销的全部登录会话", operation, StringComparison.Ordinal);
+        var rateLimitResponse = Slice(operation, "        \"429\":", "        \"503\":");
+        Assert.Contains("Retry-After:", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("type: integer", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("minimum: 0", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Contains("example: 60", rateLimitResponse, StringComparison.Ordinal);
+        Assert.Matches(
+            "(?ms)^        \"429\":\\s*$.*?^          content:\\s*$.*?^                \\$ref: \"#/components/schemas/ApiError\"\\s*$",
+            operation);
+    }
+
     private static string ReadDocument()
     {
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../api/openapi.yaml"));

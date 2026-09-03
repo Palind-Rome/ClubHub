@@ -147,6 +147,37 @@ public class AuthController : ControllerBase
         }
     }
 
+    [Authorize]
+    [HttpPut("~/api/v1/users/me/password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized(new ApiError { Message = "登录状态已失效，请重新登录。" });
+        }
+
+        var accountLimit = await AcquireRateLimitAsync(
+            "password-change-user",
+            userId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            5,
+            TimeSpan.FromMinutes(15));
+        if (accountLimit is not null) return accountLimit;
+
+        var ipLimit = await AcquireRateLimitAsync(
+            "password-change-ip",
+            ClientIp(),
+            20,
+            TimeSpan.FromMinutes(15));
+        if (ipLimit is not null) return ipLimit;
+
+        var result = await _authService.ChangePasswordAsync(
+            userId,
+            request,
+            ClientIp(),
+            HttpContext.RequestAborted);
+        return result.Succeeded ? NoContent() : ToActionResult(result);
+    }
+
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles()
     {

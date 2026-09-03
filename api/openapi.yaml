@@ -205,6 +205,72 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /api/v1/users/me/password:
+    put:
+      summary: 修改当前用户密码
+      description: 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。服务端仅保存安全哈希，不会在响应、日志或操作记录中返回或记录当前密码、新密码或密码哈希。
+      operationId: changeCurrentUserPassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: 密码修改成功，当前用户需要使用新密码重新登录
+        "400":
+          description: 当前密码错误、新密码不符合规则或与当前密码相同
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: 登录状态缺失或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: 账号已被禁用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: 当前用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: 密码已被其他请求修改，请重新登录后再试
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: 密码修改请求过于频繁，请稍后重试
+          headers:
+            Retry-After:
+              description: 距离下一次可重试的秒数
+              schema:
+                type: integer
+                minimum: 0
+                example: 60
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: 限流或会话服务暂不可用，无法安全修改密码
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /api/v1/auth/roles:
     get:
       summary: 获取基础角色定义
@@ -6771,6 +6837,26 @@ components:
         - password
         - captchaToken
         - captchaCode
+
+    ChangePasswordRequest:
+      type: object
+      description: 当前登录用户修改密码请求。用户身份只从 Bearer 登录令牌取得。
+      properties:
+        currentPassword:
+          type: string
+          description: 当前登录密码。
+          minLength: 1
+          maxLength: 128
+          example: ClubHub123
+        newPassword:
+          type: string
+          description: 新密码，服务端仅保存安全哈希，且不能与当前密码相同。
+          minLength: 6
+          maxLength: 128
+          example: NewClubHub456
+      required:
+        - currentPassword
+        - newPassword
 
     CaptchaChallenge:
       type: object
