@@ -674,35 +674,38 @@ SELECT evaluation_id,
        total_score,
        grade
 FROM evaluations
-WHERE activity_score IS NULL
-   OR task_score IS NULL
-   OR learning_score IS NULL
-   OR award_score IS NULL
-   OR total_score IS NULL
-   OR NVL(activity_score, 0) NOT BETWEEN 0 AND 100
-   OR NVL(task_score, 0) NOT BETWEEN 0 AND 100
-   OR NVL(learning_score, 0) NOT BETWEEN 0 AND 100
-   OR NVL(award_score, 0) NOT BETWEEN 0 AND 100
-   OR total_score <> NVL(activity_score, 0)
-                    + NVL(task_score, 0)
-                    + NVL(learning_score, 0)
-                    + NVL(award_score, 0)
-   OR NVL(TRIM(grade), '#') <>
-      CASE
-        WHEN NVL(activity_score, 0)
-           + NVL(task_score, 0)
-           + NVL(learning_score, 0)
-           + NVL(award_score, 0) >= 320 THEN '优秀'
-        WHEN NVL(activity_score, 0)
-           + NVL(task_score, 0)
-           + NVL(learning_score, 0)
-           + NVL(award_score, 0) >= 260 THEN '良好'
-        WHEN NVL(activity_score, 0)
-           + NVL(task_score, 0)
-           + NVL(learning_score, 0)
-           + NVL(award_score, 0) >= 200 THEN '合格'
-        ELSE '待提升'
-      END;
+WHERE LOWER(TRIM(NVL(evaluation_type, '#'))) = 'semester'
+  AND (
+       activity_score IS NULL
+    OR task_score IS NULL
+    OR learning_score IS NULL
+    OR award_score IS NULL
+    OR total_score IS NULL
+    OR NVL(activity_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(task_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(learning_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(award_score, 0) NOT BETWEEN 0 AND 100
+    OR total_score <> NVL(activity_score, 0)
+                         + NVL(task_score, 0)
+                         + NVL(learning_score, 0)
+                         + NVL(award_score, 0)
+    OR NVL(TRIM(grade), '#') <>
+       CASE
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 320 THEN '优秀'
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 260 THEN '良好'
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 200 THEN '合格'
+         ELSE '待提升'
+       END
+      );
 
 -- 以下查询应返回 1 行：触发器按场地筛选预约，使用该索引减少历史记录扫描。
 SELECT index_name, table_name, uniqueness, status

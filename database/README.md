@@ -79,10 +79,11 @@
     过程不自行提交事务，由调用方控制提交或回滚。触发器在语句级检查同一场地已通过预约
     的半开时间区间，应在现有应用层校验之后作为数据库事实约束使用。部署前先运行
     `verify.sql` 中的已通过预约时间核查，记录历史异常后再执行迁移。
-15. `20260903_add_evaluation_consistency_routines.sql`：统一成员考核的总分与等级计算，
+15. `20260903_add_evaluation_consistency_routines.sql`：统一学期成员考核的总分与等级计算，
     拒绝超出 0 至 100 的分项分数，并提供按社团、学期原子公示草稿考核的过程。脚本不改变
-    表结构，但会将已有考核的空分项归零，并按当前规则重新计算总分和等级；执行前必须备份，
-    暂停考核生成、编辑和公示写入，并先确认不存在超出范围的历史分项。
+    表结构，但会将已有学期考核的空分项归零，并按当前规则重新计算总分和等级；`award` 类型
+    的评奖记录保持原有语义。执行前必须备份，暂停考核生成、编辑和公示写入，并先确认不存在
+    超出范围的历史学期考核分项。
 
 迁移完成后执行 `verify.sql`，确认 sequence、唯一索引、列默认值、部门/小组外码、
 经费账户唯一性、审批通过申请流水、幂等台账约束和回填结果均已生效。
@@ -162,8 +163,8 @@
 17. 执行 `migrations/20260831_add_venue_maintenance_until.sql`。执行前备份并暂停场地状态变更，
     执行后运行 `verify.sql` 检查 `VENUES.MAINTENANCE_UNTIL` 和状态一致性约束，再恢复场地状态写入。
 18. 执行 `migrations/20260903_add_evaluation_consistency_routines.sql`。执行前备份并暂停成员考核
-    写入；若脚本报告分项超出范围，先人工核对并修正来源数据。执行后运行 `verify.sql`，确认
-    考核一致性查询返回 0 行、三个新增例程均为 `VALID`，再恢复考核写入。
+    写入；若脚本报告学期考核分项超出范围，先人工核对并修正来源数据。执行后运行 `verify.sql`，
+    确认学期考核一致性查询返回 0 行、三个新增例程均为 `VALID`，再恢复考核写入。
 
 Oracle DDL 会自动提交，迁移脚本不能被视为可事务回滚。执行前应确认连接信息并保留数据库备份；CI 不会自动执行此迁移。
 
@@ -213,13 +214,14 @@ ASP.NET Core 后端通过 EF Core + Oracle 驱动连接远程 Oracle，**不需�
   UPDATE 涉及的预约作为冲突一侧，历史异常由 `verify.sql` 报告并单独治理。
 - `IX_VENUE_RESERVATIONS_VENUE_ID` 支持按场地定位受影响预约；部署触发器前先运行
   `verify.sql` 中的已通过预约时间核查，确认现有数据状态。
-- `FN_EVALUATION_GRADE(total_score)` 统一使用 320/260/200 三个分界计算“优秀”“良好”
+- `FN_EVALUATION_GRADE(total_score)` 为学期考核统一使用 320/260/200 三个分界计算“优秀”“良好”
   “合格”“待提升”，并拒绝 0 至 400 之外的总分。
-- `TRG_EVALUATIONS_DERIVE_SCORE` 在每次写入 `EVALUATIONS` 时将空分项归零，校验四项分数均在
-  0 至 100 之间，并覆盖写入方提供的 `total_score` 和 `grade`，避免 API、导入脚本和人工维护
-  使用不同计算规则。
+- `TRG_EVALUATIONS_DERIVE_SCORE` 只在写入 `evaluation_type=semester` 的 `EVALUATIONS` 时将空分项
+  归零，校验四项分数均在 0 至 100 之间，并覆盖写入方提供的 `total_score` 和 `grade`；`award`
+  类型记录由评奖评优流程维护，不被学期考核规则改写。
 - `SP_PUBLISH_TERM_EVALUATIONS` 仅把指定社团、指定学期的 `semester/draft` 考核批量更新为
-  `published` 并记录考核人；过程锁定社团范围、不自行提交事务，也不涉及评奖申请或考核奖项
-  来源，权限检查和最终提交仍由调用方负责。
+  `published` 并记录考核人；过程锁定社团范围、不自行提交事务，也不涉及评奖申请。评奖申请
+  只有在其归档或公示后，才通过 `EVALUATION_AWARD_SOURCES` 作为学期考核的奖项分来源，权限
+  检查和最终提交仍由调用方负责。
 - 例程的验证必须在隔离 Oracle Schema 中执行 `backend.OracleIntegrationTests`；共享开发库
   只在确认迁移窗口、备份和回滚方案后人工执行迁移。
