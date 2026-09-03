@@ -337,6 +337,86 @@ public class AuthService
         return AuthServiceResult<AuthResponse>.Ok(await BuildAuthResponseAsync(user, token));
     }
 
+    public async Task<AuthServiceResult<bool>> ChangePasswordAsync(
+        int userId,
+        ChangePasswordRequest request,
+        string? ipAddress,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+        {
+            return AuthServiceResult<bool>.Fail(401, "登录状态已失效，请重新登录。");
+        }
+
+        var currentPassword = request.CurrentPassword ?? string.Empty;
+        var newPassword = request.NewPassword ?? string.Empty;
+        if (currentPassword.Length is < 1 or > 128)
+        {
+            return AuthServiceResult<bool>.Fail(400, "请输入有效的当前密码。");
+        }
+
+        if (newPassword.Length is < 6 or > 128)
+        {
+            return AuthServiceResult<bool>.Fail(400, "新密码长度为 6 到 128 个字符。");
+        }
+
+        var user = await _db.Users.SingleOrDefaultAsync(
+            candidate => candidate.UserId == userId,
+            cancellationToken);
+        if (user is null)
+        {
+            return AuthServiceResult<bool>.Fail(404, "当前登录用户不存在。");
+        }
+
+        if (!IsNormalAccount(user))
+        {
+            return AuthServiceResult<bool>.Fail(403, "账号已被禁用，请联系管理员。");
+        }
+
+        if (!PasswordHasher.Verify(currentPassword, user.PasswordHash))
+        {
+            return AuthServiceResult<bool>.Fail(400, "当前密码错误。");
+        }
+
+        if (PasswordHasher.Verify(newPassword, user.PasswordHash))
+        {
+            return AuthServiceResult<bool>.Fail(400, "新密码不能与当前密码相同。");
+        }
+
+        try
+        {
+            await _authSessions.RevokeAllAsync(userId, cancellationToken);
+        }
+        catch (Exception ex) when (_authSessions.Enabled && IsRedisAvailabilityFailure(ex))
+        {
+            return AuthServiceResult<bool>.Fail(503, "会话服务暂不可用，无法安全修改密码。");
+        }
+
+        user.PasswordHash = PasswordHasher.Hash(newPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            UserId = userId,
+            ModuleName = "auth",
+            OperationType = "password_changed",
+            TargetTable = "USERS",
+            TargetId = userId,
+            IpAddress = NullIfBlank(ipAddress),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return AuthServiceResult<bool>.Fail(409, "密码已被其他请求修改，请重新登录后再试。");
+        }
+
+        return AuthServiceResult<bool>.Ok(true);
+    }
+
     public Task<IReadOnlyList<RoleDefinition>> GetRoleDefinitionsAsync() => Task.FromResult(BaseRoles);
 
     public IReadOnlyList<PermissionDefinition> GetPermissionCatalog() => PermissionCatalog;

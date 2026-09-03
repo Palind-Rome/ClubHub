@@ -63,6 +63,8 @@ public class ClubHubDbContext : DbContext
             e.HasIndex(u => u.StudentNo)
              .IsUnique()
              .HasDatabaseName("UQ_USERS_STUDENT_NO");
+            e.Property(u => u.PasswordHash)
+             .IsConcurrencyToken();
             e.HasMany(u => u.UserRoles)
              .WithOne(ur => ur.User)
              .HasForeignKey(ur => ur.UserId)

@@ -116,6 +116,11 @@ import {
   CaptchaChallengeFromJSON,
   CaptchaChallengeToJSON,
 } from "../models/CaptchaChallenge";
+import {
+  type ChangePasswordRequest,
+  ChangePasswordRequestFromJSON,
+  ChangePasswordRequestToJSON,
+} from "../models/ChangePasswordRequest";
 import { type Club, ClubFromJSON, ClubToJSON } from "../models/Club";
 import {
   type ClubApplication,
@@ -659,6 +664,13 @@ export interface CancelProjectOperationRequest {
    *
    */
   cancelProjectRequest: CancelProjectRequest;
+}
+
+export interface ChangeCurrentUserPasswordRequest {
+  /**
+   *
+   */
+  changePasswordRequest: ChangePasswordRequest;
 }
 
 export interface CheckCurrentUserPermissionRequest {
@@ -3167,6 +3179,70 @@ export class DefaultApi extends runtime.BaseAPI {
   ): Promise<Project> {
     const response = await this.cancelProjectRaw(requestParameters, initOverrides);
     return await response.value();
+  }
+
+  /**
+   * Creates request options for changeCurrentUserPassword without sending the request
+   */
+  async changeCurrentUserPasswordRequestOpts(
+    requestParameters: ChangeCurrentUserPasswordRequest,
+  ): Promise<runtime.RequestOpts> {
+    if (requestParameters["changePasswordRequest"] == null) {
+      throw new runtime.RequiredError(
+        "changePasswordRequest",
+        'Required parameter "changePasswordRequest" was null or undefined when calling changeCurrentUserPassword().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("bearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/users/me/password`;
+
+    return {
+      path: urlPath,
+      method: "PUT",
+      headers: headerParameters,
+      query: queryParameters,
+      body: ChangePasswordRequestToJSON(requestParameters["changePasswordRequest"]),
+    };
+  }
+
+  /**
+   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。服务端仅保存安全哈希，不会在响应、日志或操作记录中返回或记录当前密码、新密码或密码哈希。
+   * 修改当前用户密码
+   */
+  async changeCurrentUserPasswordRaw(
+    requestParameters: ChangeCurrentUserPasswordRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<void>> {
+    const requestOptions = await this.changeCurrentUserPasswordRequestOpts(requestParameters);
+    const response = await this.request(requestOptions, initOverrides);
+
+    return new runtime.VoidApiResponse(response);
+  }
+
+  /**
+   * 验证当前密码后更新当前 Bearer 身份对应用户的密码，并撤销该用户可撤销的全部登录会话。服务端仅保存安全哈希，不会在响应、日志或操作记录中返回或记录当前密码、新密码或密码哈希。
+   * 修改当前用户密码
+   */
+  async changeCurrentUserPassword(
+    requestParameters: ChangeCurrentUserPasswordRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<void> {
+    await this.changeCurrentUserPasswordRaw(requestParameters, initOverrides);
   }
 
   /**
