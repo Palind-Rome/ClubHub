@@ -128,7 +128,21 @@ public sealed class EvaluationRoutineOracleTests
                 0,
                 90,
                 90,
-                "待提升");
+                "优秀");
+            Assert.Equal(
+                90m,
+                await ScalarDecimalAsync(
+                    connection,
+                    transaction,
+                    "SELECT total_score FROM evaluations WHERE evaluation_id = :evaluationId",
+                    ("evaluationId", AwardEvaluationId)));
+            Assert.Equal(
+                "优秀",
+                await ScalarStringAsync(
+                    connection,
+                    transaction,
+                    "SELECT grade FROM evaluations WHERE evaluation_id = :evaluationId",
+                    ("evaluationId", AwardEvaluationId)));
             await InsertEvaluationAsync(
                 connection,
                 transaction,
@@ -157,10 +171,46 @@ public sealed class EvaluationRoutineOracleTests
                     101, 0, 0, 0, 101, '待提升', 'draft', SYSDATE
                 )
                 """,
-                -20062,
+                -20162,
                 ("evaluationId", InvalidScoreId),
                 ("clubId", ClubId),
                 ("memberId", MemberOneId));
+
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20166,
+                ("clubId", 0),
+                ("termName", "2026秋"),
+                ("evaluatorId", EvaluatorId));
+
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20167,
+                ("clubId", ClubId),
+                ("termName", ""),
+                ("evaluatorId", EvaluatorId));
+
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20168,
+                ("clubId", ClubId),
+                ("termName", "2026秋"),
+                ("evaluatorId", 0));
+
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20169,
+                ("clubId", 9999999),
+                ("termName", "2026秋"),
+                ("evaluatorId", EvaluatorId));
 
             await ExpectRoutineErrorAsync(
                 connection,
@@ -170,7 +220,7 @@ public sealed class EvaluationRoutineOracleTests
                     SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId);
                 END;
                 """,
-                -20070,
+                -20170,
                 ("clubId", ClubId),
                 ("termName", "2026秋"),
                 ("evaluatorId", 9999999));
@@ -252,7 +302,7 @@ public sealed class EvaluationRoutineOracleTests
                     SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId);
                 END;
                 """,
-                -20071,
+                -20171,
                 ("clubId", ClubId),
                 ("termName", "2026秋"),
                 ("evaluatorId", EvaluatorId));
