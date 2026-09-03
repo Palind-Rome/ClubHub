@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using ApiCreateForumPostRequest = Org.OpenAPITools.Models.CreateForumPostRequest;
 using ApiForumPost = Org.OpenAPITools.Models.ForumPost;
 using ApiModerateForumPostRequest = Org.OpenAPITools.Models.ModerateForumPostRequest;
+using ApiForumImageUploadResponse = Org.OpenAPITools.Models.ForumImageUploadResponse;
 using PermissionRole = ClubHub.Api.Services.AuthRole;
 
 namespace ClubHub.Api.Controllers;
@@ -27,15 +28,18 @@ public sealed class ForumPostsController : ControllerBase
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
     private readonly ProjectMembershipService _projectMembershipService;
+    private readonly ForumImageUploadService _imageUploadService;
 
     public ForumPostsController(
         ClubHubDbContext db,
         AuthService authService,
-        ProjectMembershipService projectMembershipService)
+        ProjectMembershipService projectMembershipService,
+        ForumImageUploadService imageUploadService)
     {
         _db = db;
         _authService = authService;
         _projectMembershipService = projectMembershipService;
+        _imageUploadService = imageUploadService;
     }
 
     [HttpGet]
@@ -46,34 +50,18 @@ public sealed class ForumPostsController : ControllerBase
 
         var canModerate = Allows(context.Roles!, ForumModeratePermission, clubId);
         if (includeHidden && !canModerate)
-            return StatusCode(403, new { message = "\u5f53\u524d\u7528\u6237\u6ca1\u6709\u67e5\u770b\u5df2\u9690\u85cf\u5185\u5bb9\u7684\u6743\u9650\u3002" });
+            return StatusCode(403, new { message = "当前用户没有查看已隐藏内容的权限。" });
 
-        var topicQuery = _db.ForumPosts.AsNoTracking().Include(post => post.User)
+        // 加载所有帖子和用户信息
+        var posts = await _db.ForumPosts.AsNoTracking().Include(post => post.User)
             .Where(post => post.ClubId == clubId)
-            .Where(post => post.ParentPostId == null)
-            .Where(post => includeHidden || post.PostStatus == Published);
-        var page = await ApiPaginationQuery.MaterializeAsync(
-            topicQuery
-                .OrderByDescending(post => post.IsTop)
-                .ThenByDescending(post => post.CreatedAt)
-                .ThenByDescending(post => post.PostId),
-            HttpContext,
-            HttpContext.RequestAborted);
-        if (page.Error is not null) return BadRequest(page.Error);
+            .OrderByDescending(post => post.IsTop).ThenByDescending(post => post.CreatedAt).ThenByDescending(post => post.PostId)
+            .ToListAsync();
 
-        var topicIds = page.Items.Select(topic => topic.PostId).ToArray();
-        var replies = topicIds.Length == 0
-            ? []
-            : await _db.ForumPosts.AsNoTracking().Include(post => post.User)
-                .Where(reply => reply.ParentPostId != null && topicIds.Contains(reply.ParentPostId.Value))
-                .Where(reply => includeHidden || reply.PostStatus == Published)
-                .OrderBy(reply => reply.CreatedAt).ThenBy(reply => reply.PostId)
-                .ToListAsync(HttpContext.RequestAborted);
-        var topics = page.Items
-            .Select(topic => ToApiPost(topic, replies.Where(reply => reply.ParentPostId == topic.PostId)
-                .Where(reply => includeHidden || (IsPublished(topic) && IsPublished(reply)))
-                .OrderBy(reply => reply.CreatedAt).ThenBy(reply => reply.PostId)
-                .Select(reply => ToApiPost(reply, [])).ToList())).ToList();
+        // 筛选顶级话题
+        var topics = posts.Where(post => post.ParentPostId is null).Where(post => includeHidden || IsPublished(post))
+            .Select(topic => ToApiPost(topic, BuildNestedReplies(posts, topic.PostId, includeHidden))).ToList();
+
         return Ok(topics);
     }
 
@@ -96,8 +84,7 @@ public sealed class ForumPostsController : ControllerBase
             parent = await _db.ForumPosts.FirstOrDefaultAsync(post => post.PostId == request.ParentPostId!.Value);
             if (parent is null) return NotFound(new { message = "\u7236\u7ea7\u8bdd\u9898\u4e0d\u5b58\u5728\u3002" });
             if (parent.ClubId != clubId) return BadRequest(new { message = "\u4e0d\u80fd\u56de\u590d\u5176\u4ed6\u793e\u56e2\u7684\u8bdd\u9898\u3002" });
-            if (parent.ParentPostId is not null) return BadRequest(new { message = "\u56de\u590d\u53ea\u80fd\u5173\u8054\u8bdd\u9898\u3002" });
-            if (!IsPublished(parent)) return BadRequest(new { message = "\u5df2\u9690\u85cf\u7684\u8bdd\u9898\u4e0d\u80fd\u56de\u590d\u3002" });
+            if (!IsPublished(parent)) return BadRequest(new { message = "\u5df2\u9690\u85cf\u7684\u5185\u5bb9\u4e0d\u80fd\u56de\u590d\u3002" });
         }
         else if (string.IsNullOrWhiteSpace(title))
             return BadRequest(new { message = "\u8bdd\u9898\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002" });
@@ -153,23 +140,41 @@ public sealed class ForumPostsController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var isTopicDelete = post.ParentPostId is null;
 
+        var descendantsToDelete = new List<ForumPost>();
         if (isTopicDelete)
         {
-            var replies = await _db.ForumPosts.Where(r => r.ParentPostId == postId).ToListAsync();
-            _db.ForumPosts.RemoveRange(replies);
-            foreach (var reply in replies)
+            var allForumPosts = await _db.ForumPosts
+                .Where(item => item.ClubId == clubId)
+                .ToListAsync();
+            var repliesByParent = allForumPosts.ToLookup(item => item.ParentPostId);
+
+            var toProcess = new Queue<int>();
+            toProcess.Enqueue(postId);
+            while (toProcess.Count > 0)
             {
-                _db.OperationLogs.Add(new OperationLog
+                var currentId = toProcess.Dequeue();
+                var children = repliesByParent[currentId];
+                foreach (var child in children)
                 {
-                    UserId = context.User.UserId,
-                    ModuleName = "forum",
-                    OperationType = "reply_deleted",
-                    TargetTable = "FORUM_POSTS",
-                    TargetId = reply.PostId,
-                    IpAddress = ipAddress,
-                    CreatedAt = DateTime.UtcNow
-                });
+                    descendantsToDelete.Add(child);
+                    toProcess.Enqueue(child.PostId);
+                }
             }
+        }
+
+        foreach (var descendant in descendantsToDelete)
+        {
+            _db.ForumPosts.Remove(descendant);
+            _db.OperationLogs.Add(new OperationLog
+            {
+                UserId = context.User.UserId,
+                ModuleName = "forum",
+                OperationType = "reply_deleted",
+                TargetTable = "FORUM_POSTS",
+                TargetId = descendant.PostId,
+                IpAddress = ipAddress,
+                CreatedAt = DateTime.UtcNow
+            });
         }
 
         _db.ForumPosts.Remove(post);
@@ -186,6 +191,60 @@ public sealed class ForumPostsController : ControllerBase
 
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("upload-image")]
+    [RequestSizeLimit(5 * 1024 * 1024 + 1024)]
+    public async Task<IActionResult> UploadImage(int clubId, IFormFile? image)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+        if (!Allows(context.Roles!, ForumPostPermission, clubId))
+            return StatusCode(403, new { message = "\u5f53\u524d\u7528\u6237\u6ca1\u6709\u53d1\u5e03\u8ba8\u8bba\u5185\u5bb9\u7684\u6743\u9650\u3002" });
+
+        if (image == null)
+            return BadRequest(new { message = "\u6587\u4ef6\u4e0d\u5b58\u5728" });
+
+        var result = await _imageUploadService.UploadAsync(
+            clubId,
+            image,
+            HttpContext.RequestAborted);
+
+        if (!result.Success)
+        {
+            return result.FailureKind switch
+            {
+                UploadFailureKind.InvalidFile =>
+                    BadRequest(new { message = result.ErrorMessage ?? "\u6587\u4ef6\u4e0d\u7b26\u5408\u8981\u6c42" }),
+                UploadFailureKind.TooLarge =>
+                    StatusCode(413, new { message = result.ErrorMessage ?? "\u6587\u4ef6\u8fc7\u5927" }),
+                UploadFailureKind.Storage =>
+                    StatusCode(500, new { message = "\u4e0a\u4f20\u5931\u8d25" }),
+                _ => StatusCode(500, new { message = "\u4e0a\u4f20\u5931\u8d25" })
+            };
+        }
+
+        var response = new ApiForumImageUploadResponse
+        {
+            ImageUrl = result.ImageUrl,
+            FileName = result.FileName,
+            UploadedAt = DateTime.UtcNow
+        };
+
+        return Ok(response);
+    }
+
+    [HttpDelete("delete-image")]
+    public async Task<IActionResult> DeleteImage(int clubId, [FromQuery] string storageKey)
+    {
+        var context = await GetUserContextAsync(clubId);
+        if (context.Result is not null) return context.Result;
+
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return BadRequest(new { message = "storageKey 参数不能为空" });
+
+        var success = await _imageUploadService.DeleteAsync(storageKey, HttpContext.RequestAborted);
+        return success ? Ok() : StatusCode(500, new { message = "删除失败" });
     }
 
     private async Task<UserContext> GetUserContextAsync(int clubId)
@@ -206,6 +265,21 @@ public sealed class ForumPostsController : ControllerBase
     private static bool Allows(IReadOnlyList<PermissionRole> roles, string permission, int clubId) =>
         AuthService.RolesAllow(roles, permission, clubId);
     private static bool IsPublished(ForumPost post) => string.Equals(post.PostStatus, Published, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(post.PostStatus);
+
+    private static List<ApiForumPost> BuildNestedReplies(List<ForumPost> allPosts, int? parentPostId, bool includeHidden)
+    {
+        var directReplies = allPosts.Where(r => r.ParentPostId == parentPostId)
+            .OrderBy(r => r.CreatedAt).ThenBy(r => r.PostId).ToList();
+        var result = new List<ApiForumPost>();
+        foreach (var reply in directReplies)
+        {
+            if (!includeHidden && !IsPublished(reply)) continue;
+            var nestedReplies = BuildNestedReplies(allPosts, reply.PostId, includeHidden);
+            result.Add(ToApiPost(reply, nestedReplies));
+        }
+        return result;
+    }
+
     private static ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = post.Content, IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = LearningWorkflow.AsUtc(post.CreatedAt), UpdatedAt = LearningWorkflow.AsUtc(post.UpdatedAt), Replies = replies };
     private sealed record UserContext(IActionResult? Result, User? User, IReadOnlyList<PermissionRole>? Roles);
 }

@@ -665,19 +665,64 @@ WHERE document.published_by_user_id IS NOT NULL
     WHERE publisher.user_id = document.published_by_user_id
   );
 
+-- 以下查询应返回 0 行：分项分数、总分和等级必须符合统一的成员考核规则。
+SELECT evaluation_id,
+       activity_score,
+       task_score,
+       learning_score,
+       award_score,
+       total_score,
+       grade
+FROM evaluations
+WHERE LOWER(TRIM(NVL(evaluation_type, '#'))) = 'semester'
+  AND (
+       activity_score IS NULL
+    OR task_score IS NULL
+    OR learning_score IS NULL
+    OR award_score IS NULL
+    OR total_score IS NULL
+    OR NVL(activity_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(task_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(learning_score, 0) NOT BETWEEN 0 AND 100
+    OR NVL(award_score, 0) NOT BETWEEN 0 AND 100
+    OR total_score <> NVL(activity_score, 0)
+                         + NVL(task_score, 0)
+                         + NVL(learning_score, 0)
+                         + NVL(award_score, 0)
+    OR NVL(TRIM(grade), '#') <>
+       CASE
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 320 THEN '优秀'
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 260 THEN '良好'
+         WHEN NVL(activity_score, 0)
+            + NVL(task_score, 0)
+            + NVL(learning_score, 0)
+            + NVL(award_score, 0) >= 200 THEN '合格'
+         ELSE '待提升'
+       END
+      );
+
 -- 以下查询应返回 1 行：触发器按场地筛选预约，使用该索引减少历史记录扫描。
 SELECT index_name, table_name, uniqueness, status
 FROM user_indexes
 WHERE index_name = 'IX_VENUE_RESERVATIONS_VENUE_ID'
   AND table_name = 'VENUE_RESERVATIONS';
 
--- 以下查询应返回 3 行，且三个数据库例程的状态均为 VALID。
+-- 以下查询应返回 6 行，且六个数据库例程的状态均为 VALID。
 SELECT object_name, object_type, status
 FROM user_objects
 WHERE object_name IN (
   'FN_BUDGET_AVAILABLE_AMOUNT',
   'SP_REVIEW_BUDGET_APPLICATION',
-  'TRG_VENUE_RESERVATION_OVERLAP'
+  'TRG_VENUE_RESERVATION_OVERLAP',
+  'FN_EVALUATION_GRADE',
+  'SP_PUBLISH_TERM_EVALUATIONS',
+  'TRG_EVALUATIONS_DERIVE_SCORE'
 )
 ORDER BY object_type, object_name;
 
@@ -687,6 +732,9 @@ FROM user_errors
 WHERE name IN (
   'FN_BUDGET_AVAILABLE_AMOUNT',
   'SP_REVIEW_BUDGET_APPLICATION',
-  'TRG_VENUE_RESERVATION_OVERLAP'
+  'TRG_VENUE_RESERVATION_OVERLAP',
+  'FN_EVALUATION_GRADE',
+  'SP_PUBLISH_TERM_EVALUATIONS',
+  'TRG_EVALUATIONS_DERIVE_SCORE'
 )
 ORDER BY name, sequence;

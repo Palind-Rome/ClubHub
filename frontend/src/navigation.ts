@@ -78,7 +78,7 @@ export function buildNavigationGroups(permissions: string[]): NavigationGroup[] 
       items: [
         { label: "活动", path: "/activities", icon: "activity" },
         { label: "通知", path: "/notices", icon: "notice" },
-        { label: "讨论区", path: "/forum", icon: "forum" },
+        { label: "讨论", path: "/forum", icon: "forum" },
         { label: "项目", path: "/projects", icon: "project" },
       ],
     },

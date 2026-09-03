@@ -7,6 +7,9 @@ import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
+import MarkdownEditor from "../components/MarkdownEditor.vue";
+import MarkdownRenderer from "../components/MarkdownRenderer.vue";
+import ReplyItem from "../components/ReplyItem.vue";
 
 const clubs = ref<Club[]>([]);
 const topics = ref<ForumPost[]>([]);
@@ -15,6 +18,7 @@ const loading = ref(false);
 const loadError = ref<string | null>(null);
 const showHidden = ref(false);
 const replyingTo = ref<ForumPost | null>(null);
+const replyingToParentId = ref<number | null>(null);
 const saving = ref(false);
 const auth = ref(readAuth());
 const currentMemberClubIds = ref(new Set<number>());
@@ -89,7 +93,7 @@ async function loadPosts() {
   loadError.value = null;
   try {
     const query = includeHidden ? "?includeHidden=true" : "";
-    const data = await requestJson<any[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
+    const data = await requestJson<unknown[]>(`/api/v1/clubs/${clubId}/forum-posts${query}`);
     const posts = data.map(ForumPostFromJSON);
     if (requestVersion === postsRequestVersion) {
       topics.value = posts;
@@ -119,6 +123,7 @@ async function createPost(parentPostId?: number) {
     topicForm.content = "";
     replyForm.content = "";
     replyingTo.value = null;
+    replyingToParentId.value = null;
     ElMessage.success(parentPostId ? "回复成功" : "话题发布成功");
     await loadPosts();
   } catch (error) {
@@ -209,7 +214,7 @@ onUnmounted(() => stopSessionListener?.());
     <div class="heading app-page-header">
       <div>
         <h1>社团讨论区</h1>
-        <p>来聊点有意思的。一起建设社团的精神家园！</p>
+        <div class="subtitle">来聊点有意思的。一起建设社团的精神家园！</div>
       </div>
       <div class="toolbar">
         <el-select v-model="selectedClubId" placeholder="选择社团" class="club-select">
@@ -238,16 +243,20 @@ onUnmounted(() => stopSessionListener?.());
       <template #header>发布话题</template>
       <el-form ref="topicFormRef" :model="topicForm" :rules="topicRules" label-position="top">
         <el-form-item label="标题" prop="title"
-          ><el-input v-model="topicForm.title" maxlength="120" show-word-limit
-        /></el-form-item>
-        <el-form-item label="内容" prop="content"
           ><el-input
-            v-model="topicForm.content"
-            type="textarea"
-            :rows="4"
-            maxlength="4000"
+            v-model="topicForm.title"
+            maxlength="120"
             show-word-limit
+            placeholder="标题不会写？试试这个公式：谁 + 做了什么事 + 为什么值得看"
         /></el-form-item>
+        <el-form-item label="内容" prop="content">
+          <MarkdownEditor
+            v-model="topicForm.content"
+            :club-id="selectedClubId"
+            :maxlength="4000"
+            placeholder="写之前深呼吸，不用完美，发出来就是第一步。"
+          />
+        </el-form-item>
         <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
       </el-form>
     </el-card>
@@ -278,7 +287,7 @@ onUnmounted(() => stopSessionListener?.());
           >发布人：{{ topic.userName || "匿名用户" }} · {{ formatTime(topic.createdAt) }}</small
         >
       </header>
-      <p>{{ topic.content }}</p>
+      <MarkdownRenderer :content="topic.content" />
       <div class="actions">
         <el-button
           v-if="canPostToSelectedClub"
@@ -318,63 +327,61 @@ onUnmounted(() => stopSessionListener?.());
           >删除</el-button
         >
       </div>
-      <div
-        v-for="reply in topic.replies"
-        :key="reply.id"
-        class="reply"
-        :class="{ hidden: reply.postStatus === 'hidden' }"
-      >
-        <small
-          >发布人：{{ reply.userName || "匿名用户" }} · {{ formatTime(reply.createdAt) }}</small
-        >
-        <p>{{ reply.content }}</p>
-        <div class="reply-actions">
-          <el-button
-            v-if="canModerate"
-            link
-            :icon="reply.postStatus === 'hidden' ? View : Hide"
-            @click="
-              moderate(reply, {
-                postStatus: reply.postStatus === 'hidden' ? 'published' : 'hidden',
-              })
-            "
-            >{{ reply.postStatus === "hidden" ? "恢复显示" : "隐藏" }}</el-button
-          >
-          <el-button v-if="canModerate" link type="danger" :icon="Delete" @click="deletePost(reply)"
-            >删除</el-button
-          >
-          <el-button
-            v-if="!canModerate && canDeletePost(reply)"
-            link
-            type="danger"
-            :icon="Delete"
-            @click="deletePost(reply)"
-            >删除</el-button
-          >
-        </div>
+      <div v-for="reply in topic.replies" :key="reply.id" class="topic-reply">
+        <ReplyItem
+          :reply="reply"
+          :can-moderate="canModerate"
+          :can-post="canPostToSelectedClub"
+          :can-delete-post="canDeletePost"
+          :moderating-post-ids="moderatingPostIds"
+          @reply-to="
+            replyingTo = $event;
+            replyingToParentId = $event.id;
+          "
+          @moderate="(post, change) => moderate(post, change)"
+          @delete="deletePost($event)"
+        />
       </div>
     </article>
     <el-dialog
       :model-value="Boolean(replyingTo)"
-      title="回复话题"
+      :title="`回复 ${replyingTo?.title ? '话题' : '评论'}`"
       width="min(560px, calc(100vw - 32px))"
-      @close="replyingTo = null"
+      @close="
+        replyingTo = null;
+        replyingToParentId = null;
+      "
     >
+      <div v-if="replyingTo" class="reply-context">
+        <div class="context-title">
+          {{ replyingTo.title || `回复自：${replyingTo.userName || "匿名用户"}` }}
+        </div>
+        <div class="context-content">
+          <MarkdownRenderer :content="replyingTo.content" />
+        </div>
+      </div>
+      <el-divider />
       <el-form ref="replyFormRef" :model="replyForm" :rules="replyRules" label-position="top"
-        ><el-form-item label="回复内容" prop="content"
-          ><el-input
+        ><el-form-item label="回复内容" prop="content">
+          <MarkdownEditor
             v-model="replyForm.content"
-            type="textarea"
+            :club-id="selectedClubId"
+            :maxlength="4000"
             :rows="5"
-            maxlength="4000"
-            show-word-limit /></el-form-item
+            placeholder="看完不评论的，默认要承包下次活动搬水/拍照/写推文（手动狗头）"
+          /> </el-form-item
       ></el-form>
       <template #footer
-        ><el-button @click="replyingTo = null">取消</el-button
+        ><el-button
+          @click="
+            replyingTo = null;
+            replyingToParentId = null;
+          "
+          >取消</el-button
         ><el-button
           type="primary"
           :loading="saving"
-          @click="replyingTo && createPost(replyingTo.id)"
+          @click="replyingTo && createPost(replyingToParentId || replyingTo.id)"
           >发布回复</el-button
         ></template
       >
@@ -397,7 +404,15 @@ onUnmounted(() => stopSessionListener?.());
 }
 .heading {
   justify-content: space-between;
-  margin-bottom: 16px;
+}
+.subtitle,
+.workspace-head p,
+.muted {
+  color: var(--el-text-color-secondary);
+}
+.subtitle {
+  margin-top: 6px;
+  font-size: 14px;
 }
 .club-select {
   width: 240px;
@@ -424,8 +439,7 @@ onUnmounted(() => stopSessionListener?.());
   background: color-mix(in srgb, var(--club-surface-solid) 92%, var(--club-primary-soft));
   box-shadow: var(--club-shadow-sm);
 }
-.topic.hidden,
-.reply.hidden {
+.topic.hidden {
   background: var(--el-fill-color-lighter);
 }
 .topic header {
@@ -460,6 +474,9 @@ onUnmounted(() => stopSessionListener?.());
   overflow-wrap: anywhere;
   line-height: 1.65;
 }
+.topic-reply {
+  margin-top: 12px;
+}
 .reply {
   margin-top: 12px;
   padding: 12px;
@@ -468,10 +485,20 @@ onUnmounted(() => stopSessionListener?.());
   border-radius: 0 var(--club-radius-sm) var(--club-radius-sm) 0;
   background: color-mix(in srgb, var(--club-primary-soft) 30%, var(--club-surface-solid));
 }
-.reply-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+.reply-context {
+  padding: 12px;
+  background: var(--el-fill-color-lighter);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.context-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--el-text-color);
+}
+.context-content {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 small {
   color: var(--el-text-color-secondary);

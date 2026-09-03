@@ -965,3 +965,7 @@ ALTER TABLE OPERATION_LOGS ADD FOREIGN KEY (user_id) REFERENCES USERS (user_id) 
 -- Oracle routines for derived budget balance, budget approval and venue overlap.
 -- The included migration is also safe to rerun on an existing database.
 @@migrations/20260901_add_budget_and_venue_routines.sql
+
+-- Oracle routines for evaluation score consistency and atomic term publication.
+-- Existing evaluation rows are normalized by the included migration.
+@@migrations/20260903_add_evaluation_consistency_routines.sql

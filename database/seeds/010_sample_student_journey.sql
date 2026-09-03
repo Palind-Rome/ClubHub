@@ -365,7 +365,7 @@ WHEN MATCHED THEN UPDATE SET
   target.learning_score = 90,
   target.award_score = 8,
   target.total_score = 272,
-  target.grade = '优秀',
+  target.grade = '良好',
   target.public_status = 'published',
   target.comment_text = '上一任期工作认真，项目协作与资料沉淀表现突出。',
   target.created_at = DATE '2026-03-26'
@@ -375,7 +375,7 @@ WHEN NOT MATCHED THEN INSERT (
   grade, public_status, comment_text, created_at
 ) VALUES (
   source.evaluation_id, 'semester', 1, source.user_id, source.evaluator_user_id, '2025-2026学年春季',
-  86, 88, 90, 8, 272, '优秀', 'published',
+  86, 88, 90, 8, 272, '良好', 'published',
   '上一任期工作认真，项目协作与资料沉淀表现突出。', DATE '2026-03-26'
 );
 
