@@ -257,7 +257,9 @@ onUnmounted(() => stopSessionListener?.());
             placeholder="写之前深呼吸，不用完美，发出来就是第一步。"
           />
         </el-form-item>
-        <el-button type="primary" :loading="saving" @click="createPost()">发布话题</el-button>
+        <div class="form-actions">
+          <el-button type="primary" :loading="saving" @click="createPost()">发布</el-button>
+        </div>
       </el-form>
     </el-card>
     <el-alert
@@ -382,7 +384,7 @@ onUnmounted(() => stopSessionListener?.());
           type="primary"
           :loading="saving"
           @click="replyingTo && createPost(replyingToParentId || replyingTo.id)"
-          >发布回复</el-button
+          >回复</el-button
         ></template
       >
     </el-dialog>
@@ -419,6 +421,10 @@ onUnmounted(() => stopSessionListener?.());
 }
 .composer {
   margin: 16px 0;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .membership-notice {
   --el-alert-bg-color: color-mix(in srgb, var(--club-primary-soft) 78%, var(--club-bg-elevated));
