@@ -134,9 +134,16 @@ async function handleDrop(event: DragEvent) {
   // Filter to only image files
   const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
 
-  if (imageFiles.length === 0) {
-    ElMessage.warning("请拖拽图片文件");
-    return;
+const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+const ignoredCount = files.length - imageFiles.length;
+
+if (ignoredCount > 0) {
+  ElMessage.warning(`已忽略 ${ignoredCount} 个非图片文件`);
+}
+
+if (imageFiles.length === 0) {
+  ElMessage.warning("请拖拽图片文件");
+  return;
   }
 
   // Create a synthetic event to reuse handleImageUpload
