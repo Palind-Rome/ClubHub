@@ -7364,7 +7364,7 @@ components:
         imageUrl:
           type: string
           description: 短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。
-          example: https://clubhub-oss.aliyuncs.com/forum/2026/08/19/abc123.png?x-oss-signature=short-lived
+          example: https://clubhub-oss.aliyuncs.com/clubs/1/forum/2026/08/19/abc123.png?x-oss-signature=short-lived
         fileName:
           type: string
           description: 图片文件名。

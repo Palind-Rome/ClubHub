@@ -29,7 +29,7 @@ namespace Org.OpenAPITools.Models
         /// 短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。
         /// </summary>
         /// <value>短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。</value>
-        /* <example>https://clubhub-oss.aliyuncs.com/forum/2026/08/19/abc123.png</example> */
+        /* <example>https://clubhub-oss.aliyuncs.com/clubs/1/forum/2026/08/19/abc123.png?x-oss-signature&#x3D;short-lived</example> */
         [Required]
         [DataMember(Name="imageUrl", EmitDefaultValue=false)]
         public string ImageUrl { get; set; }
