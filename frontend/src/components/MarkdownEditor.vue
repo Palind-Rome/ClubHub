@@ -131,9 +131,6 @@ async function handleDrop(event: DragEvent) {
   const files = event.dataTransfer?.files;
   if (!files || files.length === 0) return;
 
-  // Filter to only image files
-  const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-
   const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
   const ignoredCount = files.length - imageFiles.length;
 
