@@ -448,7 +448,7 @@ INSERT ALL
   )
   VALUES (
     137501, 'semester', 1, zhang_id, comp_president_id, '2025-2026学年春季',
-    NULL, NULL, NULL, 88, 90, 92, 18, 288, '优秀', 'published',
+    NULL, NULL, NULL, 88, 90, 92, 18, 288, '良好', 'published',
     '奖项分来自计算机协会春季优秀社员评选一等奖。', DATE '2026-03-26'
   )
   INTO EVALUATIONS (
@@ -458,7 +458,7 @@ INSERT ALL
   )
   VALUES (
     137502, 'semester', 3, zhang_id, school_reviewer_id, '2025-2026学年',
-    NULL, NULL, NULL, 93, 95, 90, 15, 293, '优秀', 'published',
+    NULL, NULL, NULL, 93, 95, 90, 15, 293, '良好', 'published',
     '奖项分来自羽毛球协会优秀干部评定优秀负责人。', DATE '2026-06-26'
   )
 SELECT (SELECT MAX(user_id) FROM USERS WHERE username = 'xue_pan') AS zhang_id,
