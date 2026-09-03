@@ -26,9 +26,9 @@ namespace Org.OpenAPITools.Models
     public partial class ForumImageUploadResponse 
     {
         /// <summary>
-        /// 上传后的图片 OSS URL，可直接在 Markdown 中使用。
+        /// 短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。
         /// </summary>
-        /// <value>上传后的图片 OSS URL，可直接在 Markdown 中使用。</value>
+        /// <value>短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。</value>
         /* <example>https://clubhub-oss.aliyuncs.com/forum/2026/08/19/abc123.png</example> */
         [Required]
         [DataMember(Name="imageUrl", EmitDefaultValue=false)]
