@@ -157,10 +157,43 @@ public sealed class EvaluationRoutineOracleTests
                     101, 0, 0, 0, 101, '待提升', 'draft', SYSDATE
                 )
                 """,
-                -20062,
+                -20232,
                 ("evaluationId", InvalidScoreId),
                 ("clubId", ClubId),
                 ("memberId", MemberOneId));
+
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20236,
+                ("clubId", 0),
+                ("termName", "2026秋"),
+                ("evaluatorId", EvaluatorId));
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20237,
+                ("clubId", ClubId),
+                ("termName", " "),
+                ("evaluatorId", EvaluatorId));
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20238,
+                ("clubId", ClubId),
+                ("termName", "2026秋"),
+                ("evaluatorId", 0));
+            await ExpectRoutineErrorAsync(
+                connection,
+                transaction,
+                "BEGIN SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId); END;",
+                -20239,
+                ("clubId", 9999999),
+                ("termName", "2026秋"),
+                ("evaluatorId", EvaluatorId));
 
             await ExpectRoutineErrorAsync(
                 connection,
@@ -170,7 +203,7 @@ public sealed class EvaluationRoutineOracleTests
                     SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId);
                 END;
                 """,
-                -20070,
+                -20240,
                 ("clubId", ClubId),
                 ("termName", "2026秋"),
                 ("evaluatorId", 9999999));
@@ -252,7 +285,7 @@ public sealed class EvaluationRoutineOracleTests
                     SP_PUBLISH_TERM_EVALUATIONS(:clubId, :termName, :evaluatorId);
                 END;
                 """,
-                -20071,
+                -20241,
                 ("clubId", ClubId),
                 ("termName", "2026秋"),
                 ("evaluatorId", EvaluatorId));
