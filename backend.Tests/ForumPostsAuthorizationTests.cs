@@ -5,6 +5,8 @@ using ClubHub.Api.Data;
 using ClubHub.Api.Data.Entities;
 using ClubHub.Api.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace ClubHub.Api.Tests;
 
@@ -283,12 +285,23 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public async Task DeleteImage_WithValidStorageKey_ReturnsServerError()
     {
         var (client, clubId) = await SeedAsync(member: true, moderate: false);
-        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+        var testStorageKey = $"clubs/{clubId}/forum/2026/08/19/test.png";
 
         using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
 
-        // OSS not configured in tests, so deletion fails with 500; verifies endpoint exists and accepts storageKey
+        // OSS not configured in tests, so deletion fails with 500 after the ownership and permission checks.
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteImage_CrossClubStorageKey_ReturnsBadRequest()
+    {
+        var (client, clubId) = await SeedAsync(member: true, moderate: false);
+        var testStorageKey = $"clubs/{clubId + 1}/forum/2026/08/19/test.png";
+
+        using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -305,10 +318,55 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public async Task DeleteImage_NonMember_IsForbidden()
     {
         var (client, clubId) = await SeedAsync(member: false, moderate: false);
-        const string testStorageKey = "clubs/1/forum/2026/08/19/test.png";
+        var testStorageKey = $"clubs/{clubId}/forum/2026/08/19/test.png";
 
         using var response = await client.DeleteAsync($"/api/v1/clubs/{clubId}/forum-posts/delete-image?storageKey={Uri.EscapeDataString(testStorageKey)}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Theory]
+    [InlineData(1, "clubs/1/forum/2026/09/03/image.png", true)]
+    [InlineData(1, "clubs/2/forum/2026/09/03/image.png", false)]
+    [InlineData(1, "clubs/1/forum/../private/image.png", false)]
+    [InlineData(1, "clubs/1/forum/2026/09/03/", false)]
+    [InlineData(1, "clubs/1/forum/2026/09/03\\image.png", false)]
+    [InlineData(1, "clubs/1/forum/2026/09/03/image.png?other-club=2", false)]
+    public void ForumStorageKeyPolicy_ValidatesClubPrefix(int clubId, string storageKey, bool expected)
+    {
+        Assert.Equal(expected, ForumImageUploadService.IsForumStorageKey(clubId, storageKey));
+    }
+
+    [Fact]
+    public void CanonicalizeMarkdownImageUrls_RemovesTemporarySignature()
+    {
+        using var service = CreateImageService();
+        const string content = "封面：![活动海报](https://clubhub.example.oss-cn-shanghai-internal.aliyuncs.com/clubs/42/forum/2026/09/03/image.png?x-oss-signature=temporary)";
+
+        var canonicalized = service.CanonicalizeMarkdownImageUrls(42, content);
+
+        Assert.Equal("封面：![活动海报](https://clubhub.example.oss-cn-shanghai.aliyuncs.com/clubs/42/forum/2026/09/03/image.png)", canonicalized);
+    }
+
+    [Fact]
+    public void CanonicalizeMarkdownImageUrls_LeavesExternalAndOtherClubImagesUnchanged()
+    {
+        using var service = CreateImageService();
+        const string content = "![外部](https://example.com/image.png) ![其他社团](https://clubhub.example.oss-cn-shanghai.aliyuncs.com/clubs/43/forum/2026/09/03/image.png)";
+
+        var canonicalized = service.CanonicalizeMarkdownImageUrls(42, content);
+
+        Assert.Equal(content, canonicalized);
+    }
+
+    private static ForumImageUploadService CreateImageService() => new(
+        Options.Create(new OssStorageOptions
+        {
+            Region = "cn-shanghai",
+            Endpoint = "oss-cn-shanghai-internal.aliyuncs.com",
+            PublicEndpoint = "oss-cn-shanghai.aliyuncs.com",
+            Bucket = "clubhub.example",
+            RoleName = string.Empty
+        }),
+        NullLogger<ForumImageUploadService>.Instance);
 }
