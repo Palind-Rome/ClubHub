@@ -21,7 +21,7 @@ import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime }
  */
 export interface ForumImageUploadResponse {
   /**
-   * 上传后的图片 OSS URL，可直接在 Markdown 中使用。
+   * 短期签名的 OSS URL，可在有效期内直接在 Markdown 中使用；帖子读取时由后端刷新。
    */
   imageUrl: string;
   /**
