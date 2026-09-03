@@ -95,7 +95,8 @@ public sealed class ForumPostsController : ControllerBase
             return BadRequest(new { message = "\u6807\u9898\u9577\u5ea6\u5fc5\u9808\u4e3a 1-120 \u5b57\u7b26\u3002" });
 
         var now = DateTime.UtcNow;
-        var post = new ForumPost { ClubId = clubId, UserId = context.User!.UserId, ParentPostId = parent?.PostId, Title = isReply ? null : title, Content = content, IsTop = 0, PostStatus = Published, CreatedAt = now, UpdatedAt = now };
+        var persistedContent = _imageUploadService.CanonicalizeMarkdownImageUrls(clubId, content);
+        var post = new ForumPost { ClubId = clubId, UserId = context.User!.UserId, ParentPostId = parent?.PostId, Title = isReply ? null : title, Content = persistedContent, IsTop = 0, PostStatus = Published, CreatedAt = now, UpdatedAt = now };
         _db.ForumPosts.Add(post);
         await _db.SaveChangesAsync();
         post.User = context.User;
@@ -228,6 +229,7 @@ public sealed class ForumPostsController : ControllerBase
         {
             ImageUrl = result.ImageUrl,
             FileName = result.FileName,
+            StorageKey = result.StorageKey,
             UploadedAt = DateTime.UtcNow
         };
 
@@ -235,15 +237,20 @@ public sealed class ForumPostsController : ControllerBase
     }
 
     [HttpDelete("delete-image")]
-    public async Task<IActionResult> DeleteImage(int clubId, [FromQuery] string storageKey)
+    public async Task<IActionResult> DeleteImage(int clubId, [FromQuery] string? storageKey)
     {
         var context = await GetUserContextAsync(clubId);
         if (context.Result is not null) return context.Result;
 
+        if (!Allows(context.Roles!, ForumPostPermission, clubId) && !Allows(context.Roles!, ForumModeratePermission, clubId))
+            return StatusCode(403, new { message = "当前用户没有删除论坛图片的权限。" });
+
         if (string.IsNullOrWhiteSpace(storageKey))
             return BadRequest(new { message = "storageKey 参数不能为空" });
+        if (!ForumImageUploadService.IsForumStorageKey(clubId, storageKey))
+            return BadRequest(new { message = "storageKey 不属于当前社团的论坛图片目录。" });
 
-        var success = await _imageUploadService.DeleteAsync(storageKey, HttpContext.RequestAborted);
+        var success = await _imageUploadService.DeleteAsync(clubId, storageKey, HttpContext.RequestAborted);
         return success ? Ok() : StatusCode(500, new { message = "删除失败" });
     }
 
@@ -266,7 +273,7 @@ public sealed class ForumPostsController : ControllerBase
         AuthService.RolesAllow(roles, permission, clubId);
     private static bool IsPublished(ForumPost post) => string.Equals(post.PostStatus, Published, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(post.PostStatus);
 
-    private static List<ApiForumPost> BuildNestedReplies(List<ForumPost> allPosts, int? parentPostId, bool includeHidden)
+    private List<ApiForumPost> BuildNestedReplies(List<ForumPost> allPosts, int? parentPostId, bool includeHidden)
     {
         var directReplies = allPosts.Where(r => r.ParentPostId == parentPostId)
             .OrderBy(r => r.CreatedAt).ThenBy(r => r.PostId).ToList();
@@ -280,6 +287,6 @@ public sealed class ForumPostsController : ControllerBase
         return result;
     }
 
-    private static ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = post.Content, IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = LearningWorkflow.AsUtc(post.CreatedAt), UpdatedAt = LearningWorkflow.AsUtc(post.UpdatedAt), Replies = replies };
+    private ApiForumPost ToApiPost(ForumPost post, List<ApiForumPost> replies) => new() { Id = post.PostId, ClubId = post.ClubId, UserId = post.UserId, UserName = post.User is null ? null : (string.IsNullOrWhiteSpace(post.User.RealName) ? post.User.Username : post.User.RealName), ParentPostId = post.ParentPostId, Title = post.Title, Content = _imageUploadService.RefreshMarkdownImageUrls(post.ClubId, post.Content), IsTop = post.IsTop != 0, PostStatus = IsPublished(post) ? ApiForumPost.PostStatusEnum.PublishedEnum : ApiForumPost.PostStatusEnum.HiddenEnum, CreatedAt = LearningWorkflow.AsUtc(post.CreatedAt), UpdatedAt = LearningWorkflow.AsUtc(post.UpdatedAt), Replies = replies };
     private sealed record UserContext(IActionResult? Result, User? User, IReadOnlyList<PermissionRole>? Roles);
 }
