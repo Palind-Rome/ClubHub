@@ -127,10 +127,10 @@ public sealed class EvaluationRoutineOracleTests
                 0,
                 0,
                 90,
-                90,
+                89,
                 "优秀");
             Assert.Equal(
-                90m,
+                89m,
                 await ScalarDecimalAsync(
                     connection,
                     transaction,
