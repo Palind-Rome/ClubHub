@@ -341,18 +341,18 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
     public void CanonicalizeMarkdownImageUrls_RemovesTemporarySignature()
     {
         using var service = CreateImageService();
-        const string content = "封面：![活动海报](https://clubhub.example.oss-cn-shanghai-internal.aliyuncs.com/clubs/42/forum/2026/09/03/image.png?x-oss-signature=temporary)";
+        const string content = "封面：![活动海报](https://clubhub-test.oss-cn-shanghai-internal.aliyuncs.com/clubs/42/forum/2026/09/03/image.png?x-oss-signature=temporary)";
 
         var canonicalized = service.CanonicalizeMarkdownImageUrls(42, content);
 
-        Assert.Equal("封面：![活动海报](https://clubhub.example.oss-cn-shanghai.aliyuncs.com/clubs/42/forum/2026/09/03/image.png)", canonicalized);
+        Assert.Equal("封面：![活动海报](https://clubhub-test.oss-cn-shanghai.aliyuncs.com/clubs/42/forum/2026/09/03/image.png)", canonicalized);
     }
 
     [Fact]
     public void CanonicalizeMarkdownImageUrls_LeavesExternalAndOtherClubImagesUnchanged()
     {
         using var service = CreateImageService();
-        const string content = "![外部](https://example.com/image.png) ![其他社团](https://clubhub.example.oss-cn-shanghai.aliyuncs.com/clubs/43/forum/2026/09/03/image.png)";
+        const string content = "![外部](https://example.com/image.png) ![其他社团](https://clubhub-test.oss-cn-shanghai.aliyuncs.com/clubs/43/forum/2026/09/03/image.png)";
 
         var canonicalized = service.CanonicalizeMarkdownImageUrls(42, content);
 
@@ -365,7 +365,7 @@ public sealed class ForumPostsAuthorizationTests : IClassFixture<ClubHubWebAppli
             Region = "cn-shanghai",
             Endpoint = "oss-cn-shanghai-internal.aliyuncs.com",
             PublicEndpoint = "oss-cn-shanghai.aliyuncs.com",
-            Bucket = "clubhub.example",
+            Bucket = "clubhub-test",
             RoleName = string.Empty
         }),
         NullLogger<ForumImageUploadService>.Instance);
