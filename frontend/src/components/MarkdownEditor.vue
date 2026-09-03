@@ -132,9 +132,7 @@ async function handleDrop(event: DragEvent) {
   if (!files || files.length === 0) return;
 
   // Filter to only image files
-  const imageFiles = Array.from(files).filter((file) =>
-    file.type.startsWith("image/"),
-  );
+  const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
 
   if (imageFiles.length === 0) {
     ElMessage.warning("请拖拽图片文件");
