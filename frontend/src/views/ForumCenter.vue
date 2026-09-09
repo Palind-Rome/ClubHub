@@ -7,6 +7,7 @@ import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
+import { filterForumClubs } from "../forumClubScope";
 import MarkdownEditor from "../components/MarkdownEditor.vue";
 import MarkdownRenderer from "../components/MarkdownRenderer.vue";
 import ReplyItem from "../components/ReplyItem.vue";
@@ -67,7 +68,8 @@ async function loadClubs() {
       requestJson<UserSummary[]>("/api/v1/users"),
     ]);
     if (clubResult.status === "rejected") throw clubResult.reason;
-    clubs.value = clubResult.value;
+    const availableClubs = filterForumClubs(clubResult.value);
+    clubs.value = availableClubs;
     const users = userResult.status === "fulfilled" ? userResult.value : [];
     const currentUser = users.find((user) => user.id === auth.value?.user.id);
     currentMemberClubIds.value = new Set(
@@ -78,7 +80,9 @@ async function loadClubs() {
         })
         .map((membership) => membership.clubId),
     );
-    selectedClubId.value ??= clubs.value[0]?.id;
+    if (!availableClubs.some((club) => club.id === selectedClubId.value)) {
+      selectedClubId.value = availableClubs[0]?.id;
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "社团列表加载失败");
   }
