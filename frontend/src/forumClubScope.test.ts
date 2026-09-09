@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Club } from "./api/models";
 import { filterForumClubs, isActiveForumClub } from "./forumClubScope";
+import forumCenterSource from "./views/ForumCenter.vue?raw";
 
 const club = (id: number, status: string | null, auditStatus: string | null): Club => ({
   id,
@@ -32,5 +33,12 @@ describe("forum club scope", () => {
   it("rejects missing statuses instead of exposing an unverified club", () => {
     expect(isActiveForumClub(club(1, null, "approved"))).toBe(false);
     expect(isActiveForumClub(club(2, "active", null))).toBe(false);
+  });
+
+  it("clears stale forum state when no approved active club remains", () => {
+    expect(filterForumClubs([club(1, "pending", "pending")])).toEqual([]);
+    expect(forumCenterSource).toContain("if (availableClubs.length === 0)");
+    expect(forumCenterSource).toContain("topics.value = []");
+    expect(forumCenterSource).toContain("loadError.value = null");
   });
 });

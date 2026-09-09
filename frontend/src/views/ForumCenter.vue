@@ -80,6 +80,14 @@ async function loadClubs() {
         })
         .map((membership) => membership.clubId),
     );
+    if (availableClubs.length === 0) {
+      postsRequestVersion++;
+      selectedClubId.value = undefined;
+      topics.value = [];
+      loadError.value = null;
+      loading.value = false;
+      return;
+    }
     if (!availableClubs.some((club) => club.id === selectedClubId.value)) {
       selectedClubId.value = availableClubs[0]?.id;
     }
