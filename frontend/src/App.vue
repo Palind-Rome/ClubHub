@@ -3,7 +3,13 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { ElMessage } from "element-plus";
-import { type AuthResponse, clearSession, onSessionChange, readAuth } from "./authSession";
+import {
+  type AuthResponse,
+  clearSession,
+  onSessionChange,
+  readAuth,
+  saveAuth,
+} from "./authSession";
 import { apiClient } from "./apiClient";
 import { buildNavigationGroups, resolveActiveNavigation } from "./navigation";
 import { initializeTheme } from "./composables/useTheme";
@@ -49,6 +55,23 @@ function refreshSession() {
   sessionResolved.value = true;
 }
 
+async function refreshStoredSession() {
+  if (!readAuth()) {
+    refreshSession();
+    return;
+  }
+
+  try {
+    const refreshedAuth = await apiClient.refreshAuthSession();
+    saveAuth(refreshedAuth);
+  } catch {
+    // Keep a cached session during a transient network failure. A 401 response
+    // is handled by apiClient and clears the session before this fallback runs.
+  }
+
+  refreshSession();
+}
+
 async function checkHealth() {
   healthChecking.value = true;
   try {
@@ -73,9 +96,9 @@ async function logout() {
 }
 
 onMounted(() => {
-  refreshSession();
-  checkHealth();
   stopSessionListener = onSessionChange(refreshSession);
+  void refreshStoredSession();
+  checkHealth();
 });
 
 onUnmounted(() => {
