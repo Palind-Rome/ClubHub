@@ -1036,7 +1036,7 @@ paths:
   /api/v1/clubs/{clubId}/members:
     get:
       summary: 查询社团成员与干部任期记录
-      description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认仅返回当前有效记录，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
+      description: 系统管理员、社团管理员、本社团负责人、干部、成员和指导老师可以只读查看成员及任期；默认返回状态有效且尚未到期的当前或未来任期，可选择包含历史记录，并可按届、部门或小组筛选。社团管理员不参与内部任期维护。
       operationId: getClubMembers
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -1304,7 +1304,7 @@ paths:
   /api/v1/clubs/{clubId}/members/terms:
     post:
       summary: 新增社团成员或干部任期
-      description: 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员原有效任期以保留历史记录。
+      description: 系统管理员、本社团负责人或指导老师可以为成员新增职位任期；新增任期时可关闭该成员此前开始且与新任期重叠的有效任期以保留历史记录。同一成员在同一社团不得重复创建同名任期，选择关闭旧任期时也不得用更早或同日起始的新记录覆盖已有任期。
       operationId: createClubMemberTerm
       parameters:
         - name: clubId
@@ -1332,7 +1332,7 @@ paths:
         "404":
           description: 当前用户、社团或目标成员不存在
         "409":
-          description: 社团状态不允许维护
+          description: 社团状态不允许维护，或目标成员存在重复、同日起始或逆序重叠任期
 
   /api/v1/clubs/{clubId}/members/{memberId}:
     patch:
@@ -6639,7 +6639,7 @@ components:
       properties:
         code:
           type: string
-          pattern: '^(VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|CONFLICT|PAYLOAD_TOO_LARGE|RATE_LIMITED|SERVICE_UNAVAILABLE|INTERNAL_ERROR|REQUEST_FAILED)$'
+          pattern: "^(VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|CONFLICT|PAYLOAD_TOO_LARGE|RATE_LIMITED|SERVICE_UNAVAILABLE|INTERNAL_ERROR|REQUEST_FAILED)$"
           description: >-
             固定的 HTTP 错误类别：VALIDATION_ERROR、UNAUTHORIZED、FORBIDDEN、NOT_FOUND、CONFLICT、
             PAYLOAD_TOO_LARGE、RATE_LIMITED、SERVICE_UNAVAILABLE、INTERNAL_ERROR、REQUEST_FAILED。
@@ -7319,7 +7319,8 @@ components:
           description: 该话题的回复列表；回复对象的该字段为空数组。
           items:
             $ref: "#/components/schemas/ForumPost"
-      required: [id, clubId, userId, content, isTop, postStatus, createdAt, replies]
+      required:
+        [id, clubId, userId, content, isTop, postStatus, createdAt, replies]
 
     CreateForumPostRequest:
       type: object
