@@ -12,6 +12,7 @@ import {
 import { requestJson } from "../composables/useApiRequest";
 import { activityRegistrationButtonText } from "../defenseBusinessRules";
 import { MATERIAL_ACCESS_PERMISSIONS } from "../materialPermissions";
+import { resolveActivityDisplayStatus } from "../activityStatus";
 
 interface Activity {
   id: number;
@@ -105,6 +106,8 @@ const participationsDialogVisible = ref(false);
 const currentActivity = ref<Activity | null>(null);
 const participations = ref<ActivityParticipation[]>([]);
 const participationLoading = ref(false);
+const currentTime = ref(Date.now());
+let statusTimer: number | undefined;
 
 const currentUserId = computed(() => auth.value?.user.id ?? null);
 const currentUserDisplay = computed(() => {
@@ -191,6 +194,7 @@ const statusFilterOptions = [
   { value: "all", label: "全部状态" },
   { value: "pending_review", label: "待审核" },
   { value: "published", label: "报名中" },
+  { value: "registration_closed", label: "报名已截止" },
   { value: "ongoing", label: "进行中" },
   { value: "rejected", label: "已驳回" },
 ];
@@ -199,13 +203,16 @@ const filteredActivities = computed(() => {
   if (statusFilter.value === "all") {
     return activities.value;
   }
-  return activities.value.filter((activity) => activity.status === statusFilter.value);
+  return activities.value.filter(
+    (activity) => displayActivityStatus(activity) === statusFilter.value,
+  );
 });
 
 const statusLabel: Record<string, string> = {
   draft: "草稿",
   pending_review: "待审核",
   published: "报名中",
+  registration_closed: "报名已截止",
   rejected: "已驳回",
   ongoing: "进行中",
   finished: "已结束",
@@ -216,6 +223,7 @@ const statusType: Record<string, string> = {
   draft: "info",
   pending_review: "warning",
   published: "success",
+  registration_closed: "warning",
   rejected: "danger",
   ongoing: "",
   finished: "info",
@@ -232,6 +240,9 @@ const CHECKIN_WINDOW_MINUTES = 5;
 const SIGN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 onMounted(async () => {
+  statusTimer = window.setInterval(() => {
+    currentTime.value = Date.now();
+  }, 30_000);
   stopSessionListener = onSessionChange(() => {
     auth.value = readAuth();
     void Promise.all([loadActivities(), loadClubOptions()]);
@@ -241,6 +252,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopSessionListener?.();
+  if (statusTimer !== undefined) window.clearInterval(statusTimer);
 });
 
 function formatDateTimeForPicker(date: Date) {
@@ -257,6 +269,10 @@ function formatActivityTimeRange(activity: Activity) {
     return "未设置活动时间";
   }
   return `${formatTime(activity.startTime)} ~ ${formatTime(activity.endTime)}`;
+}
+
+function displayActivityStatus(activity: Activity) {
+  return resolveActivityDisplayStatus(activity, currentTime.value);
 }
 
 function buildDefaultCreateTimes() {
@@ -441,21 +457,21 @@ async function loadClubOptions() {
 }
 
 function canRegister(activity: Activity) {
-  const deadlinePassed =
-    activity.registrationDeadline != null &&
-    beijingStoredDateTimeTimestamp(activity.registrationDeadline) < Date.now();
-
   return (
     Boolean(currentUserId.value) &&
-    activity.status === "published" &&
+    displayActivityStatus(activity) === "published" &&
     hasScopedPermission("activity:checkin", activity.clubId) &&
     !activity.isRegistered &&
-    !deadlinePassed &&
     (activity.maxParticipants == null || activity.currentParticipants < activity.maxParticipants)
   );
 }
 
 function registerButtonText(activity: Activity) {
+  const status = displayActivityStatus(activity);
+  if (status === "registration_closed") return "报名已截止";
+  if (status === "ongoing") return "进行中";
+  if (status === "finished") return "活动已结束";
+
   return activityRegistrationButtonText({
     isRegistered: activity.isRegistered,
     hasMemberPermission: hasScopedPermission("activity:checkin", activity.clubId),
@@ -777,8 +793,12 @@ async function openParticipations(activity: Activity) {
       <el-table-column prop="location" label="地点" width="120" show-overflow-tooltip />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag v-if="row.status" :type="statusType[row.status] || 'info'" size="small">
-            {{ statusLabel[row.status] || row.status }}
+          <el-tag
+            v-if="row.status"
+            :type="statusType[displayActivityStatus(row)] || 'info'"
+            size="small"
+          >
+            {{ statusLabel[displayActivityStatus(row)] || displayActivityStatus(row) }}
           </el-tag>
         </template>
       </el-table-column>
