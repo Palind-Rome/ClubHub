@@ -15,6 +15,7 @@ import {
 } from "../api";
 import { apiClient as api, createIdempotencyKey } from "../apiClient";
 import { onSessionChange, readAuth, type AuthRole } from "../authSession";
+import { filterOperationalClubs } from "../forumClubScope";
 
 const publicApi = new DefaultApi(
   new Configuration({ basePath: import.meta.env.VITE_API_BASE_URL ?? "" }),
@@ -349,7 +350,13 @@ async function loadClubs() {
   const requestVersion = sessionVersion;
   try {
     const nextClubs = await publicApi.getClubs();
-    if (requestVersion === sessionVersion) clubs.value = nextClubs;
+    if (requestVersion !== sessionVersion) return;
+
+    const availableClubs = filterOperationalClubs(nextClubs);
+    clubs.value = availableClubs;
+    if (filters.clubId && !availableClubs.some((club) => club.id === filters.clubId)) {
+      filters.clubId = undefined;
+    }
   } catch (error) {
     if (requestVersion !== sessionVersion) return;
     ElMessage.error(toErrorMessage(error, "社团列表加载失败"));
