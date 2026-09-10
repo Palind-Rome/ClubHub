@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Club } from "./api/models";
-import { filterForumClubs, isActiveForumClub } from "./forumClubScope";
+import { filterForumClubs, filterOperationalClubs, isActiveForumClub } from "./forumClubScope";
 import forumCenterSource from "./views/ForumCenter.vue?raw";
+import projectListSource from "./views/ProjectList.vue?raw";
 
 const club = (id: number, status: string | null, auditStatus: string | null): Club => ({
   id,
@@ -24,6 +25,7 @@ describe("forum club scope", () => {
     ];
 
     expect(filterForumClubs(clubs).map((item) => item.id)).toEqual([1]);
+    expect(filterOperationalClubs(clubs).map((item) => item.id)).toEqual([1]);
   });
 
   it("normalizes status casing and surrounding whitespace", () => {
@@ -40,5 +42,9 @@ describe("forum club scope", () => {
     expect(forumCenterSource).toContain("if (availableClubs.length === 0)");
     expect(forumCenterSource).toContain("topics.value = []");
     expect(forumCenterSource).toContain("loadError.value = null");
+  });
+
+  it("wires the same operational-club filter into project selectors", () => {
+    expect(projectListSource).toContain("filterOperationalClubs");
   });
 });

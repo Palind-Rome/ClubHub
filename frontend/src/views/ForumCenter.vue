@@ -7,7 +7,7 @@ import { ForumPostFromJSON } from "../api/models";
 import { onSessionChange, readAuth } from "../authSession";
 import { formatBeijingDateTime } from "../beijingTime";
 import { requestJson } from "../composables/useApiRequest";
-import { filterForumClubs } from "../forumClubScope";
+import { filterOperationalClubs } from "../forumClubScope";
 import MarkdownEditor from "../components/MarkdownEditor.vue";
 import MarkdownRenderer from "../components/MarkdownRenderer.vue";
 import ReplyItem from "../components/ReplyItem.vue";
@@ -68,7 +68,7 @@ async function loadClubs() {
       requestJson<UserSummary[]>("/api/v1/users"),
     ]);
     if (clubResult.status === "rejected") throw clubResult.reason;
-    const availableClubs = filterForumClubs(clubResult.value);
+    const availableClubs = filterOperationalClubs(clubResult.value);
     clubs.value = availableClubs;
     const users = userResult.status === "fulfilled" ? userResult.value : [];
     const currentUser = users.find((user) => user.id === auth.value?.user.id);
