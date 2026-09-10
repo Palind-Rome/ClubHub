@@ -8430,7 +8430,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
+   * 返回账号正常、尚未参与项目的候选人；普通成员须属于项目所属社团且当前有效，导师候选人为教师账号。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidatesRaw(
@@ -8446,7 +8446,7 @@ export class DefaultApi extends runtime.BaseAPI {
   }
 
   /**
-   * 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
+   * 返回账号正常、尚未参与项目的候选人；普通成员须属于项目所属社团且当前有效，导师候选人为教师账号。
    * 获取项目成员候选人
    */
   async getProjectMemberCandidates(

@@ -170,7 +170,8 @@ public class ProjectMembersController : ControllerBase
             return Error(400, "project_member_candidate_disabled", "候选用户账号状态异常，不能加入项目。");
         }
 
-        if (!await _membershipService.IsActiveClubMemberAsync(project.ClubId, request.UserId))
+        if (memberRole != ProjectMembershipService.MentorRole &&
+            !await _membershipService.IsActiveClubMemberAsync(project.ClubId, request.UserId))
         {
             return Error(400, "project_member_candidate_ineligible", "候选用户不是项目所属社团的当前有效成员。");
         }

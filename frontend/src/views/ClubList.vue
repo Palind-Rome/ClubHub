@@ -30,6 +30,7 @@ import {
   type MemberGroupingScope,
 } from "../composables/useClubEvaluationScope";
 import { hasScopedRole, roleCoversClub } from "../composables/useManageableClubs";
+import { filterOperationalClubs, isOperationalClub } from "../forumClubScope";
 
 type AuditStatus = "pending" | "approved" | "rejected";
 type ReviewDecision = "approved" | "rejected";
@@ -558,21 +559,27 @@ const identityRows = computed<IdentityRow[]>(() => {
   const user = currentUser.value;
   if (!user) return [];
 
-  const rows = myMemberships.value.map((membership) => ({
-    clubId: membership.clubId,
-    clubName: membership.clubName,
-    departmentName: membership.departmentName,
-    groupName: membership.groupName,
-    positionName: membership.positionName,
-    termName: membership.termName,
-    memberStatus: membership.memberStatus,
-  }));
+  const operationalClubIds = new Set(clubs.value.filter(isOperationalClub).map((club) => club.id));
+  const shouldShowClub = (clubId: number) =>
+    hasAllPermissions.value || operationalClubIds.has(clubId);
+  const rows = myMemberships.value
+    .filter((membership) => shouldShowClub(membership.clubId))
+    .map((membership) => ({
+      clubId: membership.clubId,
+      clubName: membership.clubName,
+      departmentName: membership.departmentName,
+      groupName: membership.groupName,
+      positionName: membership.positionName,
+      termName: membership.termName,
+      memberStatus: membership.memberStatus,
+    }));
   const existingClubIds = new Set(rows.map((row) => row.clubId));
 
   user.roles.forEach((role) => {
     const clubIds = role.clubIds?.length ? role.clubIds : role.clubId !== null ? [role.clubId] : [];
 
     clubIds
+      .filter(shouldShowClub)
       .filter((clubId) => !existingClubIds.has(clubId))
       .forEach((clubId) => {
         existingClubIds.add(clubId);
@@ -995,7 +1002,7 @@ async function loadData() {
     ]);
     if (requestId !== dataRequestId) return;
     applications.value = applicationData;
-    clubs.value = clubData;
+    clubs.value = hasAllPermissions.value ? clubData : filterOperationalClubs(clubData);
     syncSelectedClub();
     await Promise.all([loadMembers(), loadDepartments()]);
   } catch (e) {
