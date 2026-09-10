@@ -43,6 +43,9 @@ public sealed class ClubMemberTermEndpointTests
             dates.End);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Equal("CONFLICT", body.RootElement.GetProperty("code").GetString());
+        Assert.Contains("同名任期", body.RootElement.GetProperty("message").GetString());
         await AssertExistingTermUnchangedAsync(factory, dates.Start, dates.End);
     }
 

@@ -1333,6 +1333,10 @@ paths:
           description: 当前用户、社团或目标成员不存在
         "409":
           description: 社团状态不允许维护，或目标成员存在重复、同日起始或逆序重叠任期
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 
   /api/v1/clubs/{clubId}/members/{memberId}:
     patch:

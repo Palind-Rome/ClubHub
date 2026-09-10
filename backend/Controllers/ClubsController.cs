@@ -1,3 +1,4 @@
+using System.Data;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -9,6 +10,7 @@ using ClubHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Org.OpenAPITools.Converters;
 using CreateClubDepartmentRequest = Org.OpenAPITools.Models.CreateClubDepartmentRequest;
 using CreateClubGroupRequest = Org.OpenAPITools.Models.CreateClubGroupRequest;
@@ -56,6 +58,9 @@ public class ClubsController : ControllerBase
     private const decimal ActivityCheckedOutScore = 10m;
     private const decimal ActivityCheckedInScore = 8m;
     private const decimal ActivityAcceptedScore = 5m;
+    private const int MaxMemberTermWriteRetries = 3;
+    private const string MemberTermUserRowLockSql =
+        "SELECT USER_ID FROM USERS WHERE USER_ID = :userId FOR UPDATE";
 
     private readonly ClubHubDbContext _db;
     private static readonly JsonSerializerOptions RequestJsonOptions = CreateRequestJsonOptions();
@@ -1169,102 +1174,105 @@ public class ClubsController : ControllerBase
             return organization.Result;
         }
 
-        var targetUser = await _db.Users.FindAsync(req.UserId);
-        if (targetUser is null)
+        return await ExecuteMemberTermWriteAsync(async () =>
         {
-            return NotFound(new { message = "目标成员用户不存在。" });
-        }
-
-        if (!UsersController.IsActive(targetUser.AccountStatus))
-        {
-            return BadRequest(new { message = "目标成员账号不可用，不能加入社团任期。" });
-        }
-
-        var now = DateTime.UtcNow;
-        var termStart = req.TermStart.Date;
-        var termEnd = req.TermEnd?.Date;
-        var memberStatus = ToMemberStatus(req.MemberStatus) ?? MemberActive;
-        var termName = req.TermName.Trim();
-        var normalizedTermName = termName.ToUpperInvariant();
-
-        var hasDuplicateTerm = await _db.ClubMembers.AnyAsync(cm =>
-            cm.ClubId == clubId &&
-            cm.UserId == req.UserId &&
-            cm.TermName != null &&
-            cm.TermName.Trim().ToUpper() == normalizedTermName);
-        if (hasDuplicateTerm)
-        {
-            return Conflict(new { message = "该成员在本社团已存在同名任期，请编辑原记录。" });
-        }
-
-        if (req.CloseCurrentTerm ?? true)
-        {
-            var closeDate = termStart.AddDays(-1);
-            var activeTerms = await _db.ClubMembers
-                .Where(cm =>
-                    cm.ClubId == clubId &&
-                    cm.UserId == req.UserId &&
-                    (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
-                    (cm.TermEnd == null || cm.TermEnd >= termStart))
-                .ToListAsync();
-
-            if (activeTerms.Any(activeTerm =>
-                    activeTerm.TermStart is not null &&
-                    activeTerm.TermStart.Value.Date >= termStart))
+            if (!await LockMemberTermUserRowAsync(req.UserId))
             {
-                return Conflict(new
+                return NotFound(new { message = "目标成员用户不存在。" });
+            }
+
+            var targetUser = await _db.Users.FindAsync(req.UserId);
+            if (!UsersController.IsActive(targetUser?.AccountStatus))
+            {
+                return BadRequest(new { message = "目标成员账号不可用，不能加入社团任期。" });
+            }
+
+            var now = DateTime.UtcNow;
+            var termStart = req.TermStart.Date;
+            var termEnd = req.TermEnd?.Date;
+            var memberStatus = ToMemberStatus(req.MemberStatus) ?? MemberActive;
+            var termName = req.TermName.Trim();
+            var normalizedTermName = termName.ToUpperInvariant();
+
+            var hasDuplicateTerm = await _db.ClubMembers.AnyAsync(cm =>
+                cm.ClubId == clubId &&
+                cm.UserId == req.UserId &&
+                cm.TermName != null &&
+                cm.TermName.Trim().ToUpper() == normalizedTermName);
+            if (hasDuplicateTerm)
+            {
+                return Conflict(new { message = "该成员在本社团已存在同名任期，请编辑原记录。" });
+            }
+
+            if (req.CloseCurrentTerm ?? true)
+            {
+                var closeDate = termStart.AddDays(-1);
+                var activeTerms = await _db.ClubMembers
+                    .Where(cm =>
+                        cm.ClubId == clubId &&
+                        cm.UserId == req.UserId &&
+                        (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
+                        (cm.TermEnd == null || cm.TermEnd >= termStart))
+                    .ToListAsync();
+
+                if (activeTerms.Any(activeTerm =>
+                        activeTerm.TermStart is not null &&
+                        activeTerm.TermStart.Value.Date >= termStart))
                 {
-                    message = "已有有效任期与新任期同日或更晚开始，请调整日期或编辑原记录。"
-                });
+                    return Conflict(new
+                    {
+                        message = "已有有效任期与新任期同日或更晚开始，请调整日期或编辑原记录。"
+                    });
+                }
+
+                foreach (var activeTerm in activeTerms)
+                {
+                    activeTerm.MemberStatus = MemberEnded;
+                    activeTerm.TermEnd = closeDate;
+                }
             }
 
-            foreach (var activeTerm in activeTerms)
+            var member = new ClubMember
             {
-                activeTerm.MemberStatus = MemberEnded;
-                activeTerm.TermEnd = closeDate;
+                ClubId = clubId,
+                UserId = req.UserId,
+                PositionName = req.PositionName.Trim(),
+                TermName = termName,
+                TermStart = termStart,
+                TermEnd = termEnd,
+                MemberStatus = memberStatus,
+                JoinAt = now,
+                ContributionScore = req.ContributionScore ?? 0
+            };
+            ApplyMemberOrganization(member, organization.Selection);
+
+            if (IsCurrentMemberTerm(member) &&
+                await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
+            {
+                return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。" });
             }
-        }
 
-        var member = new ClubMember
-        {
-            ClubId = clubId,
-            UserId = req.UserId,
-            PositionName = req.PositionName.Trim(),
-            TermName = termName,
-            TermStart = termStart,
-            TermEnd = termEnd,
-            MemberStatus = memberStatus,
-            JoinAt = now,
-            ContributionScore = req.ContributionScore ?? 0
-        };
-        ApplyMemberOrganization(member, organization.Selection);
+            _db.ClubMembers.Add(member);
 
-        if (IsCurrentMemberTerm(member) &&
-            await CountCurrentMembershipClubsAsync(req.UserId, clubId) >= MaxStudentClubMemberships)
-        {
-            return Conflict(new { message = $"一个学生最多只能同时加入 {MaxStudentClubMemberships} 个社团，当前已达到上限。" });
-        }
+            if (IsCurrentMemberTerm(member))
+            {
+                await EnsureClubMemberRoleAsync(clubId, req.UserId, now);
+            }
 
-        _db.ClubMembers.Add(member);
+            if (IsCurrentMemberTerm(member) && IsStrictPrincipalPosition(member.PositionName))
+            {
+                club.PresidentUserId = req.UserId;
+                club.UpdatedAt = now;
+                await EnsureSingleClubPresidentRoleAsync(clubId, req.UserId, now);
+            }
 
-        if (IsCurrentMemberTerm(member))
-        {
-            await EnsureClubMemberRoleAsync(clubId, req.UserId, now);
-        }
+            await _db.SaveChangesAsync();
 
-        if (IsCurrentMemberTerm(member) && IsStrictPrincipalPosition(member.PositionName))
-        {
-            club.PresidentUserId = req.UserId;
-            club.UpdatedAt = now;
-            await EnsureSingleClubPresidentRoleAsync(clubId, req.UserId, now);
-        }
-
-        await _db.SaveChangesAsync();
-
-        var created = await MemberQuery().FirstAsync(cm => cm.MemberId == member.MemberId);
-        return Created(
-            $"/api/clubs/{clubId}/members?includeHistory=true",
-            ToMemberRecordDto(created));
+            var created = await MemberQuery().FirstAsync(cm => cm.MemberId == member.MemberId);
+            return Created(
+                $"/api/clubs/{clubId}/members?includeHistory=true",
+                ToMemberRecordDto(created));
+        });
     }
 
     [HttpPatch("{clubId:int}/members/{memberId:int}")]
@@ -2524,6 +2532,110 @@ public class ClubsController : ControllerBase
             .Distinct()
             .Count();
     }
+
+    /// <summary>
+    /// Serializes member-term validation and writes so concurrent requests cannot
+    /// both pass the overlap checks for the same user.
+    /// </summary>
+    private async Task<IActionResult> ExecuteMemberTermWriteAsync(Func<Task<IActionResult>> operation)
+    {
+        if (IsInMemoryDatabase())
+        {
+            return await operation();
+        }
+
+        for (var attempt = 1; attempt <= MaxMemberTermWriteRetries; attempt++)
+        {
+            await using var transaction = await _db.Database.BeginJoinableTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var result = await operation();
+                if (IsSuccessfulResult(result))
+                {
+                    await transaction.CommitAsync();
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                }
+
+                _db.ChangeTracker.Clear();
+                return result;
+            }
+            catch (Exception ex) when (
+                ex is not OperationCanceledException &&
+                ProjectMembershipService.IsRetryableWriteConflict(ex))
+            {
+                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+
+                if (attempt == MaxMemberTermWriteRetries)
+                {
+                    return Conflict(new { message = "任期写入发生并发冲突，请稍后重试。" });
+                }
+            }
+        }
+
+        return Conflict(new { message = "任期写入发生并发冲突，请稍后重试。" });
+    }
+
+    /// <summary>
+    /// Locks the stable user row before checking and changing that user's terms.
+    /// </summary>
+    private async Task<bool> LockMemberTermUserRowAsync(int userId)
+    {
+        if (IsInMemoryDatabase())
+        {
+            return await _db.Users.AnyAsync(user => user.UserId == userId);
+        }
+
+        var sql = MemberTermUserRowLockSql;
+        if (string.Equals(
+                _db.Database.ProviderName,
+                "Microsoft.EntityFrameworkCore.Sqlite",
+                StringComparison.Ordinal))
+        {
+            const string forUpdateSuffix = " FOR UPDATE";
+            if (sql.EndsWith(forUpdateSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                sql = sql[..^forUpdateSuffix.Length];
+            }
+        }
+
+        var connection = _db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        if (_db.Database.CurrentTransaction is { } transaction)
+        {
+            command.Transaction = transaction.GetDbTransaction();
+        }
+
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "userId";
+        parameter.DbType = DbType.Int32;
+        parameter.Value = userId;
+        command.Parameters.Add(parameter);
+
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync(HttpContext.RequestAborted);
+        }
+
+        var result = await command.ExecuteScalarAsync(HttpContext.RequestAborted);
+        return result is not null && result != DBNull.Value;
+    }
+
+    private static bool IsSuccessfulResult(IActionResult result) => result switch
+    {
+        ObjectResult { StatusCode: >= 200 and < 300 } => true,
+        StatusCodeResult { StatusCode: >= 200 and < 300 } => true,
+        _ => false
+    };
+
+    private bool IsInMemoryDatabase() => string.Equals(
+        _db.Database.ProviderName,
+        "Microsoft.EntityFrameworkCore.InMemory",
+        StringComparison.Ordinal);
 
     private async Task RemoveOngoingAcceptedRecruitmentApplicationsAsync(int clubId, int userId)
     {
