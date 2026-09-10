@@ -20,6 +20,7 @@ public class ProjectMembershipService
     private const int MaxWriteRetries = 3;
     private const string ManageProjectTasksPermission = "project:task:manage";
     private static readonly string[] ActiveStatuses = [string.Empty, "active", "normal", "enabled", "在任", "正常"];
+    private static readonly string[] TeacherRoleCodes = ["TEACHER", "ADVISOR"];
 
     private readonly ClubHubDbContext _db;
     private readonly AuthService _authService;
@@ -155,15 +156,18 @@ public class ProjectMembershipService
     {
         var businessDate = DateTime.UtcNow.Date;
 
-        return _db.Users
+        var query = _db.Users
             .AsNoTracking()
             .Where(user =>
                 user.AccountStatus == null || ActiveStatuses.Contains(user.AccountStatus.Trim().ToLower()))
-            .Where(user => user.ClubMemberships.Any(member =>
-                member.ClubId == project.ClubId &&
-                (member.MemberStatus == null || ActiveStatuses.Contains(member.MemberStatus.Trim().ToLower())) &&
-                (member.TermStart == null || member.TermStart <= businessDate) &&
-                (member.TermEnd == null || member.TermEnd >= businessDate)))
+            .Where(user =>
+                user.ClubMemberships.Any(member =>
+                    member.ClubId == project.ClubId &&
+                    (member.MemberStatus == null || ActiveStatuses.Contains(member.MemberStatus.Trim().ToLower())) &&
+                    (member.TermStart == null || member.TermStart <= businessDate) &&
+                    (member.TermEnd == null || member.TermEnd >= businessDate)) ||
+                user.UserRoles.Any(userRole =>
+                    userRole.Role != null && TeacherRoleCodes.Contains(userRole.Role.RoleCode)))
             .Where(user => !_db.ProjectMembers.Any(member =>
                 member.ProjectId == project.ProjectId &&
                 member.UserId == user.UserId &&
@@ -171,6 +175,8 @@ public class ProjectMembershipService
             .OrderBy(user => user.RealName)
             .ThenBy(user => user.StudentNo)
             .ThenBy(user => user.UserId);
+
+        return query;
     }
 
     /// <summary>

@@ -399,6 +399,21 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
             AccountStatus = "normal",
             CreatedAt = now
         });
+        db.Add(new Role
+        {
+            RoleId = baseId + 4,
+            RoleCode = "TEACHER",
+            RoleName = "教师",
+            RoleScope = "system",
+            CreatedAt = now
+        });
+        db.Add(new UserRole
+        {
+            UserRoleId = baseId + 5,
+            UserId = baseId + 1,
+            RoleId = baseId + 4,
+            AssignedAt = now
+        });
         await db.SaveChangesAsync();
 
         var candidates = await service.GetCandidateUsersQuery(project).ToListAsync();

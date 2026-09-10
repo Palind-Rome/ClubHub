@@ -18,10 +18,13 @@ import type {
 import { apiClient, createIdempotencyKey } from "../apiClient";
 import { requestJson } from "../composables/useApiRequest";
 import { formatVenueReservationDateTime } from "../beijingTime";
+import { filterOperationalClubs } from "../forumClubScope";
 
 interface ClubOption {
   id: number;
   name: string;
+  status?: string | null;
+  auditStatus?: string | null;
 }
 
 interface ActivityOption {
@@ -278,7 +281,13 @@ const resubmitRules: FormRules<ResubmitForm> = {
 };
 
 function ensureActiveClub() {
-  if (activeClubId.value !== undefined) return;
+  if (
+    (activeClubId.value === 0 && canViewAllBudgets.value) ||
+    (activeClubId.value !== undefined &&
+      visibleClubs.value.some((club) => club.id === activeClubId.value))
+  ) {
+    return;
+  }
   activeClubId.value = canViewAllBudgets.value ? 0 : visibleClubs.value[0]?.id;
 }
 
@@ -289,7 +298,8 @@ async function loadClubs() {
     return false;
   }
 
-  clubs.value = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
+  const nextClubs = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
+  clubs.value = filterOperationalClubs(nextClubs);
   ensureActiveClub();
   return true;
 }

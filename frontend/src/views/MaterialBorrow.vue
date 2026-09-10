@@ -17,10 +17,13 @@ import {
   formatVenueReservationDateTime,
   venueReservationTimestamp,
 } from "../beijingTime";
+import { filterOperationalClubs } from "../forumClubScope";
 
 interface ClubOption {
   id: number;
   name: string;
+  status?: string | null;
+  auditStatus?: string | null;
 }
 
 interface Material {
@@ -329,7 +332,13 @@ function initialClubIdFromRoute() {
 }
 
 function ensureActiveClub() {
-  if (activeClubId.value !== undefined) return;
+  if (
+    (activeClubId.value === 0 && canViewAllMaterials.value) ||
+    (activeClubId.value !== undefined &&
+      visibleClubs.value.some((club) => club.id === activeClubId.value))
+  ) {
+    return;
+  }
   const preferredClubId = initialClubIdFromRoute();
   if (
     preferredClubId &&
@@ -352,7 +361,8 @@ async function loadClubs() {
 
   clubsLoading.value = true;
   try {
-    clubs.value = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
+    const nextClubs = await requestJson<ClubOption[]>(`/api/v1/clubs?viewerUserId=${userId}`);
+    clubs.value = filterOperationalClubs(nextClubs);
     ensureActiveClub();
     return true;
   } catch (e) {
