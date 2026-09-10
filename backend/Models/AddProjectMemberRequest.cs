@@ -26,9 +26,9 @@ namespace Org.OpenAPITools.Models
     public partial class AddProjectMemberRequest 
     {
         /// <summary>
-        /// 所属社团当前有效成员的用户 ID。
+        /// 普通成员须为所属社团当前有效成员；导师须为账号正常的教师。
         /// </summary>
-        /// <value>所属社团当前有效成员的用户 ID。</value>
+        /// <value>普通成员须为所属社团当前有效成员；导师须为账号正常的教师。</value>
         /* <example>12</example> */
         [Required]
         [DataMember(Name="userId", EmitDefaultValue=true)]
