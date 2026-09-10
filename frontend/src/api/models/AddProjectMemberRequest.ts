@@ -21,7 +21,7 @@ import { mapValues } from "../runtime";
  */
 export interface AddProjectMemberRequest {
   /**
-   * 所属社团当前有效成员的用户 ID。
+   * 普通成员须为所属社团当前有效成员；导师须为账号正常的教师。
    */
   userId: number;
   /**

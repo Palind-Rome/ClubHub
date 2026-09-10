@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Club } from "./api/models";
 import { filterForumClubs, filterOperationalClubs, isActiveForumClub } from "./forumClubScope";
+import budgetManagementSource from "./views/BudgetManagement.vue?raw";
+import clubListSource from "./views/ClubList.vue?raw";
 import forumCenterSource from "./views/ForumCenter.vue?raw";
+import materialBorrowSource from "./views/MaterialBorrow.vue?raw";
 import projectListSource from "./views/ProjectList.vue?raw";
+import projectMembersPanelSource from "./components/ProjectMembersPanel.vue?raw";
 
 const club = (id: number, status: string | null, auditStatus: string | null): Club => ({
   id,
@@ -46,5 +50,20 @@ describe("forum club scope", () => {
 
   it("wires the same operational-club filter into project selectors", () => {
     expect(projectListSource).toContain("filterOperationalClubs");
+  });
+
+  it("keeps dissolved clubs out of operational workspaces and identities", () => {
+    expect(budgetManagementSource).toContain("filterOperationalClubs");
+    expect(materialBorrowSource).toContain("filterOperationalClubs");
+    expect(clubListSource).toContain("filterOperationalClubs(clubData)");
+    expect(clubListSource).toContain("operationalClubIds");
+  });
+
+  it("shows teacher candidates only for the mentor role", () => {
+    expect(projectMembersPanelSource).toContain("isTeacherCandidate");
+    expect(projectMembersPanelSource).toContain("candidates.value.filter(isTeacherCandidate)");
+    expect(projectMembersPanelSource).toContain(
+      "candidates.value.filter((candidate) => !isTeacherCandidate(candidate))",
+    );
   });
 });

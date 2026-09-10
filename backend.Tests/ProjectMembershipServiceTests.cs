@@ -367,6 +367,61 @@ public sealed class ProjectMembershipServiceTests : IClassFixture<ClubHubWebAppl
     }
 
     [Fact]
+    public async Task GetCandidateUsersQuery_IncludesActiveTeacherWithoutClubMembership()
+    {
+        var baseId = 3250 + Interlocked.Increment(ref _sequence) * 10;
+        var clubId = baseId;
+        var projectId = baseId;
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ClubHubDbContext>();
+        var service = scope.ServiceProvider.GetRequiredService<ProjectMembershipService>();
+        var now = DateTime.UtcNow;
+
+        var project = new Project
+        {
+            ProjectId = projectId,
+            ProjectName = "Teacher Mentor Project",
+            ClubId = clubId,
+            LeaderUserId = baseId + 10,
+            ProjectStatus = "running",
+            CreatedAt = now
+        };
+
+        db.Add(new Club { ClubId = clubId, ClubName = "Teacher Mentor Club", ClubStatus = "active", CreatedAt = now });
+        db.Add(project);
+        db.Add(new User
+        {
+            UserId = baseId + 1,
+            Username = "teacher-mentor",
+            StudentNo = "05001",
+            PasswordHash = "unused",
+            RealName = "Teacher Mentor",
+            AccountStatus = "normal",
+            CreatedAt = now
+        });
+        db.Add(new Role
+        {
+            RoleId = baseId + 4,
+            RoleCode = "TEACHER",
+            RoleName = "教师",
+            RoleScope = "system",
+            CreatedAt = now
+        });
+        db.Add(new UserRole
+        {
+            UserRoleId = baseId + 5,
+            UserId = baseId + 1,
+            RoleId = baseId + 4,
+            AssignedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        var candidates = await service.GetCandidateUsersQuery(project).ToListAsync();
+
+        Assert.Contains(candidates, candidate => candidate.StudentNo == "05001");
+    }
+
+    [Fact]
     public async Task GetCandidateUsersQuery_Defers_CompositionUntilMaterialization()
     {
         var baseId = 3300 + Interlocked.Increment(ref _sequence) * 10;

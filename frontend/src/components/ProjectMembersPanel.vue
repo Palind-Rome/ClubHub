@@ -60,10 +60,14 @@ const canManage = computed(() => {
 
 const projectClosed = computed(() => props.projectStatus === "closed");
 const editable = computed(() => canManage.value && !projectClosed.value);
+function isTeacherCandidate(candidate: ProjectMemberCandidate) {
+  return /^\d{5}$/.test(candidate.studentNo ?? "");
+}
+
 const visibleCandidates = computed(() =>
   addForm.memberRole === AddProjectMemberRequestMemberRoleEnum.Mentor
-    ? candidates.value.filter((candidate) => /^\d{5}$/.test(candidate.studentNo ?? ""))
-    : candidates.value,
+    ? candidates.value.filter(isTeacherCandidate)
+    : candidates.value.filter((candidate) => !isTeacherCandidate(candidate)),
 );
 
 const addRules: FormRules<AddMemberForm> = {
@@ -418,7 +422,7 @@ onUnmounted(() => {
         label-position="top"
         @submit.prevent
       >
-        <el-form-item label="所属社团有效成员" prop="userId">
+        <el-form-item label="可添加成员或教师" prop="userId">
           <el-select
             v-model="addForm.userId"
             filterable
@@ -444,7 +448,9 @@ onUnmounted(() => {
             </el-radio-button>
           </el-radio-group>
           <div class="field-hint">负责人不能在此指定，请使用项目列表中的负责人分配功能。</div>
-          <div class="field-hint">选择“导师”时，仅显示教师账号。</div>
+          <div class="field-hint">
+            普通成员来自所属社团当前有效成员；选择“导师”时仅显示教师账号。
+          </div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input

@@ -161,16 +161,22 @@ public class ClubsController : ControllerBase
     {
         var query = ClubQuery();
         var userId = User.GetUserId();
-        if (userId is not null)
+        if (userId is null)
+        {
+            query = query.Where(c => c.AuditStatus == AuditApproved && c.ClubStatus == ClubActive);
+        }
+        else
         {
             var viewer = await LoadUserAsync(userId.Value);
             if (viewer is not null && !UsersController.IsPlatformAdmin(viewer))
             {
                 query = query.Where(c =>
-                    c.ApplicantUserId == viewer.UserId ||
-                    c.PresidentUserId == viewer.UserId ||
-                    c.Members.Any(m => m.UserId == viewer.UserId) ||
-                    c.UserRoles.Any(ur => ur.UserId == viewer.UserId));
+                    c.AuditStatus == AuditApproved &&
+                    c.ClubStatus == ClubActive &&
+                    (c.ApplicantUserId == viewer.UserId ||
+                     c.PresidentUserId == viewer.UserId ||
+                     c.Members.Any(m => m.UserId == viewer.UserId) ||
+                     c.UserRoles.Any(ur => ur.UserId == viewer.UserId)));
             }
         }
 

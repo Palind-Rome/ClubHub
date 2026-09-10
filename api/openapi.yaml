@@ -4392,7 +4392,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectMember"
         "400":
-          description: 请求参数无效，或候选用户不是所属社团当前有效成员
+          description: 请求参数无效，或普通成员候选用户不是所属社团当前有效成员
           content:
             application/json:
               schema:
@@ -4425,7 +4425,7 @@ paths:
   /api/v1/projects/{projectId}/member-candidates:
     get:
       summary: 获取项目成员候选人
-      description: 仅返回账号正常、属于项目所属社团且当前未参与该项目的有效成员。
+      description: 返回账号正常、尚未参与项目的候选人；普通成员须属于项目所属社团且当前有效，导师候选人为教师账号。
       operationId: getProjectMemberCandidates
       security:
         - bearerAuth: []
@@ -11811,7 +11811,7 @@ components:
 
     ProjectMemberCandidate:
       type: object
-      description: 可加入项目的所属社团当前有效成员。
+      description: 可加入项目的候选人；普通成员来自所属社团当前有效成员，导师为账号正常的教师。
       properties:
         userId:
           type: integer
@@ -11842,7 +11842,7 @@ components:
         userId:
           type: integer
           minimum: 1
-          description: 所属社团当前有效成员的用户 ID。
+          description: 普通成员须为所属社团当前有效成员；导师须为账号正常的教师。
           example: 12
         memberRole:
           type: string
