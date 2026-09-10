@@ -56,4 +56,18 @@ describe("答辩业务入口规则", () => {
     expect(clubListSource).toContain('message: "请填写材料链接或归档编号"');
     expect(clubListSource.match(/label="材料链接或归档编号"/g)).toHaveLength(4);
   });
+
+  it("keeps academic-year choices stable and shows future member terms after refresh", () => {
+    expect(clubListSource).toContain(
+      "Array.from({ length: 101 }, (_, index) => academicTermOption(2000 + index))",
+    );
+    expect(clubListSource).toContain("activeOrFutureClubMembers.value");
+    expect(clubListSource).toContain("{ label: '当前与待生效', value: 'current' }");
+    expect(clubListSource).toContain("sortMemberRows(filteredRows, memberSortMode.value)");
+    expect(clubListSource).toContain("组织信息待完善");
+    expect(clubListSource).not.toContain("!member.groupName?.trim()");
+    expect(clubListSource).not.toContain("待补资料");
+    expect(clubListSource).not.toContain("manualAcademicTermOptions");
+    expect(clubListSource).not.toContain("新增学年");
+  });
 });

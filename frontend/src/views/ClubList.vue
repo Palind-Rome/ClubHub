@@ -267,7 +267,6 @@ const clubs = ref<Club[]>([]);
 const applications = ref<ClubApplication[]>([]);
 const clubMembers = ref<ClubMemberRecord[]>([]);
 const clubDepartments = ref<ClubDepartmentRecord[]>([]);
-const manualAcademicTermOptions = ref<AcademicTermOption[]>([]);
 const loading = ref(true);
 const usersLoading = ref(true);
 const dialogUsersLoading = ref(false);
@@ -315,10 +314,9 @@ const memberFilters = reactive({
   termName: "",
   departmentId: undefined as number | undefined,
   groupId: undefined as number | undefined,
-  unassignedOnly: false,
+  incompleteOnly: false,
 });
 const memberSortMode = ref<MemberSortMode>("organization");
-const newAcademicTermStartYear = ref(academicYearStart(new Date()) + 3);
 
 const applicationDialogVisible = ref(false);
 const applicationFormRef = ref<FormInstance>();
@@ -637,7 +635,6 @@ const selectedDepartmentManagerScopes = computed(() =>
 const canCreateMemberDepartment = computed(
   () => isOrganizationWorkspace.value && canManageSelectedClub.value,
 );
-const canCreateAcademicTerm = computed(() => canManageSelectedClub.value);
 const canCreateMemberGroup = computed(
   () => isOrganizationWorkspace.value && groupCreateDepartmentOptions.value.length > 0,
 );
@@ -704,10 +701,7 @@ const selectedBatchPositionRows = computed(() =>
   selectedMemberRows.value.filter((row) => canBatchUpdateMemberTerm(row)),
 );
 const academicTermOptions = computed<AcademicTermOption[]>(() => {
-  const currentYear = academicYearStart(new Date());
-  const baseTerms = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((year) =>
-    academicTermOption(year),
-  );
+  const baseTerms = Array.from({ length: 101 }, (_, index) => academicTermOption(2000 + index));
   const memberTerms = clubMembers.value
     .filter((member) => member.termName && member.termStart && member.termEnd)
     .map((member) => ({
@@ -716,11 +710,7 @@ const academicTermOptions = computed<AcademicTermOption[]>(() => {
       termEnd: dateOnly(member.termEnd),
     }));
 
-  return uniqueAcademicTermOptions([
-    ...baseTerms,
-    ...manualAcademicTermOptions.value,
-    ...memberTerms,
-  ]);
+  return uniqueAcademicTermOptions([...baseTerms, ...memberTerms]);
 });
 const memberTermSelectOptions = computed<AcademicTermOption[]>(() => {
   const options = [...academicTermOptions.value];
@@ -741,6 +731,13 @@ const memberTermFilterOptions = computed(() =>
   ]),
 );
 const currentClubMembers = computed(() => clubMembers.value.filter((member) => member.isCurrent));
+const activeOrFutureClubMembers = computed(() =>
+  clubMembers.value.filter(
+    (member) =>
+      isActiveStatus(member.memberStatus) &&
+      (!dateOnly(member.termEnd) || dateOnly(member.termEnd) >= todayDateOnly()),
+  ),
+);
 const currentActiveClubMembers = computed(() =>
   currentClubMembers.value.filter((member) => isActiveStatus(member.memberStatus)),
 );
@@ -773,13 +770,13 @@ const organizationGroupMembers = computed(() => {
 });
 const memberTableRows = computed(() => {
   const rows = (
-    memberWorkspaceMode.value === "history" ? clubMembers.value : currentClubMembers.value
+    memberWorkspaceMode.value === "history" ? clubMembers.value : activeOrFutureClubMembers.value
   ).filter(
     (member) =>
       (memberWorkspaceMode.value !== "history" ||
         !memberFilters.termName ||
         member.termName === memberFilters.termName) &&
-      (!memberFilters.unassignedOnly || isMemberUnassigned(member)),
+      (!memberFilters.incompleteOnly || hasIncompleteMemberOrganization(member)),
   );
 
   return sortMemberRows(rows, memberSortMode.value);
@@ -796,19 +793,21 @@ const transitionSourceRows = computed(() => {
       }
     });
 
-  return Array.from(rows.values()).sort((left, right) =>
-    transitionRecordSortKey(right).localeCompare(transitionRecordSortKey(left)),
+  const filteredRows = Array.from(rows.values()).filter(
+    (member) => !memberFilters.incompleteOnly || hasIncompleteMemberOrganization(member),
   );
+  return sortMemberRows(filteredRows, memberSortMode.value);
 });
 const memberGroupSummary = computed(() => {
-  const rows = memberTableRows.value;
+  const rows =
+    memberWorkspaceMode.value === "transition" ? transitionSourceRows.value : memberTableRows.value;
   const currentRows = rows.filter((member) => member.isCurrent);
   return {
     total: rows.length,
     current: currentRows.length,
     departments: uniqueTextOptions(rows.map((member) => member.departmentName)).length,
     groups: uniqueTextOptions(rows.map((member) => member.groupName)).length,
-    unassigned: rows.filter(isMemberUnassigned).length,
+    incomplete: rows.filter(hasIncompleteMemberOrganization).length,
   };
 });
 const organizationSummary = computed(() => {
@@ -1988,29 +1987,6 @@ async function submitMemberTerm() {
   }
 }
 
-function addAcademicTermOption() {
-  if (!canCreateAcademicTerm.value) return;
-
-  const startYear = Number(newAcademicTermStartYear.value);
-  if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) {
-    ElMessage.warning("请输入 2000-2100 之间的学年起始年份。");
-    return;
-  }
-
-  const term = academicTermOption(startYear);
-  if (academicTermOptions.value.some((option) => option.label === term.label)) {
-    ElMessage.info("该任期已存在。");
-    return;
-  }
-
-  manualAcademicTermOptions.value = uniqueAcademicTermOptions([
-    ...manualAcademicTermOptions.value,
-    term,
-  ]);
-  newAcademicTermStartYear.value = startYear + 1;
-  ElMessage.success("任期已加入可选项");
-}
-
 function resetFilters() {
   filters.auditStatus = "";
   filters.keyword = "";
@@ -2022,11 +1998,11 @@ function clearMemberFilters() {
   memberFilters.termName = "";
   memberFilters.departmentId = undefined;
   memberFilters.groupId = undefined;
-  memberFilters.unassignedOnly = false;
+  memberFilters.incompleteOnly = false;
   void loadMembers();
 }
 
-function toggleUnassignedMemberFilter(value: string | number | boolean) {
+function toggleIncompleteMemberFilter(value: string | number | boolean) {
   if (!value) return;
 
   memberFilters.departmentId = undefined;
@@ -2976,10 +2952,8 @@ function uniqueTextOptions(values: Array<string | null | undefined>) {
   ).sort((left, right) => left.localeCompare(right, "zh-CN"));
 }
 
-function isMemberUnassigned(member: ClubMemberRecord) {
-  return (
-    !member.departmentName?.trim() || !member.groupName?.trim() || !member.positionName?.trim()
-  );
+function hasIncompleteMemberOrganization(member: ClubMemberRecord) {
+  return !member.departmentName?.trim() || !member.positionName?.trim();
 }
 
 watch(currentUserId, () => {
@@ -2990,7 +2964,7 @@ watch(selectedClubId, () => {
   memberFilters.departmentId = undefined;
   memberFilters.groupId = undefined;
   memberFilters.termName = "";
-  memberFilters.unassignedOnly = false;
+  memberFilters.incompleteOnly = false;
   resetDepartmentForm();
   resetGroupForm();
   organizationTreeCollapsed.value = false;
@@ -4019,7 +3993,7 @@ onUnmounted(() => {
               <el-segmented
                 v-model="memberWorkspaceMode"
                 :options="[
-                  { label: '当前名册', value: 'current' },
+                  { label: '当前与待生效', value: 'current' },
                   { label: '任期历史', value: 'history' },
                   { label: '换届管理', value: 'transition' },
                 ]"
@@ -4054,7 +4028,7 @@ onUnmounted(() => {
               v-model="memberFilters.departmentId"
               class="filter-item"
               clearable
-              :disabled="memberFilters.unassignedOnly"
+              :disabled="memberFilters.incompleteOnly"
               placeholder="按部门筛选"
               @change="handleMemberFilterDepartmentChange"
             >
@@ -4069,7 +4043,7 @@ onUnmounted(() => {
               v-model="memberFilters.groupId"
               class="filter-item"
               clearable
-              :disabled="memberFilters.unassignedOnly"
+              :disabled="memberFilters.incompleteOnly"
               placeholder="按小组筛选"
             >
               <el-option
@@ -4088,10 +4062,10 @@ onUnmounted(() => {
               />
             </el-select>
             <el-checkbox
-              v-model="memberFilters.unassignedOnly"
-              @change="toggleUnassignedMemberFilter"
+              v-model="memberFilters.incompleteOnly"
+              @change="toggleIncompleteMemberFilter"
             >
-              待补资料
+              组织信息待完善
             </el-checkbox>
             <el-button :icon="Refresh" @click="clearMemberFilters">清除筛选</el-button>
             <el-button
@@ -4117,31 +4091,16 @@ onUnmounted(() => {
           </div>
 
           <div class="member-summary">
-            <span>当前列表 {{ memberGroupSummary.total }} 条</span>
-            <span>有效任期 {{ memberGroupSummary.current }} 条</span>
+            <span>
+              {{ memberWorkspaceMode === "transition" ? "待换届" : "当前列表" }}
+              {{ memberGroupSummary.total }} 条
+            </span>
+            <span v-if="memberWorkspaceMode !== 'transition'">
+              当前任期 {{ memberGroupSummary.current }} 条
+            </span>
             <span>部门 {{ memberGroupSummary.departments }} 个</span>
             <span>小组 {{ memberGroupSummary.groups }} 个</span>
-            <span>待补资料 {{ memberGroupSummary.unassigned }} 条</span>
-            <div v-if="canCreateAcademicTerm" class="taxonomy-add term-add">
-              <el-input-number
-                v-model="newAcademicTermStartYear"
-                size="small"
-                :min="2000"
-                :max="2100"
-                :step="1"
-                :precision="0"
-                controls-position="right"
-              />
-              <el-button
-                size="small"
-                type="primary"
-                plain
-                :icon="Plus"
-                @click="addAcademicTermOption"
-              >
-                新增学年
-              </el-button>
-            </div>
+            <span>组织信息待完善 {{ memberGroupSummary.incomplete }} 条</span>
           </div>
         </div>
 
@@ -4154,8 +4113,8 @@ onUnmounted(() => {
           :empty-text="
             memberWorkspaceMode === 'current'
               ? canManageSelectedClub
-                ? '暂无当前名册，可新增成员任期'
-                : '暂无当前有效成员任期'
+                ? '暂无当前或待生效任期，可新增成员任期'
+                : '暂无当前或待生效成员任期'
               : '暂无历史任期记录'
           "
           row-key="memberId"
@@ -4206,7 +4165,7 @@ onUnmounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="当前" width="100">
+          <el-table-column label="阶段" width="100">
             <template #default="{ row }">
               <el-tag :type="memberTermPhaseTagType(row)" effect="plain">
                 {{ memberTermPhaseText(row) }}
@@ -5172,10 +5131,6 @@ onUnmounted(() => {
 .taxonomy-add .el-select,
 .taxonomy-add .el-input-number {
   width: 132px;
-}
-
-.taxonomy-add.term-add .el-input-number {
-  width: 128px;
 }
 
 .taxonomy-add.group-add .el-select {
