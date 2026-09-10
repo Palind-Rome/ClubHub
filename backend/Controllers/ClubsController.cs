@@ -1050,7 +1050,6 @@ public class ClubsController : ControllerBase
         {
             query = query.Where(cm =>
                 (cm.MemberStatus == null || cm.MemberStatus == MemberActive) &&
-                (cm.TermStart == null || cm.TermStart <= today) &&
                 (cm.TermEnd == null || cm.TermEnd >= today));
         }
 
@@ -1185,6 +1184,18 @@ public class ClubsController : ControllerBase
         var termStart = req.TermStart.Date;
         var termEnd = req.TermEnd?.Date;
         var memberStatus = ToMemberStatus(req.MemberStatus) ?? MemberActive;
+        var termName = req.TermName.Trim();
+        var normalizedTermName = termName.ToUpperInvariant();
+
+        var hasDuplicateTerm = await _db.ClubMembers.AnyAsync(cm =>
+            cm.ClubId == clubId &&
+            cm.UserId == req.UserId &&
+            cm.TermName != null &&
+            cm.TermName.Trim().ToUpper() == normalizedTermName);
+        if (hasDuplicateTerm)
+        {
+            return Conflict(new { message = "该成员在本社团已存在同名任期，请编辑原记录。" });
+        }
 
         if (req.CloseCurrentTerm ?? true)
         {
@@ -1197,12 +1208,20 @@ public class ClubsController : ControllerBase
                     (cm.TermEnd == null || cm.TermEnd >= termStart))
                 .ToListAsync();
 
+            if (activeTerms.Any(activeTerm =>
+                    activeTerm.TermStart is not null &&
+                    activeTerm.TermStart.Value.Date >= termStart))
+            {
+                return Conflict(new
+                {
+                    message = "已有有效任期与新任期同日或更晚开始，请调整日期或编辑原记录。"
+                });
+            }
+
             foreach (var activeTerm in activeTerms)
             {
                 activeTerm.MemberStatus = MemberEnded;
-                activeTerm.TermEnd = activeTerm.TermStart is not null && closeDate < activeTerm.TermStart.Value.Date
-                    ? activeTerm.TermStart.Value.Date
-                    : closeDate;
+                activeTerm.TermEnd = closeDate;
             }
         }
 
@@ -1211,7 +1230,7 @@ public class ClubsController : ControllerBase
             ClubId = clubId,
             UserId = req.UserId,
             PositionName = req.PositionName.Trim(),
-            TermName = req.TermName.Trim(),
+            TermName = termName,
             TermStart = termStart,
             TermEnd = termEnd,
             MemberStatus = memberStatus,
