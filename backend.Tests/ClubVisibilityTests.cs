@@ -204,5 +204,43 @@ public sealed class ClubVisibilityTests : IClassFixture<ClubHubWebApplicationFac
         Assert.Equal(
             2,
             await db.UserRoles.CountAsync(role => role.UserId == user.UserId));
+
+        var cachedInactiveRole = new AuthRole(
+            leaderRole.RoleId,
+            leaderRole.RoleCode,
+            leaderRole.RoleName,
+            "会话已解散社团负责人",
+            leaderRole.RoleScope,
+            inactiveClubId,
+            [inactiveClubId],
+            AuthService.GetRolePermissions(leaderRole.RoleCode),
+            leaderRole.PermissionDesc);
+        var cachedAuthService = new AuthService(
+            db,
+            scope.ServiceProvider.GetRequiredService<AuthTokenService>(),
+            scope.ServiceProvider.GetRequiredService<IAuthSessionService>(),
+            new FixedPermissionSnapshotCache(new PermissionSnapshot(user.UserId, [cachedInactiveRole])));
+
+        var filteredCachedRoles = await cachedAuthService.GetPermissionRolesAsync(user.UserId);
+        Assert.DoesNotContain(filteredCachedRoles, role => role.ClubId == inactiveClubId);
+    }
+
+    private sealed class FixedPermissionSnapshotCache(PermissionSnapshot snapshot)
+        : IPermissionSnapshotCache
+    {
+        public Task<PermissionSnapshot> GetOrCreateAsync(
+            int userId,
+            Func<Task<PermissionSnapshot>> factory,
+            CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
+
+        public Task<AccountStatusSnapshot> GetAccountStatusAsync(
+            int userId,
+            Func<Task<AccountStatusSnapshot>> factory,
+            CancellationToken cancellationToken = default) => factory();
+
+        public Task InvalidateAsync(
+            int userId,
+            bool requiredForSafety,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

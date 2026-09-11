@@ -650,7 +650,8 @@ public class AuthService
             async () => new PermissionSnapshot(
                 userId,
                 await GetRawAuthRolesAsync(userId)));
-        return BuildPermissionRoles(snapshot.Roles);
+        var currentRoles = await FilterOperationalClubRolesAsync(snapshot.Roles);
+        return BuildPermissionRoles(currentRoles);
     }
 
     private async Task<IReadOnlyList<AuthRole>> GetRawAuthRolesAsync(int userId)
@@ -667,6 +668,29 @@ public class AuthService
             .Where(ur => ur.Role is not null &&
                          (ur.ClubId is null || IsOperationalClub(ur.Club)))
             .Select(ur => ToAuthRole(ur.Role!, ur.ClubId))
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<AuthRole>> FilterOperationalClubRolesAsync(
+        IReadOnlyList<AuthRole> roles)
+    {
+        var clubIds = roles
+            .Where(role => role.ClubId is not null)
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .ToList();
+        if (clubIds.Count == 0) return roles;
+
+        var operationalClubIds = (await _db.Clubs
+                .AsNoTracking()
+                .Where(club => clubIds.Contains(club.ClubId))
+                .ToListAsync())
+            .Where(IsOperationalClub)
+            .Select(club => club.ClubId)
+            .ToHashSet();
+
+        return roles
+            .Where(role => role.ClubId is null || operationalClubIds.Contains(role.ClubId.Value))
             .ToList();
     }
 
@@ -1043,7 +1067,7 @@ public class AuthService
 
         var status = NormalizeText(club.ClubStatus).ToLowerInvariant();
         var auditStatus = NormalizeText(club.AuditStatus).ToLowerInvariant();
-        return (status is "" or ClubActive or "normal" or "enabled" or "运营中" or "正常") &&
+        return (status is ClubActive or "normal" or "enabled" or "运营中" or "正常") &&
                (auditStatus is "" or AuditApproved or "已通过");
     }
 
