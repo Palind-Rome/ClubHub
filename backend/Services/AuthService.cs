@@ -16,6 +16,8 @@ public class AuthService
     private const string ClubOfficerRole = "CLUB_OFFICER";
     private const string ClubLeaderRole = "CLUB_LEADER";
     private const string AdvisorRole = "ADVISOR";
+    private const string AuditApproved = "approved";
+    private const string ClubActive = "active";
     private const string VenueAdminRole = "VENUE_ADMIN";
     private const string SystemAdminRole = "SYSTEM_ADMIN";
     private const int StudentNoLength = 7;
@@ -648,21 +650,47 @@ public class AuthService
             async () => new PermissionSnapshot(
                 userId,
                 await GetRawAuthRolesAsync(userId)));
-        return BuildPermissionRoles(snapshot.Roles);
+        var currentRoles = await FilterOperationalClubRolesAsync(snapshot.Roles);
+        return BuildPermissionRoles(currentRoles);
     }
 
     private async Task<IReadOnlyList<AuthRole>> GetRawAuthRolesAsync(int userId)
     {
         var userRoles = await _db.UserRoles
             .Include(ur => ur.Role)
+            .Include(ur => ur.Club)
             .Where(ur => ur.UserId == userId)
             .OrderBy(ur => ur.RoleId)
             .ThenBy(ur => ur.ClubId)
             .ToListAsync();
 
         return userRoles
-            .Where(ur => ur.Role is not null)
+            .Where(ur => ur.Role is not null &&
+                         (ur.ClubId is null || IsOperationalClub(ur.Club)))
             .Select(ur => ToAuthRole(ur.Role!, ur.ClubId))
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<AuthRole>> FilterOperationalClubRolesAsync(
+        IReadOnlyList<AuthRole> roles)
+    {
+        var clubIds = roles
+            .Where(role => role.ClubId is not null)
+            .Select(role => role.ClubId!.Value)
+            .Distinct()
+            .ToList();
+        if (clubIds.Count == 0) return roles;
+
+        var operationalClubIds = (await _db.Clubs
+                .AsNoTracking()
+                .Where(club => clubIds.Contains(club.ClubId))
+                .ToListAsync())
+            .Where(IsOperationalClub)
+            .Select(club => club.ClubId)
+            .ToHashSet();
+
+        return roles
+            .Where(role => role.ClubId is null || operationalClubIds.Contains(role.ClubId.Value))
             .ToList();
     }
 
@@ -1031,6 +1059,16 @@ public class AuthService
     {
         var normalized = NormalizeText(user.AccountStatus).ToLowerInvariant();
         return normalized is "active" or NormalStatus or "enabled" or "在任" or "正常";
+    }
+
+    private static bool IsOperationalClub(ClubHub.Api.Data.Entities.Club? club)
+    {
+        if (club is null) return false;
+
+        var status = NormalizeText(club.ClubStatus).ToLowerInvariant();
+        var auditStatus = NormalizeText(club.AuditStatus).ToLowerInvariant();
+        return (status is ClubActive or "normal" or "enabled" or "运营中" or "正常") &&
+               (auditStatus is "" or AuditApproved or "已通过");
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
