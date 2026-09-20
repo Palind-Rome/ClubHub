@@ -11,17 +11,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml">
-    <img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI">
-  </a>
+  <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml"><img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   &nbsp;
-  <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml">
-    <img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml/badge.svg?branch=main" alt="Code Quality">
-  </a>
+  <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml"><img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml/badge.svg?branch=main" alt="Code Quality"></a>
   &nbsp;
-  <a href="https://github.com/Palind-Rome/ClubHub/stargazers">
-    <img src="https://img.shields.io/github/stars/Palind-Rome/ClubHub?style=flat-square&logo=github" alt="GitHub stars">
-  </a>
+  <a href="https://github.com/Palind-Rome/ClubHub/stargazers"><img src="https://img.shields.io/github/stars/Palind-Rome/ClubHub?style=flat-square&logo=github" alt="GitHub stars"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white" alt=".NET 10">
   &nbsp;
