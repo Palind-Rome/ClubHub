@@ -22,6 +22,8 @@
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
   &nbsp;
   <img src="https://img.shields.io/badge/Oracle-18c%2B-F80000?style=flat-square&logo=oracle&logoColor=white" alt="Oracle 18c or newer">
+  &nbsp;
+  <a href="https://github.com/Palind-Rome/ClubHub/blob/main/docker-compose.yml"><img src="https://img.shields.io/badge/Docker%20Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose"></a>
 </p>
 
 <p align="center">
