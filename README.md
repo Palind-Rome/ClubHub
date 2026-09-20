@@ -20,6 +20,10 @@
     <img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml/badge.svg?branch=main" alt="Code Quality">
   </a>
   &nbsp;
+  <a href="https://github.com/Palind-Rome/ClubHub/stargazers">
+    <img src="https://img.shields.io/github/stars/Palind-Rome/ClubHub?style=flat-square&logo=github" alt="GitHub stars">
+  </a>
+  &nbsp;
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white" alt=".NET 10">
   &nbsp;
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
