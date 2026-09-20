@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.png" alt="ClubHub Logo" width="400">
+  <img src="docs/images/logo.png" alt="ClubHub Logo" width="500">
 </p>
 
 <h1 align="center">ClubHub</h1>
