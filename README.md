@@ -1,6 +1,5 @@
 <p align="center">
-  <!-- Logo 预留位置：后续如有正式品牌 Logo，可直接替换下方资源。 -->
-  <img src="./frontend/public/logo_small.svg" alt="ClubHub Logo" width="160">
+  <img src="docs/images/logo.png" alt="ClubHub Logo" width="300">
 </p>
 
 <h1 align="center">ClubHub</h1>
@@ -8,7 +7,7 @@
 <h3 align="center">高校社团运营与协同管理平台</h3>
 
 <p align="center">
-  <strong>同济大学 2026 年小学期 · 数据库课程设计</strong>
+  <strong>同济大学 2026 软件工程小学期 · 数据库课程设计</strong>
 </p>
 
 <p align="center">
@@ -29,8 +28,6 @@
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
   &nbsp;
   <img src="https://img.shields.io/badge/Oracle-18c%2B-F80000?style=flat-square&logo=oracle&logoColor=white" alt="Oracle 18c or newer">
-  &nbsp;
-  <img src="https://img.shields.io/badge/课程设计-优-2E7D32?style=flat-square" alt="课程设计成绩：优">
 </p>
 
 <p align="center">
@@ -40,6 +37,8 @@
 ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场景，计划实现社团组织管理、成员招募、活动与场地、项目协作、课程资源、运营评价、公告通知和讨论区等功能。
 
 本项目采用 C# / Visual Studio / Oracle 技术路线，目标实现为前后端分离的 ASP.NET Core B/S 系统，便于多人协作、网页演示和后续部署。
+
+![首页截图](docs/images/首页截图.png)
 
 ## 技术栈
 
@@ -83,6 +82,8 @@ ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场
 2. 配好 Visual Studio、.NET SDK 10.0、Oracle XE、SQL Developer。
 3. 用 `database/schema.sql` 创建本地数据库结构，用 `database/verify.sql` 验证。
 4. 日常开发先从 `dev` 分支开功能分支，用 Issue、PR 和 commit 留痕。
+
+![团队协作](docs/images/团队协作.png)
 
 ## 自动化测试
 
