@@ -33,60 +33,18 @@
   面向高校社团组织、成员、活动、项目与资源的一体化 B/S 协同平台。
 </p>
 
-## 项目简介
+ClubHub 是《数据库课程设计》项目，面向高校社团日常运营场景，计划实现社团组织管理、成员招募、活动与场地、项目协作、课程资源、运营评价、公告通知和讨论区等功能。
 
-ClubHub 是同济大学《数据库课程设计》项目，围绕高校社团的日常运营场景，串联社团组织、成员招募、活动与场地、项目协作、课程资源、运营评价、公告通知和讨论区等业务。
-
-项目采用 C# / Visual Studio / Oracle 技术路线，前后端分离实现 ASP.NET Core B/S 系统，便于多人协作、网页演示和后续部署。目前项目已完成课程交付，并获得“优”评定。
-
-## 快速导航
-
-- [核心能力](#核心能力)
-- [项目展示](#项目展示)
-- [技术栈](#技术栈)
-- [目录结构](#目录结构)
-- [课程要求摘要](#课程要求摘要)
-- [协作与环境](#协作与环境)
-- [自动化测试](#自动化测试)
-
-## 核心能力
-
-| 模块 | 覆盖内容 |
-| --- | --- |
-| 组织与成员 | 社团注册、组织架构、成员关系、干部换届与角色权限 |
-| 招新与考核 | 社团招新、报名审核、成员考核与结果管理 |
-| 活动与场地 | 活动发布、报名参与、签到、场地预约与冲突校验 |
-| 经费与物资 | 预算申请、审批、收支记录、物资借用与归还 |
-| 项目协作 | 项目成员、任务分配、进度汇报与协作跟踪 |
-| 学习与资源 | 学习资料、培训内容、学习记录与资源借用 |
-| 评优与公示 | 评奖方案、等级、申请审核、附件和结果公示 |
-| 沟通与通知 | 公告通知、已读记录、论坛发帖与讨论互动 |
-
-## 项目展示
-
-<p align="center">
-  <img src="./docs/images/pr-96-01-activity-budget-list.png" alt="活动与经费管理" width="49%">
-  <img src="./docs/pr/140/04-computer-publicity-list.jpg" alt="评奖与公示管理" width="49%">
-</p>
-
-<p align="center">
-  <img src="./docs/images/pr-230/current-and-upcoming.png" alt="成员与任期管理" width="80%">
-</p>
-
-<p align="center">
-  <em>演示截图来自仓库内的项目素材，更多界面可在 <code>docs/images/</code> 与 <code>docs/screenshots/</code> 中查看。</em>
-</p>
+本项目采用 C# / Visual Studio / Oracle 技术路线，目标实现为前后端分离的 ASP.NET Core B/S 系统，便于多人协作、网页演示和后续部署。
 
 ## 技术栈
 
-| 层次 | 技术 |
-| --- | --- |
-| 开发环境 | Visual Studio Community 2022 或更高版本 |
-| 后端 | C# / ASP.NET Core 10 Web API（目标框架 `net10.0`） |
-| 前端 | Vue 3 / Vite / Element Plus |
-| 数据库 | Oracle Database 18c 或更高版本 |
-| 数据访问 | Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider |
-| 协作与交付 | GitHub Issues / Pull Requests / GitHub Actions |
+- IDE：Visual Studio Community 2022 或更高版本
+- 后端：C# / ASP.NET Core 10 Web API（目标框架 `net10.0`）
+- 前端：Vue 3 / Vite
+- 数据库：Oracle Database 18c 或更高版本
+- 数据访问：Oracle Managed Data Access / ODP.NET，必要时使用 Oracle EF Core Provider
+- 协作：GitHub Issues / Pull Requests / GitHub Actions
 
 ## 目录结构
 
