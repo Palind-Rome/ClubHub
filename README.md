@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.png" alt="ClubHub Logo" width="300">
+  <img src="docs/images/logo.png" alt="ClubHub Logo" width="400">
 </p>
 
 <h1 align="center">ClubHub</h1>
@@ -12,8 +12,6 @@
 
 <p align="center">
   <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml"><img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  &nbsp;
-  <a href="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml"><img src="https://github.com/Palind-Rome/ClubHub/actions/workflows/code-check.yml/badge.svg?branch=main" alt="Code Quality"></a>
   &nbsp;
   <a href="https://github.com/Palind-Rome/ClubHub/stargazers"><img src="https://img.shields.io/github/stars/Palind-Rome/ClubHub?style=flat-square&logo=github" alt="GitHub stars"></a>
   &nbsp;
